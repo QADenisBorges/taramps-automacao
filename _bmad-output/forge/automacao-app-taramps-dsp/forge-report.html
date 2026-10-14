@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja: Controle Taramps</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2a2320;--muted:#6b5f57;--line:#e2d8c7;--seal:#9e2a2b;--seal2:#c2410c;--ok:#2f6f4f;--warn:#a16207;--no:#9e2a2b}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1715;--card:#25201d;--ink:#f1e9df;--muted:#b3a698;--line:#3b332e;--seal:#d0544f;--seal2:#f08a4b;--ok:#6cc59a;--warn:#e3b341;--no:#f07a73}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 Georgia,"Times New Roman",serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+header{display:flex;gap:28px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:24px}
+header .t{flex:1;min-width:240px}
+h1{font-size:1.9rem;line-height:1.2;margin:.2em 0}
+.kicker{font:600 .8rem/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h2{font:700 1rem/1.3 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:36px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px}
+ul{margin:0;padding-left:1.2em}li{margin:.35em 0}
+.lock li::marker{content:"🔒  "}.rej li::marker{content:"✕  ";color:var(--no)}.risk li::marker{content:"⚠  ";color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.p{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:.95rem}
+.p b{display:block;font-family:system-ui,sans-serif}.p small{color:var(--muted);font-family:system-ui,sans-serif}
+.p q{display:block;margin-top:6px;font-style:italic}
+.seal{width:170px;height:170px;flex:none}
+.path{font:.85rem/1.4 ui-monospace,Menlo,monospace;color:var(--muted);word-break:break-all}
+</style>
+</head>
+<body>
+<main>
+<header>
+<svg class="seal" viewBox="0 0 200 200" role="img" aria-label="Selo: ENDURECIDA">
+  <defs><path id="c" d="M100,100 m-66,0 a66,66 0 1,1 132,0 a66,66 0 1,1 -132,0"/></defs>
+  <path fill="var(--seal)" d="M100 8l13 10 16-4 8 14 16 3 1 16 13 10-6 15 6 15-13 10-1 16-16 3-8 14-16-4-13 10-13-10-16 4-8-14-16-3-1-16-13-10 6-15-6-15 13-10 1-16 16-3 8-14 16 4z"/>
+  <circle cx="100" cy="100" r="76" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2"/>
+  <circle cx="100" cy="100" r="52" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/>
+  <text font-family="system-ui,sans-serif" font-size="11.5" font-weight="700" letter-spacing="3" fill="#fff"><textPath href="#c">FORJA DE IDEIAS · 14 OUT 2026 ·</textPath></text>
+  <text x="100" y="96" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="#fff">ENDURECIDA</text>
+  <text x="100" y="116" text-anchor="middle" font-family="system-ui,sans-serif" font-size="10" fill="#fff" fill-opacity=".85">HARDENED</text>
+</svg>
+<div class="t">
+  <div class="kicker">Forja de ideias · Denis · objetivo: esclarecer</div>
+  <h1>PC controlando o Taramps PRO 2.4BT + AUDIO ao vivo</h1>
+  <p>Protótipo 1 de três ferramentas: consultor de som, que decide; controle do processador; e áudio, que mede. A IA atua como assistente, com Denis aprovando o que importa.</p>
+</div>
+</header>
+
+<h2>Travado</h2>
+<div class="card lock"><ul>
+<li><b>Controle ao vivo por BLE</b> a partir do notebook, sem o celular. O código roda no notebook, porque a nuvem não tem Bluetooth.</li>
+<li><b>Etapa 1, descoberta:</b> registro de Bluetooth do Android, um parâmetro de cada vez. Marco: o PC muda o volume master.</li>
+<li><b>"Deu certo" = nível 2:</b> o PC <b>lê</b> e <b>muda</b> crossover, nível, atraso, fase, EQ paramétrico e EQ gráfico, e troca a memória. Isso libera o protótipo 2.</li>
+<li><b>Autonomia:</b> na descoberta, tudo passa por aprovação. Na ferramenta pronta, a IA só baixa nível e EQ sozinha; o resto precisa de OK.</li>
+<li><b>Travas no código, que não se desligam pela conversa:</b> passa-alta das saídas 1/2 intocável; saídas 3 = 4 (ponte); níveis e EQ só para baixo; cópia da configuração antes de cada mudança; desfazer.</li>
+<li><b>Regra da descoberta:</b> só reenviar comandos vistos saindo do app, com volume baixo. Nunca enviar bytes às cegas.</li>
+</ul></div>
+
+<h2>Rejeitado e por quê</h2>
+<div class="card rej"><ul>
+<li><b>Gerar preset para importar:</b> não dá controle ao vivo, e o compartilhamento de presets é criptografado.</li>
+<li><b>Robô tocando na tela do app:</b> frágil, e não fecha o ciclo medir → ajustar.</li>
+<li><b>IA totalmente livre:</b> arrisca a JBL e a ponte. <b>Aprovar cada ajuste:</b> inviabiliza a equalização iterativa.</li>
+<li><b>Limitador, gerador, senha, voltímetro e Audio BT:</b> fora do escopo do protótipo.</li>
+</ul></div>
+
+<h2>Pontos fracos que sobreviveram</h2>
+<div class="card risk"><ul>
+<li>O protocolo é fechado e pode ser criptografado ou atrelado à senha de 4 dígitos. Se não abrir, o roteiro muda.</li>
+<li>Provavelmente só uma conexão de controle por vez: PC e app se revezam.</li>
+<li>Escrita interrompida deixa o aparelho em estado desconhecido. A ferramenta precisa reler o estado e restaurar a cópia.</li>
+</ul></div>
+
+<h2>Quem testou a ideia</h2>
+<div class="grid">
+<div class="p"><b>📋 John</b><small>Gerente de produto</small><q>Ninguém quer "automação". Que coisa você quer parar de fazer?</q></div>
+<div class="p"><b>🏗️ Winston</b><small>Arquiteto</small><q>Só o controle depende do que você não controla. Comece pela descoberta.</q></div>
+<div class="p"><b>💻 Amelia</b><small>Desenvolvedora</small><q>A nuvem não tem Bluetooth. Quem fala com o processador é o notebook.</q></div>
+<div class="p"><b>🔒 Vex</b><small>Segurança</small><q>A trava fica no código que envia o comando, não nas instruções da IA.</q></div>
+<div class="p"><b>🔧 Rogério</b><small>Instalador de som (voz externa)</small><q>O que cansa não é decidir o crossover, é fazer 40 toques no app.</q></div>
+<div class="p"><b>🔬 Tiago</b><small>Engenharia reversa de BLE (voz externa)</small><q>No Android o próprio sistema grava a conversa. No iPhone, só com um sniffer.</q></div>
+<div class="p"><b>🧰 Marcos</b><small>Técnico de bancada (voz externa)</small><q>Antes do controle ao vivo, diga o que é "deu certo".</q></div>
+<div class="p"><b>🎚️ Bruna</b><small>Calibração de salas (voz externa)</small><q>Se tiver que aprovar cada ajuste de 1 dB, você desiste no décimo.</q></div>
+</div>
+
+<h2>Arquivos</h2>
+<p class="path">_bmad-output/forge/automacao-app-taramps-dsp/forged-idea.md<br>_bmad-output/forge/automacao-app-taramps-dsp/.memlog.md</p>
+</main>
+</body>
+</html>
