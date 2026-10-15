@@ -1,0 +1,70 @@
+- id: "1"
+  title: Mapa do protocolo BLE do PRO 2.4BT + AUDIO
+  description: >-
+    Decifrar pelo HCI snoop log e pelo APK a codificação de cada parâmetro e dos
+    comandos de leitura e escrita (CAP-1), dentro do orçamento de parada; ver
+    protocol-discovery.md.
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Captura disciplinada: alterar um parâmetro por vez no app, anotando o valor
+    antigo e o novo; a IA só analisa capturas prontas. Ao fim, registrar se o
+    limiter atua antes ou depois do ganho da saída e a unidade do threshold.
+    Protocolo protegido ou orçamento esgotado sem bytes legíveis: parar e
+    reportar (procurar a Taramps).
+- id: "2"
+  title: Leitura completa via MCP (Marco 1)
+  description: >-
+    O notebook conecta ao processador com a senha BT e entrega ao Claude, como
+    ferramenta MCP, todos os parâmetros (CAP-2); pronto quando bate 100% com o
+    app em 2 ou mais presets.
+  done_checkpoint: true
+- id: "3"
+  title: Configuração do setup (inventário)
+  description: >-
+    Assistente em etapas que monta o inventário de cada saída e só passa a valer
+    com a confirmação do Denis fora do chat da IA (CAP-11); campos em
+    damage-thresholds.md.
+  invoke_dev_with: >-
+    Usar setup-home-theater-2.1.md como caso de teste do inventário.
+- id: "4"
+  title: Escrita confirmada com backup e fail-safe
+  description: >-
+    Escrita de parâmetros com backup completo antes e releitura depois (CAP-3,
+    CAP-8), bloqueando novas escritas após queda de conexão ou releitura
+    divergente (CAP-12).
+  spec_checkpoint: true
+  invoke_dev_with: >-
+    Processador desligado do amplificador durante desenvolvimento e testes. As
+    travas ficam no servidor MCP e validam o estado resultante, nunca o cliente
+    de IA; a escrita não é exposta à IA antes de o guardião existir (história 5).
+- id: "5"
+  title: Guardião e permissões (Marco 2)
+  description: >-
+    As 3 travas de dano físico, as regras permitir/perguntar/negar, as áreas
+    protegidas e a liberação pelo Denis com registro (CAP-4 a CAP-7); ver
+    permission-model.md e damage-thresholds.md.
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Processador desligado do amplificador durante desenvolvimento e testes. As
+    travas ficam no servidor MCP e validam o estado resultante, nunca o cliente
+    de IA.
+- id: "6"
+  title: Calibração guiada
+  description: >-
+    Etapa do setup que registra resistência, tensão da fonte e tensão AC por
+    saída e fixa o teto de nível no ponto calibrado (CAP-13).
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Processador desligado do amplificador durante desenvolvimento e testes; na
+    calibração, falantes desconectados. Usar setup-home-theater-2.1.md como caso
+    de teste.
+- id: "7"
+  title: Presets e restauração
+  description: >-
+    Salvamento automático opcional com autoria de presets (CAP-9) e restauração
+    de backup proposta pela IA e confirmada pelo Denis (CAP-10).
+  invoke_dev_with: >-
+    Processador desligado do amplificador durante desenvolvimento e testes.

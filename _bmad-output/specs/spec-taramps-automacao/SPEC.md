@@ -70,6 +70,7 @@ sources:
 - O guardião vive no software (servidor), não no cliente de IA: permissões por ferramenta do cliente não validam valores de parâmetro.
 - A IA é entrada não confiável: nenhuma decisão de segurança depende do julgamento dela.
 - Dano físico e áreas protegidas: a IA nunca libera, sem exceção; o humano mantém a palavra final com aceite consciente de risco.
+- Toda confirmação ou liberação humana ("perguntar", alerta de risco, restauração, reset) acontece num canal do software que a IA não consegue responder, nunca no chat da IA.
 - A saída são valores exatos de parâmetro, nunca imagens.
 - Alvo fixo: Taramps PRO 2.4BT + AUDIO; não trocar de processador.
 - A central BLE é o notebook do home theater; o software não pode depender de o app do celular estar conectado ao mesmo tempo.
@@ -108,5 +109,3 @@ sources:
 ## Open Questions
 
 - O limiter do PRO 2.4BT atua antes ou depois do ganho da saída? Qual é a unidade do threshold no protocolo? É preciso confirmar na CAP-1, medindo.
-- Quem pode liberar o reset de fábrica?
-- Na regra "perguntar", quem responde e por qual canal — sempre o Denis, fora do chat da IA?
