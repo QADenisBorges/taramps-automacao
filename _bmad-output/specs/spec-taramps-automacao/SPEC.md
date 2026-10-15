@@ -54,16 +54,16 @@ sources:
   - **success:** A IA pode propor a restauração, que só acontece após confirmação do Denis e é conferida por releitura.
 - **CAP-11** — Configuração do setup
   - **intent:** Ao configurar, o software conduz o Denis por etapas, como um assistente de instalação, e monta o inventário — falante em cada saída e suas especificações, conexões, terminais, bitola dos cabos, módulos amplificadores, tipo de caixa — que alimenta o mapa de canais e os limites.
-  - **success:** Cada uma das 4 saídas tem registro do que está ligado nela; o inventário só passa a valer depois que as etapas obrigatórias forem concluídas e o Denis confirmar, e o guardião aplica as travas com base nele.
+  - **success:** Cada uma das 4 saídas tem registro do que está ligado nela; o inventário só passa a valer depois que as etapas obrigatórias forem concluídas e o Denis confirmar, e o guardião aplica as travas com base nele. O inventário traz os campos listados em `damage-thresholds.md`, e um campo ausente faz o guardião usar o padrão conservador.
 - **CAP-12** — Fail-safe de escrita
   - **intent:** Queda de conexão ou releitura divergente nunca deixa a IA escrevendo sobre um estado desconhecido.
   - **success:** Simulando uma queda no meio de uma escrita, nenhuma nova escrita é aceita até uma releitura completa; depois a IA apresenta diagnóstico e proposta de correção ao Denis.
-- **CAP-13** — Calibração do teto de nível
-  - **intent:** O Denis registra, por saída, uma medição de tensão na saída do módulo, e o software deriva dela o teto de nível. O procedimento está em `damage-thresholds.md`.
-  - **success:** Com calibração, nível acima de √(P_alvo × Z) − 3 dB é bloqueado. Sem calibração, a IA não sobe o nível acima da linha de base confirmada. Calibrar e entrar no modo de calibração só o Denis faz.
 - **CAP-13** — Calibração guiada
-  - **intent:** Dentro da configuração do setup, o software conduz a etapa de medição — resistência de cada falante, tensão da fonte, tensão AC por saída com tom de referência — e fixa o teto de nível de cada saída no ponto calibrado.
-  - **success:** Sem calibração concluída, nenhuma saída tem teto calibrado e o guardião nega qualquer subida de nível, limiar ou EQ; concluída, cada saída tem as leituras registradas e o limitador no ponto calibrado.
+  - **intent:** Dentro da configuração do setup, o software conduz a etapa de medição: resistência de cada falante, tensão da fonte e tensão AC por saída com tom de referência. Com isso ele fixa o teto de nível de cada saída (ver `damage-thresholds.md`).
+  - **success:**
+    - Sem calibração concluída, nenhuma saída tem teto calibrado, e o guardião nega qualquer subida de nível, limiar ou EQ.
+    - Com calibração concluída, cada saída tem as leituras registradas, um teto (calculado pelas fichas com −3 dB, ou ponto validado pelo Denis) e o limitador no teto.
+    - Só o Denis calibra.
 
 ## Constraints
 
@@ -102,8 +102,11 @@ sources:
 - Na fase 1, sem microfone, as etapas do setup coletam dados por perguntas ao Denis, fichas técnicas e leituras de multímetro que ele informa; o software não mede tensão sozinho (o voltímetro do PRO + AUDIO mede só a alimentação). A verificação do mapa de canais por medição fica para a fase 2.
 - O software registra a autoria dos presets; presets anteriores ao software contam como não criados pela IA, e os criados pela IA podem ser sobrescritos sem perguntar.
 - A restauração passa pelo guardião como qualquer escrita, porque um backup pode conter um estado perigoso anterior ao software.
+- A calibração vale até alguém mexer no hardware, por exemplo no botão de ganho do módulo. O software não detecta essa mudança.
+- Os fatores e padrões dos limiares vêm de prática de instalação, não de medição. O cálculo de excursão por Thiele-Small fica para a fase 2.
 
 ## Open Questions
 
+- O limiter do PRO 2.4BT atua antes ou depois do ganho da saída? Qual é a unidade do threshold no protocolo? É preciso confirmar na CAP-1, medindo.
 - Quem pode liberar o reset de fábrica?
 - Na regra "perguntar", quem responde e por qual canal — sempre o Denis, fora do chat da IA?

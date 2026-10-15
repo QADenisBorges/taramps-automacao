@@ -1,13 +1,14 @@
 # Limiares das travas de dano físico
 
-As regras do guardião para as 3 travas de dano físico (CAP-4) e para a calibração de nível (CAP-13). São regras genéricas: os valores vêm do inventário do setup (CAP-11). Quando falta dado, o guardião usa um padrão fixo e conservador.
+As regras do guardião para as 3 travas de dano físico (CAP-4) e para a calibração guiada (CAP-13). São regras genéricas: os valores vêm do inventário do setup (CAP-11). Quando falta dado, o guardião usa um padrão fixo e conservador.
 
-## Equipamento (manual do PRO 2.4BT)
+## Equipamento (manual do PRO 2.4BT + AUDIO)
 
 - Crossover por saída, de 10 Hz a 22 kHz. Opções: OFF, Butterworth de 6 a 48 dB/oit e Linkwitz-Riley de 12 a 48 dB/oit.
 - Ganho por saída de −45 a +15 dB e master de −80 a 0 dB. A saída máxima é 2,1 V RMS.
 - EQ paramétrico de ±12 dB na entrada e na saída, mais um EQ gráfico de 15 bandas na entrada.
-- Limiter por saída: threshold de −24 a 0 dB e ataque de 0,1 a 100 ms. Pode ser desligado.
+- Limiter por saída: threshold de −48 a 0 dB (o PRO 2.4BT sem "+ AUDIO" vai de −24 a 0 dB), ataque de 0,1 a 100 ms, liberação de 1 a 1.600 ms ou modo Auto. Pode ser desligado. No app, o threshold aparece em volts na saída do processador.
+- Entrada RCA com ganho fixo, até 2,1 V RMS.
 - O roteamento aceita A, B e A+B.
 - O gerador de senoide vai de 10 Hz a 22 kHz, até 0 dB.
 - "Reset Audio Settings" volta o áudio ao padrão de fábrica.
@@ -40,21 +41,25 @@ O teste das travas 1 e 2 compara a curva somada da saída (crossover mais todos 
 
 - **Ganho efetivo (G_ef):** master + ganho da saída + pico da curva somada + 6 dB se a rota for A+B. A fonte é considerada em 0 dBFS.
 - **Teto do DSP, sempre aplicado:** G_ef ≤ −1 dB.
-- **Teto do módulo e do falante, com calibração (CAP-13):** a tensão na saída do módulo não pode passar de √(P_alvo × Z), menos a margem de 3 dB.
-  - P_alvo = mín(RMS do falante; potência do canal do módulo naquela carga ou em ponte; limite de excursão validado, se houver).
-  - A margem de −3 dB foi escolhida pelo Denis. Uma margem menor só existe por liberação dele, por saída, registrada.
-- **Teto sem calibração:** G_ef não pode passar da linha de base que o Denis confirmou. A IA pode baixar o nível, nunca subir.
+- **Teto do módulo e do falante, com calibração (CAP-13):** a tensão na saída do módulo não pode passar do teto da saída. O teto vem de uma de duas formas:
+  - **calculado pelas fichas:** √(P_alvo × Z) − 3 dB, com P_alvo = mín(RMS do falante; potência do canal do módulo naquela carga ou em ponte);
+  - **ponto validado:** registrado pelo Denis com justificativa, por exemplo um limite de excursão. Vale como está, sem margem extra.
+- **Teto sem calibração:** a IA não sobe nível, threshold do limiter nem EQ acima da linha de base confirmada. Ela só pode baixar.
 - **Limiter:** fica ligado com o threshold no teto ou abaixo dele, como segunda camada. A IA não pode desligá-lo nem subir o threshold.
+- **Margem menor que a da regra:** só por liberação do Denis, por saída, registrada.
 
-## Calibração (CAP-13)
+## Calibração guiada (CAP-13)
 
-A calibração é feita só pelo Denis, com confirmação de que os falantes estão desconectados.
+A calibração é uma etapa da configuração do setup. Só o Denis a executa, e só depois de confirmar que os falantes estão desconectados.
 
-1. O Denis mede com multímetro na escala AC, na saída do módulo.
-2. O tom de teste fica dentro da faixa de passagem do DSP e dos filtros externos, num nível baixo.
-3. O software extrapola de forma linear: cada +6 dB dobra a tensão.
+1. Registra a resistência de cada falante e a tensão da fonte.
+2. Mede, por saída, a tensão AC na saída do módulo com um tom dentro da faixa de passagem do DSP e dos filtros externos.
+3. Faz a leitura de um destes dois jeitos:
+   - com a fonte a 100% e o tom a 0 dBFS;
+   - num nível baixo, e o software extrapola de forma linear (cada +6 dB dobra a tensão).
+4. Coloca o limiter de cada saída no teto.
 
-O registro guarda data e valores. A calibração vale até alguém mexer no hardware.
+O registro guarda data e valores. A calibração vale até alguém mexer no hardware, por exemplo no botão de ganho do módulo.
 
 ## Justificativas
 
@@ -62,8 +67,9 @@ O registro guarda data e valores. A calibração vale até alguém mexer no hard
 - **0,8 × Fb:** abaixo da Fb, o cone de uma caixa dutada fica sem carga. O fator 0,8 é o topo da faixa usual de 0,7 a 0,8.
 - **35 Hz para caixa desconhecida:** caixas de porta-malas costumam ser sintonizadas entre 40 e 45 Hz.
 - **G_ef ≤ −1 dB:** um DSP ceifando entrega onda quadrada, com +3 dB de potência e harmônicos que vão para o tweeter.
-- **Margem de −3 dB:** cobre potência de módulo declarada a 14,4 V, fonte de 12 a 13,8 V, erro de multímetro e ficha otimista.
+- **Margem de −3 dB no teto calculado:** cobre potência de módulo declarada a 14,4 V, fonte de 12 a 13,8 V, erro de multímetro e ficha otimista. Um ponto validado já embute a margem que o Denis escolheu.
 - **Teto por medição:** o ganho do módulo é um botão físico que o software não lê. Por isso o teto vem de medição, e sem medição vale a linha de base.
+- **Sem crédito automático de caixa selada:** a caixa reduz o som abaixo da Fc, mas não reduz a excursão na mesma proporção. A inclinação acústica só conta se entrar como corte validado.
 
 ## Campos do inventário (CAP-11)
 
@@ -78,4 +84,4 @@ Cada saída registra:
 - se está em ponte, e com qual saída;
 - limite de excursão validado e corte validado, com método e data;
 - filtros externos;
-- calibração, com data.
+- resistência medida e calibração, com data.

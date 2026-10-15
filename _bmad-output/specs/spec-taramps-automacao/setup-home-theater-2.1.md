@@ -27,16 +27,17 @@ Alimentação: fusível de 40 A no + do módulo (10 mm²); fusível do processad
 | SD800.4 EVO | Ponte 4 Ω | 400 W RMS a 12,6 V (tabela de ganho: 40 V) | Manual |
 | PRO 2.4BT + AUDIO | Saída máxima / nível por saída | 2,1 V RMS / −45 a **+15 dB** | Manual |
 
-## Valores seguros (regras do guardião para este setup)
+## Valores seguros (regras de `damage-thresholds.md` aplicadas a este setup)
 
 | Trava | Saídas | Valor seguro | O guardião bloqueia |
 |---|---|---|---|
-| Passa-alta da JBL | 1 e 2 | **Butterworth 12 dB/oit ≥ 120 Hz** (configuração do projeto: a caixa selada completa os 24 dB/oit), ou **≥ 100 Hz com 24 dB/oit ou mais** (ficha) | Passa-alta desligado; abaixo de 120 Hz com 12 dB/oit; abaixo de 100 Hz com qualquer inclinação; inclinação de 6 dB/oit |
-| Subsônico do sub | 3 e 4 | **30 Hz, 24 dB/oit** enquanto a Fb for desconhecida; depois **0,75–0,8 × Fb**, 24 dB/oit | Subsônico desligado; frequência abaixo do mínimo vigente; inclinação abaixo de 24 dB/oit |
-| Ponte | 3 e 4 | Filtros, fase, atraso, nível, EQ e limitador **idênticos** | Qualquer escrita que deixe as saídas 3 e 4 diferentes |
-| Teto de nível | 1 a 4 | Limitador **ligado** com o limiar no ponto calibrado: **11 V AC** em CH1/CH2 (≈30 W) e **40 V AC** na ponte (400 W), medidos no multímetro com o celular a 100 % e tom de 60 Hz a 0 dBFS | Desligar o limitador; subir o limiar acima do calibrado; subir nível de saída ou master acima do valor calibrado; LED de clip de saída aceso |
+| Passa-alta da JBL (classificada pelo cone, 4") | 1 e 2 | **≥ 100 Hz com ≥ 24 dB/oit** (ficha). O **Butterworth 12 dB/oit em 120 Hz** do projeto passa depois que o Denis registra no inventário a simulação de excursão de 09/10 como corte validado. | Passa-alta desligado; curva somada acima da referência abaixo do corte vigente; reforço de EQ abaixo do corte |
+| Subsônico do sub | 3 e 4 | **35 Hz, 24 dB/oit** enquanto a Fb for desconhecida; depois **≥ 0,8 × Fb**, 24 dB/oit | Subsônico desligado; curva somada acima de um Butterworth de 24 dB/oit no mínimo vigente |
+| Ponte | 3 e 4 | Filtros, fase, atraso, nível, EQ e limiter **idênticos** | Qualquer escrita que deixe as saídas 3 e 4 diferentes |
+| Teto de nível | 1 e 2 | **11 V AC**: ponto validado pela excursão (≈30 W), sem margem extra | Desligar o limiter; subir threshold, nível, master ou EQ acima do teto; G_ef > −1 dB |
+| Teto de nível | 3 e 4 (ponte) | **≈ 28 V AC**, calculado pelas fichas: 400 W × 4 Ω = 40 V, menos 3 dB. Passa a 40 V se o Denis registrar os 40 V como ponto validado. | Idem |
 
-**Margem:** zero dB acima do ponto calibrado, com movimento só para baixo. O próprio ponto calibrado já é a margem: os 11 V da JBL foram escolhidos abaixo dos 17,9 V da potência nominal (80 W), e os 40 V do sub são o alvo do fabricante para 400 W num falante de 450 W. A IA pode baixar limiar, nível e EQ à vontade; subir qualquer um deles acima do calibrado é dano físico e só o Denis libera.
+O projeto Som configura o subsônico em 30 Hz e o sub em 40 V. Os dois ficam bloqueados até a etapa de Fb e a validação do Denis.
 
 ## Etapas do setup ainda não cumpridas (CAP-11 e CAP-13)
 
@@ -44,4 +45,4 @@ Nenhuma leitura real de multímetro foi registrada até 15/10. Os valores acima 
 1. **Resistência** da JBL L e R (esperado ≈ 3,4 Ω) e do sub (3–3,6 Ω; ~7 Ω muda o alvo da ponte para ~46 V).
 2. **Tensão da fonte** na régua do módulo (13,8 V DC).
 3. **Calibração por saída** (passos 4.10 e 4.11 do guia Som): tensão AC com o celular a 100 % e tom de 60 Hz a 0 dBFS, sem falantes; o limitador fica no ponto calibrado. Só esta etapa fixa o teto real de cada saída.
-4. **Fb do duto do sub:** medidas do duto e da caixa, ou varredura de 25 a 60 Hz (passo 5.3). Até concluir, o subsônico fica em 30 Hz, a 24 dB/oit.
+4. **Fb do duto do sub:** medidas do duto e da caixa, ou varredura de 25 a 60 Hz (passo 5.3). Até concluir, o subsônico fica em 35 Hz, a 24 dB/oit.

@@ -20,11 +20,7 @@ Regras no estilo do Claude Code: **permitir / perguntar / negar**, configurávei
 
 ## Limiares das travas
 
-Os valores saem do inventário do setup (CAP-11), por falante. Os do setup de teste estão em `setup-home-theater-2.1.md`.
-- **Passa-alta (tweeter/médio):** frequência no mínimo igual ao corte mínimo da ficha do falante, na inclinação da ficha. Com inclinação menor, o corte sobe, a menos que a caixa complete a inclinação. Passa-alta desligado nunca é permitido.
-- **Subsônico (sub):** caixa com duto → 0,75–0,8 × Fb, a 24 dB/oit; caixa selada → 25 Hz; Fb desconhecida → padrão conservador de 30 Hz, a 24 dB/oit.
-- **Teto de nível:** limitador sempre ligado, com o limiar no ponto calibrado com multímetro (tensão AC na saída do módulo, fonte a 100 % e tom a 0 dBFS). Margem zero acima do calibrado: a IA só move limiar, nível e EQ para baixo. Sem a calibração guiada concluída (CAP-13), toda subida é negada.
-- **Ponte:** saídas em ponte têm todos os ajustes idênticos.
+As regras estão em `damage-thresholds.md`, que é a fonte única delas. Os valores saem do inventário do setup (CAP-11), por falante, com um padrão conservador quando falta dado. A aplicação ao setup de teste está em `setup-home-theater-2.1.md`.
 
 ## Dependência crítica
 
