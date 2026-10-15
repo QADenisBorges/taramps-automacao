@@ -20,6 +20,14 @@
 - **Ambiente:** o notebook do home theater é a central BLE. Durante o desenvolvimento, o processador fica desligado do amplificador.
 - **Parada:** cerca de 2 dias (um fim de semana) de tokens. Sem bytes legíveis até lá, ou com protocolo protegido, **procurar a Taramps** antes de forçar.
 
+## Decidido na spec (2026-10-15)
+- **Presets:** a IA edita só o estado atual. Com o **salvamento automático** ligado pelo usuário, ela grava em presets e pergunta antes de sobrescrever um preset que não criou.
+- **Restauração:** voltar a um backup está no escopo. A IA propõe e o Denis confirma.
+- **Levantamento do setup:** a própria aplicação levanta o setup (falantes, conexões, terminais, bitola dos cabos, módulos), que alimenta o mapa de canais e os limites.
+- **Fail-safe:** se a conexão cair ou a releitura divergir, o software bloqueia novas escritas até reler o estado; depois a IA diagnostica e propõe a correção.
+- **Stack:** MCP confirmado. RAG e fine-tuning são direções a avaliar, sem substituir o guardião.
+- **Limiares das travas:** serão definidos por uma rodada do party mode.
+
 ## Rejeitado
 - **IA operando o app via ADB/toques:** frágil e lento; não é "definitivo".
 - **Trocar de processador:** mataria o pitch para a Taramps.
