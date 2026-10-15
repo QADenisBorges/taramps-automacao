@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja: taramps-automacao</title>
+<style>
+  :root{
+    --bg:#f6f1e7; --paper:#fffdf8; --ink:#2a2420; --muted:#6f655c; --line:#e3d9c8;
+    --seal:#8f1d1d; --seal-dark:#5e1010; --ok:#2f6b3a; --warn:#9a6a12; --no:#8a2b2b; --chip:#efe6d6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1b1815; --paper:#24201c; --ink:#efe7db; --muted:#a99d8f; --line:#3a332c;
+      --seal:#b23a3a; --seal-dark:#7a1f1f; --ok:#7cc48a; --warn:#e0b25a; --no:#e08a8a; --chip:#302a24;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+  main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+  header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+  header .t{flex:1 1 320px}
+  h1{font-size:2rem;margin:0 0 6px;letter-spacing:.3px}
+  h2{font-size:1.2rem;margin:0 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .sub{color:var(--muted);margin:0}
+  section{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:20px;margin:0 0 18px}
+  ul{margin:0;padding-left:20px} li{margin:6px 0}
+  .lock li::marker{content:"🔒  "}
+  .no li::marker{content:"✕  ";color:var(--no)}
+  .risk li::marker{content:"⚠  ";color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:.95rem}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:normal}
+  .deny{color:var(--no);font-weight:bold} .allow{color:var(--ok);font-weight:bold}
+  .cast{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .p{background:var(--chip);border-radius:8px;padding:10px 12px;font-size:.92rem}
+  .p b{display:block} .p i{color:var(--muted)}
+  .tag{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:4px;font-style:normal}
+  .seal{flex:0 0 auto}
+  footer{color:var(--muted);font-size:.85rem;text-align:center;margin-top:24px}
+  @media (max-width:520px){ h1{font-size:1.5rem} .seal svg{width:130px;height:130px} }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="t">
+    <p class="sub">BMad Forge · 15/10/2026 · Denis</p>
+    <h1>Integração IA ↔ Taramps PRO 2.4BT</h1>
+    <p class="sub">Ideia: uma ponte para a IA ler e configurar o processador direto pelo Bluetooth, sem prints, com um software guardião que impede danos.</p>
+  </div>
+  <div class="seal" aria-label="Selo: FORJADA">
+    <svg width="170" height="170" viewBox="0 0 200 200" role="img">
+      <defs>
+        <radialGradient id="g" cx="40%" cy="35%" r="70%">
+          <stop offset="0" stop-color="var(--seal)"/><stop offset="1" stop-color="var(--seal-dark)"/>
+        </radialGradient>
+        <path id="arc" d="M100,100 m-66,0 a66,66 0 1,1 132,0 a66,66 0 1,1 -132,0"/>
+      </defs>
+      <path fill="url(#g)" d="M100 8l12 10 15-5 8 13 16 1 2 16 14 7-4 15 10 12-10 12 4 15-14 7-2 16-16 1-8 13-15-5-12 10-12-10-15 5-8-13-16-1-2-16-14-7 4-15-10-12 10-12-4-15 14-7 2-16 16-1 8-13 15 5z"/>
+      <circle cx="100" cy="100" r="74" fill="none" stroke="#f3d9c4" stroke-opacity=".55" stroke-width="2"/>
+      <circle cx="100" cy="100" r="50" fill="none" stroke="#f3d9c4" stroke-opacity=".55" stroke-width="1.5"/>
+      <text font-family="Georgia,serif" font-size="12" letter-spacing="3" fill="#f7e6d6"><textPath href="#arc" startOffset="2%">BMAD FORGE · TARAMPS-AUTOMACAO · 2026 ·</textPath></text>
+      <text x="100" y="96" text-anchor="middle" font-family="Georgia,serif" font-weight="bold" font-size="22" fill="#fff3e6">FORJADA</text>
+      <text x="100" y="116" text-anchor="middle" font-family="Georgia,serif" font-size="11" letter-spacing="2" fill="#f7e6d6">HARDENED</text>
+    </svg>
+  </div>
+</header>
+
+<section>
+  <h2>Resultado</h2>
+  <p>A ideia sobreviveu ao teste e saiu mais estreita e mais forte. A aposta é <b>decifrar o protocolo BLE</b> do processador e ficar na Taramps. A segurança passa a ser responsabilidade do <b>software</b>, e não do julgamento da IA. O caminho até lá tem dois marcos verificáveis e um critério de parada.</p>
+</section>
+
+<section>
+  <h2>Decisões travadas</h2>
+  <ul class="lock">
+    <li><b>Ponte para a IA</b>, e não automação de toques: a IA lê e escreve direto no módulo.</li>
+    <li><b>Aprender o protocolo</b> pelo log Bluetooth do Android (snoop log) e pela análise do app.</li>
+    <li><b>A IA configura e o software guarda.</b> O guardião vive no servidor, porque permissões por ferramenta não enxergam valores.</li>
+    <li><b>A IA nunca libera dano físico</b> e nunca altera mapa de canais, limites ou senha. <b>Só o Denis libera</b>, por meio de um alerta explícito de risco, com registro.</li>
+    <li><b>Marco 1:</b> leitura completa pelo notebook, 100% igual ao app em 2 ou mais presets. <b>Marco 2:</b> escrita com releitura e guardião ativo.</li>
+    <li><b>Durante o desenvolvimento</b>, o processador fica desligado do amplificador.</li>
+    <li><b>Parada:</b> cerca de um fim de semana de tokens. Se o protocolo for protegido, a saída é <b>procurar a Taramps</b> antes de forçar.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Modelo de permissões (estilo Claude Code)</h2>
+  <table>
+    <tr><th>Categoria</th><th>Exemplos</th><th>Regra</th></tr>
+    <tr><td>Dano físico</td><td>tweeter/médio sem passa-alta · sub sem subsônico · nível acima do ceifamento</td><td class="deny">Negar para a IA · alerta para o Denis</td></tr>
+    <tr><td>Perda ou bloqueio</td><td>sobrescrever preset · reset de fábrica · trocar a senha BT</td><td class="deny">Negar para a IA · backup automático</td></tr>
+    <tr><td>Só soa mal</td><td>EQ · delay · fase · roteamento</td><td class="allow">Permitir (configurável)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Rejeitado, e por quê</h2>
+  <ul class="no">
+    <li><b>IA operando o app via ADB/toques:</b> frágil a cada atualização do app, lento e não "definitivo".</li>
+    <li><b>Trocar por um processador de protocolo aberto:</b> mataria o pitch para a Taramps.</li>
+    <li><b>Só prints automáticos:</b> a IA erra ao ler imagem, e a segurança exige o valor exato.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Pontos fracos que sobreviveram</h2>
+  <ul class="risk">
+    <li>O protocolo pode ser criptografado ou ofuscado; não há nenhum trabalho público sobre o PRO 2.4BT.</li>
+    <li>Um aparelho BLE costuma aceitar uma conexão só, então o celular fica de fora enquanto o software estiver conectado.</li>
+    <li>As travas dependem de o <b>mapa de canais</b> estar certo; só a fase 2 (microfone) consegue verificá-lo.</li>
+    <li>O orçamento de tokens acaba rápido se a IA analisar bytes "no escuro". Primeiro vem a captura disciplinada, depois a análise.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Quem forjou</h2>
+  <div class="cast">
+    <div class="p"><b>📋 John · PM</b><i>"Que trabalho alguém faz hoje, com a mão, e não deveria precisar fazer?"</i></div>
+    <div class="p"><b>🏗️ Winston · Arquiteto</b><i>Separou o valor imediato da aposta da fase 2.</i></div>
+    <div class="p"><b>💻 Amelia · Dev</b><i>"Mude um parâmetro e veja quais bytes mudam. Meia hora, não arquitetura."</i></div>
+    <div class="p"><b>📊 Mary · Analista</b><i>Trocar de processador mata o pitch; a Taramps é dona do protocolo.</i></div>
+    <div class="p"><b>🔒 Vex · Segurança</b><i>Tratem a IA como entrada não confiável.</i></div>
+    <div class="p"><b>🌶️ Boundary · Casos-limite</b><i>O mapa de canais é a chave mestra das travas.</i></div>
+    <div class="p"><b>😤 Grumbal · Adversário</b><i>"Tempo real para quê?" e "não queime tokens no escuro".</i></div>
+    <div class="p"><b>🚢 Dana · Entregadora</b><i>Primeiro marco só de leitura.</i></div>
+    <div class="p"><b>🔧 Rogério</b><span class="tag">convidado</span><br><i>Instalador: "automatizar o quê?"</i></div>
+    <div class="p"><b>🔌 Kenji</b><span class="tag">convidado</span><br><i>Firmware: Android viabiliza a captura.</i></div>
+    <div class="p"><b>🔊 Marta</b><span class="tag">convidado</span><br><i>Suporte de DSP: print engana, precisa do número.</i></div>
+    <div class="p"><b>🎛️ Thiago</b><span class="tag">convidado</span><br><i>Técnico com RTA: o atraso importa.</i></div>
+    <div class="p"><b>🛡️ Rafael</b><span class="tag">convidado</span><br><i>Propriedade intelectual: interoperar ≠ redistribuir.</i></div>
+    <div class="p"><b>🏭 Cláudio</b><span class="tag">convidado</span><br><i>Fabricante: "se for protegido, me procure antes".</i></div>
+    <div class="p"><b>🔧 Sérgio</b><span class="tag">convidado</span><br><i>Assistência: três jeitos queimam quase tudo.</i></div>
+    <div class="p"><b>⚙️ Lúcia</b><span class="tag">convidado</span><br><i>Segurança funcional: autoridade em níveis.</i></div>
+    <div class="p"><b>🔩 Paulo</b><span class="tag">convidado</span><br><i>Hobbysta: o notebook já serve de central.</i></div>
+  </div>
+</section>
+
+<footer>Registro completo: .memlog.md · Insumo para planejamento: forged-idea.md</footer>
+</main>
+</body>
+</html>
