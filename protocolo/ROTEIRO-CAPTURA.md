@@ -171,7 +171,7 @@ Igual à Parte 2:
 4. espere 30 s na tela inicial **sem tocar em nada**;
 5. feche o app.
 
-A IA tira o bugreport (`adb bugreport protocolo\capturasruto\C0-bugreport.zip`) e confere com o `btsnoop_att.py`.
+A IA tira o bugreport (`adb bugreport protocolo\capturas\bruto\C0-bugreport.zip`) e confere com o `btsnoop_att.py`.
 
 ### C.3 Sessão 2: backup e passos de prova
 
@@ -196,7 +196,7 @@ Siga a **4.2**: gerador do app, multímetro AC na saída RCA 1, Série 1 com o l
 ### C.5 Fim
 
 - Desligue o "Registro de rastreamento HCI" se não for mais capturar.
-- Os bugreports ficam só em `protocolo\capturasruto\` (têm dados pessoais) e são apagados ao fim da história.
+- Os bugreports ficam só em `protocolo\capturas\bruto\` (têm dados pessoais) e são apagados ao fim da história.
 
 ## Parte 2 — Captura C0: conectar sem mexer em nada
 
