@@ -9,6 +9,7 @@
 
 - **[APK]** = lido no código decompilado, citado como `arquivo:linha` sob `protocolo/apk/jadx-out/sources/br/com/taramps/processador_mini/` (pasta fora do git).
 - **[Demo]** = confirmado na interface do Modo Demo (`capturas/demo-telas.md`).
+- **[Leitura]** = confirmado no aparelho real pelo leitor do notebook (`ferramentas/ler_processador.py`), com o log bruto citado em `estado/log-ble/`. Ver §9.
 - **[Captura]** = confirmado no ar por HCI snoop log. **Ainda nenhum.** Pela regra da história, uma codificação só conta como provada com a captura citada. Hoje todas são **[APK]**, e a prova em campo depende da fase com o processador (roteiro, Partes 2 a 4).
 - Nenhum trecho de código do app é copiado aqui.
 - Abreviações: `P` = `ble/Protocol.java`, `BVM` = `ble/BleViewModel.java`, `MBM` = `ble/MyBleManager.java`.
@@ -141,3 +142,21 @@ Também lidos do código, fora do Marco 1:
 8. A posição física do limiter em relação ao ganho (medição 4.2).
 
 Com o código em mãos, a fase com o processador encolhe: basta a C0 e uma captura curta conferindo 3 ou 4 parâmetros (ganho, threshold, filtro, EQ 15 bandas), em vez das capturas C1 a C15.
+
+## 9. Primeira leitura no aparelho real (16/10/2026)
+
+Duas leituras completas pelo notebook: o estado atual (`2026-10-16_1747`) e a memória FILME (`2026-10-16_1806`). Cada uma deu 84 de 84, sem falhas e sem órfãos, em cerca de 13 s, com firmware `R003`. Na conferência com o app, a primeira bateu 34 de 34, com o limiter também conferido em volts. A segunda bateu 33 de 34, e a diferença está explicada logo abaixo. **[Leitura]**
+
+Lacunas do §8 resolvidas:
+
+| Lacuna | Resultado |
+|---|---|
+| 1. Bytes e senha | Batem com o APK: `*000*SENHA*` em claro, aceito sem pareamento. |
+| 2. Formato das respostas | Separador `#` com o canal ecoado: `#081#0#-11.0#` seguido de `
+`. Números com sinal (`+0.0`) e uma casa decimal. Cada resposta chega numa notificação só (≤ 20 bytes). A resposta `000` é `#000#PRO2.4MIR003#`. |
+| 3. Características | `1122` = só `write`, ou seja, sempre com resposta. `1123` = `notify`. Sem bond e sem criptografia. |
+| 4. `020` | Devolve **uma banda** por consulta, no formato `020#b#v`, sem `#` no início nem no fim. |
+
+**Achado: com o limiter em Auto, abrir a tela Limiter no app *escreve* attack e release.** `applyAutoFromHpf` (`ble/BleViewModel.java:6748`) recalcula os dois a partir da faixa do HPF (`calculateNewValuesForAuto`) e envia ao aparelho se o valor guardado for diferente. Na memória FILME, a saída 4 tinha attack 45,0 ms e release 720 ms gravados. O app mostrou e gravou 16 ms e 165 ms, a faixa do HPF de 30 Hz. Consequências:
+- só abrir o app já pode mudar o estado;
+- o guardião e o backup precisam reler depois que o app for usado.

@@ -314,6 +314,8 @@ class ConferenciaTest(unittest.TestCase):
         self.assertEqual(pt.formatar_valor({"codigo": "100", "valor": True}), "mutado")
         self.assertEqual(pt.formatar_valor({"codigo": "070", "valor": False}), "desligado")
         self.assertEqual(pt.formatar_valor({"codigo": "080", "valor": None}), "sem leitura")
+        self.assertEqual(pt.formatar_valor({"codigo": "071", "valor": -6.0, "unidade": "dB"}),
+                         "-6.0 dB (no app: 1.00V)")
 
 
 if __name__ == "__main__":

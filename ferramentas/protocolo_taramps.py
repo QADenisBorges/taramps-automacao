@@ -545,7 +545,11 @@ def formatar_valor(item: dict) -> str:
     else:
         texto = f"{v}"
     unidade = item.get("unidade")
-    return f"{texto} {unidade}" if unidade else texto
+    texto = f"{texto} {unidade}" if unidade else texto
+    if p is not None and p.nome == "limiter_threshold":
+        # O app mostra o threshold em volts: V = 2,0 × 10^(dB/20) (MAPA §7).
+        texto += f" (no app: {2.0 * 10 ** (v / 20):.2f}V)"
+    return texto
 
 
 # --------------------------------------------------------------------------- conferência
