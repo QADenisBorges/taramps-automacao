@@ -73,7 +73,7 @@ O repositório ainda não tem código, só a spec e o BMAD. Fatos levantados:
 - [x] `_bmad-output/specs/spec-taramps-automacao/protocol-discovery.md`: corrigir a frase sobre exportação de presets e citar o manual, p. 14.
 - [x] `ferramentas/btsnoop_att.py`: parser em stdlib que lê o btsnoop e lista as operações ATT (escrita, notificação, leitura) com horário, handle e hex. Ele cruza a lista com a tabela de anotação.
 - [x] `ferramentas/tests/test_btsnoop_att.py`: testes com um btsnoop sintético (cabeçalho, ACL fragmentado, Write Request/Command, Notification).
-- [ ] `protocolo/APK.md`: framework do app, UUIDs GATT, montadores de comando, conversões (dB, Hz, cm, V) e veredito sobre proteção. Só descrições, sem código copiado.
+- [x] `protocolo/APK.md`: framework do app, UUIDs GATT, montadores de comando, conversões (dB, Hz, cm, V) e veredito sobre proteção. Só descrições, sem código copiado.
 - [ ] `protocolo/MAPA.md`: data de início, serviço e características, autenticação, leitura completa, formato de escrita, estrutura do arquivo de preset, uma tabela por parâmetro (codificação, escala, faixa, captura que prova), limiter vs. ganho com a unidade do threshold e a medição, e lacunas.
 
 **Acceptance Criteria:**
@@ -101,6 +101,14 @@ Ordem de trabalho para gastar pouco orçamento. O APK vem primeiro: se houver cr
 - 2026-10-16: entregues a ferramenta, o roteiro, a correção do `protocol-discovery.md` e os esqueletos de `APK.md` e `MAPA.md`. As duas últimas tarefas dependem do APK e das capturas do Denis.
 - Revisão (3 camadas) feita em 2026-10-16: as correções da triagem foram aplicadas, 42 testes passam e a checagem do git está vazia. A história volta para in-progress, aguardando o APK e a C0. O achado 11 foi resolvido pelo Denis: exportar A, Factory default (F) e B; o roteiro §4.1 e o MAPA foram atualizados.
 - Correção pós-implementação: a leitura da medição do limiter agora considera o ceifamento da Série 1 perto de 2,1 V e pede para anotar o threshold que a tela mostra a cada ponto.
+
+- 2026-10-16, fase Demo e APK:
+  - Levantamento automático do Modo Demo via `adb` (`protocolo/capturas/demo-telas.md`). Os presets do celular foram lidos direto da pasta do app (`Android/data/.../files/presets`), sem compartilhar nada.
+  - O jadx 1.5.6 decompilou o app. **O protocolo BLE é texto ASCII sem cifra:** autenticação `*000*SENHA*` em claro, leitura `#CCC#c#`, escrita `*CCC*c*valor*`, canal de 0 a 3. O critério de parada não disparou.
+  - O `MAPA.md` v1 tem a codificação de todos os parâmetros do Marco 1, lida do código. A tarefa do mapa segue aberta só pela prova por captura, que espera a liberação do processador.
+  - Limiter: o threshold vai em dB (−48 a 0; `0.5` = OFF), e os volts existem só na UI (2,0 × 10^(dB/20)). A posição em relação ao ganho segue em aberto e depende da medição 4.2.
+  - O `.trps` é AES-GCM com chave fixa no app. Não foi decifrado (desnecessário, e seria contornar uma proteção), e a chave não está no repositório.
+  - Não existe memória "Factory default" no app; o preset F da decisão não tem origem.
 
 ## Spec Change Log
 

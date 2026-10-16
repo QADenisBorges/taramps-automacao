@@ -174,6 +174,11 @@ class MaskTests(unittest.TestCase):
         self.assertEqual(b.masked_hex(b"\xd2\x04", pats), "** **")
         self.assertEqual(b.masked_hex(b"\x10\x20", pats), "10 20")
 
+    def test_alphanumeric_password_is_masked_in_uppercase(self):
+        # O app manda "*000*AB12*" mesmo que a senha tenha sido digitada em minúsculas.
+        pats = b.password_patterns("ab12")
+        self.assertEqual(b.masked_hex(b"*000*AB12*", pats), "2a 30 30 30 2a ** ** ** ** 2a")
+
     def test_no_password_no_mask(self):
         self.assertEqual(b.masked_hex(b"1234", b.password_patterns(None)), "31 32 33 34")
 

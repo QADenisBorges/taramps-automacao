@@ -410,10 +410,13 @@ def mark_polling(ops: list[AttOp], min_repeats: int, ignore_handles: set[int]) -
 
 
 def password_patterns(password: str | None) -> list[bytes]:
-    """Codificações óbvias da senha de 4 dígitos. A máscara não cobre codificações ofuscadas."""
+    """Codificações óbvias da senha de 4 caracteres. A máscara não cobre codificações ofuscadas.
+
+    O app envia a senha em maiúsculas (`*000*SENHA*`), então a versão em maiúsculas também é mascarada.
+    """
     if not password:
         return []
-    pats = [password.encode("ascii")]
+    pats = [password.encode("ascii"), password.upper().encode("ascii")]
     if password.isdigit():
         n = int(password)
         pats.append(bytes(int(c) for c in password))
