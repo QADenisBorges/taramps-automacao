@@ -12,7 +12,7 @@ Passo a passo do Denis para a história 1 (mapa do protocolo). A IA só analisa 
 **Ordem de execução (decisão do Denis, 2026-10-16)**
 
 1. **Fase Demo, sem o processador:** fazer 1.1 a 1.3 (ferramentas, celular, APK) e depois a Parte D (Modo Demo). Nessa fase a IA analisa o APK e o que o Demo produz.
-2. **Fase com o processador, amplificador desconectado:** fazer 1.4 a 1.6, depois as Partes 2, 3 e 4. Essa fase só começa quando o Denis liberar.
+2. **Fase com o processador, amplificador desconectado:** liberada pelo Denis em 2026-10-16 **na versão curta** (Parte C, abaixo): C0, 4 passos de prova e a medição do limiter (4.2). Como o APK já deu a codificação, a captura só confirma que os bytes no ar são os do código. As Partes 3 e 4.1 (C1…C15 e preset B) ficam como reserva, caso a prova falhe.
 
 No Modo Demo o app não conversa com o processador. O snoop log não grava nenhum byte do protocolo. Por isso, as capturas C0…C15 só existem na fase com o processador.
 
@@ -150,6 +150,53 @@ Se o Demo deixar salvar e exportar presets:
 3. Copie os dois arquivos para `protocolo\presets\` com `adb pull`, como em 1.6.
 
 Se o arquivo exportado no Demo tiver o mesmo formato do exportado com o processador, dá para decifrar a estrutura dos parâmetros antes da fase com o processador.
+
+## Parte C — Versão curta da fase com o processador
+
+**Antes de começar:** os cabos RCA das 4 saídas do PRO estão **fora do amplificador** (pode deixar o multímetro na saída 1 para a 4.2). Ninguém toca em "Resetar", "Padrões de Fábrica", "Alterar senha" nem "DSP" na tela de presets.
+
+### C.1 Preparação (Denis)
+
+1. Opções do desenvolvedor → **Registro de rastreamento HCI do Bluetooth** → **Ativado** (não o "com filtro").
+2. Desligue e religue o Bluetooth do celular.
+3. Ligue o processador. O amplificador continua desconectado.
+4. No notebook, num terminal novo: `$env:Path += ";C:\platform-tools"` e `$env:TARAMPS_SENHA = "<sua senha>"`. A senha não vai para nenhum arquivo.
+
+### C.2 Sessão 1: captura C0 (Denis)
+
+Igual à Parte 2:
+1. anote o horário;
+2. abra o app, toque em **Conectar** e digite a senha;
+3. anote o horário exato do toque em "Conectar";
+4. espere 30 s na tela inicial **sem tocar em nada**;
+5. feche o app.
+
+A IA tira o bugreport (`adb bugreport protocolo\capturasruto\C0-bugreport.zip`) e confere com o `btsnoop_att.py`.
+
+### C.3 Sessão 2: backup e passos de prova
+
+1. **Denis:** desligue e religue o Bluetooth, abra o app, conecte e digite a senha. Espere a tela inicial.
+2. **Backup (Denis ou IA):** em Salvar → Novo/Salvar → **Smartphone**, salve como `AEMUSO`. Isso grava só no celular, não no processador. O arquivo cai em `Android/data/com.taramps.pro24bt_audio/files/presets/`, de onde a IA copia via `adb`.
+3. **Passos de prova.** A IA pode executá-los via `adb`, com a anotação gerada automaticamente com o horário de cada toque, ou o Denis faz à mão e anota (§1.5). Cada passo é um toque e o seguinte só vem depois de 20 s. Todo passo é desfeito logo depois.
+
+   | Passo | Tela | Toque | Escrita esperada (MAPA.md §4) | Desfazer |
+   |---|---|---|---|---|
+   | P1 | Nível das Saídas, Canal 1 | − uma vez | `*081*0*<ganho − 0,1>*` | + uma vez |
+   | P2 | Limiter, Canal 1 | − uma vez (se estiver OFF, vai a 0,0) | `*071*0*0.0*` (ou o valor − 0,1) | + uma vez (volta para `*071*0*0.5*` = OFF) |
+   | P3 | Crossover, Canal 1, HPF Filtro | Próximo uma vez | `*042*0*<índice + 1>*` | Anterior uma vez |
+   | P4 | EQ 15 Bandas, banda 25 Hz | + uma vez | `020*0*<ganho + 0,1>` | − uma vez |
+
+4. Feche o app. A IA tira o bugreport (`C1-bugreport.zip`), confere a captura e compara cada escrita com a esperada.
+5. Se algum valor não voltou ao original, carregue o `AEMUSO` (deslizar para a direita → Carregar).
+
+### C.4 Medição do limiter (Denis)
+
+Siga a **4.2**: gerador do app, multímetro AC na saída RCA 1, Série 1 com o limiter em OFF e Série 2 com o threshold fixo, anotando a tensão e o LED. Ao terminar, desligue o gerador e carregue o `AEMUSO`.
+
+### C.5 Fim
+
+- Desligue o "Registro de rastreamento HCI" se não for mais capturar.
+- Os bugreports ficam só em `protocolo\capturasruto\` (têm dados pessoais) e são apagados ao fim da história.
 
 ## Parte 2 — Captura C0: conectar sem mexer em nada
 
