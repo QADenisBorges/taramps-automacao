@@ -318,5 +318,85 @@ class ConferenciaTest(unittest.TestCase):
                          "-6.0 dB (no app: 1.00V)")
 
 
+class EscritaTest(unittest.TestCase):
+    """Montagem e validação de escrita, separadas da trava de leitura (MAPA §2 e §4)."""
+
+    def test_formatos_do_fio(self):
+        casos = [
+            (("081", 0, -12.0), "*081*0*-12.0*"),
+            (("081", 3, "6"), "*081*3*6.0*"),
+            (("080", None, 0), "*080*0.0*"),
+            (("080", None, -0.0), "*080*0.0*"),
+            (("020", 3, 2.5), "020*3*2.5"),
+            (("020", 14, -12), "020*14*-12.0"),
+            (("042", 0, 11), "*042*0*11*"),
+            (("040", 2, 35), "*040*2*35*"),
+            (("010", 2, "A+B"), "*010*2*a+b*"),
+            (("010", 1, "ab"), "*010*1*a+b*"),
+            (("060", 3, 180), "*060*3*180*"),
+            (("100", 1, True), "*100*1*1*"),
+            (("070", 0, 0), "*070*0*0*"),
+            (("071", 0, 0.5), "*071*0*0.5*"),  # OFF passa no formato; o guardião barra
+            (("072", 2, 50), "*072*2*50.0*"),
+            (("073", 2, 500), "*073*2*500*"),
+            (("050", 0, "26,5"), "*050*0*26.5*"),
+            (("032", None, 1.4), "*032*1.4*"),
+            (("031", None, 63), "*031*63*"),
+        ]
+        for args, esperado in casos:
+            with self.subTest(args=args):
+                self.assertEqual(pt.montar_escrita(*args), esperado)
+                self.assertEqual(pt.verificar_escrita(esperado), esperado.encode("ascii"))
+
+    def test_valores_invalidos(self):
+        for args in (("081", 4, -12.0), ("081", None, -12.0), ("080", 0, -3.0),
+                     ("081", 0, -12.05), ("081", 0, 16), ("080", None, 1.0), ("220", None, 0),
+                     ("000", None, "AB12"), ("241", 1, 1), ("072", 0, 0.05), ("040", 0, 10.5),
+                     ("042", 0, 16), ("060", 0, 90), ("010", 0, "c"), ("100", 0, 2),
+                     ("020", 15, 0.0), ("071", 0, 1.0), ("081", 0, True), ("081", 0, "x"),
+                     ("081", 0, float("nan"))):
+            with self.subTest(args=args):
+                with self.assertRaises(pt.EscritaInvalida):
+                    pt.montar_escrita(*args)
+
+    def test_verificar_escrita_so_aceita_o_formato_exato(self):
+        for texto in ("*081*0*-12*", "*081*0*+6.0*", "*004*", "*004*1*", "*241*1*", "*242*0*",
+                      "*000*AB12*", "*001*AB12*CD34*", "*252*1*", "*202*1*", "*220*0*",
+                      "#081#0#", "020*3*2.5*", "*020*3*2.5*", "*081*0*-12.0", "*081*0*-12.0**",
+                      "*081*0*-12.0*\n", ""):
+            with self.subTest(texto=texto):
+                with self.assertRaises(pt.EscritaInvalida):
+                    pt.verificar_escrita(texto)
+
+    def test_trava_de_leitura_continua_recusando_escrita(self):
+        for texto in ("*081*0*-12.0*", "020*3*2.5", "*042*0*11*"):
+            with self.subTest(texto=texto):
+                with self.assertRaises(pt.EnvioRecusado):
+                    pt.verificar_envio(texto)
+
+    def test_mesmo_valor(self):
+        self.assertTrue(pt.mesmo_valor("081", -12.0, -12.0))
+        self.assertTrue(pt.mesmo_valor("010", "a+b", "A+B"))
+        self.assertTrue(pt.mesmo_valor("100", True, True))
+        self.assertTrue(pt.mesmo_valor("040", 100, 100))
+        self.assertFalse(pt.mesmo_valor("081", -12.0, -11.0))
+        self.assertFalse(pt.mesmo_valor("081", -12.0, None))
+        self.assertFalse(pt.mesmo_valor("072", 50.0, 50.1))
+        self.assertFalse(pt.mesmo_valor("042", 11, 11.4))  # inteiro no fio: compara exato
+        self.assertFalse(pt.mesmo_valor("040", 100, 100.4))
+        self.assertTrue(pt.mesmo_valor("040", 100, 100.0))
+
+    def test_releitura_ignora_eco_no_formato_de_escrita(self):
+        c = pt.Consulta(pt.POR_CODIGO["081"], 0)
+        m = pt.Montador()
+        m.alimentar(b"*081*0*-12.0*\r\n#081#0#-11.0#\r\n")
+        r = m.casar(c, sem_asterisco=True)
+        self.assertEqual((r.valor, r.orfaos), ("-11.0", ["*081*0*-12.0*"]))
+        m.alimentar(b"020*3*2.5\r\n")
+        r = m.casar(pt.Consulta(pt.POR_CODIGO["020"], 3), final=True, sem_asterisco=True)
+        self.assertIsNone(r.cru)
+        self.assertEqual(r.orfaos, ["020*3*2.5"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Protocolo BLE do PRO 2.4BT + AUDIO para leitura (Marco 1), sem depender do aparelho.
+"""Protocolo BLE do PRO 2.4BT + AUDIO (Marco 1), sem depender do aparelho.
 
 Fonte de tudo aqui: protocolo/MAPA.md (§2 formato, §3 autenticação, §4 parâmetros).
 
@@ -8,6 +8,8 @@ Fonte de tudo aqui: protocolo/MAPA.md (§2 formato, §3 autenticação, §4 par�
 - Montagem das consultas (`#CCC#`, `#CCC#c#` e `020#b`).
 - Trava de envio: só passam consultas e a autenticação `*000*SENHA*`. Qualquer
   escrita (`*CCC*...*`) é recusada antes de chegar ao BLE.
+- Montagem e validação de escrita (`*CCC*v*`, `*CCC*c*v*`, `020*b*v`), num caminho
+  separado da trava acima. Quem decide se a escrita sai é o guardião (guardiao.py).
 - Montador de respostas: aceita `#` ou `*`, junta fragmentos de notificação e casa
   a resposta com a consulta pelo código e pelo canal. O que não casa vira "órfão".
 - Log bruto com hex e ASCII de cada quadro, com a senha mascarada.
@@ -224,6 +226,157 @@ def montar_autenticacao(senha: str) -> str:
     return f"*000*{senha.upper()}*"
 
 
+# --------------------------------------------------------------------------- escrita (MAPA §2 e §4)
+#
+# Caminho separado da trava de leitura acima, que continua recusando toda escrita. Aqui só
+# se monta e valida o quadro; quem decide se ele pode sair é o guardião (guardiao.py), e o
+# único método que o envia é ClienteTaramps.escrever, que exige a aprovação do guardião.
+
+
+class EscritaInvalida(ValueError):
+    """Quadro de escrita fora do formato, do catálogo ou da faixa."""
+
+
+# Os códigos do catálogo, menos o preset de EQ (220): ele troca as 15 bandas por valores
+# que o guardião não conhece, então o estado resultante é imprevisível (princípio 5).
+CODIGOS_ESCRITA = frozenset(p.codigo for p in CATALOGO) - {"220"}
+
+_ESCRITA_RE = re.compile(r"\*(\d{3})\*(?:(\d{1,2})\*)?([^*#]+)\*")
+_ESCRITA_GRAFICO_RE = re.compile(r"020\*(\d{1,2})\*([^*#]+)")
+
+
+def ler_numero(valor) -> float:
+    if isinstance(valor, bool):
+        raise EscritaInvalida("valor booleano onde se espera número")
+    if isinstance(valor, str):
+        valor = valor.strip().replace(",", ".")
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        raise EscritaInvalida(f"valor {valor!r} não é número") from None
+    if numero != numero or numero in (float("inf"), float("-inf")):
+        raise EscritaInvalida("valor não é número")
+    return numero
+
+
+def normalizar_escrita(codigo: str, canal: int | None, valor):
+    """Valor pronto para escrever (float, int, bool ou texto), ou EscritaInvalida.
+
+    Confere o código (catálogo, sem o 220), o canal ou a banda, o tipo, as casas
+    decimais e a faixa do app. O threshold aceita `0.5` (OFF): barrar o OFF é papel do
+    guardião (trava 3), não do formato."""
+    p = POR_CODIGO.get(codigo)
+    if p is None or codigo not in CODIGOS_ESCRITA:
+        raise EscritaInvalida(f"{codigo} não é um código de escrita do Marco 1")
+    if p.escopo == ESCOPO_GLOBAL:
+        if canal is not None:
+            raise EscritaInvalida(f"{codigo} não tem canal")
+    elif p.escopo == ESCOPO_CANAL:
+        if isinstance(canal, bool) or canal not in CANAIS:
+            raise EscritaInvalida(f"{codigo} precisa de canal 0 a 3")
+    elif isinstance(canal, bool) or canal not in range(len(BANDAS_HZ)):
+        raise EscritaInvalida(f"{codigo} precisa de banda 0 a 14")
+
+    if p.tipo == "texto":
+        v = str(valor).strip().lower()
+        v = "a+b" if v == "ab" else v
+        if v not in ROTEAMENTOS:
+            raise EscritaInvalida("roteamento é a, b ou a+b")
+        return v
+    if p.tipo == "bool":
+        if isinstance(valor, bool):
+            return valor
+        n = ler_numero(valor)
+        if n not in (0, 1):
+            raise EscritaInvalida(f"{p.rotulo} é 1 ou 0")
+        return n == 1
+    n = ler_numero(valor)
+    if abs(n) > 1e6:  # bem fora de qualquer faixa; evita estouro nas contas abaixo
+        raise EscritaInvalida(f"{p.rotulo} vai de {p.minimo:g} a {p.maximo:g}"
+                              if p.minimo is not None else f"{p.rotulo}: valor fora da faixa")
+    if p.casas == 1:
+        if abs(n * 10 - round(n * 10)) > 1e-6:
+            raise EscritaInvalida(f"{p.rotulo} tem no máximo uma casa decimal")
+        v = round(n, 1) + 0.0  # + 0.0 tira o -0.0
+        if p.especiais and v in p.especiais:
+            return v
+        if (p.minimo is not None and v < p.minimo) or (p.maximo is not None and v > p.maximo):
+            raise EscritaInvalida(f"{p.rotulo} vai de {p.minimo:g} a {p.maximo:g}")
+        return v
+    if n != int(n):
+        raise EscritaInvalida(f"{p.rotulo} é número inteiro")
+    v = int(n)
+    if p.opcoes is not None:
+        if v not in p.opcoes:
+            raise EscritaInvalida(f"{p.rotulo}: valor {v} não existe")
+        return v
+    if (p.minimo is not None and v < p.minimo) or (p.maximo is not None and v > p.maximo):
+        raise EscritaInvalida(f"{p.rotulo} vai de {p.minimo:g} a {p.maximo:g}")
+    return v
+
+
+def valor_no_fio(codigo: str, valor) -> str:
+    """Texto do valor no quadro: 1 casa (ponto) para dB, Q, cm e attack; inteiro para Hz,
+    release, índice e fase; 1/0 para booleano; a, b ou a+b para o roteamento."""
+    p = POR_CODIGO[codigo]
+    if p.tipo == "texto":
+        return str(valor)
+    if p.tipo == "bool":
+        return "1" if valor else "0"
+    if p.casas == 1:
+        return f"{float(valor) + 0.0:.1f}"
+    return str(int(valor))
+
+
+def montar_escrita(codigo: str, canal: int | None, valor) -> str:
+    """`*CCC*v*`, `*CCC*c*v*` ou `020*b*v` (sem `*` nas pontas), com o valor validado."""
+    v = valor_no_fio(codigo, normalizar_escrita(codigo, canal, valor))
+    p = POR_CODIGO[codigo]
+    if p.escopo == ESCOPO_BANDA:
+        return f"{codigo}*{canal}*{v}"
+    if p.escopo == ESCOPO_CANAL:
+        return f"*{codigo}*{canal}*{v}*"
+    return f"*{codigo}*{v}*"
+
+
+def verificar_escrita(texto: str) -> bytes:
+    """Bytes de um quadro de escrita, ou EscritaInvalida.
+
+    O quadro precisa ser exatamente o que `montar_escrita` produz para um código e um
+    valor válidos. Senha, reset, memórias, gerador, nome e remote out nunca passam."""
+    if not isinstance(texto, str) or not texto.isascii():
+        raise EscritaInvalida("escrita recusada: só texto ASCII")
+    m = _ESCRITA_GRAFICO_RE.fullmatch(texto)
+    if m:
+        codigo, canal, bruto = "020", int(m.group(1)), m.group(2)
+    else:
+        m = _ESCRITA_RE.fullmatch(texto)
+        if not m or m.group(1) == "020":
+            raise EscritaInvalida(f"escrita recusada: {mascarar_texto(texto)!r} fora do formato")
+        codigo, bruto = m.group(1), m.group(3)
+        canal = int(m.group(2)) if m.group(2) is not None else None
+    if montar_escrita(codigo, canal, bruto) != texto:
+        raise EscritaInvalida(f"escrita recusada: {texto!r} fora do formato do app")
+    return texto.encode("ascii")
+
+
+def mesmo_valor(codigo: str, a, b) -> bool:
+    """Compara o valor pedido com o relido, na resolução do protocolo."""
+    p = POR_CODIGO[codigo]
+    if a is None or b is None:
+        return False
+    if p.tipo == "texto":
+        return str(a).lower() == str(b).lower()
+    if p.tipo == "bool":
+        return bool(a) == bool(b)
+    try:
+        if p.casas == 0:  # inteiro no fio: relido não inteiro (11.4) é outro valor
+            return float(a) == float(b)
+        return round(float(a), p.casas) == round(float(b), p.casas)
+    except (TypeError, ValueError):
+        return False
+
+
 # --------------------------------------------------------------------------- máscara da senha
 
 TEXTO_SENHA_MASCARADA = "*000*****"
@@ -422,18 +575,22 @@ class Montador:
         return orfaos
 
     def casar(self, consulta: Consulta, final: bool = False,
-              enviado: str | None = None) -> Casamento | None:
+              enviado: str | None = None, sem_asterisco: bool = False) -> Casamento | None:
         """Procura a resposta no buffer.
 
         Devolve None quando ainda pode chegar mais (nada ou só o começo da resposta).
         Com `final=True` (fim da espera), devolve o que houver, mesmo sem resposta.
         Um eco do que foi enviado (`enviado`, por padrão o texto da consulta) nunca
-        conta como resposta: vira órfão."""
+        conta como resposta: vira órfão. Com `sem_asterisco` (releitura depois de uma
+        escrita), um quadro com `*` (eco no formato de escrita, como `*081*0*-12.0*` ou
+        `020*3*2.5`) nunca conta como resposta: vira órfão."""
         eco = analisar(enviado if enviado is not None else consulta.texto)
         pedacos = _pedacos(self._buffer)
         achado: tuple[int, str, str | None] | None = None
         esperar = False
         for i, (texto, fechado) in enumerate(pedacos):
+            if sem_asterisco and "*" in texto:
+                continue
             q = analisar(texto)
             if q is None:
                 continue

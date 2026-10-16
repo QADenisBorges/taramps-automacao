@@ -1,0 +1,60 @@
+{
+  "_comentario": "Limites do guardião mínimo da escrita BLE. Só o Denis edita este arquivo; a ferramenta e a IA nunca o escrevem. Origem: decisão do Denis, opção A (spec-escrita-ble-guardiao.md), em 16/10/2026.",
+  "versao": 1,
+  "data": "2026-10-16",
+  "tolerancia_db": 0.5,
+  "_tolerancia_db": "Folga da comparação da curva somada com a referência, abaixo do f_min (damage-thresholds, travas 1 e 2).",
+  "g_ef_max_db": -1.0,
+  "_g_ef_max_db": "Regra 7: master + ganho + pico da curva somada (+6 dB na rota A+B) nunca acima disto.",
+  "saidas": {
+    "1": {
+      "nome": "JBL L",
+      "trava": "passa-alta",
+      "f_min_hz": 100,
+      "inclinacao_db_oit": 24,
+      "teto_limiter_db": -11.0,
+      "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
+    },
+    "2": {
+      "nome": "JBL R",
+      "trava": "passa-alta",
+      "f_min_hz": 100,
+      "inclinacao_db_oit": 24,
+      "teto_limiter_db": -11.0,
+      "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
+    },
+    "3": {
+      "nome": "sub (ponte com a 4)",
+      "trava": "subsônico",
+      "f_min_hz": 35,
+      "inclinacao_db_oit": 24,
+      "teto_limiter_db": -6.0,
+      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -6,0 dB (1,00 V)."
+    },
+    "4": {
+      "nome": "sub (ponte com a 3)",
+      "trava": "subsônico",
+      "f_min_hz": 35,
+      "inclinacao_db_oit": 24,
+      "teto_limiter_db": -6.0,
+      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -6,0 dB (1,00 V)."
+    }
+  },
+  "regra6": true,
+  "_regra6": "Ligada: master + ganho + maior reforço de EQ (+6 dB na rota A+B) de cada saída nunca acima da linha de base. Só desliga (false) quando o Denis registrar aqui que passou no teste dos +2 dB.",
+  "linha_de_base": {
+    "_origem": "Retrato estado/leituras/2026-10-16_1747.json, estado real lido em 16/10/2026 e conferido com o app (34 de 34).",
+    "master_db": 0.0,
+    "ganho_db": {"1": -11.0, "2": -11.0, "3": -10.0, "4": -10.0},
+    "roteamento": {"1": "a+b", "2": "b", "3": "a+b", "4": "a+b"},
+    "_roteamento": "Na regra 6, a rota A+B soma 6 dB ao nível (como na regra 7).",
+    "eq_entrada": {"freq_hz": 1000, "ganho_db": 0.0, "q": 1.0},
+    "eq_grafico_db": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "eq_saida": {
+      "1": {"freq_hz": 150, "ganho_db": 0.0, "q": 1.0},
+      "2": {"freq_hz": 1000, "ganho_db": 0.0, "q": 1.0},
+      "3": {"freq_hz": 50, "ganho_db": 3.0, "q": 0.8},
+      "4": {"freq_hz": 50, "ganho_db": 3.0, "q": 0.8}
+    }
+  }
+}

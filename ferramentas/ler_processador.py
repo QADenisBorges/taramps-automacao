@@ -78,7 +78,81 @@ def _relativo(caminho: Path) -> str:
         return str(caminho)
 
 
+# Nomes públicos para ajustar_processador.py.
+obter_senha = _obter_senha
+relativo = _relativo
+
+
 # --------------------------------------------------------------------------- sessão BLE
+
+
+async def procurar_e_conectar(transporte, log: pt.LogBruto) -> tuple[int | None, str | None, str | None]:
+    """Scan e conexão, com as mensagens do leitor. Devolve (código de saída do erro ou
+    None se conectou, nome, endereço). Também usado por ajustar_processador.py."""
+    print("Procurando o processador…")
+    log.anotar("procurando o processador (UUID 0x2055 ou serviço e58f)")
+    try:
+        dispositivo = await transporte.procurar()
+    except Exception as erro:  # noqa: BLE001 - ex.: Bluetooth do notebook desligado
+        log.anotar(f"erro no scan: {erro!r}")
+        print("Não consegui procurar. O Bluetooth do notebook está ligado?")
+        return SAIDA_SEM_APARELHO, None, None
+    if dispositivo is None:
+        log.anotar("não encontrado")
+        print(NAO_ENCONTRADO)
+        return SAIDA_SEM_APARELHO, None, None
+    nome = getattr(dispositivo, "name", None)
+    endereco = getattr(dispositivo, "address", None)
+    log.anotar(f"encontrado: {nome} {endereco}")
+
+    print("Conectando…")
+    try:
+        await transporte.conectar(dispositivo)
+    except cb.ConexaoFalhou as erro:
+        log.anotar(f"falha na conexão: {erro}")
+        print("Não consegui conectar. Desligue e ligue o processador e tente de novo.")
+        return SAIDA_SEM_APARELHO, nome, endereco
+    log.anotar(f"propriedades: {getattr(transporte, 'propriedades', {})}")
+    return None, nome, endereco
+
+
+def firmware_seguro(auth: cb.Autenticacao, senha: str) -> None:
+    """Nunca mostrar nem gravar um firmware igual à senha."""
+    if auth.firmware and senha.upper() in auth.firmware.upper():
+        auth.firmware = None
+
+
+def montar_retrato(*, leituras: list[dict], completo: bool, inicio: dt.datetime,
+                   nome: str | None, endereco: str | None, transporte, auth: cb.Autenticacao,
+                   senha: str, orfaos: list[str], caminho_log: Path) -> dict:
+    """O retrato (formato 1) de uma leitura completa ou parcial."""
+    falhas = [x for x in leituras if x.get("valor") is None]
+    motivo = None if completo else next(
+        (x["motivo"] for x in reversed(leituras) if x.get("motivo")), "incompleto")
+    carga = auth.carga or ""
+    if senha and senha.upper() in carga.upper():
+        carga = "(omitida: continha a senha)"
+    return {
+        "formato": 1,
+        "aparelho": "PRO 2.4BT + AUDIO",
+        "status": "completo" if completo else "incompleto",
+        "motivo": motivo,
+        "inicio": inicio.isoformat(timespec="seconds"),
+        "fim": dt.datetime.now().isoformat(timespec="seconds"),
+        "dispositivo": {"nome": nome, "endereco": endereco},
+        "caracteristicas": getattr(transporte, "propriedades", {}),
+        "firmware": auth.firmware,
+        "resposta_000": carga,
+        "total": len(leituras),
+        "lidos": len(leituras) - len(falhas),
+        "leituras": leituras,
+        "falhas": [
+            {"codigo": x["codigo"], "canal": x["canal"], "nome": x["nome"], "motivo": x.get("motivo")}
+            for x in falhas
+        ],
+        "orfaos": orfaos,
+        "log": _relativo(caminho_log),
+    }
 
 
 async def _sessao(args, senha: str, transporte, estado: Path, tempos: dict) -> int:
@@ -93,30 +167,9 @@ async def _sessao(args, senha: str, transporte, estado: Path, tempos: dict) -> i
         log = pt.LogBruto(arquivo_log, senha)
         cliente = cb.ClienteTaramps(transporte, log, **tempos)
 
-        print("Procurando o processador…")
-        log.anotar("procurando o processador (UUID 0x2055 ou serviço e58f)")
-        try:
-            dispositivo = await transporte.procurar()
-        except Exception as erro:  # noqa: BLE001 - ex.: Bluetooth do notebook desligado
-            log.anotar(f"erro no scan: {erro!r}")
-            print("Não consegui procurar. O Bluetooth do notebook está ligado?")
-            return SAIDA_SEM_APARELHO
-        if dispositivo is None:
-            log.anotar("não encontrado")
-            print(NAO_ENCONTRADO)
-            return SAIDA_SEM_APARELHO
-        nome = getattr(dispositivo, "name", None)
-        endereco = getattr(dispositivo, "address", None)
-        log.anotar(f"encontrado: {nome} {endereco}")
-
-        print("Conectando…")
-        try:
-            await transporte.conectar(dispositivo)
-        except cb.ConexaoFalhou as erro:
-            log.anotar(f"falha na conexão: {erro}")
-            print("Não consegui conectar. Desligue e ligue o processador e tente de novo.")
-            return SAIDA_SEM_APARELHO
-        log.anotar(f"propriedades: {getattr(transporte, 'propriedades', {})}")
+        erro_conexao, nome, endereco = await procurar_e_conectar(transporte, log)
+        if erro_conexao is not None:
+            return erro_conexao
 
         try:
             print("Conectado. Enviando a senha…")
@@ -140,8 +193,7 @@ async def _sessao(args, senha: str, transporte, estado: Path, tempos: dict) -> i
                 print(f"Log: {_relativo(caminho_log)}")
                 return SAIDA_OK if recebidos else SAIDA_FALHAS
 
-            if auth.firmware and senha.upper() in auth.firmware.upper():
-                auth.firmware = None  # nunca mostrar nem gravar algo igual à senha
+            firmware_seguro(auth, senha)
             firmware = f" Firmware {auth.firmware}." if auth.firmware else ""
             print(f"Senha aceita.{firmware} Lendo os parâmetros…")
             consultas = pt.consultas_marco1()
@@ -162,32 +214,10 @@ async def _sessao(args, senha: str, transporte, estado: Path, tempos: dict) -> i
 
         falhas = [x for x in leituras if x.get("valor") is None]
         fora = [x for x in leituras if x.get("fora_da_faixa")]
-        motivo = None if completo else next(
-            (x["motivo"] for x in reversed(leituras) if x.get("motivo")), "incompleto")
-        carga = auth.carga or ""
-        if senha and senha.upper() in carga.upper():
-            carga = "(omitida: continha a senha)"
-        retrato = {
-            "formato": 1,
-            "aparelho": "PRO 2.4BT + AUDIO",
-            "status": "completo" if completo else "incompleto",
-            "motivo": motivo,
-            "inicio": inicio.isoformat(timespec="seconds"),
-            "fim": dt.datetime.now().isoformat(timespec="seconds"),
-            "dispositivo": {"nome": nome, "endereco": endereco},
-            "caracteristicas": getattr(transporte, "propriedades", {}),
-            "firmware": auth.firmware,
-            "resposta_000": carga,
-            "total": len(leituras),
-            "lidos": len(leituras) - len(falhas),
-            "leituras": leituras,
-            "falhas": [
-                {"codigo": x["codigo"], "canal": x["canal"], "nome": x["nome"], "motivo": x.get("motivo")}
-                for x in falhas
-            ],
-            "orfaos": cliente.orfaos,
-            "log": _relativo(caminho_log),
-        }
+        retrato = montar_retrato(
+            leituras=leituras, completo=completo, inicio=inicio, nome=nome, endereco=endereco,
+            transporte=transporte, auth=auth, senha=senha, orfaos=cliente.orfaos,
+            caminho_log=caminho_log)
         pasta_leituras.mkdir(parents=True, exist_ok=True)
         caminho_retrato = pasta_leituras / f"{carimbo}.json"
         caminho_retrato.write_text(json.dumps(retrato, ensure_ascii=False, indent=2), encoding="utf-8")
