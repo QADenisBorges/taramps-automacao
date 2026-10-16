@@ -25,3 +25,7 @@ decompilado/
 # Python
 __pycache__/
 *.pyc
+.venv/
+
+# Log bruto do BLE (cada quadro enviado e recebido; a senha já sai mascarada).
+estado/log-ble/

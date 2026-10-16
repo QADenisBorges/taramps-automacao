@@ -1,0 +1,11 @@
+[project]
+name = "taramps-automacao"
+version = "0.1.0"
+description = "Ferramentas para ler o processador Taramps PRO 2.4BT + AUDIO pelo notebook."
+requires-python = ">=3.12"
+dependencies = [
+    "bleak>=1.0",
+]
+
+[tool.uv]
+package = false
