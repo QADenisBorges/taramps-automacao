@@ -1,0 +1,60 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-16T20:22:03",
+  "fim": "2026-10-16T20:22:19",
+  "simular": false,
+  "lote": [
+    "081:0=-11.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "131963920a3701e198eb9f1e18d85f09cb9a374d7f7a9c1dfa6530292ebeb3a8",
+    "regra6": true
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-16_2022.json",
+  "log": "estado/log-ble/2026-10-16_2022-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "081:0=-11.0"
+    ],
+    "recusas": [],
+    "alertas": [
+      "trava 1: passa-alta da saída 1 (JBL L) abaixo do mínimo (100 Hz, 24 dB/oit): BT12 em 150 Hz",
+      "trava 1: passa-alta da saída 2 (JBL R) abaixo do mínimo (100 Hz, 24 dB/oit): BT12 em 120 Hz",
+      "trava 2: subsônico da saída 3 (sub (ponte com a 4)) abaixo do mínimo (35 Hz, 24 dB/oit): BT24 em 28 Hz",
+      "trava 2: subsônico da saída 4 (sub (ponte com a 3)) abaixo do mínimo (35 Hz, 24 dB/oit): BT24 em 28 Hz",
+      "regra 4: saídas 3 e 4 diferentes em Limiter attack (072): 50.0 × 50.1"
+    ],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "081",
+      "canal": 0,
+      "escrito": "*081*0*-11.0*",
+      "pedido": -11.0,
+      "relido": -11.0,
+      "cru": "#081#0#-11.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "081:0=-11.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "081:0=-12.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "081",
+      "canal": 0,
+      "valor": -11.0,
+      "cru": "#081#0#-11.0#"
+    }
+  ]
+}

@@ -160,3 +160,5 @@ Lacunas do §8 resolvidas:
 **Achado: com o limiter em Auto, abrir a tela Limiter no app *escreve* attack e release.** `applyAutoFromHpf` (`ble/BleViewModel.java:6748`) recalcula os dois a partir da faixa do HPF (`calculateNewValuesForAuto`) e envia ao aparelho se o valor guardado for diferente. Na memória FILME, a saída 4 tinha attack 45,0 ms e release 720 ms gravados. O app mostrou e gravou 16 ms e 165 ms, a faixa do HPF de 30 Hz. Consequências:
 - só abrir o app já pode mudar o estado;
 - o guardião e o backup precisam reler depois que o app for usado.
+
+**Escrita no aparelho real (16/10/2026, 20:22).** `*081*0*-12.0*` foi aceito. Cerca de 85 ms depois, o aparelho responde com o valor aplicado, no formato de leitura (`#081#0#-12.0#`). Essa resposta funciona como ack; não há `OK`. A releitura confirmou o valor, e a volta para −11,0 também. Ver `estado/log-ble/2026-10-16_2021-2-ajuste.log`. **[Leitura]**
