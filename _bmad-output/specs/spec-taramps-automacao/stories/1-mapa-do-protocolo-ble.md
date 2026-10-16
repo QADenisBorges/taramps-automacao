@@ -33,6 +33,7 @@ context:
 - Preset exportado: entra como fonte. O Denis exporta 3 presets em arquivo: A (o ajuste em uso, que também é o backup, antes de qualquer captura), a memória "Factory default" do aparelho (carregada sem reset e exportada como referência neutra) e B (com valores conhecidos e anotados). Esclarecido pelo Denis em 2026-10-16. O `protocol-discovery.md` é corrigido, porque o app exporta e importa presets (manual, p. 14).
 - Capturas: os logs brutos e os arquivos de preset ficam fora do git. Só as anotações e os trechos citados vão para o git, com a senha mascarada.
 - Ordem (2026-10-16): primeiro a fase Demo, sem o processador: APK, levantamento das telas, pista do limiter e presets exportados no Modo Demo (Parte D do roteiro). O processador, sempre sem amplificador, só entra nas capturas quando o Denis liberar. O Modo Demo não gera tráfego BLE, então as capturas C0…C15 dependem dessa liberação.
+- Automação da fase Demo (2026-10-16): o Denis pediu que o levantamento do Modo Demo fosse feito e anotado automaticamente. A IA opera o app via `adb` (toques e leitura da árvore de interface) só no Modo Demo, sem tocar em "Conectar". Isso não muda o non-goal da SPEC: a integração final não opera o app.
 - Limiter: a resposta vem do protocolo e do APK e também de uma medição. O Denis mede com multímetro AC direto na saída RCA, sem amplificador, usando o gerador de senoide do app. Ele varia o ganho da saída com o threshold fixo e anota a tensão.
 
 **Never:**

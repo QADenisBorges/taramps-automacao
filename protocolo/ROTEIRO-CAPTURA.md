@@ -27,7 +27,7 @@ No Modo Demo o app não conversa com o processador. O snoop log não grava nenhu
 
 ### 1.2 Celular
 
-1. Ative as opções de desenvolvedor: Configurações → Sobre o telefone → (Informações do software) → toque 7 vezes em "Número da versão".
+1. Ative as opções de desenvolvedor: Configurações → Sobre o telefone → (Informações do software) → toque 7 vezes em "Número da versão" (no Samsung, "Número de compilação"). No Samsung com One UI 6, desligue também o **Bloqueador automático** (Segurança e privacidade), que bloqueia comandos pelo cabo USB.
 2. Em Opções do desenvolvedor, ligue **Depuração USB**.
 3. Em Opções do desenvolvedor, abra **Registro de rastreamento HCI Bluetooth** (ou "Ativar registro de espionagem HCI Bluetooth") e escolha **Ativado**. Não use "Ativado com filtro": ele corta o conteúdo dos pacotes.
 4. Desligue e religue o Bluetooth para o registro começar. Se o celular pedir, reinicie.

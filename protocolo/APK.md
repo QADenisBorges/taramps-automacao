@@ -1,6 +1,6 @@
 # Análise estática do APK — PRO 2.4BT + AUDIO
 
-**Status:** pendente. O APK ainda não foi extraído (ROTEIRO-CAPTURA.md, 1.3) e o jadx ainda não foi baixado. A IA baixa o jadx do release oficial (`github.com/skylot/jadx/releases`) só com a autorização do Denis no momento do download.
+**Status:** APK extraído em 2026-10-16; a análise do código depende do jadx, que ainda não foi baixado. A IA baixa o jadx do release oficial (`github.com/skylot/jadx/releases`) só com a autorização do Denis no momento do download.
 
 **Regras deste arquivo**
 
@@ -12,10 +12,10 @@
 
 | Campo | Valor |
 |---|---|
-| Pacote | pendente (hipótese da spec: `com.taramps.pro1`, não confirmada) |
-| Versão (`versionName` / `versionCode`) | pendente (o app mostra 1.0 (23); manual, p. 15) |
-| Arquivos (`base.apk`, splits) | pendente |
-| SHA-256 de cada arquivo | pendente |
+| Pacote | `com.taramps.pro24bt_audio` (a hipótese `com.taramps.pro1` estava errada); código em `br.com.taramps.processador_mini`, atividade `MainActivity` |
+| Versão (`versionName` / `versionCode`) | 1.0.8 / 12; minSdk 26, targetSdk 36; instalado pela Play Store em 2026-10-12 |
+| Arquivos (`base.apk`, splits) | `base.apk` (70,7 MB), `split_config.arm64_v8a.apk`, `split_config.pt.apk`, `split_config.xxhdpi.apk` |
+| SHA-256 de cada arquivo | base `68c9e42e…87c9e1`; arm64 `7c8e0ab4…befde246`; pt `8bd8c99a…a78b2917`; xxhdpi `6dde9824…a5991a` |
 | Origem | `adb pull` do celular do Denis |
 | Ferramenta | jadx, versão pendente, baixado em pendente |
 | Data da análise | pendente |
@@ -31,7 +31,7 @@ Como identificar, nesta ordem:
 | `assemblies/` ou `libmonodroid.so` | Xamarin / .NET MAUI | Lógica em DLLs .NET. |
 | Só `classes*.dex` com código do app | Java/Kotlin nativo | O jadx mostra a lógica direto. |
 
-Resultado: pendente.
+Resultado: **Java/Kotlin nativo.** São 5 `classes*.dex` (cerca de 66 MB) e nenhum `libflutter.so`, `libapp.so`, bundle JS ou `assemblies/`. As únicas bibliotecas nativas são do AndroidX e de USB (`libusb-lib.so`). O jadx deve mostrar a lógica direto. Os textos do app indicam extensão de preset `.trps` e a ação "Compartilhar preset".
 
 ## 3. Biblioteca BLE
 
