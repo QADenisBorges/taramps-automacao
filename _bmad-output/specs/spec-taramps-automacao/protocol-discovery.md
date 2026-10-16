@@ -7,7 +7,8 @@ Como CAP-1 é perseguido e quando parar.
 - Processador Taramps PRO 2.4BT + AUDIO: DSP 24-bit/48 kHz, 2 entradas, 4 saídas.
 - Controle por app via BLE com senha (padrão de fábrica 1234); áudio por A2DP.
 - App Android 8.1+ / iOS 17+; Android provável: `com.taramps.pro1` (não confirmado).
-- O manual não documenta o protocolo nem exporta/importa presets em arquivo. Não há trabalho público de engenharia reversa deste modelo.
+- O manual não documenta o protocolo. Não há trabalho público de engenharia reversa deste modelo.
+- O app exporta e importa presets em arquivo e pode compartilhá-los por mensageiro. O processador guarda até 3 presets na memória interna, e o celular guarda até 15 (manual, p. 14). O arquivo exportado entra como fonte do mapa.
 - O celular do Denis é Android, o que viabiliza o HCI snoop log.
 
 ## Caminho

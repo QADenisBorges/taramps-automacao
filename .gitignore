@@ -1,0 +1,27 @@
+# Nada do app da Taramps nem a senha BT vão para o git (história 1).
+
+# Capturas brutas: bugreports, snoop logs e presets exportados.
+protocolo/capturas/bruto/
+*bugreport*.zip
+bugreport*.txt
+dumpstate*
+FS/
+btsnoop*.log
+btsnoop*.log.*
+
+# Presets exportados pelo app (o formato do arquivo ainda não é conhecido).
+protocolo/presets/
+
+# APK e código decompilado.
+*.apk
+*.apks
+*.xapk
+*.dex
+apk/
+jadx/
+jadx-*/
+decompilado/
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,10 @@
+passo;tipo;inicio;fim;parametro;canal;antigo;novo;obs
+C5.0;conexao;14:08:50;14:09:30;conexao;;;;Connect tocado as 14:08:58, tela inicial as 14:09:10
+C5.1;posicionamento;14:10:00;14:10:40;ganho;S1;0,0 dB;-44,5 dB;digitado
+C5.2;passo;14:11:05;;ganho;S1;-44,5 dB;-45,0 dB;minimo
+C5.3;posicionamento;14:11:30;14:12:20;ganho;S1;-45,0 dB;14,5 dB;
+C5.4;passo;14:12:45;;ganho;S1;14,5 dB;15,0 dB;maximo
+C5.5;posicionamento;14:13:10;14:13:40;ganho;S1;15,0 dB;0,0 dB;
+C5.6;passo;14:14:05;;ganho;S1;0,0 dB;-0,5 dB;intermediario
+C5.7;passo;14:14:30;;ganho;S2;0,0 dB;-0,5 dB;canal
+C5.8;passo;14:14:55;;ganho;S4;0,0 dB;-0,5 dB;canal
