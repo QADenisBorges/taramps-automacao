@@ -13,9 +13,9 @@ Passo a passo do Denis para a história 1 (mapa do protocolo). A IA só analisa 
 
 ### 1.1 Ferramentas no notebook
 
-1. Baixe o **SDK Platform-Tools for Windows** na página oficial do Android (`developer.android.com/tools/releases/platform-tools`).
-2. Extraia o zip em `C:\platform-tools` e abra o PowerShell nessa pasta (ou ponha a pasta no PATH).
-3. Confira com `adb version`.
+1. Baixe o **SDK Platform-Tools for Windows** na página oficial do Android (`developer.android.com/tools/releases/platform-tools`). *Feito em 2026-10-16: adb 1.0.41, versão 37.0.1, em `C:\platform-tools`, com assinatura da Google LLC válida.*
+2. Extraia o zip em `C:\platform-tools`.
+3. Em cada terminal novo, antes dos comandos deste roteiro, rode `$env:Path += ";C:\platform-tools"`. Isso vale só para aquele terminal e não altera o PATH do sistema. Confira com `adb version`.
 4. No relógio do Windows, ligue os segundos: Configurações → Hora e idioma → Data e hora → "Mostrar segundos no relógio da bandeja". É por esse relógio que você vai anotar os horários. O celular e o notebook devem estar com a hora automática ligada.
 
 ### 1.2 Celular
