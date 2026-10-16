@@ -9,6 +9,13 @@ Passo a passo do Denis para a história 1 (mapa do protocolo). A IA só analisa 
 - O notebook não conecta ao processador. Só o celular conversa com ele; o notebook só recebe arquivos pelo cabo USB.
 - Os arquivos brutos (bugreport, snoop log, APK e presets exportados) ficam em `protocolo/capturas/bruto/`, `protocolo/apk/` e `protocolo/presets/`. Essas pastas estão no `.gitignore` e nunca vão para o git.
 
+**Ordem de execução (decisão do Denis, 2026-10-16)**
+
+1. **Fase Demo, sem o processador:** fazer 1.1 a 1.3 (ferramentas, celular, APK) e depois a Parte D (Modo Demo). Nessa fase a IA analisa o APK e o que o Demo produz.
+2. **Fase com o processador, amplificador desconectado:** fazer 1.4 a 1.6, depois as Partes 2, 3 e 4. Essa fase só começa quando o Denis liberar.
+
+No Modo Demo o app não conversa com o processador. O snoop log não grava nenhum byte do protocolo. Por isso, as capturas C0…C15 só existem na fase com o processador.
+
 ## Parte 1 — Preparação
 
 ### 1.1 Ferramentas no notebook
@@ -115,6 +122,34 @@ As capturas mexem em todos os parâmetros. Antes de qualquer captura, salve e ex
    mkdir protocolo\presets
    adb pull /sdcard/Download/<arquivo-A> protocolo\presets\
    ```
+
+## Parte D — Modo Demo (antes do processador)
+
+Objetivo: aprender o máximo sem conectar ao processador. Abra o app e escolha "Demo Mode". Anote tudo em `protocolo/capturas/demo-telas.md` (vai para o git). Esta parte não precisa de snoop log nem de tabela de anotação.
+
+### D1. Levantamento das telas
+
+Para cada tela do menu Audio (roteamento, EQ gráfico, PEQ de entrada, crossover, delay, fase, limiter, PEQ de saída, níveis), anote:
+
+- os controles que existem e as opções de cada seletor (ex.: tipos de filtro, presets de EQ);
+- o mínimo e o máximo que o app aceita, e o **tamanho do passo** do + e do − (ex.: ganho de 0,5 em 0,5 dB; frequência de 1 em 1 Hz ou por degraus);
+- quantas bandas tem o PEQ de saída e o de entrada, e se o PEQ de entrada separa A e B;
+- se existe link de canais;
+- na tela de presets, se aparece a memória "Factory default" e quais opções o Demo oferece (Save, Export, Load).
+
+### D2. Pista do limiter no app
+
+Na saída 1, com o limiter ligado e o threshold num valor qualquer, anote o threshold que a tela mostra em volts. Depois mude o ganho da saída 1 em alguns passos e veja se o número em volts muda sozinho. Repita com o master. Se mudar, o app converte o threshold usando o ganho, e isso é evidência para a pergunta "antes ou depois do ganho".
+
+### D3. Presets no Demo
+
+Se o Demo deixar salvar e exportar presets:
+
+1. Sem mexer em nada, salve no Smartphone como `D0-demo-inicial` e exporte.
+2. Monte a tabela do preset B (Parte 4.1, passo 3) no Demo, salve como `DB-demo-valores`, exporte e anote os valores reais em `protocolo/capturas/preset-DB-valores.md`.
+3. Copie os dois arquivos para `protocolo\presets\` com `adb pull`, como em 1.6.
+
+Se o arquivo exportado no Demo tiver o mesmo formato do exportado com o processador, dá para decifrar a estrutura dos parâmetros antes da fase com o processador.
 
 ## Parte 2 — Captura C0: conectar sem mexer em nada
 
