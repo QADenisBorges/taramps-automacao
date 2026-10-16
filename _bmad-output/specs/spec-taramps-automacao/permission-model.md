@@ -1,6 +1,6 @@
 # Modelo de permissões
 
-Regras no estilo do Claude Code: **permitir / perguntar / negar**, configuráveis por categoria. O guardião aplica as regras no software, validando o valor de cada parâmetro, não só a ferramenta chamada. Citado por CAP-4 a CAP-11 e CAP-13.
+Regras no estilo do Claude Code: **permitir / perguntar / negar**, configuráveis por categoria. O guardião aplica as regras no software, validando o valor de cada parâmetro, não só a ferramenta chamada. As regras valem igualmente para as duas vias, BLE e tela. Citado por CAP-4 a CAP-11, CAP-13 e CAP-14.
 
 | Categoria | Exemplos | Regra para a IA | Quem libera |
 |---|---|---|---|
@@ -17,6 +17,7 @@ Regras no estilo do Claude Code: **permitir / perguntar / negar**, configurávei
 - Toda resposta humana ("perguntar", alerta, liberação) vem de um canal do software que a IA não alcança — tela ou terminal do notebook, nunca o chat.
 - O humano mantém a palavra final: o Denis pode aceitar o risco de forma consciente, e o aceite fica registrado.
 - Backup completo do estado antes de qualquer escrita, em todas as categorias.
+- Na via pela tela, a IA não recebe `adb` nem toques livres, e o guardião valida também cada estado intermediário da sequência de toques (ver `screen-route.md`).
 - Queda de conexão ou releitura divergente: o software bloqueia novas escritas até reler o estado (CAP-12).
 
 ## Limiares das travas

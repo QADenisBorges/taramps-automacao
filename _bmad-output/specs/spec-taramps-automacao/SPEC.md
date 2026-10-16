@@ -4,8 +4,10 @@ companions:
   - permission-model.md
   - damage-thresholds.md
   - protocol-discovery.md
+  - screen-route.md
   - stack.md
   - setup-home-theater-2.1.md
+  - ../../../protocolo/capturas/demo-telas.md
 sources:
   - ../../forge/taramps-automacao/forged-idea.md
   - ../../forge/taramps-automacao/forge-report.html
@@ -18,7 +20,7 @@ sources:
 
 ## Why
 
-**Dor + visão.** A cada regulagem, o Denis tira prints de todas as telas e canais do app Taramps para a IA conferir. Ele não domina cada função do módulo e depende da IA para não danificar falantes nem o processador, mas a IA erra ao ler imagem e a segurança exige o valor exato. A aposta é decifrar o protocolo BLE do Taramps PRO 2.4BT + AUDIO para que a IA leia e configure o processador direto, com um software guardião — e não o julgamento da IA — impedindo dano físico. Se der certo, a integração sustenta a fase 2 (microfone e equalização automática) e um pitch para a Taramps.
+**Dor + visão.** A cada regulagem, o Denis tira prints de todas as telas e canais do app Taramps para a IA conferir. Ele não domina cada função do módulo e depende da IA para não danificar falantes nem o processador, mas a IA erra ao ler imagem e a segurança exige o valor exato. A IA passa a ler e configurar o Taramps PRO 2.4BT + AUDIO por duas vias: operando o app oficial no celular, com o processo visível na tela, ou direto pelo protocolo BLE, para quem não tem ou não quer usar o celular. Nas duas, um software guardião — e não o julgamento da IA — impede dano físico. Se der certo, a integração sustenta a fase 2 (microfone e equalização automática) e um pitch para a Taramps.
 
 ## Capabilities
 
@@ -33,7 +35,7 @@ sources:
   - **success:** Toda escrita é seguida de releitura, e o resultado informa se o valor relido é o pedido.
 - **CAP-4** — Guardião de dano físico (Marco 2)
   - **intent:** O software impede que a IA aplique as 3 ações de dano físico: tweeter/médio sem passa-alta, sub sem subsônico, nível acima do ceifamento. Ele avalia o estado resultante das 4 saídas com os limiares de `damage-thresholds.md`.
-  - **success:** Cada uma das 3 tentativas feitas pela IA é bloqueada antes de chegar ao módulo e gera alerta para o Denis. Isso inclui tentativas indiretas por EQ abaixo do corte, link de canais, roteamento A+B, preset ou restauração.
+  - **success:** Em qualquer das duas vias, cada uma das 3 tentativas feitas pela IA é bloqueada antes de chegar ao módulo e gera alerta para o Denis. Isso inclui tentativas indiretas por EQ abaixo do corte, link de canais, roteamento A+B, preset, restauração ou estado intermediário de uma sequência de toques.
 - **CAP-5** — Liberação humana com registro
   - **intent:** Só o Denis libera uma ação bloqueada, por meio de um alerta explícito de risco.
   - **success:** A liberação não pode partir do canal da IA, e cada liberação fica registrada com ação, valores e momento.
@@ -64,16 +66,25 @@ sources:
     - Sem calibração concluída, nenhuma saída tem teto calibrado, e o guardião nega qualquer subida de nível, limiar ou EQ.
     - Com calibração concluída, cada saída tem as leituras registradas, um teto (calculado pelas fichas com −3 dB, ou ponto validado pelo Denis) e o limitador no teto.
     - Só o Denis calibra.
+- **CAP-14** — Via pela tela
+  - **intent:** Quem tem o app no celular Android escolhe que a IA leia e altere o processador operando o app oficial, com o processo visível no celular; quem não tem ou não quer usar o celular usa a via BLE (ver `screen-route.md`).
+  - **success:**
+    - Em 2 ou mais presets, a leitura pela tela devolve os valores que o app mostra.
+    - Toda escrita pela tela passa pelo guardião e é confirmada por releitura da tela.
+    - Valor que o OCR não lê com segurança volta como desconhecido, nunca estimado.
+    - Tela inesperada ou versão do app não validada interrompe os toques e bloqueia escritas até uma releitura completa.
 
 ## Constraints
 
 - O guardião vive no software (servidor), não no cliente de IA: permissões por ferramenta do cliente não validam valores de parâmetro.
+- O guardião e as capacidades de leitura, escrita confirmada, backup, fail-safe e liberação humana valem igualmente para as duas vias.
+- Na via pela tela, a IA nunca recebe adb, coordenadas nem toques livres: chama as mesmas ferramentas de parâmetro e valor do servidor, que converte em toques depois do guardião.
 - A IA é entrada não confiável: nenhuma decisão de segurança depende do julgamento dela.
 - Dano físico e áreas protegidas: a IA nunca libera, sem exceção; o humano mantém a palavra final com aceite consciente de risco.
 - Toda confirmação ou liberação humana ("perguntar", alerta de risco, restauração, reset) acontece num canal do software que a IA não consegue responder, nunca no chat da IA.
-- A saída são valores exatos de parâmetro, nunca imagens.
+- A IA recebe valores exatos de parâmetro, nunca imagens, e nenhuma leitura de valor depende da visão da IA.
 - Alvo fixo: Taramps PRO 2.4BT + AUDIO; não trocar de processador.
-- A central BLE é o notebook do home theater; o software não pode depender de o app do celular estar conectado ao mesmo tempo.
+- Cada sessão usa uma via só. A via BLE tem o notebook do home theater como central e não depende do celular; na via pela tela, o celular é a central e o notebook não conecta ao módulo.
 - Durante desenvolvimento e testes, o processador fica desligado do amplificador.
 - Parada: cerca de 2 dias (um fim de semana) de tokens para decodificar. Sem bytes legíveis até lá → procurar a Taramps.
 - Protocolo protegido, criptografado ou ofuscado → procurar a Taramps antes de forçar a quebra.
@@ -81,22 +92,21 @@ sources:
 
 ## Non-goals
 
-- IA operando o app via ADB/toques na tela (frágil a cada atualização, lento, não definitivo).
+- IA com acesso direto ao adb ou a toques livres no celular, fora do guardião.
 - Trocar por um processador de protocolo aberto.
-- Prints automáticos ou leitura de valores por visão.
+- Leitura de valores pela visão da IA.
 - Fase 2: microfone, equalização automática e verificação do mapa de canais por medição.
-- Uso simultâneo do app no celular durante a sessão, incluindo proxy BLE.
-- Quebrar criptografia à força.
+- As duas vias na mesma sessão, incluindo proxy BLE.
+- Quebrar criptografia à força, inclusive a dos presets `.trps`.
 
 ## Success signal
 
-- O Denis regula um preset conversando com o Claude sem tirar nenhum print: o Claude lê todos os parâmetros, aplica ajustes confirmados por releitura, e as 3 ações de dano físico são bloqueadas até o Denis liberar.
-- Ou, se a aposta falhar, ela se resolve dentro do orçamento de um fim de semana com a decisão registrada de procurar a Taramps.
+- O Denis regula um preset conversando com o Claude sem tirar nenhum print, por qualquer das duas vias: o Claude lê todos os parâmetros, aplica ajustes confirmados por releitura, e as 3 ações de dano físico são bloqueadas até o Denis liberar.
+- Primeiro sinal, antes de testar com o processador: no Modo Demo, o Claude lê e ajusta pela tela, e o guardião bloqueia as 3 ações de dano físico.
+- Se a via BLE falhar na prova por captura, isso se resolve dentro do orçamento de um fim de semana, com a decisão registrada de procurar a Taramps.
 
 ## Assumptions
 
-- O app Android alvo é `com.taramps.pro1` (não confirmado; pode haver outro app para a versão +AUDIO).
-- O protocolo é decodificável sem criptografia ou ofuscação pesada — é a aposta central, ainda não testada.
 - O escopo é um único processador, embora o app suporte até 4.
 - A engenharia reversa serve só à interoperabilidade de uso próprio; nada do app da Taramps é redistribuído.
 - O inventário do setup (CAP-11) só vale depois que o Denis o confirma e, a partir daí, vira área protegida: a IA não o altera. As travas dependem de ele estar certo.
@@ -105,7 +115,11 @@ sources:
 - A restauração passa pelo guardião como qualquer escrita, porque um backup pode conter um estado perigoso anterior ao software.
 - A calibração vale até alguém mexer no hardware, por exemplo no botão de ganho do módulo. O software não detecta essa mudança.
 - Os fatores e padrões dos limiares vêm de prática de instalação, não de medição. O cálculo de excursão por Thiele-Small fica para a fase 2.
+- A via pela tela é só Android (adb); iOS não é coberto.
+- A via pela tela é validada por versão do app (hoje 1.0.8); uma versão nova exige revalidar o mapa de telas antes de qualquer escrita.
+- Na via pela tela, o backup é a leitura completa das telas antes da primeira escrita, mais um preset salvo no celular como cópia restaurável pelo app.
 
 ## Open Questions
 
 - O limiter do PRO 2.4BT atua antes ou depois do ganho da saída? Qual é a unidade do threshold no protocolo? É preciso confirmar na CAP-1, medindo.
+- Na via pela tela, o app aplica ao módulo cada tecla digitada num campo, ou só ao confirmar? Isso define se digitar um valor cria estados intermediários perigosos (por exemplo, 8 Hz antes de 80 Hz).

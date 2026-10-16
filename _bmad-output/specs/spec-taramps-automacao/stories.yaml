@@ -13,12 +13,18 @@
     Protocolo protegido ou orçamento esgotado sem bytes legíveis: parar e
     reportar (procurar a Taramps).
 - id: "2"
-  title: Leitura completa via MCP (Marco 1)
+  title: Leitura pela tela (Modo Demo)
   description: >-
-    O notebook conecta ao processador com a senha BT e entrega ao Claude, como
-    ferramenta MCP, todos os parâmetros (CAP-2); pronto quando bate 100% com o
-    app em 2 ou mais presets.
+    O servidor MCP lê todos os parâmetros operando o app oficial no celular
+    Android, pela árvore de interface e por OCR dos valores desenhados (CAP-14);
+    ver screen-route.md.
+  spec_checkpoint: true
   done_checkpoint: true
+  invoke_dev_with: >-
+    Desenvolver e testar no Modo Demo, sem tocar em "Conectar". Valores
+    desenhados na tela por OCR determinístico, nunca pela visão da IA. A
+    ferramenta de leitura é a mesma das duas vias; a IA não recebe adb. Mapa
+    de telas em protocolo/capturas/demo-telas.md.
 - id: "3"
   title: Configuração do setup (inventário)
   description: >-
@@ -28,22 +34,23 @@
   invoke_dev_with: >-
     Usar setup-home-theater-2.1.md como caso de teste do inventário.
 - id: "4"
-  title: Escrita confirmada com backup e fail-safe
+  title: Escrita pela tela com backup e fail-safe
   description: >-
-    Escrita de parâmetros com backup completo antes e releitura depois (CAP-3,
-    CAP-8), bloqueando novas escritas após queda de conexão ou releitura
-    divergente (CAP-12).
+    Escrita de parâmetros pela tela com backup completo antes e releitura da
+    tela depois (CAP-3, CAP-8, CAP-14), bloqueando novas escritas após tela
+    inesperada, queda de conexão ou releitura divergente (CAP-12).
   spec_checkpoint: true
   invoke_dev_with: >-
-    Processador desligado do amplificador durante desenvolvimento e testes. As
+    Modo Demo primeiro; com o processador, sempre desligado do amplificador. As
     travas ficam no servidor MCP e validam o estado resultante, nunca o cliente
     de IA; a escrita não é exposta à IA antes de o guardião existir (história 5).
 - id: "5"
-  title: Guardião e permissões (Marco 2)
+  title: Guardião e permissões nas duas vias (Marco 2)
   description: >-
     As 3 travas de dano físico, as regras permitir/perguntar/negar, as áreas
-    protegidas e a liberação pelo Denis com registro (CAP-4 a CAP-7); ver
-    permission-model.md e damage-thresholds.md.
+    protegidas e a liberação pelo Denis com registro (CAP-4 a CAP-7), incluindo
+    os estados intermediários das sequências de toques; ver permission-model.md,
+    damage-thresholds.md e screen-route.md.
   spec_checkpoint: true
   done_checkpoint: true
   invoke_dev_with: >-
@@ -68,3 +75,21 @@
     de backup proposta pela IA e confirmada pelo Denis (CAP-10).
   invoke_dev_with: >-
     Processador desligado do amplificador durante desenvolvimento e testes.
+- id: "8"
+  title: Leitura completa via BLE (Marco 1)
+  description: >-
+    O notebook conecta ao processador com a senha BT e entrega ao Claude, pela
+    mesma ferramenta MCP de leitura, todos os parâmetros (CAP-2); pronto quando
+    bate 100% com o app em 2 ou mais presets.
+  done_checkpoint: true
+- id: "9"
+  title: Escrita BLE atrás do guardião
+  description: >-
+    Escrita pela via BLE com backup antes, releitura depois e fail-safe (CAP-3,
+    CAP-8, CAP-12), passando pelo guardião da história 5.
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Processador desligado do amplificador durante desenvolvimento e testes. As
+    travas ficam no servidor MCP e validam o estado resultante, nunca o cliente
+    de IA.
