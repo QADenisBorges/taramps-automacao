@@ -179,6 +179,11 @@ class MaskTests(unittest.TestCase):
         pats = b.password_patterns("ab12")
         self.assertEqual(b.masked_hex(b"*000*AB12*", pats), "2a 30 30 30 2a ** ** ** ** 2a")
 
+    def test_auth_command_is_masked_without_password(self):
+        self.assertEqual(b.masked_hex(b"*000*AB12*", []), "2a 30 30 30 2a ** ** ** ** 2a")
+        self.assertEqual(b.masked_hex(b"*001*AB12*CD34*", []), "2a 30 30 31 2a " + "** " * 9 + "2a")
+        self.assertEqual(b.masked_hex(b"*081*0*-3.5*", []), "2a 30 38 31 2a 30 2a 2d 33 2e 35 2a")
+
     def test_no_password_no_mask(self):
         self.assertEqual(b.masked_hex(b"1234", b.password_patterns(None)), "31 32 33 34")
 

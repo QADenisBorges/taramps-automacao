@@ -436,8 +436,18 @@ NO_PASSWORD_WARNING = (
 )
 
 
+AUTH_PREFIXES = (b"*000*", b"*001*")  # autenticação e troca de senha (MAPA.md §3 e §5)
+
+
 def _hidden_mask(value: bytes, patterns: list[bytes]) -> list[bool]:
     hidden = [False] * len(value)
+    # Senha no próprio protocolo: tudo entre o prefixo e o último '*' é mascarado, com ou sem --senha.
+    for prefix in AUTH_PREFIXES:
+        start = value.find(prefix)
+        if start != -1:
+            end = value.rfind(b"*")
+            for i in range(start + len(prefix), end if end > start + len(prefix) else len(value)):
+                hidden[i] = True
     for pat in patterns:
         start = value.find(pat)
         while start != -1:
