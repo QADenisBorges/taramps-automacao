@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja: protótipo de presets</title>
+<style>
+  :root{
+    --bg:#f6f1e7; --paper:#fffdf8; --ink:#2a2420; --muted:#6f655c; --line:#e3d9c8;
+    --seal:#8f1d1d; --seal-dark:#5e1010; --ok:#2f6b3a; --warn:#9a6a12; --no:#8a2b2b; --chip:#efe6d6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1b1815; --paper:#24201c; --ink:#efe7db; --muted:#a99d8f; --line:#3a332c;
+      --seal:#b23a3a; --seal-dark:#7a1f1f; --ok:#7cc48a; --warn:#e0b25a; --no:#e08a8a; --chip:#302a24;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1b1815; --paper:#24201c; --ink:#efe7db; --muted:#a99d8f; --line:#3a332c;
+    --seal:#b23a3a; --seal-dark:#7a1f1f; --ok:#7cc48a; --warn:#e0b25a; --no:#e08a8a; --chip:#302a24;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+  main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+  header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+  header .t{flex:1 1 320px}
+  h1{font-size:2rem;margin:0 0 6px;letter-spacing:.3px}
+  h2{font-size:1.2rem;margin:0 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .sub{color:var(--muted);margin:0}
+  section{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:20px;margin:0 0 18px}
+  ul{margin:0;padding-left:20px} li{margin:6px 0}
+  .lock li::marker{content:"🔒  "}
+  .no li::marker{content:"✕  ";color:var(--no)}
+  .risk li::marker{content:"⚠  ";color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:.95rem}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:normal}
+  .cast{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .p{background:var(--chip);border-radius:8px;padding:10px 12px;font-size:.92rem}
+  .p b{display:block} .p i{color:var(--muted)}
+  .tag{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:4px;font-style:normal}
+  .seal{flex:0 0 auto}
+  .time{display:flex;flex-wrap:wrap;gap:8px}
+  .time span{background:var(--chip);border-radius:6px;padding:6px 10px;font-size:.92rem}
+  footer{color:var(--muted);font-size:.85rem;text-align:center;margin-top:24px}
+  @media (max-width:520px){ h1{font-size:1.5rem} .seal svg{width:130px;height:130px} }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="t">
+    <p class="sub">BMad Forge · 16/10/2026 · Denis</p>
+    <h1>Protótipo: IA que regula o 2.1</h1>
+    <p class="sub">Uma IA especialista em som, que conhece o 2.1, entende o que o Denis quer sentir, audita, calibra junto e cria os presets no PRO 2.4BT para a inauguração de sábado.</p>
+  </div>
+  <div class="seal" aria-label="Selo: FORJADA">
+    <svg width="170" height="170" viewBox="0 0 200 200" role="img">
+      <defs>
+        <radialGradient id="g" cx="40%" cy="35%" r="70%">
+          <stop offset="0" stop-color="var(--seal)"/><stop offset="1" stop-color="var(--seal-dark)"/>
+        </radialGradient>
+        <path id="arc" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/>
+      </defs>
+      <path fill="url(#g)" d="M100 8l12 10 15-5 8 13 16 1 2 16 14 7-4 15 10 12-10 12 4 15-14 7-2 16-16 1-8 13-15-5-12 10-12-10-15 5-8-13-16-1-2-16-14-7 4-15-10-12 10-12-4-15 14-7 2-16 16-1 8-13 15 5z"/>
+      <circle cx="100" cy="100" r="74" fill="none" stroke="#f3d9c4" stroke-opacity=".55" stroke-width="2"/>
+      <circle cx="100" cy="100" r="48" fill="none" stroke="#f3d9c4" stroke-opacity=".55" stroke-width="1.5"/>
+      <text font-family="Georgia,serif" font-size="12" letter-spacing="3" fill="#f3d9c4"><textPath href="#arc" startOffset="2%">BMAD FORGE · 2.1 · SÁBADO 17/10 ·</textPath></text>
+      <text x="100" y="97" text-anchor="middle" font-family="Georgia,serif" font-size="19" font-weight="bold" fill="#fbe9da" letter-spacing="1">FORJADA</text>
+      <text x="100" y="117" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#f3d9c4" letter-spacing="1">HARDENED</text>
+    </svg>
+  </div>
+</header>
+
+<section>
+  <h2>Resultado</h2>
+  <p style="margin:0">A ideia saiu mais estreita e mais segura. A IA prepara, o Denis ouve e ela melhora. Na festa, os presets ficam fixos. Com ou sem automação pronta, <b>a regulagem começa às 12h</b> e o sábado acontece.</p>
+</section>
+
+<section>
+  <h2>Sábado em uma linha</h2>
+  <div class="time">
+    <span>Hoje: BLE lê e escreve (processador fora do módulo)</span>
+    <span>Até 12h: automação, se der</span>
+    <span>12h: auditoria + teste dos +2 dB + P2</span>
+    <span>3 memórias + ouvir</span>
+    <span>Camadas de gênero</span>
+    <span>17h: tudo salvo</span>
+  </div>
+</section>
+
+<section>
+  <h2>Decisões travadas</h2>
+  <ul class="lock">
+    <li><b>Só na preparação.</b> A IA aplica, você ouve, ela melhora. Na festa ela não escreve.</li>
+    <li><b>Auditar, não refazer.</b> Cada item do inventário é marcado como fato com fonte, decisão do Som ou desconhecido. Só vale depois que você confirma.</li>
+    <li><b>Calibração.</b> A JBL está em 11 V. O teste dos +2 dB diz se o limitador é o teto. Se não for, entra a regra 6: nada sobe acima da linha de base.</li>
+    <li><b>Guardião mínimo no código.</b> Passa-alta, subsônico, limitador, ponte idêntica e comandos perigosos ficam trancados. Backup antes de cada escrita e releitura depois. Sem liberação no sábado.</li>
+    <li><b>3 memórias.</b> Música SPL HIGH · Música SPL-EQ · Filme-EQ.</li>
+    <li><b>Gêneros = camada de EQ</b> de 15 bandas por cima da SPL-EQ. Quais gêneros entram, você escolhe amanhã.</li>
+    <li><b>Fonte.</b> Filme por streaming no notebook, pelo P2 → RCA, com compressor no notebook. Música por Bluetooth.</li>
+    <li><b>Um passo por tela:</b> faça, confira, responda. Dúvida sem perder o passo. Sem medir de novo à toa. Ideias vão para a lista "para depois".</li>
+    <li><b>Perfeição.</b> A IA mostra o ganho esperado e avisa com ✅ quando está pronto para sábado. Quem decide é você.</li>
+    <li><b>Um agente, uma voz,</b> várias skills e um diário das conversas para revisar depois.</li>
+    <li><b>Regulagem começa às 12h, no máximo.</b> Sem automação, entra o modo manual: um ajuste por vez no app.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Rejeitado e por quê</h2>
+  <ul class="no">
+    <li><b>IA ajustando ao vivo na festa:</b> a escrita não está testada, e uma queda no meio do filme é o pior caso.</li>
+    <li><b>Refazer do zero o que o Som definiu:</b> refazer fato gasta a manhã. Só as decisões são reavaliadas.</li>
+    <li><b>Guardião completo e canal de liberação agora:</b> são semanas de trabalho, não 1,5 dia.</li>
+    <li><b>Várias vozes falando com você:</b> é o mesmo problema das instruções em lote.</li>
+    <li><b>Atraso do BT compensado no VLC:</b> não funciona no Netflix e no Prime.</li>
+    <li><b>Fine-tuning como chave:</b> o diário melhora mais reescrevendo o roteiro e a persona.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>O que sobreviveu à pressão, mas segue frágil</h2>
+  <ul class="risk">
+    <li>O mapa BLE v1 saiu só do APK e nunca foi provado no aparelho.</li>
+    <li>A SPL HIGH por 15 min esquenta o SD800.4 em ponte e o sub, e o guardião não mede temperatura.</li>
+    <li>O adaptador P2 fêmea → 2 RCA ainda não foi confirmado. O último recurso é BT, se o atraso não incomodar.</li>
+    <li>O processador não tem compressor. O volume estável do filme depende do notebook.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Quem pressionou a ideia</h2>
+  <div class="cast">
+    <div class="p"><b>📋 John <span class="tag">PM</span></b><i>"Quem mexe no processador quando o filme começa?"</i></div>
+    <div class="p"><b>🏗️ Winston <span class="tag">arquiteto</span></b><i>"A IA não cria potência, só distribui a que existe."</i></div>
+    <div class="p"><b>📊 Mary <span class="tag">analista</span></b><i>"Ficha e medição são fato. Refazer fato é desperdício."</i></div>
+    <div class="p"><b>🎨 Sally <span class="tag">UX</span></b><i>"Uma tela por passo, uma voz só."</i></div>
+    <div class="p"><b>🔒 Vex <span class="tag">segurança</span></b><i>"Portas que queimam falante trancadas no código, não no prompt."</i></div>
+    <div class="p"><b>😤 Grumbal <span class="tag">adversário</span></b><i>"É o mesmo Claude com outro crachá."</i></div>
+    <div class="p"><b>🌶️ Boundary <span class="tag">casos-limite</span></b><i>"E se o limitador fica antes do ganho?"</i></div>
+    <div class="p"><b>🔧 Kiko Tavares <span class="tag">gerado · instalador</span></b><i>"O que mata som em festa é o 'só mais um pouquinho'."</i></div>
+    <div class="p"><b>🌡️ Helena Prado <span class="tag">gerada · classe D</span></b><i>"O limitador protege da tensão, não do calor."</i></div>
+    <div class="p"><b>🎸 Téo Vasconcelos <span class="tag">gerado · mixagem</span></b><i>"Me diga quanto a próxima rodada muda."</i></div>
+    <div class="p"><b>🎬 Rita Callado <span class="tag">gerada · cinema</span></b><i>"Diálogo estável se resolve com compressor na fonte."</i></div>
+  </div>
+</section>
+
+<footer>Fontes: <code>.memlog.md</code> e <code>forged-idea.md</code> nesta pasta · evolução de <code>taramps-automacao</code></footer>
+</main>
+</body>
+</html>
