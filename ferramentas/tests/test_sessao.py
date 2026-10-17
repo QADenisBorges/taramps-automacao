@@ -404,11 +404,11 @@ class ModoTest(Base):
 
     def test_nome_sem_acento_ou_sem_aspas_vira_o_canonico(self):
         self.assertEqual(self.rodar("modo", "musica", "spl")[0], 0)
-        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música High")
         codigo, saida = self.rodar("modo", "MÚSICA-EQ", "--por", "denis")
         self.assertEqual(codigo, 0)
-        self.assertIn("(antes: Música SPL)", saida)
-        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música EQ")
+        self.assertIn("(antes: Música High)", saida)
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música Original")
         self.assertEqual(self.memorias()["modo_ativo"]["por"], "denis")
 
     def test_nenhum_apaga_o_campo(self):
@@ -441,15 +441,15 @@ class ModoTest(Base):
         self.assertEqual((self.estado / "memorias.json").read_text(encoding="utf-8"), "{")
 
     def test_memoria_e_preset_preservam_o_modo(self):
-        self.rodar("modo", "Música SPL")
+        self.rodar("modo", "Música High")
         self.rodar("memoria", "1", "SPL HIGH", "--por", "ia")
         self.rodar("preset", "Rock", "--por", "denis")
         dados = self.memorias()
-        self.assertEqual(dados["modo_ativo"]["nome"], "Música SPL")
+        self.assertEqual(dados["modo_ativo"]["nome"], "Música High")
         self.assertEqual(dados["dsp"]["1"]["nome"], "SPL HIGH")
         # E o modo sobrevive a limpar a memória.
         self.rodar("memoria", "1", "--limpar")
-        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música High")
 
     def test_validar_ignora_modo_estranho_sem_perder_o_resto(self):
         for estranho in ({"nome": "Rock", "por": "ia"}, "Filme", {"por": "ia"}, {"nome": "nenhum"}):
@@ -473,7 +473,7 @@ class ModoTest(Base):
             except Exception as erro:  # noqa: BLE001
                 erros.append(erro)
 
-        fios = [threading.Thread(target=gravar, args=(n,)) for n in ("Filme", "Música SPL", "Música EQ")]
+        fios = [threading.Thread(target=gravar, args=(n,)) for n in ("Filme", "Música High", "Música Original")]
         for f in fios:
             f.start()
         for f in fios:
@@ -484,11 +484,11 @@ class ModoTest(Base):
 
     def test_gravar_modo_anota_no_diario_com_quem_gravou(self):
         agora = dt.datetime(2026, 10, 17, 14, 0)
-        sessao.gravar_modo(self.estado, "Música EQ", "denis", agora)
+        sessao.gravar_modo(self.estado, "Música Original", "denis", agora)
         sessao.gravar_modo(self.estado, "nenhum", "ia", agora)
         diario = self.diario()
-        self.assertIn("## 14:00 · Modo da Vitrine\n- Música EQ (por Denis)", diario)
-        self.assertIn("## 14:00 · Modo da Vitrine apagado\n- Antes: Música EQ\n- Por IA", diario)
+        self.assertIn("## 14:00 · Modo da Vitrine\n- Música Original (por Denis)", diario)
+        self.assertIn("## 14:00 · Modo da Vitrine apagado\n- Antes: Música Original\n- Por IA", diario)
 
     def test_gravar_modo_devolve_novo_e_anterior(self):
         agora = dt.datetime(2026, 10, 17, 14, 0)

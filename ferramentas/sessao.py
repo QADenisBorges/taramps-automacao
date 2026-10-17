@@ -21,7 +21,7 @@ Guarda fora da conversa o que a facilitadora precisa para retomar sem repetir na
         Arquiva o progresso atual em progresso-AAAA-MM-DD_HHMM.json e começa do zero. Só quando
         o Denis pedir para recomeçar.
 
-    uv run ferramentas/sessao.py memoria 1 "SPL HIGH" --por ia
+    uv run ferramentas/sessao.py memoria 1 "MUSICA HIGH" --por ia
         Registra que a memória N (1 a 3) do DSP foi salva com esse nome, por quem (ia ou denis)
         e quando. O painel lê isso de estado/memorias.json. Quem salva no aparelho é o Denis,
         pelo app; aqui só fica o registro.
@@ -33,7 +33,7 @@ Guarda fora da conversa o que a facilitadora precisa para retomar sem repetir na
 
     uv run ferramentas/sessao.py modo "Filme" [--por ia|denis]
         Registra o modo que a Vitrine do painel mostra ("Som ajustado pela KARINA · Modo: Filme").
-        Só "Filme", "Música SPL" e "Música EQ"; "nenhum" apaga o registro. A /regulagem roda isto
+        Só "Filme", "Música High" e "Música Original"; "nenhum" apaga o registro. A /regulagem roda isto
         ao salvar ou carregar uma memória (--por ia é o padrão). É declarado, não lido do aparelho.
 
 Arquivos: estado/sessoes/progresso.json (etapa, passo, medidas, ideias; a cópia anterior fica em
@@ -61,7 +61,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 FORMATO = 1
 
 # Passos de cada etapa do roteiro (references/roteiro.md). None = varia (etapa 6: por gênero).
-PASSOS_POR_ETAPA = {0: 3, 1: 11, 2: 4, 3: 9, 4: 4, 5: 9, 6: None, 7: 3, 8: 1}
+PASSOS_POR_ETAPA = {0: 3, 1: 11, 2: 4, 3: 14, 4: 4, 5: 9, 6: None, 7: 3, 8: 1}
 ULTIMA_ETAPA = max(PASSOS_POR_ETAPA)
 
 SAIDA_OK, SAIDA_USO, SAIDA_REPETIDA = range(3)
@@ -183,7 +183,7 @@ def anotar_diario(pasta: Path, agora: dt.datetime, titulo: str, linhas: list[str
 SLOTS_DSP = ("1", "2", "3")
 ORIGENS = ("ia", "denis")
 # Modos que a Vitrine pode mostrar: palavras que o convidado entende, nada técnico.
-MODOS = ("Filme", "Música SPL", "Música EQ")
+MODOS = ("Filme", "Música High", "Música Original")
 SEM_MODO = "nenhum"
 
 
@@ -198,10 +198,13 @@ def _chave_modo(texto: str) -> str:
 
 
 _MODOS_POR_CHAVE = {_chave_modo(m): m for m in MODOS}
+# Nomes de antes de 17/10 (os perfis foram renomeados): continuam aceitos.
+_MODOS_POR_CHAVE.update({_chave_modo("Música SPL"): "Música High",
+                         _chave_modo("Música EQ"): "Música Original"})
 
 
 def normalizar_modo(nome) -> str | None:
-    """O nome canônico do modo ("musica spl" vira "Música SPL"), ou None para "nenhum".
+    """O nome canônico do modo ("musica high" vira "Música High"), ou None para "nenhum".
     Qualquer outro nome levanta ModoInvalido."""
     if not isinstance(nome, str) or not nome.strip():
         raise ModoInvalido("modo vazio")
@@ -304,7 +307,7 @@ def cmd_memoria(args, estado: Path, agora: dt.datetime) -> int:
         print("--limpar vai sozinho: memoria N --limpar")
         return SAIDA_USO
     if not args.limpar and not nome:
-        print('Nome vazio. Exemplo: memoria 1 "SPL HIGH" --por ia')
+        print('Nome vazio. Exemplo: memoria 1 "MUSICA HIGH" --por ia')
         return SAIDA_USO
     if not args.limpar and not args.por:
         print("Falta --por ia ou --por denis.")
@@ -405,7 +408,7 @@ def cmd_modo(args, estado: Path, agora: dt.datetime) -> int:
         print(f"Não consegui ler as memórias ({erro}). Nada foi gravado.")
         return SAIDA_USO
     except ModoInvalido:
-        print(f'Modo desconhecido: {nome or "(vazio)"}. Use "Filme", "Música SPL", "Música EQ" '
+        print(f'Modo desconhecido: {nome or "(vazio)"}. Use "Filme", "Música High", "Música Original" '
               'ou "nenhum".')
         return SAIDA_USO
     antes = f" (antes: {anterior['nome']})" if anterior else ""
@@ -609,7 +612,7 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
 
     me = sub.add_parser("memoria", help="registra o nome de uma memória do DSP (1 a 3)")
     me.add_argument("numero", type=int, choices=(1, 2, 3))
-    me.add_argument("nome", nargs="*", help='ex.: "SPL HIGH"')
+    me.add_argument("nome", nargs="*", help='ex.: "MUSICA HIGH"')
     me.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
     me.add_argument("--limpar", action="store_true", help="esvazia o registro da memória N")
 
@@ -618,8 +621,8 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
     pr.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
     pr.add_argument("--remover", action="store_true", help="tira o preset do registro")
 
-    mo = sub.add_parser("modo", help='registra o modo da Vitrine ("Filme", "Música SPL", '
-                                     '"Música EQ" ou "nenhum")')
+    mo = sub.add_parser("modo", help='registra o modo da Vitrine ("Filme", "Música High", '
+                                     '"Música Original" ou "nenhum")')
     mo.add_argument("nome", nargs="+", help='ex.: "Filme"')
     mo.add_argument("--por", choices=ORIGENS, default="ia",
                     help="quem definiu: ia (padrão, a /regulagem) ou denis")

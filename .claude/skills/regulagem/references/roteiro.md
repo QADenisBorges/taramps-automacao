@@ -92,8 +92,8 @@ Responda: ok
 ```
 Etapa 1 · Passo 6 de 11 — Passa-alta das JBL (decisão do Som: BT12 em 120 Hz, excursão de 09/10)
 Faça: nada, decida
-Confira: lido: saída 1 BT12 em 150 Hz, saída 2 BT12 em 120 Hz (diferentes). A ficha pede 24 dB/oit. Proposta: BT24 em 120 Hz nas duas.
-Responda: ok, ou a frequência que prefere (100 ou mais)
+Confira: lido: saída 1 BT12 em 150 Hz, saída 2 BT12 em 120 Hz (diferentes). Proposta (decidida com o Denis em 17/10): LR24 em 150 Hz nas duas, e o sub cobrindo até 150 Hz (LR24). O sub alivia as JBL onde a 4" mais sofre (100–130 Hz): ~7 dB menos de movimento do cone, o que abre espaço para o teto novo da etapa 3.
+Responda: ok, ou a frequência que prefere (120 a 150; se a voz "cair" no sub na etapa 5, descemos)
 ```
 
 ```
@@ -142,19 +142,19 @@ Fb do duto: não entra hoje. Registre `ideia "medir a Fb do duto (varredura 25�
 
 Para cada passo: **IA roda** o `--simular`; com `APROVADO`, mostre a tela; com o ok, **IA roda** o
 mesmo comando sem `--simular` e diz uma linha: `Pronto: N aplicado(s), relidos iguais.` Com
-`RECUSADO`, explique em uma frase e ofereça o `Seguro:`. Troque `120` e `40` pelos valores
-decididos nos passos 1.6 e 1.7.
+`RECUSADO`, explique em uma frase e ofereça o `Seguro:`. Troque `150` e `40` pelos valores
+decididos nos passos 1.6 e 1.7 (o passa-baixa do sub acompanha o passa-alta das JBL).
 
 ```
 Etapa 2 · Passo 1 de 4 — Passa-alta das JBL
-Faça: nada; eu simulo: ajustar_processador.py --simular 042:0=BT24 040:0=120 042:1=BT24 040:1=120
+Faça: nada; eu simulo: ajustar_processador.py --simular 042:0=LR24 040:0=150 042:1=LR24 040:1=150
 Confira: Guardião: APROVADO
 Responda: ok para aplicar
 ```
 
 ```
-Etapa 2 · Passo 2 de 4 — Subsônico do sub
-Faça: nada; eu simulo: ajustar_processador.py --simular 040:2=40   (espelha na saída 4)
+Etapa 2 · Passo 2 de 4 — Subsônico e passa-baixa do sub
+Faça: nada; eu simulo: ajustar_processador.py --simular 040:2=40 041:2=150 043:2=LR24   (espelha na saída 4)
 Confira: Guardião: APROVADO
 Responda: ok para aplicar
 ```
@@ -177,57 +177,59 @@ Responda: ok para aplicar
 
 ---
 
-## Etapa 3 · Teste dos +2 dB, sem falantes (M = 9)
+## Etapa 3 · Teste dos +2 dB e teto novo das JBL, sem falantes (M = 14)
 
-Precisa: multímetro, celular com tom de 60 Hz a 0 dBFS (arquivo ou gerador de tom) pareado por
-Bluetooth no processador. Passos 2 a 4 são as resistências que nunca foram medidas: já que os
+Precisa: multímetro, celular com tom de **400 Hz** a 0 dBFS (arquivo ou gerador de tom) pareado por
+Bluetooth no processador. Depois da etapa 2 as JBL cortam abaixo de 150 Hz: um tom de 60 Hz sairia
+~30 dB mais baixo e a medida não valeria. 400 Hz fica dentro da faixa delas, e a maioria dos
+multímetros mede bem até ~400 Hz. Passos 2 a 4 são as resistências que nunca foram medidas: já que os
 falantes vão ficar soltos, é a hora. Medidas: `jbl_l_ohm`, `jbl_r_ohm`, `sub_ohm`, `saida1_vac`,
-`saida1_mais2db_vac`.
+`saida1_mais2db_vac`, `teto_jbl_escolhido`, `saida1_teto_novo_vac`, `saida2_teto_novo_vac`.
 
 ```
-Etapa 3 · Passo 1 de 9 — Soltar os falantes
+Etapa 3 · Passo 1 de 14 — Soltar os falantes
 Faça: tire a fonte da tomada e solte os fios das JBL L, JBL R e do sub nos bornes do módulo
 Confira: nenhum fio de falante encostando em borne
 Responda: ok
 ```
 
 ```
-Etapa 3 · Passo 2 de 9 — Resistência da JBL L · medida jbl_l_ohm
+Etapa 3 · Passo 2 de 14 — Resistência da JBL L · medida jbl_l_ohm
 Faça: multímetro em Ω nas pontas do cabo da JBL L
 Confira: esperado ≈ 3,4 Ω
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 3 de 9 — Resistência da JBL R · medida jbl_r_ohm
+Etapa 3 · Passo 3 de 14 — Resistência da JBL R · medida jbl_r_ohm
 Faça: multímetro em Ω nas pontas do cabo da JBL R
 Confira: esperado ≈ 3,4 Ω
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 4 de 9 — Resistência do sub · medida sub_ohm
+Etapa 3 · Passo 4 de 14 — Resistência do sub · medida sub_ohm
 Faça: multímetro em Ω nas pontas do cabo do sub
 Confira: esperado 3 a 3,6 Ω (perto de 7 Ω muda o alvo da ponte: me avise)
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 5 de 9 — Tom pelo Bluetooth · medida saida1_vac
-Faça: fonte na tomada; celular a 100 % tocando o tom de 60 Hz; multímetro em V AC nos bornes CH1 do módulo
+Etapa 3 · Passo 5 de 14 — Tom pelo Bluetooth · medida saida1_vac
+Faça: fonte na tomada; celular a 100 % tocando o tom de 400 Hz; multímetro em V AC nos bornes CH1 do módulo
 Confira: esperado ≈ 11 V (o limiter calibrado)
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 6 de 9 — +2 dB pelo app · medida saida1_mais2db_vac
+Etapa 3 · Passo 6 de 14 — +2 dB pelo app · medida saida1_mais2db_vac
 Faça: abra o app, Saída 1, ganho de −11,0 para −9,0 dB; leia o multímetro com o tom tocando
 Confira: se ficar em 11,0 V ou menos, o limitador é o teto (passou); se passar de 11,0 V, não passou
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 7 de 9 — Voltar o ganho
+Etapa 3 · Passo 7 de 14 — Voltar o ganho
 Faça: no app, ganho da saída 1 de volta para −11,0 dB; pare o tom; feche o app
 Confira: app fechado
 Responda: ok
@@ -238,25 +240,81 @@ Responda: ok
 --simular 081:0=-11.0` e aplica com o ok (baixar sempre passa).
 
 ```
-Etapa 3 · Passo 8 de 9 — Reler o aparelho
+Etapa 3 · Passo 8 de 14 — Reler o aparelho
 Faça: nada; eu leio
 Confira: ganho da saída 1 em −11,0 dB; mudou mais alguma coisa: <nada | lista>
 Responda: ok
 ```
 
 Passo 9 só se `saida1_mais2db_vac` é um número ≤ 11,0. Se é maior, ou não é número ("pular",
-texto): `Etapa 3 · Passo 9 de 9 — Não passou (ou não medido): a regra 6 fica ligada (nível não
+texto): `Etapa 3 · Passo 9 de 14 — Não passou (ou não medido): a regra 6 fica ligada (nível não
 sobe; EQ só por corte). Responda: ok`.
 
 ```
-Etapa 3 · Passo 9 de 9 — Desligar a regra 6 (só o Denis edita)
+Etapa 3 · Passo 9 de 14 — Desligar a regra 6 (só o Denis edita)
 Faça: abra estado/guardiao.json e troque  "regra6": true  por  "regra6": false ; salve
 Confira: eu rodo ajustar_processador.py --simular 081:0=-9.0 (só simula, nunca aplica): com a regra 6 desligada diz "Guardião: APROVADO"; se disser RECUSADO (regra 6), a edição não pegou
 Responda: ok
 ```
 
 O ganho da saída 1 **não** é aplicado nesse passo: o `--simular` serve só para provar que a regra 6
-saiu. O +2 dB real entra, se ele quiser, na memória SPL HIGH (etapa 5).
+saiu. O ganho real das JBL sobe só na memória MUSICA HIGH (etapa 5).
+
+### Teto novo das JBL (passos 10 a 14; só se o passo 9 desligou a regra 6)
+
+O teto de 11 V foi validado pelo **movimento do cone com o corte antigo** (BT12 perto de 120 Hz).
+Com LR24 em 150 Hz, o limite da JBL passa a ser o **calor** (80 W RMS, 4 Ω). Duas opções:
+
+| Opção | Tensão no módulo | `teto_limiter_db` das saídas 1 e 2 | Ganho sobre hoje |
+|---|---|---|---|
+| Ficha (recomendada para o dia a dia) | ~12,6 V | `-9.8` | +1,2 dB |
+| Demonstração curta (até ~15 min, aceite de risco) | ~15,5 V | `-8.0` | +3 dB |
+
+Conta: o módulo multiplica a saída do processador por ~19,6 (0,56 V → 11 V);
+`teto_limiter_db` = 20·log10(V_módulo ÷ 19,6 ÷ 2,0). Se o passo 9 **não** desligou a regra 6, os
+passos 10 a 14 viram telas de uma linha: `Etapa 3 · Passo N de 14 — Teto das JBL fica em 11 V
+(o +2 dB não passou). Responda: ok`.
+
+```
+Etapa 3 · Passo 10 de 14 — Escolher o teto novo das JBL · medida teto_jbl_escolhido
+Faça: nada, decida
+Confira: 12,6 V = regra da ficha, +1,2 dB, seguro para o dia a dia · 15,5 V = demonstração curta, +3 dB, você aceita o risco (pôr a mão no módulo no fim)
+Responda: 12,6 ou 15,5
+```
+
+Registre `medida teto_jbl_escolhido <12.6|15.5> V`.
+
+```
+Etapa 3 · Passo 11 de 14 — Subir o teto no guardião (só o Denis edita)
+Faça: abra estado/guardiao.json e, nas saídas 1 e 2, troque  "teto_limiter_db": -11.0  por  "teto_limiter_db": <-9.8 | -8.0> ; salve
+Confira: eu rodo ajustar_processador.py --simular 071:0=<-9.8|-8.0> (só simula): com o teto novo diz "Guardião: APROVADO"; se disser RECUSADO (trava 3), a edição não pegou
+Responda: ok
+```
+
+```
+Etapa 3 · Passo 12 de 14 — Subir o limitador das JBL
+Faça: nada; eu simulo: ajustar_processador.py --simular 071:0=<-9.8|-8.0> 071:1=<-9.8|-8.0>
+Confira: Guardião: APROVADO
+Responda: ok para aplicar
+```
+
+```
+Etapa 3 · Passo 13 de 14 — Medir o teto novo na saída 1 · medida saida1_teto_novo_vac
+Faça: celular a 100 % com o tom de 400 Hz; no app, ganho da saída 1 em −9,0 dB (o tom passa do limitador); multímetro em V AC no CH1; depois volte o ganho para −11,0 e feche o app
+Confira: esperado ≈ <12,6 | 15,5> V; se passar mais de 0,5 V, me diga: eu baixo o limitador 0,5 dB por vez
+Responda: o número
+```
+
+```
+Etapa 3 · Passo 14 de 14 — Medir o teto novo na saída 2 · medida saida2_teto_novo_vac
+Faça: o mesmo no CH2 (ganho da saída 2 em −9,0 dB, medir, voltar para −11,0); pare o tom; feche o app
+Confira: esperado ≈ <12,6 | 15,5> V
+Responda: o número
+```
+
+Depois do passo 14, **IA roda** uma leitura (o app escreveu) e confere os ganhos em −11,0 e os
+limitadores no teto novo. Se alguma medida passou mais de 0,5 V do alvo, baixe o `071` daquela
+saída em 0,5 dB (`--simular` antes) e peça a medida de novo com `--refazer "limitador baixou 0,5 dB"`.
 
 ---
 
@@ -305,21 +363,27 @@ se o atraso não incomodar.
 
 ## Etapa 5 · Memórias (M = 9: três memórias × três passos)
 
-Ordem: SPL HIGH (memória 1), SPL-EQ (memória 2), Filme-EQ (memória 3). Cada memória: **propor e
+Ordem: **MUSICA HIGH** (memória 1), **MUSICA ORIGINAL** (memória 2; no app o nome cabe só como
+`MUSICA ORIG`, até 12 caracteres), **FILME** (memória 3). As três partem do corte da etapa 2
+(JBL LR24 em 150 Hz, sub até 150 Hz). Cada memória: **propor e
 aplicar**, **ouvir e dar nota**, **salvar pelo app**. Comece cada uma a partir do estado corrigido
 (EQ de 15 bandas em 0). Entre memórias, **IA roda** uma leitura (o app foi usado para salvar).
-A nota é medida: `nota_spl_high`, `nota_spl_eq`, `nota_filme_eq` (número de 1 a 5; uma palavra
+A nota é medida: `nota_musica_high`, `nota_musica_original`, `nota_filme` (número de 1 a 5; uma palavra
 também vale como valor). A cada nova rodada de ouvir, registre com `--refazer "<ajuste feito>"`.
 
 Propostas iniciais (ajuste pelo que ele ouvir, uma ou duas bandas por vez, sempre `--simular`):
 
 | Memória | Lote inicial | O que muda |
 |---|---|---|
-| SPL HIGH | nada (EQ 0, níveis da calibração). Com regra 6 off: `081:0=-9.0 081:1=-9.0` | o máximo dentro da calibração; +2 dB nas JBL só se o teste passou |
-| SPL-EQ | `020:5=-2.0 020:6=-1.5 020:10=-1.0` | tira o embolado (250/400) e a aspereza (2,5 k); volume cai ~0,5 dB |
-| Filme-EQ | `081:2=-12.0 020:3=-2.0 020:4=-2.0 020:5=-2.0 020:12=-1.0` | sub −2 dB e corte em 100–250 Hz: a fala sobe em relação; −1 em 6,3 k tira o chiado |
+| MUSICA HIGH | Com a regra 6 off e o teto novo: JBL até o limitador novo, `081:0=-9.0 081:1=-9.0` (12,6 V) ou `-8.0` (15,5 V); EQ 0; sub como está (sem folga, regra 7) | volume e impacto para demonstração de até 15 min; sem teto novo, fica o máximo da calibração (11 V) |
+| MUSICA ORIGINAL | `081:0=-11.0 081:1=-11.0 071:0=-11.0 071:1=-11.0 020:5=-2.0 020:6=-1.5 020:10=-1.0` | dia a dia: ganho e limitador das JBL de volta aos 11 V (baixar sempre passa); tira o embolado (250/400) e a aspereza (2,5 k) |
+| FILME | `081:0=-11.0 081:1=-11.0 071:0=-11.0 071:1=-11.0 081:2=-12.0 020:3=-2.0 020:4=-2.0 020:5=-2.0 020:12=-1.0` | sub −2 dB e corte em 100–250 Hz: a fala sobe em relação; −1 em 6,3 k tira o chiado |
 
-Avisos: SPL HIGH por 15 min esquenta o SD800.4 em ponte e o sub, e ninguém mede temperatura:
+Teste da voz (MUSICA ORIGINAL, primeira rodada de ouvir): uma música com voz masculina. Se a voz
+parecer "sair do sub", baixe o corte das JBL e do sub juntos para 130 Hz (`040:0=130 040:1=130
+041:2=130`, `--simular` antes).
+
+Avisos: MUSICA HIGH por 15 min esquenta o SD800.4 em ponte e o sub, e ninguém mede temperatura:
 no passo "ouvir", peça para encostar a mão no módulo ao fim e responder "morno" ou "quente";
 "quente" = parar e anotar. Sem a regra 6, o sub continua sem folga (regra 7): não proponha reforço
 em 25–100 Hz.
@@ -344,19 +408,19 @@ Nota ≥ 4: avance.
 
 ```
 Etapa 5 · Passo <3|6|9> de 9 — <Memória>: salvar pelo app
-Faça: abra o app → Memórias → salve na memória <n> com o nome "<SPL HIGH | SPL-EQ | Filme-EQ>"; feche o app
+Faça: abra o app → Memórias → salve na memória <n> com o nome "<MUSICA HIGH | MUSICA ORIG | FILME>"; feche o app
 Confira: o nome aparece na lista de memórias
 Responda: ok
 ```
 
-Com o ok, **IA roda** `uv run ferramentas/sessao.py memoria <n> "<nome>" --por ia` (a memória veio
+Com o ok, **IA roda** `uv run ferramentas/sessao.py memoria <n> "<MUSICA HIGH | MUSICA ORIGINAL | FILME>" --por ia` (a memória veio
 da proposta da IA; se o Denis mudou o lote por conta própria, `--por denis`). É só o registro para o
 painel (`estado/memorias.json`); quem salvou no aparelho foi ele, pelo app. Registre antes do
 `passo`.
 
 Logo depois, **IA roda** `uv run ferramentas/sessao.py modo "<modo>"`: a memória recém-salva é a
 que está tocando, e a Vitrine do painel passa a dizer "Som ajustado pela KARINA · Modo: <modo>".
-Memória → modo: SPL HIGH → `"Música SPL"`, SPL-EQ → `"Música EQ"`, Filme-EQ → `"Filme"`. Só
+Memória → modo: MUSICA HIGH → `"Música High"`, MUSICA ORIGINAL → `"Música Original"`, FILME → `"Filme"`. Só
 esses três nomes (nada técnico vai para a TV); `--por ia` é o padrão.
 
 **Sempre que pedir para carregar uma memória no app** (aqui, na etapa 6 ou quando o Denis
@@ -371,7 +435,7 @@ passou das 16h30.
 
 ## Etapa 6 · Camadas de gênero (M = 1 + 2 por gênero; melhoria)
 
-Camada = só o EQ de 15 bandas por cima da SPL-EQ. Corte, limiter e níveis não mudam. Salva no
+Camada = só o EQ de 15 bandas por cima da MUSICA ORIGINAL. Corte, limiter e níveis não mudam. Salva no
 celular (preset de EQ do app), não numa memória do DSP.
 
 ```
@@ -385,7 +449,7 @@ Com N gêneros, M = 1 + 2N (a partir daqui as telas dizem `de M`). O gênero i (
 ordem em que ele respondeu) tem passos fixos: **ouvir = 2i, salvar = 2i + 1** (gênero 1 → 2 e 3;
 gênero 2 → 4 e 5; gênero 3 → 6 e 7), mesmo que um gênero seja pulado. Nota: `nota_<genero>`
 (ex.: `nota_rock`; `--refazer` a cada rodada). Pontos de partida (todos por corte, sobre a
-SPL-EQ): rock/pop `020:5=-3.0 020:6=-2.0`; eletrônico/funk `020:8=-1.5 020:10=-1.5` (sobram
+MUSICA ORIGINAL): rock/pop `020:5=-3.0 020:6=-2.0`; eletrônico/funk `020:8=-1.5 020:10=-1.5` (sobram
 grave e agudo); sertanejo/pagode/voz `020:4=-1.5 020:12=-1.5` (voz à frente). Antes de cada
 gênero, **IA roda** `--simular` a partir do estado lido.
 
@@ -406,9 +470,9 @@ Responda: ok
 Com o ok, **IA roda** `uv run ferramentas/sessao.py preset "<Gênero>" --por ia` (`--por denis` se
 a camada foi ideia dele). Mesmo nome substitui o registro anterior. Registre antes do `passo`.
 
-Ao fim: `Faça: no app, carregue a memória SPL-EQ e feche o app` (o DSP ficou com a última
-camada); com o ok, **IA roda** `uv run ferramentas/sessao.py modo "Música EQ"` e uma leitura
-para confirmar o EQ da SPL-EQ.
+Ao fim: `Faça: no app, carregue a memória MUSICA ORIG e feche o app` (o DSP ficou com a última
+camada); com o ok, **IA roda** `uv run ferramentas/sessao.py modo "Música Original"` e uma leitura
+para confirmar o EQ da MUSICA ORIGINAL.
 
 ---
 
@@ -437,7 +501,7 @@ Responda: ok
 
 ```
 Etapa 7 · Passo 3 de 3 — Testar com uma cena
-Faça: memória Filme-EQ no app (feche o app depois); toque uma cena com diálogo baixo seguido de explosão
+Faça: memória FILME no app (feche o app depois); toque uma cena com diálogo baixo seguido de explosão
 Confira: a fala sobe sozinha e a explosão não estoura
 Responda: nota de 1 a 5
 ```

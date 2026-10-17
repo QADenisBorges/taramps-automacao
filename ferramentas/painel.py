@@ -27,7 +27,7 @@ Rotas:
     GET  /api/estado  o estado montado na hora a partir dos arquivos (inclui modo_ativo)
     POST /api/senha   login único: grava ~/.taramps/senha (4 caracteres, sem BOM nem quebra)
     POST /api/ler     roda ler_processador.py em subprocesso (só leitura), um por vez
-    POST /api/modo    {"nome": "Filme" | "Música SPL" | "Música EQ" | "nenhum"}: regrava
+    POST /api/modo    {"nome": "Filme" | "Música High" | "Música Original" | "nenhum"}: regrava
                       estado/memorias.json com modo_ativo = {nome, por: "denis", hora} ("nenhum"
                       apaga o campo) e anota no diário da sessão
 
@@ -833,7 +833,7 @@ class _Handler(BaseHTTPRequestHandler):
             return
         except sessao.ModoInvalido:
             self._json(400, {"ok": False,
-                             "erro": "Modo inválido: Filme, Música SPL, Música EQ ou nenhum."})
+                             "erro": "Modo inválido: Filme, Música High, Música Original ou nenhum."})
             return
         except OSError:
             self._json(500, {"ok": False, "erro": "Não consegui gravar o modo."})

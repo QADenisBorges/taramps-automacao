@@ -1,6 +1,6 @@
 ---
 name: regulagem
-description: 'Facilitadora da regulagem do home theater 2.1 (Taramps PRO 2.4BT + AUDIO): conduz auditoria, correções, teste dos +2 dB, P2, memórias SPL HIGH / SPL-EQ / Filme-EQ, camadas de gênero e compressor do filme, um passo por tela, com progresso e diário fora da sessão. Use quando o Denis chamar /regulagem, pedir para regular, calibrar ou auditar o 2.1, criar preset ou memória no processador, ou retomar a regulagem.'
+description: 'Facilitadora da regulagem do home theater 2.1 (Taramps PRO 2.4BT + AUDIO): conduz auditoria, correções, teste dos +2 dB, P2, memórias MUSICA HIGH / MUSICA ORIGINAL / FILME, camadas de gênero e compressor do filme, um passo por tela, com progresso e diário fora da sessão. Use quando o Denis chamar /regulagem, pedir para regular, calibrar ou auditar o 2.1, criar preset ou memória no processador, ou retomar a regulagem.'
 ---
 
 # Facilitadora da regulagem do 2.1
@@ -141,9 +141,9 @@ uma banda baixa o volume total ~1 dB: avise, é pequeno.
 | 0 | Preparação: senha, Bluetooth, leitura nova | 3 | Denis cria a senha e fecha o app; IA lê |
 | 1 | Auditoria do inventário: um item por tela, marcado **fato com fonte**, **decisão do Som** (a IA reavalia) ou **desconhecido** (mede ou usa o padrão seguro); vale só com o ok dele | 11 | Denis confirma |
 | 2 | Correção das violações lidas: BT24 nas JBL, subsônico ≥ 39 Hz (proposta 40), ponte igual; roteamento/mute se decidido na auditoria | 4 | IA simula e aplica |
-| 3 | Teste dos +2 dB (sem falantes, tom de 60 Hz a 0 dBFS, celular a 100 %): resistências, fonte, 11 V, +2 dB pelo app; se ≤ 11 V, o Denis desliga a regra 6 no `estado/guardiao.json` | 9 | Denis mede e mexe no app; IA relê |
+| 3 | Teste dos +2 dB e teto novo das JBL (sem falantes, tom de 400 Hz a 0 dBFS, celular a 100 %): resistências, fonte, 11 V, +2 dB pelo app; se ≤ 11 V, o Denis desliga a regra 6 e pode subir o teto das JBL para 12,6 V (ficha) ou 15,5 V (demonstração) no `estado/guardiao.json`, medido nas saídas 1 e 2 | 14 | Denis mede e mexe no app; IA relê |
 | 4 | P2 a 100 % e zumbido | 4 | Denis liga cabos e mede |
-| 5 | Memórias SPL HIGH, SPL-EQ, Filme-EQ: IA propõe, aplica, ele ouve e dá nota, salva pelo app | 3×3 | ✅ ao fim |
+| 5 | Memórias MUSICA HIGH (máximo de volume e impacto, demonstração de até 15 min), MUSICA ORIGINAL (dia a dia, equilíbrio) e FILME, todas com as JBL em LR24 150 Hz e o sub até 150 Hz: IA propõe, aplica, ele ouve e dá nota, salva pelo app | 3×3 | ✅ ao fim |
 | 6 | Camadas de gênero no EQ de 15 bandas, salvas no celular | 1 + 2 por gênero | melhoria |
 | 7 | Compressor do filme no notebook | 3 | melhoria |
 | 8 | Congelar: memórias conferidas, leitura final, nada mais escrito | 1 | 16h30 ou quando ele disser |

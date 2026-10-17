@@ -549,7 +549,7 @@ class PaginaNovaTest(ServidorBase):
         _, html = self.pedir("/")
         for trecho in ("/api/estado", "/api/ler", "/api/senha", "/api/modo", "POLL_MS = 3000", "Ler agora",
                        "voltar à Vitrine", "KARINA", "Jornada", "feito", "planejado", "em evolução",
-                       'data-modo="Filme"', 'data-modo="Música SPL"', 'data-modo="Música EQ"', 'data-modo="nenhum"',
+                       'data-modo="Filme"', 'data-modo="Música High"', 'data-modo="Música Original"', 'data-modo="nenhum"',
                        'role="dialog"', "escrevendo", "prefers-reduced-motion", "As 10 telas do app"):
             self.assertIn(trecho, html)
 
@@ -559,21 +559,21 @@ class ModoApiTest(ServidorBase):
         return json.loads((self.estado / "memorias.json").read_text(encoding="utf-8"))
 
     def test_seletor_grava_pelo_denis_e_o_estado_mostra(self):
-        codigo, corpo = self.pedir("/api/modo", {"nome": "Música SPL"})
+        codigo, corpo = self.pedir("/api/modo", {"nome": "Música High"})
         self.assertEqual(codigo, 200)
         resposta = json.loads(corpo)
         self.assertTrue(resposta["ok"])
-        self.assertEqual((resposta["modo_ativo"]["nome"], resposta["modo_ativo"]["por"]), ("Música SPL", "denis"))
-        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+        self.assertEqual((resposta["modo_ativo"]["nome"], resposta["modo_ativo"]["por"]), ("Música High", "denis"))
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música High")
         e = json.loads(self.pedir("/api/estado")[1])
-        self.assertEqual((e["modo_ativo"]["nome"], e["modo_ativo"]["por"]), ("Música SPL", "denis"))
+        self.assertEqual((e["modo_ativo"]["nome"], e["modo_ativo"]["por"]), ("Música High", "denis"))
         # Vale a última gravação, de qualquer origem.
         with contextlib.redirect_stdout(io.StringIO()):
             sessao.main(["modo", "Filme"], estado=self.estado)
         self.assertEqual(json.loads(self.pedir("/api/estado")[1])["modo_ativo"]["por"], "ia")
         diario = next((self.estado / "sessoes").glob("*.md")).read_text(encoding="utf-8")
         self.assertIn("Modo da Vitrine", diario)
-        self.assertIn("- Música SPL (por Denis)", diario)  # o seletor também fica no diário
+        self.assertIn("- Música High (por Denis)", diario)  # o seletor também fica no diário
         codigo, corpo = self.pedir("/api/modo", {"nome": "nenhum"})
         self.assertEqual((codigo, json.loads(corpo)["modo_ativo"]), (200, None))
         self.assertNotIn("modo_ativo", self.memorias())
