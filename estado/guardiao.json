@@ -6,6 +6,11 @@
   "_tolerancia_db": "Folga da comparação da curva somada com a referência, abaixo do f_min (damage-thresholds, travas 1 e 2).",
   "g_ef_max_db": -1.0,
   "_g_ef_max_db": "Regra 7: master + ganho + pico da curva somada (+6 dB na rota A+B) nunca acima disto.",
+  "gerador": {
+    "liberado": false,
+    "caminho_provado": null,
+    "_comentario": "Tom fixo do gerador pela IA (ferramentas/tom.py, spec-gerador-memoria.md, formato de 17/10/2026). Só o Denis edita este bloco. Enquanto liberado for false, o tom.py recusa tocar (só o teste de caminho, tom.py --caminho, roda). O teste de caminho, com o módulo desligado do processador (RCA fora), mede no RCA de saída o tom ligado, com a saída 1 mutada, com o passa-alta da saída 1 em 5 kHz e com o limiter da saída 1 em -30 dB, restaura e relê o estado e grava estado/auditorias/<data>_caminho-gerador.json. Se o teste aprovar, o Denis troca liberado para true e põe em caminho_provado o caminho desse arquivo (ex.: \"estado/auditorias/2026-10-17_caminho-gerador.json\"). Sem liberado true, sem o arquivo ou com o arquivo sem aprovado e restaurado, o tom.py recusa antes de conectar."
+  },
   "_saidas": "Campos por saída (formato de 17/10/2026, spec-guardiao-teto-amarrado.md). teto_limiter_db é o teto base. teto_demo (só nas JBL, saídas de passa-alta; null = sem teto de demonstração) = {\"teto_limiter_db\": -9.8, \"exige_passa_alta_hz\": 150, \"exige_inclinacao_db_oit\": 24, \"proibe_rota_ab\": true}: esse teto só vale enquanto a saída tiver passa-alta ligado, em frequência >= exige_passa_alta_hz e inclinação >= exige_inclinacao_db_oit, e rota diferente de A+B; fora disso vale o teto base. O guardião recusa o arquivo se o teto_demo desfizer a amarra: teto_limiter_db precisa ficar acima do teto base e no máximo -8,0 dB, exige_passa_alta_hz >= 150 (e >= f_min_hz), exige_inclinacao_db_oit >= 24 (e >= inclinacao_db_oit) e proibe_rota_ab = true. regra6 (true/false) liga ou desliga a regra 6 só nessa saída; só o campo de cada saída conta (não há regra6 global). As saídas 3 e 4 (ponte) precisam do mesmo regra6. Quem preenche o teto_demo e desliga a regra 6 de uma saída é o Denis, no roteiro, depois do teste dos +2 dB nessa saída.",
   "saidas": {
     "1": {
@@ -52,15 +57,15 @@
     "_origem": "Retrato estado/leituras/2026-10-16_1747.json, estado real lido em 16/10/2026 e conferido com o app (34 de 34).",
     "master_db": 0.0,
     "ganho_db": {"1": -11.0, "2": -11.0, "3": -10.0, "4": -10.0},
-    "roteamento": {"1": "a+b", "2": "b", "3": "a+b", "4": "a+b"},
-    "_roteamento": "Na regra 6, a rota A+B soma 6 dB ao nível (como na regra 7).",
+    "roteamento": {"1": "a", "2": "b", "3": "a+b", "4": "a+b"},
+    "_roteamento": "Na regra 6, a rota A+B soma 6 dB ao nível (como na regra 7). Corrigido em 17/10 às 19h45 (saída 1 de a+b para a; EQ de saída do sub de +3 para 0 dB) para a base bater com o aparelho, pela reauditoria estado/auditorias/2026-10-17_1929_pos-etapa3.md. Editado pela IA a pedido explícito do Denis no chat; a mudança só aperta o guardião.",
     "eq_entrada": {"freq_hz": 1000, "ganho_db": 0.0, "q": 1.0},
     "eq_grafico_db": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     "eq_saida": {
       "1": {"freq_hz": 150, "ganho_db": 0.0, "q": 1.0},
       "2": {"freq_hz": 1000, "ganho_db": 0.0, "q": 1.0},
-      "3": {"freq_hz": 50, "ganho_db": 3.0, "q": 0.8},
-      "4": {"freq_hz": 50, "ganho_db": 3.0, "q": 0.8}
+      "3": {"freq_hz": 50, "ganho_db": 0.0, "q": 0.8},
+      "4": {"freq_hz": 50, "ganho_db": 0.0, "q": 0.8}
     }
   }
 }
