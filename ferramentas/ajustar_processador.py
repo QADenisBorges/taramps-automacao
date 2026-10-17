@@ -39,7 +39,9 @@ import asyncio
 import datetime as dt
 import hashlib
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -66,8 +68,19 @@ def _carimbo(estado: Path) -> str:
 
 
 def _gravar_json(caminho: Path, dados: dict) -> None:
+    """Grava num temporário e troca de uma vez: quem lê (o painel) nunca vê meio arquivo.
+    No Windows, um leitor com o arquivo aberto faz o os.replace falhar por um instante."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
-    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporario = caminho.with_name(caminho.name + ".tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    for tentativa in range(10):
+        try:
+            os.replace(temporario, caminho)
+            return
+        except PermissionError:
+            if tentativa == 9:
+                raise
+            time.sleep(0.05)
 
 
 def _ler_pedidos(args) -> list[gd.Pedido]:
@@ -184,12 +197,13 @@ async def _sessao(pedidos: list[gd.Pedido], cfg: gd.Config, simular: bool, senha
     with open(caminho_log, "w", encoding="utf-8") as arquivo_log:
         log = pt.LogBruto(arquivo_log, senha)
         cliente = cb.ClienteTaramps(transporte, log, **tempos)
-        erro_conexao, nome, endereco = await lp.procurar_e_conectar(transporte, log)
-        if erro_conexao is not None:
-            reg.gravar("sem conexão")
-            return erro_conexao
+        reg.gravar("em andamento")  # o painel mostra o lote em curso enquanto roda
         status = "interrompido"
         try:
+            erro_conexao, nome, endereco = await lp.procurar_e_conectar(transporte, log)
+            if erro_conexao is not None:
+                status = "sem conexão"
+                return erro_conexao
             print("Conectado. Enviando a senha…")
             auth = await cliente.autenticar(senha)
             if auth.motivo == "recusada":
@@ -276,6 +290,7 @@ async def _escrever(cliente: cb.ClienteTaramps, aprovacao: gd.Aprovacao, reg: _R
         print(f"  {i + 1}/{total} {e.texto()} … ", end="", flush=True)
         reg.tentados = i + 1
         reg.dados["em_andamento"] = e.texto()  # fica no registro se Ctrl+C cortar aqui
+        reg.gravar("em andamento")  # o painel mostra "escrevendo …" enquanto esta sai
         try:
             resultado = await cliente.escrever(aprovacao, i)
         except cb.ConexaoCaiu:

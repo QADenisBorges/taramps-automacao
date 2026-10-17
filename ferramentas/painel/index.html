@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel · Home Theater 2.1</title>
+<style>
+  :root {
+    --fundo: #000; --cartao: #111; --borda: #2a2a2a; --texto: #ececec; --fraco: #9a9a9a;
+    --vermelho: #e3141e; --laranja: #ff8c1a; --amarelo: #ffcc33; --verde: #35c759; --azul: #2f8cff;
+    --c1: #e3141e; --c2: #35c759; --c3: #2f8cff; --c4: #ff8c1a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto);
+    font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  .oculto { display: none !important; }
+  b { font-weight: 600; }
+  button { font: inherit; cursor: pointer; }
+
+  /* ---------- telas cheias: introdução e login ---------- */
+  .tela-cheia { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 40%, #1a0205 0%, #000 65%);
+    display: flex; align-items: center; justify-content: center; z-index: 50; cursor: pointer; }
+  .intro-caixa { text-align: center; animation: surgir 1.2s ease-out; }
+  @keyframes surgir { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .intro-nome { font-size: 64px; font-weight: 700; letter-spacing: 1px; color: #fff; }
+  .intro-nome span { color: var(--vermelho); }
+  .intro-sub { font-size: 30px; color: var(--laranja); margin-top: 6px; }
+  .intro-ia { font-size: 18px; color: var(--fraco); margin-top: 14px; }
+  .intro-proc { font-size: 16px; color: var(--texto); margin-top: 28px; }
+  .intro-proc b { color: var(--laranja); }
+  .intro-dica { font-size: 12px; color: #555; margin-top: 40px; }
+  .barra-intro { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--vermelho); width: 0; }
+  .login { cursor: default; }
+  .login form { background: var(--cartao); border: 1px solid var(--borda); border-top: 4px solid var(--vermelho);
+    padding: 36px 44px; width: 380px; text-align: center; }
+  .login label { display: block; text-align: left; color: var(--fraco); margin: 22px 0 6px; }
+  .login input { width: 100%; font-size: 26px; letter-spacing: 12px; text-align: center; padding: 8px;
+    background: #000; color: #fff; border: 1px solid var(--borda); border-radius: 4px; }
+  .login input:focus { outline: 2px solid var(--laranja); }
+  .login button { width: 100%; margin-top: 18px; padding: 10px; background: var(--vermelho); color: #fff;
+    border: 0; border-radius: 4px; font-size: 16px; }
+  .login .msg { min-height: 20px; margin-top: 10px; color: var(--amarelo); }
+  .login .nota { color: #666; font-size: 12px; margin-top: 14px; }
+
+  /* ---------- painel ---------- */
+  main { padding: 12px 16px 24px; max-width: 1800px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; border-bottom: 2px solid var(--vermelho);
+    padding-bottom: 10px; margin-bottom: 10px; }
+  .marca .nome { font-size: 26px; font-weight: 700; color: #fff; }
+  .marca .nome span { color: var(--vermelho); }
+  .marca .sub { color: var(--laranja); font-size: 13px; }
+  .status { display: flex; gap: 22px; flex: 1; flex-wrap: wrap; align-items: flex-start; }
+  .status > div { min-width: 120px; }
+  .status .rot { color: var(--fraco); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .status .val { font-size: 16px; }
+  .status ul { margin: 2px 0 0; padding: 0; list-style: none; font-size: 12px; color: #ccc; max-width: 520px; }
+  .status li::before { content: "▸ "; color: var(--laranja); }
+  .ruim { color: var(--vermelho); }
+  .bom { color: var(--verde); }
+  .atencao { color: var(--amarelo); }
+  .acoes { text-align: right; }
+  #ler { background: #1a1a1a; color: #fff; border: 1px solid var(--laranja); padding: 10px 18px; border-radius: 4px; font-size: 15px; }
+  #ler:hover { background: #241100; }
+  #ler:disabled { opacity: .6; cursor: wait; border-color: #555; }
+  #ler.destaque { background: var(--vermelho); border-color: var(--vermelho); box-shadow: 0 0 18px rgba(227,20,30,.6);
+    animation: pulsar 1.4s infinite; }
+  @keyframes pulsar { 50% { box-shadow: 0 0 4px rgba(227,20,30,.3); } }
+  #ler-msg { font-size: 12px; color: var(--fraco); margin-top: 4px; max-width: 260px; }
+  .faixa { background: #3a2a00; color: var(--amarelo); border: 1px solid #6b4e00; padding: 6px 12px; margin-bottom: 10px; border-radius: 3px; }
+  .faixa.erro { background: #3a0004; color: #ff8a8f; border-color: #7a0010; }
+
+  .grade { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 6px; padding: 10px 12px; }
+  .cartao h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--laranja); }
+  .cartao h2 small { color: var(--fraco); text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 8px; }
+  .telas { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .mini { background: #0a0a0a; border: 1px solid var(--borda); border-radius: 6px; padding: 8px 10px; cursor: pointer;
+    min-height: 150px; transition: border-color .15s, transform .15s; position: relative; overflow: hidden; }
+  .mini:hover { border-color: var(--laranja); transform: translateY(-2px); }
+  .mini h3 { margin: 0 0 6px; font-size: 12px; color: #fff; text-transform: uppercase; letter-spacing: .6px;
+    border-bottom: 1px solid var(--vermelho); padding-bottom: 4px; }
+  .mini .sem { color: #555; font-style: italic; padding-top: 30px; text-align: center; }
+  .linha { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.6; white-space: nowrap; }
+  .linha .ch { width: 18px; font-weight: 700; }
+  .ch1 { color: var(--c1); } .ch2 { color: var(--c2); } .ch3 { color: var(--c3); } .ch4 { color: var(--c4); }
+  .pill { display: inline-block; padding: 0 6px; border-radius: 3px; background: #222; color: #ddd; font-size: 11px; line-height: 18px; }
+  .pill.mute { background: var(--vermelho); color: #fff; }
+  .pill.on { background: #0f3; color: #000; background: #163a1e; color: var(--verde); }
+  .pill.ativo { background: var(--laranja); color: #000; }
+  .barra { height: 8px; background: #222; border-radius: 2px; position: relative; flex: 1; }
+  .barra i { position: absolute; top: 0; bottom: 0; background: var(--laranja); border-radius: 2px; }
+  .barra i.neg { background: var(--azul); }
+  .barra em { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #555; }
+  .num { font-variant-numeric: tabular-nums; }
+  .grande { font-size: 22px; font-weight: 700; color: #fff; }
+  .fraco { color: var(--fraco); }
+  svg.curva { display: block; width: 100%; height: auto; }
+  .eq15 { display: flex; align-items: flex-end; gap: 2px; height: 56px; margin-top: 4px; }
+  .eq15 div { flex: 1; position: relative; height: 100%; background: #1a1a1a; }
+  .eq15 div i { position: absolute; left: 0; right: 0; background: var(--laranja); }
+  .eq15 div i.neg { background: var(--azul); }
+  .eq15 div em { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #444; }
+
+  /* memórias e agente */
+  .mem { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1e1e1e; }
+  .mem .slot { width: 26px; height: 26px; border-radius: 50%; background: #222; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: var(--laranja); }
+  .mem .slot.cheio { background: var(--vermelho); color: #fff; }
+  .mem .nome { flex: 1; font-size: 15px; }
+  .mem .vazia { color: #555; font-style: italic; }
+  .mem .quem { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #222; color: #ddd; }
+  .mem .quem.ia { background: #3a1200; color: var(--laranja); }
+  .mem .quando { color: var(--fraco); font-size: 11px; min-width: 70px; text-align: right; }
+  .passo { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+  .passo .grande { color: var(--laranja); }
+  .vivo { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 3px;
+    background: #3a1200; color: var(--laranja); font-weight: 600; animation: piscar 1.2s infinite; }
+  .vivo.lendo { background: #0a2a4a; color: #6cb6ff; }
+  @keyframes piscar { 50% { opacity: .55; } }
+  .tempo { max-height: 230px; overflow: auto; margin-top: 6px; }
+  .aj { display: grid; grid-template-columns: 42px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1e1e1e; font-size: 12px; }
+  .aj .hora { color: var(--fraco); font-variant-numeric: tabular-nums; }
+  .aj .tag { font-weight: 700; margin-right: 6px; }
+  .aj .lote { font-family: Consolas, monospace; color: #fff; }
+  .aj .det { color: #bbb; }
+  .aj .recusa { color: #ffb0b4; }
+  .sim { color: var(--azul); font-size: 11px; margin-left: 6px; }
+
+  /* modal */
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 40; }
+  .modal-caixa { background: var(--cartao); border: 1px solid var(--borda); border-top: 4px solid var(--vermelho); border-radius: 6px;
+    width: min(1100px, 94vw); max-height: 92vh; overflow: auto; padding: 16px 20px 20px; position: relative; }
+  .modal-caixa h2 { margin: 0 0 12px; color: #fff; font-size: 20px; }
+  .modal-caixa h2 small { color: var(--fraco); font-weight: 400; font-size: 13px; margin-left: 10px; }
+  #fechar { position: absolute; top: 10px; right: 12px; background: none; border: 0; color: var(--fraco); font-size: 26px; line-height: 1; }
+  #fechar:hover { color: #fff; }
+  .cheio { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .cheio.uma { grid-template-columns: 1fr; }
+  table.valores { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.valores th, table.valores td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #1e1e1e; }
+  table.valores th { color: var(--fraco); font-weight: 400; font-size: 11px; text-transform: uppercase; }
+  table.valores td.num { text-align: right; }
+  .legenda { display: flex; gap: 14px; font-size: 12px; margin-top: 6px; }
+  .legenda i { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 4px; }
+  #offline { position: fixed; top: 8px; right: 8px; background: #3a0004; color: #ff8a8f; padding: 6px 12px; border-radius: 4px; z-index: 60; }
+
+  @media (max-width: 1100px) { .telas { grid-template-columns: repeat(3, 1fr); } .grade { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<section id="intro" class="tela-cheia oculto">
+  <div class="intro-caixa">
+    <div class="intro-nome">Denis <span>Borges</span></div>
+    <div class="intro-sub">Home Theater 2.1</div>
+    <div class="intro-ia">regulado por IA com guardião</div>
+    <div class="intro-proc" id="intro-proc">PRO 2.4BT + AUDIO</div>
+    <div class="intro-dica">clique para entrar</div>
+  </div>
+  <div class="barra-intro" id="barra-intro"></div>
+</section>
+
+<section id="login" class="tela-cheia login oculto">
+  <form id="form-login" autocomplete="off">
+    <div class="intro-nome" style="font-size:40px">Denis</div>
+    <div class="intro-sub" style="font-size:16px">Home Theater 2.1 · primeiro acesso</div>
+    <label for="senha">Senha Bluetooth do processador (4 caracteres)</label>
+    <input id="senha" type="password" maxlength="4" autocomplete="new-password" spellcheck="false" autofocus>
+    <button type="submit">Entrar</button>
+    <div class="msg" id="login-msg"></div>
+    <div class="nota">Fica só no seu computador, fora do projeto. Não aparece em lugar nenhum.</div>
+  </form>
+</section>
+
+<div id="offline" class="oculto">sem resposta do painel</div>
+
+<main id="painel" class="oculto">
+  <header>
+    <div class="marca">
+      <div class="nome">Denis <span>Borges</span></div>
+      <div class="sub">Home Theater 2.1 · PRO 2.4BT + AUDIO · regulado por IA com guardião</div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="acoes">
+      <button id="ler">Ler agora</button>
+      <div id="ler-msg"></div>
+    </div>
+  </header>
+  <div id="faixa" class="faixa oculto"></div>
+  <div class="grade">
+    <section class="cartao" id="memorias"></section>
+    <section class="cartao" id="agente"></section>
+    <section class="telas" id="telas"></section>
+  </div>
+</main>
+
+<div id="modal" class="oculto">
+  <div class="modal-caixa">
+    <button id="fechar" title="fechar (Esc)">×</button>
+    <div id="modal-conteudo"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const CORES = ['#e3141e', '#35c759', '#2f8cff', '#ff8c1a'];
+const POLL_MS = 3000;
+const INTRO_MS = 4000;
+let estado = null;
+let entrou = false;
+let modalTela = null;
+let timerIntro = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v, casas) => (v == null || typeof v !== 'number') ? '—' : v.toFixed(casas);
+const hz = f => f >= 1000 ? (f / 1000).toString().replace('.', ',') + ' k' : String(f);
+
+// ---------------------------------------------------------------- fluxo: login → introdução → painel
+
+let ultimaChave = null;  // o estado anterior sem o relógio: só redesenha quando algo mudou
+
+async function buscar() {
+  let novo;
+  try {
+    const r = await fetch('/api/estado', {cache: 'no-store'});
+    if (!r.ok) throw new Error(r.status);
+    novo = await r.json();
+    $('offline').classList.add('oculto');
+  } catch (e) {
+    $('offline').classList.remove('oculto');
+    return false;
+  }
+  estado = novo;
+  if (entrou && !estado.senha_guardada) {  // o arquivo da senha sumiu: volta ao login
+    entrou = false;
+    mostrar('login');
+    $('senha').focus();
+    return true;
+  }
+  const chave = JSON.stringify(Object.assign({}, estado, {agora: null}));
+  if (chave === ultimaChave) return true;
+  ultimaChave = chave;
+  if (entrou) desenhar();
+  return true;
+}
+
+// innerHTML só quando o texto muda: rolagem e seleção sobrevivem ao polling.
+function setHtml(el, html) {
+  if (el.__html === html) return false;
+  el.__html = html;
+  el.innerHTML = html;
+  return true;
+}
+
+function mostrar(id) {
+  for (const t of ['intro', 'login', 'painel']) $(t).classList.toggle('oculto', t !== id);
+}
+
+function mostrarIntro() {
+  const l = estado && estado.leitura;
+  $('intro-proc').innerHTML = (l ? esc(l.aparelho) : 'PRO 2.4BT + AUDIO') +
+    ' · firmware <b>' + (l && l.firmware ? esc(l.firmware) : 'sem leitura') + '</b>';
+  mostrar('intro');
+  const barra = $('barra-intro');
+  barra.style.transition = 'none'; barra.style.width = '0';
+  requestAnimationFrame(() => { barra.style.transition = 'width ' + INTRO_MS + 'ms linear'; barra.style.width = '100%'; });
+  clearTimeout(timerIntro);
+  timerIntro = setTimeout(entrar, INTRO_MS);
+}
+
+function entrar() {
+  clearTimeout(timerIntro);
+  entrou = true;
+  mostrar('painel');
+  desenhar();
+}
+
+$('intro').addEventListener('click', entrar);
+
+$('form-login').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const campo = $('senha');
+  const msg = $('login-msg');
+  const senha = campo.value.trim();
+  if (senha.length !== 4) { msg.textContent = 'A senha tem 4 caracteres.'; campo.focus(); return; }
+  msg.textContent = 'guardando…';
+  try {
+    const r = await fetch('/api/senha', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({senha})});
+    const dados = await r.json().catch(() => ({}));
+    campo.value = '';
+    if (!r.ok && r.status !== 409) { msg.textContent = dados.erro || 'Não deu. Tente de novo.'; campo.focus(); return; }
+  } catch (e) {
+    campo.value = '';
+    msg.textContent = 'Sem resposta do painel.'; return;
+  }
+  msg.textContent = '';
+  await buscar();
+  mostrarIntro();
+});
+
+async function iniciar() {
+  const ok = await buscar();
+  if (!ok || !estado || !estado.senha_guardada) { mostrar('login'); $('senha').focus(); }
+  else mostrarIntro();
+  setInterval(buscar, POLL_MS);
+}
+
+// ---------------------------------------------------------------- ler agora
+
+$('ler').addEventListener('click', async () => {
+  $('ler').disabled = true;
+  $('ler-msg').textContent = 'pedindo a leitura…';
+  try {
+    const r = await fetch('/api/ler', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+    const dados = await r.json().catch(() => ({}));
+    if (!r.ok) $('ler-msg').textContent = dados.erro || 'não deu';
+  } catch (e) { $('ler-msg').textContent = 'sem resposta do painel'; }
+  buscar();
+});
+
+function desenharLeitor() {
+  const s = estado.leitor || {};
+  const botao = $('ler');
+  botao.disabled = !!s.lendo;
+  botao.classList.toggle('destaque', !estado.leitura && !s.lendo);
+  if (s.lendo) { botao.textContent = 'lendo… ' + s.segundos + ' s'; $('ler-msg').textContent = 'processador ligado e app do celular fechado'; return; }
+  botao.textContent = 'Ler agora';
+  const r = s.resultado;
+  if (r) {
+    $('ler-msg').innerHTML = (r.ok ? '<span class="bom">' : '<span class="ruim">') + esc(r.mensagem) + '</span>' +
+      (r.detalhe && !r.ok && r.detalhe !== r.mensagem ? '<br>' + esc(r.detalhe) : '') + ' <span class="fraco">(' + r.segundos + ' s)</span>';
+  } else if (!estado.leitura) $('ler-msg').textContent = 'ainda não há leitura: ligue o processador e clique';
+  else $('ler-msg').textContent = '';
+}
+
+// ---------------------------------------------------------------- cabeçalho
+
+function idade(min) {
+  if (min == null) return '';
+  if (min < 1) return 'agora';
+  if (min < 60) return 'há ' + min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  return 'há ' + h + ' h' + (m ? ' ' + m + ' min' : '');
+}
+
+function desenharCabecalho() {
+  const l = estado.leitura, g = estado.guardiao || {};
+  let html = '';
+  html += '<div><div class="rot">Última leitura</div><div class="val">' +
+    (l ? '<b>' + esc(l.data) + ' ' + esc(l.hora) + '</b> <span class="fraco">' + idade(l.idade_min) + '</span>' : '<span class="ruim">nenhuma</span>') + '</div></div>';
+  html += '<div><div class="rot">Firmware</div><div class="val"><b>' + (l && l.firmware ? esc(l.firmware) : '—') + '</b></div></div>';
+  const v = g.violacoes;
+  let gv;
+  if (v == null) gv = '<span class="atencao">sem avaliação</span><ul><li>' + esc(g.motivo || 'sem leitura') + '</li></ul>';
+  else if (!v.length) gv = '<span class="bom">nenhuma violação</span>';
+  else gv = '<span class="ruim">' + v.length + (v.length === 1 ? ' violação' : ' violações') + '</span><ul>' +
+    v.slice(0, 4).map(x => '<li><b>' + esc(x.rotulo) + '</b> ' + esc(x.motivo) + '</li>').join('') +
+    (v.length > 4 ? '<li>mais ' + (v.length - 4) + '…</li>' : '') + '</ul>';
+  html += '<div style="flex:1"><div class="rot">Guardião agora</div><div class="val">' + gv + '</div></div>';
+  html += '<div><div class="rot">Regra 6</div><div class="val">' +
+    (g.regra6 == null ? '—' : g.regra6 ? '<b class="atencao">ligada</b><div class="fraco" style="font-size:11px">nível não sobe</div>' : '<b class="bom">desligada</b>') + '</div></div>';
+  setHtml($('status'), html);
+
+  const faixa = $('faixa');
+  if (l && (l.incompleta || l.antiga)) {
+    const partes = [];
+    if (l.incompleta) partes.push('leitura incompleta (' + l.lidos + ' de ' + l.total + (l.motivo ? ', ' + esc(l.motivo) : '') + ')');
+    if (l.antiga) partes.push('leitura antiga (' + idade(l.idade_min) + ')');
+    faixa.innerHTML = '⚠ ' + partes.join(' · ') + ' — o aparelho pode estar diferente; clique em "Ler agora"';
+    faixa.classList.remove('oculto');
+  } else faixa.classList.add('oculto');
+}
+
+// ---------------------------------------------------------------- memórias e agente
+
+function quando(iso) {
+  if (!iso) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso);
+  return m ? m[3] + '/' + m[2] + ' ' + m[4] + ':' + m[5] : iso;
+}
+
+function registro(r, slot) {
+  const cheio = !!r;
+  return '<div class="mem"><div class="slot ' + (cheio ? 'cheio' : '') + '">' + esc(slot) + '</div>' +
+    (cheio ? '<div class="nome">' + esc(r.nome) + '</div><span class="quem ' + (r.por === 'ia' ? 'ia' : '') + '">' +
+      (r.por === 'ia' ? 'IA' : r.por === 'denis' ? 'Denis' : '?') + '</span><span class="quando">' + esc(quando(r.hora)) + '</span>'
+      : '<div class="nome vazia">vazia</div>') + '</div>';
+}
+
+function desenharMemorias() {
+  const m = estado.memorias || {dsp: {}, presets: []};
+  let html = '<h2>Memórias<small>3 no DSP · presets no celular</small></h2>';
+  for (const n of ['1', '2', '3']) html += registro(m.dsp[n], n);
+  html += '<h2 style="margin-top:12px">Presets do celular<small>EQ 15 bandas</small></h2>';
+  if (!m.presets || !m.presets.length) html += '<div class="mem"><div class="nome vazia">nenhum ainda</div></div>';
+  else m.presets.slice().reverse().forEach(p => html += registro(p, '♪'));
+  if (m.erro) html += '<div class="atencao" style="font-size:12px;margin-top:6px">' + esc(m.erro) + '</div>';
+  setHtml($('memorias'), html);
+}
+
+function desenharAgente() {
+  const a = estado.agente || {};
+  const p = a.progresso;
+  let html = '<h2>Agente<small>regulagem com guardião</small></h2>';
+  html += '<div class="passo">';
+  if (p && p.etapa != null) {
+    html += '<div><div class="fraco" style="font-size:11px">PASSO ATUAL</div><div class="grande">Etapa ' + p.etapa + ' · passo ' + p.passo +
+      (p.retomar && p.retomar.total ? ' de ' + p.retomar.total : '') + '</div>' +
+      '<div class="fraco" style="font-size:12px">' + (p.travou ? 'travou aqui · ' : 'concluído · ') + 'retomar na etapa ' + p.retomar.etapa + ', passo ' + p.retomar.passo +
+      (p.retomar.nota ? ' (' + esc(p.retomar.nota) + ')' : '') + ' · ' + p.passos_feitos + ' passos feitos · ' + p.medidas + ' medidas' +
+      (p.hora ? ' · ' + esc(p.hora) : '') + '</div></div>';
+  } else html += '<div><div class="fraco" style="font-size:11px">PASSO ATUAL</div><div class="grande fraco">sessão não começou</div></div>';
+  html += '<div style="margin-left:auto">';
+  if (a.lendo) html += '<span class="vivo lendo">● lendo o processador… ' + (estado.leitor ? estado.leitor.segundos : 0) + ' s</span>';
+  else if (a.em_andamento) {
+    const e = a.em_andamento;
+    html += '<span class="vivo">● ' + (e.em_andamento ? 'escrevendo ' + esc(e.em_andamento) + '…' : 'lote em curso: ' + esc(e.lote.join(' ')) + '…') + '</span>';
+  } else html += '<span class="fraco">agente parado</span>';
+  html += '</div></div>';
+  if (p && p.ideias && p.ideias.length) html += '<div class="fraco" style="font-size:12px;margin-bottom:6px">Para depois: ' + p.ideias.map(esc).join(' · ') + '</div>';
+
+  html += '<div class="fraco" style="font-size:11px">LINHA DO TEMPO DOS AJUSTES</div><div class="tempo">';
+  const lista = a.ajustes || [];
+  if (!lista.length) html += '<div class="fraco" style="padding:8px 0">nenhum ajuste ainda</div>';
+  for (const aj of lista) {
+    let tag, cor;
+    if (aj.aberto) { tag = 'EM CURSO'; cor = 'var(--laranja)'; }
+    else if (aj.decisao === 'APROVADO') { tag = 'APROVADO'; cor = 'var(--verde)'; }
+    else if (aj.decisao === 'RECUSADO') { tag = 'RECUSADO'; cor = 'var(--vermelho)'; }
+    else { tag = esc((aj.status || '—').toUpperCase()); cor = 'var(--fraco)'; }
+    let det = '';
+    if (aj.decisao === 'RECUSADO') det = aj.recusas.map(r => '<div class="recusa">' + esc(r) + '</div>').join('');
+    else if (aj.aberto) det = aj.em_andamento ? 'escrevendo ' + esc(aj.em_andamento) + '…' : 'lendo e passando pelo guardião…';
+    else {
+      if (aj.simular) det = 'simulado: nada escrito';
+      else if (aj.aplicados.length) det = 'aplicados: ' + esc(aj.aplicados.join(', '));
+      if (aj.nao_aplicados.length) det += (det ? ' · ' : '') + '<span class="recusa">não aplicados: ' + esc(aj.nao_aplicados.join(', ')) + '</span>';
+      if (aj.status && !['aplicado', 'simulado'].includes(aj.status)) det += (det ? ' · ' : '') + esc(aj.status);
+    }
+    html += '<div class="aj"><div class="hora">' + esc(aj.hora || '—') + '</div><div>' +
+      '<span class="tag" style="color:' + cor + '">' + tag + '</span><span class="lote">' + esc(aj.lote.join(' ')) + '</span>' +
+      (aj.simular ? '<span class="sim">simulação</span>' : '') +
+      (aj.alertas ? '<span class="sim" style="color:var(--amarelo)">' + aj.alertas + ' alerta(s) já no aparelho</span>' : '') +
+      (det ? '<div class="det">' + det + '</div>' : '') + '</div></div>';
+  }
+  html += '</div>';
+  setHtml($('agente'), html);
+}
+
+// ---------------------------------------------------------------- telas do app
+
+function porCanal(itens, codigo) {
+  const r = [null, null, null, null];
+  for (const x of itens) if (x.codigo === codigo && x.canal != null && x.canal < 4) r[x.canal] = x;
+  return r;
+}
+function global(itens, codigo) { return itens.find(x => x.codigo === codigo) || null; }
+const mostrado = x => x ? esc(x.mostrado) : '<span class="fraco">—</span>';
+const valor = x => x ? x.valor : null;
+const ch = c => '<span class="ch ch' + (c + 1) + '">S' + (c + 1) + '</span>';
+
+function barra(v, min, max, centro) {
+  if (v == null) return '<div class="barra"></div>';
+  const pct = x => Math.max(0, Math.min(100, (x - min) / (max - min) * 100));
+  let html = '<div class="barra">';
+  if (centro != null) {
+    const c0 = pct(centro), cv = pct(v);
+    html += '<i class="' + (v < centro ? 'neg' : '') + '" style="left:' + Math.min(c0, cv) + '%;width:' + Math.abs(cv - c0) + '%"></i><em></em>';
+  } else html += '<i style="left:0;width:' + pct(v) + '%"></i>';
+  return html + '</div>';
+}
+
+function svgCurvas(freqs, series, opt) {
+  const w = opt.w || 300, h = opt.h || 90, mini = !!opt.mini;
+  const ymin = opt.ymin, ymax = opt.ymax;
+  const pl = mini ? 2 : 36, pr = mini ? 2 : 8, pt = mini ? 2 : 6, pb = mini ? 2 : 18;
+  const lx = Math.log10(10), hx = Math.log10(22000);
+  const X = f => pl + (Math.log10(f) - lx) / (hx - lx) * (w - pl - pr);
+  const Y = d => pt + (ymax - Math.max(ymin, Math.min(ymax, d))) / (ymax - ymin) * (h - pt - pb);
+  let s = '<svg class="curva" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">';
+  s += '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#000"/>';
+  for (const f of [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
+    s += '<line x1="' + X(f) + '" x2="' + X(f) + '" y1="' + pt + '" y2="' + (h - pb) + '" stroke="#222"/>';
+    if (!mini) s += '<text x="' + X(f) + '" y="' + (h - 5) + '" fill="#777" font-size="10" text-anchor="middle">' + hz(f) + '</text>';
+  }
+  const passo = opt.passo || 12;
+  for (let d = Math.ceil(ymin / passo) * passo; d <= ymax; d += passo) {
+    s += '<line x1="' + pl + '" x2="' + (w - pr) + '" y1="' + Y(d) + '" y2="' + Y(d) + '" stroke="' + (d === 0 ? '#444' : '#222') + '"/>';
+    if (!mini) s += '<text x="' + (pl - 4) + '" y="' + (Y(d) + 3) + '" fill="#777" font-size="10" text-anchor="end">' + d + '</text>';
+  }
+  for (const se of series) {
+    if (!se.db) continue;
+    let d = '';
+    se.db.forEach((v, i) => { d += (i ? 'L' : 'M') + X(freqs[i]).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    s += '<path d="' + d + '" fill="none" stroke="' + se.cor + '" stroke-width="' + (mini ? 1.5 : 2) + '" vector-effect="non-scaling-stroke"/>';
+  }
+  if (opt.marcas) for (const m of opt.marcas) s += '<circle cx="' + X(m.f) + '" cy="' + Y(m.db) + '" r="3" fill="' + m.cor + '"/>';
+  return s + '</svg>';
+}
+
+function legenda(nomes) {
+  return '<div class="legenda">' + nomes.map((n, i) => '<span><i style="background:' + CORES[i] + '"></i>' + esc(n) + '</span>').join('') + '</div>';
+}
+
+function tabela(linhas) {
+  return '<table class="valores"><tr><th>Parâmetro</th><th>Saída 1</th><th>Saída 2</th><th>Saída 3</th><th>Saída 4</th></tr>' +
+    linhas.map(l => '<tr><td>' + esc(l[0]) + '</td>' + l.slice(1).map(v => '<td class="num">' + v + '</td>').join('') + '</tr>').join('') + '</table>';
+}
+function linhaCanal(itens, codigo, rotulo) {
+  const ps = porCanal(itens, codigo);
+  return [rotulo || (ps.find(x => x) || {}).rotulo_parametro || codigo].concat(ps.map(mostrado));
+}
+
+const TELA = {
+  home(itens, cv, cheio) {
+    const m = porCanal(itens, '100');
+    let html = m.map((x, c) => '<div class="linha">' + ch(c) +
+      (x == null ? '<span class="fraco">—</span>' : x.valor ? '<span class="pill mute">MUTE</span>' : '<span class="pill on">ativa</span>') + '</div>').join('');
+    const l = estado.leitura;
+    if (cheio) {
+      html = '<div class="cheio uma"><div>' + html + '<p class="fraco">Aparelho: ' + esc(l.aparelho) + ' · ' + esc(l.dispositivo.nome || '') + ' ' + esc(l.dispositivo.endereco || '') +
+        ' · firmware ' + esc(l.firmware || '—') + '</p><p class="fraco">Mute por saída como o app mostra na Home. O ON/OFF geral (remote out) não é lido pelo notebook.</p></div></div>';
+    } else html += '<div class="fraco" style="font-size:11px;margin-top:4px">' + esc(l.dispositivo.nome || l.aparelho) + ' · ' + esc(l.firmware || '') + '</div>';
+    return html;
+  },
+  roteamento(itens, cv, cheio) {
+    const r = porCanal(itens, '010');
+    const html = r.map((x, c) => '<div class="linha">' + ch(c) + (x ? '<span class="pill ' + (x.valor === 'a+b' ? 'ativo' : '') + '">' + esc(x.mostrado) + '</span>' : '—') + '</div>').join('');
+    return cheio ? '<div class="cheio uma"><div>' + html + '<p class="fraco">Entrada A e B (RCA / Bluetooth L e R) para cada saída.</p></div></div>' : html;
+  },
+  alinhamento(itens, cv, cheio) {
+    const d = porCanal(itens, '050');
+    const html = d.map((x, c) => '<div class="linha">' + ch(c) + barra(valor(x), 0, 275) + '<span class="num" style="width:62px;text-align:right">' + mostrado(x) + '</span></div>').join('');
+    return cheio ? '<div class="cheio uma"><div>' + html + '<p class="fraco">Atraso em centímetros (0 a 275), como o app.</p></div></div>' : html;
+  },
+  fase(itens, cv, cheio) {
+    const f = porCanal(itens, '060');
+    const html = f.map((x, c) => '<div class="linha">' + ch(c) + (x ? '<span class="pill ' + (x.valor === 180 ? 'ativo' : '') + '">' + esc(x.mostrado) + '</span>' : '—') + '</div>').join('');
+    return cheio ? '<div class="cheio uma"><div>' + html + '</div></div>' : html;
+  },
+  eq_entrada(itens, cv, cheio) {
+    const f = global(itens, '031'), g = global(itens, '030'), q = global(itens, '032');
+    const txt = '<div class="linha"><span class="num">' + mostrado(f) + '</span><span class="fraco">·</span><span class="num">' + mostrado(g) + '</span><span class="fraco">·</span>Q <span class="num">' + mostrado(q) + '</span></div>';
+    const curva = svgCurvas(cv.freqs, [{db: cv.eq_entrada, cor: CORES[3]}], {w: cheio ? 640 : 220, h: cheio ? 240 : 60, ymin: -15, ymax: 15, passo: cheio ? 3 : 15, mini: !cheio});
+    if (!cheio) return txt + curva;
+    return '<div class="cheio"><div><table class="valores"><tr><th>Parâmetro</th><th>Valor</th></tr>' +
+      [['Frequência', f], ['Ganho', g], ['Q', q]].map(l => '<tr><td>' + l[0] + '</td><td class="num">' + mostrado(l[1]) + '</td></tr>').join('') +
+      '</table><p class="fraco">EQ paramétrico da entrada: um pico (biquad) que vale para todas as saídas.</p></div><div>' + curva + '</div></div>';
+  },
+  crossover(itens, cv, cheio) {
+    const hf = porCanal(itens, '040'), hi = porCanal(itens, '042'), lf = porCanal(itens, '041'), li = porCanal(itens, '043');
+    const linhas = [0, 1, 2, 3].map(c => '<div class="linha">' + ch(c) +
+      '<span class="num">' + (hi[c] ? esc(hi[c].mostrado) : '—') + ' ' + (hf[c] ? esc(hf[c].mostrado) : '') + '</span><span class="fraco">|</span>' +
+      '<span class="num">' + (li[c] ? esc(li[c].mostrado) : '—') + ' ' + (lf[c] ? esc(lf[c].mostrado) : '') + '</span></div>').join('');
+    const series = [0, 1, 2, 3].map(c => ({db: cv.crossover[String(c)], cor: CORES[c]}));
+    const curva = svgCurvas(cv.freqs, series, {w: cheio ? 640 : 220, h: cheio ? 280 : 60, ymin: -48, ymax: 6, passo: cheio ? 6 : 48, mini: !cheio});
+    if (!cheio) return linhas + curva;
+    return '<div class="cheio"><div>' + tabela([linhaCanal(itens, '042', 'HPF filtro'), linhaCanal(itens, '040', 'HPF frequência'),
+      linhaCanal(itens, '043', 'LPF filtro'), linhaCanal(itens, '041', 'LPF frequência')]) +
+      '<p class="fraco">Curva de cada saída: Butterworth (BT) ou Linkwitz-Riley (LR) de ordem n, a mesma fórmula do guardião, de 10 Hz a 22 kHz.</p></div><div>' + curva + legenda(['JBL L', 'JBL R', 'sub 3', 'sub 4']) + '</div></div>';
+  },
+  limiter(itens, cv, cheio) {
+    const t = porCanal(itens, '071'), a = porCanal(itens, '070');
+    const linhas = t.map((x, c) => '<div class="linha">' + ch(c) + '<span class="num">' + mostrado(x) + '</span>' +
+      (a[c] && a[c].valor ? '<span class="pill ativo">auto</span>' : '') + '</div>').join('');
+    if (!cheio) return linhas;
+    const volts = t.map(x => x && x.volts != null ? '<b>' + x.volts.toFixed(2) + ' V</b>' : x && x.valor === 0.5 ? '<b class="ruim">OFF</b>' : '—');
+    const db = t.map(x => x && typeof x.valor === 'number' && x.valor !== 0.5 ? x.valor.toFixed(1) + ' dB' : x && x.valor === 0.5 ? 'OFF' : '—');
+    return '<div class="cheio uma"><div>' + tabela([['Threshold (volts no app)'].concat(volts), ['Threshold (dB no fio)'].concat(db),
+      linhaCanal(itens, '070', 'Auto'), linhaCanal(itens, '072', 'Attack'), linhaCanal(itens, '073', 'Release')]) +
+      '<p class="fraco">V = 2,0 × 10^(dB/20), a conversão do app. Tetos do guardião: JBL −11,0 dB (0,56 V), sub −6,0 dB (1,00 V).</p></div></div>';
+  },
+  nivel(itens, cv, cheio) {
+    const m = global(itens, '080'), g = porCanal(itens, '081');
+    const linhas = '<div class="linha">Master <span class="grande num">' + mostrado(m) + '</span></div>' +
+      g.map((x, c) => '<div class="linha">' + ch(c) + barra(valor(x), -45, 15, 0) + '<span class="num" style="width:62px;text-align:right">' + mostrado(x) + '</span></div>').join('');
+    if (!cheio) return linhas;
+    return '<div class="cheio uma"><div>' + linhas + '<p class="fraco">Master de −80 a 0 dB; ganho de cada saída de −45 a +15 dB (barra centrada em 0).</p></div></div>';
+  },
+  eq_saida(itens, cv, cheio) {
+    const f = porCanal(itens, '090'), g = porCanal(itens, '091'), q = porCanal(itens, '092');
+    const linhas = [0, 1, 2, 3].map(c => '<div class="linha">' + ch(c) + '<span class="num">' + mostrado(f[c]) + '</span><span class="fraco">·</span><span class="num">' + mostrado(g[c]) + '</span><span class="fraco">·</span>Q <span class="num">' + mostrado(q[c]) + '</span></div>').join('');
+    const series = [0, 1, 2, 3].map(c => ({db: cv.eq_saida[String(c)], cor: CORES[c]}));
+    const curva = svgCurvas(cv.freqs, series, {w: cheio ? 640 : 220, h: cheio ? 240 : 60, ymin: -15, ymax: 15, passo: cheio ? 3 : 15, mini: !cheio});
+    if (!cheio) return linhas + curva;
+    return '<div class="cheio"><div>' + tabela([linhaCanal(itens, '090', 'Frequência'), linhaCanal(itens, '091', 'Ganho'), linhaCanal(itens, '092', 'Q')]) +
+      '<p class="fraco">Um pico paramétrico por saída.</p></div><div>' + curva + legenda(['JBL L', 'JBL R', 'sub 3', 'sub 4']) + '</div></div>';
+  },
+  eq15(itens, cv, cheio) {
+    const bandas = itens.filter(x => x.codigo === '020').sort((a, b) => a.canal - b.canal);
+    const preset = global(itens, '220');
+    const barras = '<div class="eq15">' + bandas.map(b => {
+      const v = typeof b.valor === 'number' ? b.valor : 0;
+      const alt = Math.min(50, Math.abs(v) / 12 * 50);
+      return '<div title="' + esc(b.banda_hz) + ' Hz ' + esc(b.mostrado) + '"><em></em><i class="' + (v < 0 ? 'neg' : '') + '" style="' + (v >= 0 ? 'bottom:50%' : 'top:50%') + ';height:' + alt + '%"></i></div>';
+    }).join('') + '</div>';
+    const txt = '<div class="linha">Preset <span class="pill ativo">' + mostrado(preset) + '</span></div>';
+    if (!cheio) return txt + barras;
+    const marcas = bandas.filter(b => typeof b.valor === 'number').map(b => ({f: b.banda_hz, db: b.valor, cor: CORES[3]}));
+    const curva = svgCurvas(cv.freqs, [{db: cv.eq15, cor: CORES[3]}], {w: 640, h: 240, ymin: -15, ymax: 15, passo: 3, marcas});
+    return '<div class="cheio"><div>' + txt + '<table class="valores"><tr><th>Banda</th><th>Ganho</th></tr>' +
+      bandas.map(b => '<tr><td>' + esc(hz(b.banda_hz)) + 'Hz</td><td class="num">' + esc(b.mostrado) + '</td></tr>').join('') + '</table></div><div>' + barras + curva +
+      '<p class="fraco">Curva somada das 15 bandas (picos com Q ≈ 2,1), como o guardião calcula.</p></div></div>';
+  },
+};
+
+function desenharTelas() {
+  const cv = estado.curvas;
+  const html = estado.telas.map(t => {
+    let corpo;
+    if (!estado.leitura || !cv) corpo = '<div class="sem">sem leitura</div>';
+    else {
+      try { corpo = TELA[t.id](t.itens, cv, false); } catch (e) { corpo = '<div class="sem">—</div>'; }
+    }
+    return '<div class="mini" data-tela="' + t.id + '"><h3>' + esc(t.titulo) + '</h3>' + corpo + '</div>';
+  }).join('');
+  if (!setHtml($('telas'), html)) return;
+  for (const el of document.querySelectorAll('.mini')) el.addEventListener('click', () => abrir(el.dataset.tela));
+}
+
+function abrir(id) { modalTela = id; desenharModal(); $('modal').classList.remove('oculto'); }
+function fechar() { modalTela = null; $('modal').classList.add('oculto'); }
+$('fechar').addEventListener('click', fechar);
+$('modal').addEventListener('click', ev => { if (ev.target === $('modal')) fechar(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fechar(); });
+
+function desenharModal() {
+  if (!modalTela) return;
+  const t = estado.telas.find(x => x.id === modalTela);
+  if (!t) return;
+  let corpo;
+  if (!estado.leitura || !estado.curvas) corpo = '<div class="sem">sem leitura ainda: clique em "Ler agora"</div>';
+  else { try { corpo = TELA[t.id](t.itens, estado.curvas, true); } catch (e) { corpo = '<div class="sem">não consegui desenhar esta tela</div>'; } }
+  // Só troca o conteúdo se ele mudou: um modal aberto não é reconstruído a cada 3 s.
+  setHtml($('modal-conteudo'), '<h2>' + esc(t.titulo) + '<small>' + (estado.leitura ? 'leitura de ' + esc(estado.leitura.data) + ' ' + esc(estado.leitura.hora) : '') + '</small></h2>' + corpo);
+}
+
+function desenhar() {
+  if (!estado || !entrou) return;
+  desenharCabecalho();
+  desenharLeitor();
+  desenharMemorias();
+  desenharAgente();
+  desenharTelas();
+  desenharModal();
+}
+
+iniciar();
+</script>
+</body>
+</html>

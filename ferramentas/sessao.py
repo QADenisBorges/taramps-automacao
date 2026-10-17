@@ -21,9 +21,19 @@ Guarda fora da conversa o que a facilitadora precisa para retomar sem repetir na
         Arquiva o progresso atual em progresso-AAAA-MM-DD_HHMM.json e começa do zero. Só quando
         o Denis pedir para recomeçar.
 
+    uv run ferramentas/sessao.py memoria 1 "SPL HIGH" --por ia
+        Registra que a memória N (1 a 3) do DSP foi salva com esse nome, por quem (ia ou denis)
+        e quando. O painel lê isso de estado/memorias.json. Quem salva no aparelho é o Denis,
+        pelo app; aqui só fica o registro.
+
+    uv run ferramentas/sessao.py preset "Rock" --por denis
+        Registra um preset do celular (EQ de 15 bandas salvo no app). Mesmo nome substitui.
+        `memoria N --limpar` esvazia o registro da memória N; `preset "NOME" --remover` tira o
+        preset do registro (nada disso toca o aparelho).
+
 Arquivos: estado/sessoes/progresso.json (etapa, passo, medidas, ideias; a cópia anterior fica em
-progresso.json.bak) e estado/sessoes/AAAA-MM-DD.md (diário legível do dia: pedido, resposta,
-dúvida, travou).
+progresso.json.bak), estado/sessoes/AAAA-MM-DD.md (diário legível do dia: pedido, resposta,
+dúvida, travou) e estado/memorias.json (memórias do DSP e presets do celular).
 
 Códigos de saída: 0 ok; 1 erro de uso ou arquivo ilegível; 2 medida repetida sem --refazer.
 """
@@ -36,6 +46,7 @@ import json
 import math
 import os
 import sys
+import time
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -119,8 +130,21 @@ def gravar(pasta: Path, dados: dict, agora: dt.datetime) -> None:
     temporario = caminho.with_suffix(".json.tmp")
     temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if caminho.exists():
-        os.replace(caminho, caminho.with_suffix(".json.bak"))
-    os.replace(temporario, caminho)
+        _substituir(caminho, caminho.with_suffix(".json.bak"))
+    _substituir(temporario, caminho)
+
+
+def _substituir(origem: Path, destino: Path) -> None:
+    """os.replace com uma espera curta: no Windows, um leitor (o painel) com o arquivo aberto
+    faz a troca falhar por um instante."""
+    for tentativa in range(10):
+        try:
+            os.replace(origem, destino)
+            return
+        except PermissionError:
+            if tentativa == 9:
+                raise
+            time.sleep(0.05)
 
 
 def _relativo(caminho: Path) -> str:
@@ -144,6 +168,143 @@ def anotar_diario(pasta: Path, agora: dt.datetime, titulo: str, linhas: list[str
         for linha in linhas:
             arquivo.write(f"- {linha}\n")
     return caminho
+
+
+# --------------------------------------------------------------------------- memórias
+
+SLOTS_DSP = ("1", "2", "3")
+ORIGENS = ("ia", "denis")
+
+
+def memorias_vazias() -> dict:
+    return {"formato": FORMATO, "atualizado": None, "dsp": {n: None for n in SLOTS_DSP},
+            "presets": [], "erro": None}
+
+
+def _validar_registro(dados, origem: str) -> dict | None:
+    if dados is None:
+        return None
+    if not isinstance(dados, dict) or not isinstance(dados.get("nome"), str):
+        raise ProgressoIlegivel(f"{origem}: registro fora do formato")
+    por = dados.get("por")
+    return {"nome": dados["nome"], "por": por if por in ORIGENS else None,
+            "hora": dados.get("hora") if isinstance(dados.get("hora"), str) else None}
+
+
+def validar_memorias(dados) -> dict:
+    """estado/memorias.json validado e completo (slots que faltam viram None)."""
+    if not isinstance(dados, dict) or dados.get("formato") != FORMATO:
+        raise ProgressoIlegivel("memorias.json: formato desconhecido")
+    base = memorias_vazias()
+    atualizado = dados.get("atualizado")
+    base["atualizado"] = atualizado if isinstance(atualizado, str) else None
+    dsp = dados.get("dsp") if isinstance(dados.get("dsp"), dict) else {}
+    for n in SLOTS_DSP:
+        base["dsp"][n] = _validar_registro(dsp.get(n), f"memória {n}")
+    presets = dados.get("presets")
+    if presets is not None and not isinstance(presets, list):
+        raise ProgressoIlegivel("memorias.json: presets fora do formato")
+    base["presets"] = [r for r in (_validar_registro(x, "preset") for x in presets or [])
+                       if r is not None]
+    return base
+
+
+def carregar_memorias(estado: Path) -> dict:
+    caminho = estado / "memorias.json"
+    if not caminho.exists():
+        return memorias_vazias()
+    try:
+        return validar_memorias(json.loads(caminho.read_text(encoding="utf-8")))
+    except (OSError, ValueError) as erro:
+        raise ProgressoIlegivel(f"{_relativo(caminho)}: {erro}") from None
+
+
+def gravar_memorias(estado: Path, dados: dict, agora: dt.datetime) -> Path:
+    """Mesma gravação atômica do progresso: temporário e troca de uma vez."""
+    estado.mkdir(parents=True, exist_ok=True)
+    caminho = estado / "memorias.json"
+    dados = {k: v for k, v in dados.items() if k != "erro"}
+    dados["atualizado"] = agora.isoformat(timespec="seconds")
+    temporario = caminho.with_suffix(".json.tmp")
+    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _substituir(temporario, caminho)
+    return caminho
+
+
+def _registro(nome: str, por: str, agora: dt.datetime) -> dict:
+    return {"nome": nome, "por": por, "hora": agora.isoformat(timespec="seconds")}
+
+
+def cmd_memoria(args, estado: Path, agora: dt.datetime) -> int:
+    nome = " ".join(args.nome).strip()
+    if args.limpar and (nome or args.por):
+        print("--limpar vai sozinho: memoria N --limpar")
+        return SAIDA_USO
+    if not args.limpar and not nome:
+        print('Nome vazio. Exemplo: memoria 1 "SPL HIGH" --por ia')
+        return SAIDA_USO
+    if not args.limpar and not args.por:
+        print("Falta --por ia ou --por denis.")
+        return SAIDA_USO
+    try:
+        dados = carregar_memorias(estado)
+    except ProgressoIlegivel as erro:
+        print(f"Não consegui ler as memórias ({erro}). Nada foi gravado.")
+        return SAIDA_USO
+    slot = str(args.numero)
+    anterior = dados["dsp"].get(slot)
+    if args.limpar:
+        if anterior is None:
+            print(f"Memória {slot} já estava vazia.")
+            return SAIDA_OK
+        dados["dsp"][slot] = None
+        gravar_memorias(estado, dados, agora)
+        anotar_diario(estado / "sessoes", agora, f"Memória {slot} limpa",
+                      [f"Antes: {anterior['nome']}"])
+        print(f"Memória {slot} limpa (antes: {anterior['nome']}).")
+        return SAIDA_OK
+    dados["dsp"][slot] = _registro(nome, args.por, agora)
+    gravar_memorias(estado, dados, agora)
+    quem = "IA" if args.por == "ia" else "Denis"
+    linhas = [f"Memória {slot} do DSP: {nome} (por {quem})"]
+    if anterior:
+        linhas.append(f"Antes: {anterior['nome']}")
+    anotar_diario(estado / "sessoes", agora, f"Memória {slot} salva", linhas)
+    extra = f" (antes: {anterior['nome']})" if anterior else ""
+    print(f"Memória {slot} registrada: {nome}, por {quem}{extra}.")
+    return SAIDA_OK
+
+
+def cmd_preset(args, estado: Path, agora: dt.datetime) -> int:
+    nome = " ".join(args.nome).strip()
+    if not nome:
+        print('Nome vazio. Exemplo: preset "Rock" --por ia')
+        return SAIDA_USO
+    if not args.remover and not args.por:
+        print("Falta --por ia ou --por denis.")
+        return SAIDA_USO
+    try:
+        dados = carregar_memorias(estado)
+    except ProgressoIlegivel as erro:
+        print(f"Não consegui ler as memórias ({erro}). Nada foi gravado.")
+        return SAIDA_USO
+    repetido = any(p["nome"].casefold() == nome.casefold() for p in dados["presets"])
+    dados["presets"] = [p for p in dados["presets"] if p["nome"].casefold() != nome.casefold()]
+    if args.remover:
+        if not repetido:
+            print(f"Preset {nome} não estava registrado.")
+            return SAIDA_OK
+        gravar_memorias(estado, dados, agora)
+        anotar_diario(estado / "sessoes", agora, "Preset do celular removido", [nome])
+        print(f"Preset removido: {nome}.")
+        return SAIDA_OK
+    quem = "IA" if args.por == "ia" else "Denis"
+    dados["presets"].append(_registro(nome, args.por, agora))
+    gravar_memorias(estado, dados, agora)
+    anotar_diario(estado / "sessoes", agora, "Preset do celular salvo",
+                  [f"{nome} (por {quem})" + (" · substituiu o anterior" if repetido else "")])
+    print(f"Preset registrado: {nome}, por {quem}{' (substituído)' if repetido else ''}.")
+    return SAIDA_OK
 
 
 # --------------------------------------------------------------------------- comandos
@@ -333,11 +494,27 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
 
     sub.add_parser("novo", help="arquiva o progresso atual e começa do zero")
 
+    me = sub.add_parser("memoria", help="registra o nome de uma memória do DSP (1 a 3)")
+    me.add_argument("numero", type=int, choices=(1, 2, 3))
+    me.add_argument("nome", nargs="*", help='ex.: "SPL HIGH"')
+    me.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
+    me.add_argument("--limpar", action="store_true", help="esvazia o registro da memória N")
+
+    pr = sub.add_parser("preset", help="registra um preset do celular (EQ de 15 bandas)")
+    pr.add_argument("nome", nargs="+", help='ex.: "Rock"')
+    pr.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
+    pr.add_argument("--remover", action="store_true", help="tira o preset do registro")
+
     args = ap.parse_args(argv)
-    pasta = (estado or RAIZ / "estado") / "sessoes"
+    raiz_estado = estado or RAIZ / "estado"
+    pasta = raiz_estado / "sessoes"
     agora = agora or dt.datetime.now()
     if args.comando == "novo":
         return cmd_novo(pasta, agora)
+    if args.comando == "memoria":
+        return cmd_memoria(args, raiz_estado, agora)
+    if args.comando == "preset":
+        return cmd_preset(args, raiz_estado, agora)
     try:
         dados = carregar(pasta)
     except ProgressoIlegivel as erro:

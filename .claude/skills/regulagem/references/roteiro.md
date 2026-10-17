@@ -349,6 +349,11 @@ Confira: o nome aparece na lista de memórias
 Responda: ok
 ```
 
+Com o ok, **IA roda** `uv run ferramentas/sessao.py memoria <n> "<nome>" --por ia` (a memória veio
+da proposta da IA; se o Denis mudou o lote por conta própria, `--por denis`). É só o registro para o
+painel (`estado/memorias.json`); quem salvou no aparelho foi ele, pelo app. Registre antes do
+`passo`.
+
 Depois do passo 9: `✅ Pronto para sábado. O resto é melhoria.` e proponha congelar se já
 passou das 16h30.
 
@@ -387,6 +392,9 @@ Faça: app → EQ 15 bandas → salvar preset no celular com o nome "<Gênero>";
 Confira: o preset aparece na lista do app
 Responda: ok
 ```
+
+Com o ok, **IA roda** `uv run ferramentas/sessao.py preset "<Gênero>" --por ia` (`--por denis` se
+a camada foi ideia dele). Mesmo nome substitui o registro anterior. Registre antes do `passo`.
 
 Ao fim: `Faça: no app, carregue a memória SPL-EQ e feche o app` (o DSP ficou com a última
 camada), e **IA roda** uma leitura para confirmar o EQ da SPL-EQ.

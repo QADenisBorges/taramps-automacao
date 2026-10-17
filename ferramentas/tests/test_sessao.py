@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -275,6 +276,115 @@ class DiarioTest(Base):
         self.assertTrue((self.pasta / "2026-10-17.md").exists())
         self.assertTrue((self.pasta / "2026-10-18.md").exists())
         self.assertEqual(self.progresso()["passos_feitos"], ["1.1", "1.2"])  # progresso é um só
+
+
+class MemoriaTest(Base):
+    """memoria e preset gravam estado/memorias.json (o painel só lê) e anotam no diário."""
+
+    def memorias(self) -> dict:
+        return json.loads((self.estado / "memorias.json").read_text(encoding="utf-8"))
+
+    def test_memoria_do_dsp_com_origem_e_hora(self):
+        codigo, saida = self.rodar("memoria", "1", "SPL", "HIGH", "--por", "ia")
+        self.assertEqual(codigo, 0)
+        self.assertIn("Memória 1 registrada: SPL HIGH, por IA.", saida)
+        dados = self.memorias()
+        self.assertEqual(dados["formato"], 1)
+        self.assertEqual(dados["dsp"]["1"], {"nome": "SPL HIGH", "por": "ia", "hora": "2026-10-17T12:01:00"})
+        self.assertIsNone(dados["dsp"]["2"])
+        self.assertEqual(dados["presets"], [])
+        self.assertNotIn("erro", dados)
+        self.assertFalse((self.estado / "memorias.json.tmp").exists())
+        self.assertIn("## 12:01 · Memória 1 salva", self.diario())
+        self.assertIn("- Memória 1 do DSP: SPL HIGH (por IA)", self.diario())
+
+    def test_memoria_substituida_guarda_o_nome_anterior_no_diario(self):
+        self.rodar("memoria", "3", "Filme", "--por", "ia")
+        codigo, saida = self.rodar("memoria", "3", "Filme-EQ", "--por", "denis")
+        self.assertEqual(codigo, 0)
+        self.assertIn("(antes: Filme)", saida)
+        self.assertEqual(self.memorias()["dsp"]["3"]["nome"], "Filme-EQ")
+        self.assertEqual(self.memorias()["dsp"]["3"]["por"], "denis")
+        self.assertIn("- Antes: Filme", self.diario())
+
+    def test_preset_do_celular_e_mesmo_nome_substitui(self):
+        self.rodar("preset", "Rock", "--por", "ia")
+        self.rodar("preset", "Sertanejo", "--por", "denis")
+        codigo, saida = self.rodar("preset", "rock", "--por", "denis")
+        self.assertEqual(codigo, 0)
+        self.assertIn("(substituído)", saida)
+        presets = self.memorias()["presets"]
+        self.assertEqual([p["nome"] for p in presets], ["Sertanejo", "rock"])
+        self.assertEqual(presets[1]["por"], "denis")
+        self.assertIn("## 12:01 · Preset do celular salvo", self.diario())
+
+    def test_erros_de_uso(self):
+        for argv in (["memoria", "4", "X", "--por", "ia"],  # só 1 a 3
+                     ["memoria", "1", "X", "--por", "app"]):
+            with self.assertRaises(SystemExit) as ctx, contextlib.redirect_stderr(io.StringIO()):
+                sessao.main(argv, estado=self.estado)
+            self.assertEqual(ctx.exception.code, 1)
+        self.assertEqual(self.rodar("memoria", "1", "X")[0], 1)  # falta --por
+        self.assertEqual(self.rodar("memoria", "1")[0], 1)  # sem nome nem --limpar
+        self.assertEqual(self.rodar("memoria", "1", "X", "--limpar")[0], 1)  # --limpar vai sozinho
+        self.assertEqual(self.rodar("preset", "Rock")[0], 1)  # falta --por
+        self.assertEqual(self.rodar("preset", "  ", "--por", "ia")[0], 1)
+        self.assertFalse((self.estado / "memorias.json").exists())
+
+    def test_limpar_memoria_e_remover_preset(self):
+        self.rodar("memoria", "2", "SPL-EQ", "--por", "ia")
+        self.rodar("preset", "Rock", "--por", "ia")
+        self.rodar("preset", "Pop", "--por", "denis")
+        codigo, saida = self.rodar("memoria", "2", "--limpar")
+        self.assertEqual(codigo, 0)
+        self.assertIn("Memória 2 limpa (antes: SPL-EQ).", saida)
+        self.assertIsNone(self.memorias()["dsp"]["2"])
+        self.assertIn("## 12:04 · Memória 2 limpa", self.diario())
+        codigo, saida = self.rodar("memoria", "2", "--limpar")
+        self.assertEqual((codigo, "já estava vazia" in saida), (0, True))
+        codigo, saida = self.rodar("preset", "rock", "--remover")
+        self.assertEqual(codigo, 0)
+        self.assertIn("Preset removido: rock.", saida)
+        self.assertEqual([p["nome"] for p in self.memorias()["presets"]], ["Pop"])
+        self.assertIn("## 12:06 · Preset do celular removido", self.diario())
+        codigo, saida = self.rodar("preset", "Jazz", "--remover")
+        self.assertEqual((codigo, "não estava registrado" in saida), (0, True))
+
+    def test_gravacao_espera_leitor_do_windows_soltar_o_arquivo(self):
+        chamadas = []
+        real = sessao.os.replace
+
+        def replace_teimoso(origem, destino):
+            chamadas.append(1)
+            if len(chamadas) < 3:
+                raise PermissionError("em uso")
+            return real(origem, destino)
+
+        with mock.patch.object(sessao.os, "replace", replace_teimoso), \
+                mock.patch.object(sessao.time, "sleep", lambda s: None):
+            codigo, _ = self.rodar("preset", "Rock", "--por", "ia")
+        self.assertEqual(codigo, 0)
+        self.assertEqual(len(chamadas), 3)
+        self.assertEqual(self.memorias()["presets"][0]["nome"], "Rock")
+
+    def test_memorias_ilegivel_nao_grava(self):
+        self.estado.mkdir(parents=True, exist_ok=True)
+        (self.estado / "memorias.json").write_text("{", encoding="utf-8")
+        codigo, saida = self.rodar("memoria", "1", "X", "--por", "ia")
+        self.assertEqual(codigo, 1)
+        self.assertIn("Nada foi gravado", saida)
+        self.assertEqual((self.estado / "memorias.json").read_text(encoding="utf-8"), "{")
+
+    def test_validar_completa_slots_e_descarta_lixo(self):
+        dados = sessao.validar_memorias({"formato": 1, "dsp": {"2": {"nome": "SPL-EQ", "por": "ninguém"}},
+                                         "presets": [None, {"nome": "Pop", "por": "ia"}]})
+        self.assertEqual(dados["dsp"]["2"], {"nome": "SPL-EQ", "por": None, "hora": None})
+        self.assertIsNone(dados["dsp"]["1"])
+        self.assertEqual(dados["presets"], [{"nome": "Pop", "por": "ia", "hora": None}])
+        with self.assertRaises(sessao.ProgressoIlegivel):
+            sessao.validar_memorias({"formato": 2})
+        with self.assertRaises(sessao.ProgressoIlegivel):
+            sessao.validar_memorias({"formato": 1, "dsp": {"1": "SPL"}})
 
 
 if __name__ == "__main__":

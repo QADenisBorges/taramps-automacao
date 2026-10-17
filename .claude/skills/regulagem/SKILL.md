@@ -67,7 +67,7 @@ Responda: <um número ou ok>
 | `uv run ferramentas/ler_processador.py` | lê as 84 leituras e grava `estado/leituras/…json` (13 s) | `Pronto. 84 lidos, 0 falhas.` |
 | `uv run ferramentas/ajustar_processador.py --simular CCC:c=v …` | lê o aparelho e passa o lote pelo guardião, sem escrever | `Guardião: APROVADO. Ordem: …` ou `Guardião: RECUSADO` (código 6). Também: `Já estava assim: …` (item sem mudança, normal), `Espelhado na ponte: …` (saída 4 copiada da 3), `Guardião: aprovado. Nada a mudar.` (lote inteiro já estava assim, código 0) |
 | `uv run ferramentas/ajustar_processador.py CCC:c=v …` | aplica (backup → guardião → escrita → releitura) | `Pronto: N aplicado(s), cada um relido igual.` + linha `Para desfazer:`; código 7 = parou no meio |
-| `uv run ferramentas/sessao.py …` | progresso, passo, medida, ideia, novo | ver acima |
+| `uv run ferramentas/sessao.py …` | progresso, passo, medida, ideia, novo; `memoria N "NOME" --por ia\|denis` e `preset "NOME" --por ia\|denis` registram o que foi salvo pelo app (o painel lê) | ver acima |
 
 - Códigos de saída de ler/ajustar que não são 0, 6 nem 7: **2** (senha recusada) → volte à tela
   0.1; **3** (não achou o processador) → volte à tela 0.2 (o app do celular está aberto?);

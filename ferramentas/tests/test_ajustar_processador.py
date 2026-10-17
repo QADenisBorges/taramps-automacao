@@ -277,6 +277,59 @@ class AjusteTest(unittest.TestCase):
         self.assertEqual([x["relido"] for x in r["escritas"]], [-1.0, -2.0])
         self.assertEqual(r["lote_reverso"], ["020:3=0.0", "080=0.0"])
 
+    def test_registro_em_andamento_enquanto_roda(self):
+        """O painel lê o registro durante a execução: no scan ele já existe como "em andamento"
+        e, na hora da escrita, traz o item em curso."""
+        caixa: dict = {}
+        vistos: list = []
+
+        def registro():
+            arquivos = list((caixa["estado"] / "ajustes").glob("*.json"))
+            self.assertFalse(list((caixa["estado"] / "ajustes").glob("*.tmp")))  # troca atômica
+            return json.loads(arquivos[0].read_text(encoding="utf-8")) if arquivos else None
+
+        class Espiao(Processador):
+            async def procurar(self):
+                vistos.append(("scan", registro()))
+                return await super().procurar()
+
+            async def escrever(self, dados, preferir_resposta):
+                if eh_escrita(dados.decode("ascii")):
+                    vistos.append(("escrita", registro()))
+                return await super().escrever(dados, preferir_resposta)
+
+        ex = self.rodar(Espiao(), ["081:0=-12.0"], antes=lambda e: caixa.__setitem__("estado", e.estado))
+        self.assertEqual(ex.codigo, ap.SAIDA_OK, ex.saida)
+        self.assertEqual([v[0] for v in vistos], ["scan", "escrita"])
+        no_scan, na_escrita = vistos[0][1], vistos[1][1]
+        self.assertEqual((no_scan["status"], no_scan["em_andamento"], no_scan["lote"]),
+                         ("em andamento", None, ["081:0=-12.0"]))
+        self.assertEqual((na_escrita["status"], na_escrita["em_andamento"]), ("em andamento", "081:0=-12.0"))
+        final = ex.resultado()
+        self.assertEqual((final["status"], final["em_andamento"]), ("aplicado", None))
+
+    def test_ctrl_c_no_scan_nao_deixa_o_registro_em_andamento(self):
+        class Interrompido(Processador):
+            async def procurar(self):
+                raise KeyboardInterrupt
+
+        tmp = []
+        with self.assertRaises(KeyboardInterrupt):
+            Execucao(Interrompido(), ["081:0=-12.0"], antes=tmp.append)
+        self.addCleanup(tmp[0].fechar)
+        r = json.loads(next((tmp[0].estado / "ajustes").glob("*.json")).read_text(encoding="utf-8"))
+        self.assertEqual(r["status"], "interrompido")
+        self.assertIsNone(r["em_andamento"])
+
+    def test_sem_aparelho_fecha_o_registro(self):
+        class Sumido(Processador):
+            async def procurar(self):
+                return None
+
+        ex = self.rodar(Sumido(), ["081:0=-12.0"])
+        self.assertEqual(ex.codigo, ap.SAIDA_SEM_APARELHO, ex.saida)
+        self.assertEqual(ex.resultado()["status"], "sem conexão")
+
     def test_ctrl_c_no_meio_do_lote_fica_no_registro(self):
         falso = Processador(interromper_na_escrita=2)
         tmp = []
