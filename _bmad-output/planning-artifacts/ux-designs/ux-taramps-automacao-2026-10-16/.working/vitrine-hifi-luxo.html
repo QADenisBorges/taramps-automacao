@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine · Hi-fi de luxo</title>
+<style>
+/* ==========================================================
+   Direção 3 · HI-FI DE LUXO  (marca de áudio de luxo: McIntosh / Devialet)
+   Paleta:
+     --onix       #0C0B0A  fundo (painel preto fosco)
+     --painel     #15130F  superfícies
+     --aco-claro  #BFB8AA  metal escovado (luz)
+     --aco-escuro #4A463F  metal escovado (sombra)
+     --champanhe  #C8A46B  acento dourado (filetes, SOUND LAB, selo)
+     --ouro-luz   #E9D2A0  brilho do dourado
+     --ambar      #FFB347  traços acesos do anel (inspirado em VU)
+     --creme      #EEE5D3  tipografia principal
+     --fumo       #8C8476  textos de apoio
+   Tipografia: Sitka Banner / Sitka Text (serifa), Segoe UI Variable leve com espaçamento largo.
+   ========================================================== */
+:root{
+  --onix:#0C0B0A; --painel:#15130F; --aco-claro:#BFB8AA; --aco-escuro:#4A463F; --champanhe:#C8A46B; --ouro-luz:#E9D2A0; --ambar:#FFB347; --creme:#EEE5D3; --fumo:#8C8476;
+  --serif:"Sitka Banner","Sitka Display","Sitka Text","Georgia",serif;
+  --sans:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+  --pulse:1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080706;color:var(--creme);font-family:var(--sans)}
+body{overflow-x:hidden}
+
+.frame{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;container-type:inline-size;
+  background:
+   repeating-linear-gradient(0deg,rgba(255,255,255,.014) 0 1px,transparent 1px 3px),
+   radial-gradient(50cqw 30cqw at 31% 50%,rgba(255,179,71,.06),transparent 70%),
+   radial-gradient(60cqw 40cqw at 85% 0%,rgba(233,210,160,.07),transparent 70%),
+   radial-gradient(120cqw 70cqw at 50% 50%,#13110E 0%,#0C0B0A 60%,#070605 100%)}
+.frame:fullscreen{width:100vw;height:100vh;aspect-ratio:auto}
+.frame::after{content:"";position:absolute;inset:1.4cqw;border:1px solid rgba(200,164,107,.13);border-radius:.6cqw;pointer-events:none}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.mono{position:absolute;left:31.25cqw;top:28.125cqw;width:8.6cqw;height:8.6cqw;transform:translate(-50%,-50%) scale(var(--pulse))}
+
+.brand{position:absolute;left:56.6cqw;top:12.2cqw}
+.bgs{font-family:var(--serif);font-weight:400;font-size:11.4cqw;line-height:.86;letter-spacing:.07em;
+  background:linear-gradient(180deg,#F6EFE2 0%,#E9D2A0 62%,#B98F55 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lab{margin-top:1.1cqw;font-size:1.56cqw;font-weight:300;letter-spacing:.74em;color:var(--champanhe)}
+.fio{margin:2.4cqw 0 2.1cqw;width:23cqw;height:1px;background:linear-gradient(90deg,var(--champanhe),rgba(200,164,107,0))}
+.sign{font-family:"Sitka Text","Sitka Small",Georgia,serif;font-style:italic;font-size:2.05cqw;color:#D9CFBD;letter-spacing:.01em}
+.ia{margin-top:5.6cqw;display:flex;flex-direction:column;gap:.55cqw}
+.ia .l1{font-size:1.45cqw;font-weight:300;color:#B3A996;letter-spacing:.01em}
+.ia .l2{font-family:var(--serif);font-size:1.8cqw;color:var(--creme)}
+.ia .l2 em{font-style:normal;color:var(--champanhe);font-family:var(--sans);font-size:1.1cqw;letter-spacing:.32em;text-transform:uppercase;margin-right:.8cqw;vertical-align:.18em}
+
+.selo{position:absolute;top:2.9cqw;right:3cqw;font-size:.8cqw;letter-spacing:.34em;text-transform:uppercase;color:rgba(200,164,107,.85);border:1px solid rgba(200,164,107,.35);padding:.42cqw .9cqw .42cqw 1.2cqw;display:flex;align-items:center;gap:.7cqw}
+.selo::before{content:"";width:.38cqw;height:.38cqw;transform:rotate(45deg);background:var(--ambar);box-shadow:0 0 .6cqw var(--ambar);animation:pisca 3s ease-in-out infinite}
+@keyframes pisca{50%{opacity:.25}}
+
+.bastidores{position:absolute;right:2.8cqw;bottom:2.8cqw;width:2.2cqw;height:2.2cqw;border:0;background:transparent;opacity:.3;cursor:pointer;transition:opacity .3s}
+.bastidores:hover,.bastidores:focus-visible{opacity:.95;outline:none}
+.bastidores svg{width:100%;height:100%}
+.mock{position:absolute;top:2.9cqw;left:3cqw;font:500 .72cqw/1.2 Consolas,"Cascadia Mono",monospace;color:#9A9080;border:1px dashed rgba(238,229,211,.25);border-radius:.3cqw;padding:.35cqw .6cqw}
+.toast{position:absolute;right:6cqw;bottom:3.1cqw;opacity:0;font-size:.9cqw;color:var(--fumo);font-style:italic;font-family:var(--serif);transition:.4s;pointer-events:none}
+.toast.on{opacity:1}
+
+/* ---------- Fora do quadro ---------- */
+.below{max-width:1500px;margin:0 auto;padding:48px 32px 80px;color:#D9CFBD}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:40px;font-size:14px;color:#8C8476}
+.ctl button{font:14px var(--sans);letter-spacing:.06em;color:#EEE5D3;background:#15130F;border:1px solid #3A342A;border-radius:2px;padding:7px 16px;cursor:pointer}
+.ctl button[aria-pressed="true"]{border-color:#C8A46B;color:#C8A46B}
+.ctl .sp{flex:1}
+h2{font-family:var(--serif);font-weight:400;font-size:36px;color:#EEE5D3;margin-bottom:8px}
+.why{font-size:16px;line-height:1.6;max-width:880px;color:#A99F8E;margin-bottom:22px}
+.pal{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:56px}
+.pal span{display:flex;align-items:center;gap:8px;font:13px Consolas,monospace;color:#A99F8E}
+.pal i{width:22px;height:22px;border-radius:50%;border:1px solid #3A342A}
+.sbh{font-family:var(--serif);font-size:22px;color:#EEE5D3;margin-bottom:4px}
+.sbs{font-size:14px;color:#8C8476;margin-bottom:20px}
+.sb{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media (max-width:900px){.sb{grid-template-columns:1fr 1fr}}
+.panel{position:relative;aspect-ratio:16/9;background:#0C0B0A;border:1px solid #2A251E;border-radius:4px;overflow:hidden;container-type:inline-size}
+.panel svg{position:absolute;inset:0;width:100%;height:100%}
+.cap{margin-top:10px;font-size:13.5px;line-height:1.5;color:#A99F8E}
+.cap b{color:#EEE5D3;font-weight:600}
+.tag{position:absolute;top:5cqw;left:5cqw;font:600 4cqw Consolas,monospace;color:#6E665A;z-index:2}
+.p1{background:linear-gradient(112deg,transparent 30%,rgba(233,210,160,.30) 46%,rgba(255,255,255,.45) 49%,rgba(233,210,160,.25) 52%,transparent 66%),repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),linear-gradient(180deg,#1A1814,#0C0B0A)}
+.fim{position:absolute;right:4cqw;top:4cqw;font-size:3cqw;letter-spacing:.2em;text-transform:uppercase;color:#C8A46B;border:1px solid #C8A46B;padding:.5cqw 1.6cqw;z-index:2}
+.p4 .t{position:absolute;left:56%;top:27%}
+.p4 .t b{display:block;font-family:var(--serif);font-weight:400;font-size:13cqw;line-height:.9;letter-spacing:.06em;color:#E9D2A0}
+.p4 .t s{display:block;text-decoration:none;font-size:2.1cqw;letter-spacing:.6em;color:#C8A46B;margin-top:1cqw}
+.p4 .t i{display:block;font-family:"Sitka Text",Georgia,serif;font-size:3cqw;color:#D9CFBD;margin-top:3cqw}
+.p4 .t u{display:block;text-decoration:none;font-size:2.2cqw;color:#A99F8E;margin-top:5cqw}
+</style>
+</head>
+<body>
+
+<section class="frame" id="frame" aria-label="Vitrine BGS Sound Lab, direção Hi-fi de luxo">
+  <canvas id="cv"></canvas>
+
+  <!-- monograma gravado na tampa central do cone -->
+  <svg class="mono" viewBox="0 0 100 100" aria-hidden="true">
+    <defs>
+      <linearGradient id="ouro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3E3BE"/><stop offset=".55" stop-color="#C8A46B"/><stop offset="1" stop-color="#8A6A3C"/></linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="url(#ouro)" stroke-width=".8" opacity=".75"/>
+    <circle cx="50" cy="50" r="42.5" fill="none" stroke="url(#ouro)" stroke-width=".35" opacity=".45"/>
+    <text x="50" y="60" text-anchor="middle" font-family="Sitka Banner, Georgia, serif" font-size="30" letter-spacing="2.5" fill="#000" opacity=".55" dy="-.8">BGS</text>
+    <text x="50" y="60" text-anchor="middle" font-family="Sitka Banner, Georgia, serif" font-size="30" letter-spacing="2.5" fill="url(#ouro)">BGS</text>
+    <path d="M30 70 h40" stroke="url(#ouro)" stroke-width=".6"/>
+    <path d="M47 26 l3 -3 l3 3 l-3 3z" fill="url(#ouro)"/>
+  </svg>
+
+  <div class="mock">simulação do mock: no app real reage ao microfone</div>
+  <div class="selo">em evolução</div>
+
+  <div class="brand">
+    <h1 class="bgs">BGS</h1>
+    <p class="lab">SOUND LAB</p>
+    <div class="fio"></div>
+    <p class="sign">by Denis Borges</p>
+    <div class="ia">
+      <p class="l1">Som ajustado por inteligência artificial</p>
+      <p class="l2"><em>Modo:</em><span data-modo>Filme</span></p>
+    </div>
+  </div>
+
+  <button class="bastidores" id="bast" title="Bastidores" aria-label="Abrir Bastidores">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#C8A46B" stroke-width="1.2"><circle cx="12" cy="12" r="9.5" stroke-dasharray="1.2 1.3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 6.5v3.2" stroke-linecap="round"/></svg>
+  </button>
+  <div class="toast" id="toast">Bastidores · no app real pede o login do Denis</div>
+</section>
+
+<div class="below">
+  <div class="ctl">
+    <span>Modo atual (estado da tela):</span>
+    <button data-set="Filme" aria-pressed="true">Filme</button>
+    <button data-set="Música SPL" aria-pressed="false">Música SPL</button>
+    <button data-set="Música EQ" aria-pressed="false">Música EQ</button>
+    <span class="sp"></span>
+    <button id="fs">Tela cheia</button>
+  </div>
+
+  <h2>Hi-fi de luxo</h2>
+  <p class="why">A tela vira a frente de um aparelho caro: preto fosco, metal escovado e filetes dourados, sem nenhum número. O círculo grande é um alto-falante com moldura de metal que pulsa com o grave, e os traços em volta acendem em âmbar como um VU de luxo, só que sem escala. A serifa e o monograma BGS gravado no centro do cone dão ar de marca tradicional, assinada por Denis Borges.</p>
+  <div class="pal">
+    <span><i style="background:#0C0B0A"></i>#0C0B0A</span>
+    <span><i style="background:#15130F"></i>#15130F</span>
+    <span><i style="background:#BFB8AA"></i>#BFB8AA</span>
+    <span><i style="background:#4A463F"></i>#4A463F</span>
+    <span><i style="background:#C8A46B"></i>#C8A46B</span>
+    <span><i style="background:#E9D2A0"></i>#E9D2A0</span>
+    <span><i style="background:#FFB347"></i>#FFB347</span>
+    <span><i style="background:#EEE5D3"></i>#EEE5D3</span>
+    <span><i style="background:#8C8476"></i>#8C8476</span>
+  </div>
+
+  <p class="sbh">Abertura · cerca de 7 segundos</p>
+  <p class="sbs">O único momento com som. Depois, silêncio: só o cone e o anel acompanhando a música da sala.</p>
+  <div class="sb">
+    <div>
+      <div class="panel p1"><span class="tag">1</span></div>
+      <p class="cap"><b>0 a 1,5 s</b> · um reflexo de luz atravessa o metal escovado, devagar · som: clique de chave ligando e um leve zumbido quente.</p>
+    </div>
+    <div>
+      <div class="panel p2"><span class="tag">2</span><svg viewBox="0 0 160 90" data-dial="80,45,.5,0"></svg></div>
+      <p class="cap"><b>1,5 a 3,5 s</b> · os traços do anel acendem um a um, em sentido horário · som: "tic-tic-tic" de relé, cada vez mais rápido.</p>
+    </div>
+    <div>
+      <div class="panel p3"><span class="tag">3</span><svg viewBox="0 0 160 90" data-dial="80,45,1,1"></svg></div>
+      <p class="cap"><b>3,5 a 5 s</b> · o cone "respira" uma vez e o monograma BGS brilha em dourado · som: uma nota grave, quente e longa.</p>
+    </div>
+    <div>
+      <div class="panel p4"><span class="tag">4</span><span class="fim">Vitrine</span><svg viewBox="0 0 160 90" data-dial="50,45,.62,0"></svg>
+        <div class="t"><b>BGS</b><s>SOUND LAB</s><i>by Denis Borges</i><u>Som ajustado por inteligência artificial · Modo: Filme</u></div></div>
+      <p class="cap"><b>5 a 7 s</b> · nome em serifa e "by Denis Borges" surgem em fade · som: a nota se apaga até o silêncio. Fica a Vitrine.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Sinal falso: SIMULAÇÃO DO MOCK (no app real vem do microfone) ===== */
+const Sig=(()=>{const N=64,out=new Float32Array(N);let s=7,lastBeat=-1;
+const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+const st={bands:out,bass:0,mid:0,high:0,level:0,kick:0,onBeat:false};
+const avg=(a,b)=>{let x=0;for(let i=a;i<b;i++)x+=out[i];return x/(b-a)};
+st.step=(t,dt)=>{const beat=t*116/60,p=beat%1,bi=Math.floor(beat);
+ const kick=Math.exp(-p*6),snare=(bi%2===1)?Math.exp(-p*8):0,hat=Math.exp(-((beat*2)%1)*12);
+ const phrase=.62+.38*Math.sin(t*.21)*Math.sin(t*.083+1.3);
+ const ka=1-Math.exp(-dt*60*.55),kr=1-Math.exp(-dt*60*.10);
+ for(let i=0;i<N;i++){const f=i/(N-1);
+  let v=.78*Math.pow(1-f,2.2)*(.25+.75*kick)+.34*Math.exp(-((f-.32)**2)/.03)*(.55+.45*Math.sin(t*2.3+i*.45))
+   +.30*snare*Math.exp(-((f-.55)**2)/.05)+.24*hat*Math.pow(f,1.3)+.10*rnd();
+  v=Math.min(1,v*(.45+.55*phrase));out[i]=Math.max(0,Math.min(1,out[i]+(v-out[i])*(v>out[i]?ka:kr)));}
+ st.bass=avg(0,8);st.mid=avg(8,32);st.high=avg(32,64);st.level=.5*st.bass+.3*st.mid+.2*st.high;
+ st.kick=kick*(.45+.55*phrase);st.onBeat=bi!==lastBeat;lastBeat=bi;};
+return st;})();
+
+/* ===== Desenho: alto-falante com moldura de metal e anel de traços ===== */
+const frame=document.getElementById('frame'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+function fit(){const r=frame.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);ctx.setTransform(cv.width/1920,0,0,cv.height/1080,0,0)}
+new ResizeObserver(fit).observe(frame);fit();
+const CX=600,CY=540,NT=61,A0=Math.PI*.75,A1=Math.PI*2.25;let T=0,vu=0,peak=0,peakHold=0;
+function annulus(r1,r2){ctx.beginPath();ctx.arc(CX,CY,r2,0,Math.PI*2);ctx.arc(CX,CY,r1,0,Math.PI*2,true);ctx.closePath()}
+function draw(dt){
+ ctx.clearRect(0,0,1920,1080);
+ const b=Sig.bass,k=Sig.kick,p=1+.038*b+.016*k;frame.style.setProperty('--pulse',(1+.03*b+.012*k).toFixed(4));
+ // ponteiro virtual do VU (balística lenta, elegante)
+ const target=Math.min(1,Sig.level*1.55);vu+=(target-vu)*(1-Math.exp(-dt*60*(target>vu?.16:.05)));
+ if(vu>=peak){peak=vu;peakHold=1.2}else{peakHold-=dt;if(peakHold<0)peak=Math.max(vu,peak-dt*.25)}
+ // brilho quente atrás
+ let g=ctx.createRadialGradient(CX,CY,250,CX,CY,560);g.addColorStop(0,`rgba(255,179,71,${.05+.09*vu})`);g.addColorStop(1,'rgba(255,179,71,0)');
+ ctx.fillStyle=g;ctx.fillRect(0,0,1300,1080);
+ // traços do anel
+ const lit=Math.round(vu*(NT-1)),pk=Math.round(peak*(NT-1));
+ ctx.lineCap='round';
+ for(let i=0;i<NT;i++){const a=A0+(A1-A0)*i/(NT-1),maj=i%5===0,r1=maj?384:392,r2=maj?416:410;
+  const on=i<=lit,isPk=i===pk&&pk>lit;
+  ctx.beginPath();ctx.moveTo(CX+Math.cos(a)*r1,CY+Math.sin(a)*r1);ctx.lineTo(CX+Math.cos(a)*r2,CY+Math.sin(a)*r2);
+  ctx.lineWidth=maj?3.2:2.2;
+  if(on){const f=i/(NT-1);ctx.strokeStyle=f<.55?'#E9C78F':f<.85?'#FFB347':'#FF9A3C';ctx.shadowColor='rgba(255,179,71,.9)';ctx.shadowBlur=14}
+  else if(isPk){ctx.strokeStyle='#F3E3BE';ctx.shadowColor='#FFB347';ctx.shadowBlur=10}
+  else{ctx.strokeStyle='rgba(200,164,107,.17)';ctx.shadowBlur=0}
+  ctx.stroke()}
+ ctx.shadowBlur=0;
+ // moldura de metal escovado
+ const cg=ctx.createConicGradient(-Math.PI/4,CX,CY);
+ [['#5E594F',0],['#C4BDAF',.08],['#4A463F',.17],['#8F887B',.27],['#36322C',.38],['#CFC8BA',.5],['#4F4A42',.6],['#A39C8E',.72],['#3E3A33',.84],['#B3AC9E',.93],['#5E594F',1]].forEach(([c,o])=>cg.addColorStop(o,c));
+ annulus(338,374);ctx.fillStyle=cg;ctx.fill('evenodd');
+ ctx.lineWidth=1;for(let r=339;r<374;r+=2){ctx.strokeStyle=`rgba(${r%4?'255,255,255':'0,0,0'},.05)`;ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.stroke()}
+ ctx.strokeStyle='rgba(200,164,107,.75)';ctx.lineWidth=1.2;[338,374].forEach(r=>{ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.stroke()});
+ ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(CX,CY,336,0,Math.PI*2);ctx.stroke();
+ // borda de borracha (suspensão), estica com o cone
+ const ri=300*p;g=ctx.createRadialGradient(CX,CY,ri,CX,CY,336);g.addColorStop(0,'#0A0908');g.addColorStop(.5,`rgb(${36+18*b},${32+15*b},${27+11*b})`);g.addColorStop(1,'#0A0908');
+ annulus(ri,336);ctx.fillStyle=g;ctx.fill('evenodd');
+ // cone
+ ctx.save();ctx.beginPath();ctx.arc(CX,CY,ri,0,Math.PI*2);ctx.clip();
+ g=ctx.createRadialGradient(CX-40,CY-50,20,CX,CY,ri);g.addColorStop(0,'#2C2822');g.addColorStop(.5,'#18150F');g.addColorStop(1,'#0D0B09');
+ ctx.fillStyle=g;ctx.fillRect(CX-ri,CY-ri,ri*2,ri*2);
+ ctx.lineWidth=1;for(let r=124*p;r<ri;r+=9*p){ctx.strokeStyle='rgba(255,240,215,.035)';ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.stroke()}
+ g=ctx.createRadialGradient(CX-120,CY-130,0,CX-120,CY-130,260);g.addColorStop(0,`rgba(255,236,205,${.05+.08*b})`);g.addColorStop(1,'rgba(255,236,205,0)');
+ ctx.fillStyle=g;ctx.fillRect(CX-ri,CY-ri,ri*2,ri*2);ctx.restore();
+ // tampa central
+ const rc=116*p;g=ctx.createRadialGradient(CX-35,CY-42,4,CX,CY,rc);g.addColorStop(0,'#4A4135');g.addColorStop(.6,'#221E18');g.addColorStop(1,'#100E0B');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(CX,CY,rc,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='rgba(200,164,107,.6)';ctx.lineWidth=1.5;ctx.stroke();
+ ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(255,179,71,${.28*k})`;ctx.lineWidth=6;ctx.filter='blur(6px)';ctx.beginPath();ctx.arc(CX,CY,rc+4,0,Math.PI*2);ctx.stroke();
+ ctx.filter='none';ctx.globalCompositeOperation='source-over';
+}
+const tEnd=(Math.ceil(3*116/60)+.05)*60/116;while(T<tEnd){T+=1/60;Sig.step(T,1/60);vu+=(Math.min(1,Sig.level*1.55)-vu)*.1;peak=Math.max(peak,vu)}draw(1/60);
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
+function loop(now){const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=Math.max(last,now);T+=dt;Sig.step(T,dt);draw(dt);requestAnimationFrame(loop)}
+if(!still)requestAnimationFrame(loop);
+
+/* ===== Storyboard: mostradores estáticos em SVG ===== */
+document.querySelectorAll('[data-dial]').forEach(svg=>{
+ const [cx,cy,lit,glow]=svg.dataset.dial.split(',').map(Number),NS='http://www.w3.org/2000/svg';let h='';
+ for(let i=0;i<41;i++){const a=Math.PI*.75+Math.PI*1.5*i/40,r1=i%5?36.5:35.5,r2=i%5?38.5:39.5,on=i/40<=lit;
+  h+=`<line x1="${cx+Math.cos(a)*r1}" y1="${cy+Math.sin(a)*r1}" x2="${cx+Math.cos(a)*r2}" y2="${cy+Math.sin(a)*r2}" stroke="${on?'#FFB347':'rgba(200,164,107,.2)'}" stroke-width="${i%5?.6:.9}" ${on?'filter="url(#gl)"':''}/>`}
+ svg.innerHTML=`<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <radialGradient id="cn${cx}${glow}" cx=".42" cy=".4"><stop offset="0" stop-color="#2C2822"/><stop offset="1" stop-color="#0D0B09"/></radialGradient></defs>${h}
+ <circle cx="${cx}" cy="${cy}" r="32" fill="none" stroke="#8F887B" stroke-width="3.2"/><circle cx="${cx}" cy="${cy}" r="33.6" fill="none" stroke="#C8A46B" stroke-width=".25"/>
+ <circle cx="${cx}" cy="${cy}" r="29.4" fill="url(#cn${cx}${glow})"/><circle cx="${cx}" cy="${cy}" r="11" fill="#221E18" stroke="#C8A46B" stroke-width=".3"/>
+ <text x="${cx}" y="${cy+2.4}" text-anchor="middle" font-family="Sitka Banner,Georgia,serif" font-size="6.6" letter-spacing=".6" fill="${glow?'#F3E3BE':'#C8A46B'}" ${glow?'filter="url(#gl)"':''}>BGS</text>
+ ${glow?`<circle cx="${cx}" cy="${cy}" r="13" fill="none" stroke="#FFB347" stroke-width=".5" opacity=".7" filter="url(#gl)"/>`:''}`});
+
+/* ===== UI do mock ===== */
+document.querySelectorAll('[data-set]').forEach(btn=>btn.onclick=()=>{
+ document.querySelectorAll('[data-set]').forEach(x=>x.setAttribute('aria-pressed',x===btn));
+ document.querySelectorAll('[data-modo]').forEach(x=>x.textContent=btn.dataset.set)});
+document.getElementById('fs').onclick=()=>frame.requestFullscreen&&frame.requestFullscreen();
+const toast=document.getElementById('toast');
+document.getElementById('bast').onclick=()=>{toast.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>toast.classList.remove('on'),2600)};
+</script>
+</body>
+</html>

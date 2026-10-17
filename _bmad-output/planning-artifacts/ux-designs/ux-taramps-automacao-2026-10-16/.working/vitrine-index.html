@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine · três direções</title>
+<style>
+/* Índice neutro para comparar as 3 direções da Vitrine lado a lado.
+   Cores do índice: #0E0E10 fundo, #18181B cartão, #2A2A2E borda, #F4F4F5 texto, #A1A1AA apoio. */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0E0E10;color:#F4F4F5;font-family:"Segoe UI Variable","Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1840px;margin:0 auto;padding:44px 32px 64px}
+header h1{font-weight:600;font-size:30px;letter-spacing:-.01em}
+header p{margin-top:8px;color:#A1A1AA;font-size:15.5px;line-height:1.6;max-width:1000px}
+.grid{margin-top:32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+@media (max-width:1200px){.grid{grid-template-columns:1fr}}
+.card{background:#18181B;border:1px solid #2A2A2E;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.prev{position:relative;aspect-ratio:16/9;overflow:hidden;background:#000}
+.prev iframe{position:absolute;top:0;left:0;width:1920px;height:1080px;border:0;transform-origin:0 0;pointer-events:none}
+.body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:12px;flex:1}
+.num{font:600 12px Consolas,monospace;color:#71717A;letter-spacing:.1em}
+.card h2{font-size:22px;font-weight:600}
+.one{font-size:14.5px;color:#E4E4E7;font-weight:500}
+.why{font-size:14px;line-height:1.6;color:#A1A1AA}
+.pal{display:flex;flex-wrap:wrap;gap:8px 12px}
+.pal span{display:flex;align-items:center;gap:6px;font:12px Consolas,monospace;color:#A1A1AA}
+.pal i{width:16px;height:16px;border-radius:50%;border:1px solid #3F3F46}
+.go{margin-top:auto;align-self:flex-start;display:inline-block;color:#0E0E10;background:#F4F4F5;text-decoration:none;font-weight:600;font-size:14px;border-radius:99px;padding:9px 18px}
+.go:hover{background:#fff}
+.note{margin-top:28px;color:#71717A;font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Vitrine da TV · três direções para o BGS Sound Lab</h1>
+    <p>Mesmo conteúdo nas três: logo BGS Sound Lab com "by Denis Borges", um visual grande que segue a música, a linha "Som ajustado por inteligência artificial · Modo", o selo "em evolução" e a entrada discreta para os Bastidores (canto inferior direito). Nada técnico. As prévias abaixo estão animadas por um sinal falso; no app real o visual reage ao microfone.</p>
+  </header>
+
+  <div class="grid">
+    <article class="card">
+      <div class="prev"><iframe src="vitrine-keynote.html" title="Prévia Keynote" loading="eager" tabindex="-1"></iframe></div>
+      <div class="body">
+        <span class="num">DIREÇÃO 1</span>
+        <h2>Keynote</h2>
+        <p class="one">Lançamento de produto: preto absoluto, letra enorme e fina, a luz é a estrela.</p>
+        <p class="why">Quase nada na tela, e o anel de luz (que é o próprio símbolo da marca) respira com o grave, então o convidado percebe sozinho que a tela está ouvindo o som. A tipografia fina e enorme dá cara de marca grande; a assinatura logo abaixo diz de quem é.</p>
+        <div class="pal">
+          <span><i style="background:#000000"></i>#000000</span><span><i style="background:#FFFFFF"></i>#FFFFFF</span><span><i style="background:#A1A1A6"></i>#A1A1A6</span><span><i style="background:#6E6E73"></i>#6E6E73</span><span><i style="background:#8FB4FF"></i>#8FB4FF</span><span><i style="background:#C59BFF"></i>#C59BFF</span><span><i style="background:#FFD6A8"></i>#FFD6A8</span>
+        </div>
+        <a class="go" href="vitrine-keynote.html" target="_blank">Abrir em tela cheia →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="prev"><iframe src="vitrine-palco.html" title="Prévia Show / palco" loading="eager" tabindex="-1"></iframe></div>
+      <div class="body">
+        <span class="num">DIREÇÃO 2</span>
+        <h2>Show / palco</h2>
+        <p class="one">Energia de show: gradiente magenta, violeta e azul, letra pesada, barras de ponta a ponta.</p>
+        <p class="why">Refletores de festival varrem o fundo e um espectro de barras com brilho e reflexo no chão pula junto com a música. O "BGS" gigante e inclinado tem força de pôster de turnê, e a assinatura escrita à mão funciona como autógrafo. É a que mais provoca o "que som é esse?!" no primeiro segundo.</p>
+        <div class="pal">
+          <span><i style="background:#07030F"></i>#07030F</span><span><i style="background:#FF2E93"></i>#FF2E93</span><span><i style="background:#8A2BFF"></i>#8A2BFF</span><span><i style="background:#2B4DFF"></i>#2B4DFF</span><span><i style="background:#39D5FF"></i>#39D5FF</span><span><i style="background:#FF8A3D"></i>#FF8A3D</span><span><i style="background:#FFF3FA"></i>#FFF3FA</span>
+        </div>
+        <a class="go" href="vitrine-palco.html" target="_blank">Abrir em tela cheia →</a>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="prev"><iframe src="vitrine-hifi-luxo.html" title="Prévia Hi-fi de luxo" loading="eager" tabindex="-1"></iframe></div>
+      <div class="body">
+        <span class="num">DIREÇÃO 3</span>
+        <h2>Hi-fi de luxo</h2>
+        <p class="one">Aparelho caro: preto fosco, metal escovado, dourado e serifa, sem nenhum número.</p>
+        <p class="why">O círculo grande é um alto-falante com moldura de metal que pulsa com o grave, e os traços em volta acendem em âmbar como um VU de luxo, mas sem escala. A serifa e o monograma BGS gravado no centro do cone dão ar de marca tradicional, assinada por Denis Borges.</p>
+        <div class="pal">
+          <span><i style="background:#0C0B0A"></i>#0C0B0A</span><span><i style="background:#15130F"></i>#15130F</span><span><i style="background:#BFB8AA"></i>#BFB8AA</span><span><i style="background:#4A463F"></i>#4A463F</span><span><i style="background:#C8A46B"></i>#C8A46B</span><span><i style="background:#E9D2A0"></i>#E9D2A0</span><span><i style="background:#FFB347"></i>#FFB347</span><span><i style="background:#EEE5D3"></i>#EEE5D3</span><span><i style="background:#8C8476"></i>#8C8476</span>
+        </div>
+        <a class="go" href="vitrine-hifi-luxo.html" target="_blank">Abrir em tela cheia →</a>
+      </div>
+    </article>
+  </div>
+
+  <p class="note">Em cada arquivo, abaixo da tela 16:9: botões para ver os três modos (Filme, Música SPL, Música EQ), botão de tela cheia, o racional, a paleta e o storyboard da abertura (o único momento com efeito sonoro).</p>
+</div>
+<script>
+/* encaixa as prévias 1920×1080 no tamanho do cartão */
+const fitAll=()=>document.querySelectorAll('.prev').forEach(p=>{p.querySelector('iframe').style.transform=`scale(${p.clientWidth/1920})`});
+new ResizeObserver(fitAll).observe(document.body);fitAll();
+</script>
+</body>
+</html>

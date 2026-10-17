@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bancada de Medição</title>
+<style>
+/* ============================================================
+   DIREÇÃO 2 · BANCADA DE MEDIÇÃO (instrumentação de engenharia)
+   Paleta (hex):
+   --bg       #0B0E10  grafite do gabinete
+   --panel    #11171A  painel do instrumento
+   --bezel    #1A2124  moldura
+   --grid     #1E2A2E  graticule menor
+   --grid-maj #2E4046  graticule maior
+   --text     #C9D6D8  leitura principal
+   --dim      #6F8287  rótulos / secundário
+   --ch1      #7CFFB2  fósforo verde · JBL L · PASS
+   --ch2      #5FD3FF  ciano · JBL R
+   --ch3      #FFC857  âmbar · sub · em andamento
+   --alarm    #FF5C5C  alarme do guardião
+   --plan     #8FA3A8  tracejado do planejado
+   Fontes: Cascadia Mono / Consolas (monoespaçada) + Bahnschrift para rótulos. Nada baixado.
+   ============================================================ */
+:root{--s:.16}
+@media (min-width:320px){:root{--s:0.1406}}
+@media (min-width:360px){:root{--s:0.1615}}
+@media (min-width:400px){:root{--s:0.1823}}
+@media (min-width:440px){:root{--s:0.2031}}
+@media (min-width:480px){:root{--s:0.2240}}
+@media (min-width:520px){:root{--s:0.2448}}
+@media (min-width:560px){:root{--s:0.2656}}
+@media (min-width:600px){:root{--s:0.2865}}
+@media (min-width:640px){:root{--s:0.3073}}
+@media (min-width:680px){:root{--s:0.3281}}
+@media (min-width:720px){:root{--s:0.3490}}
+@media (min-width:760px){:root{--s:0.3698}}
+@media (min-width:800px){:root{--s:0.3906}}
+@media (min-width:840px){:root{--s:0.4115}}
+@media (min-width:880px){:root{--s:0.4323}}
+@media (min-width:920px){:root{--s:0.4281}}
+@media (min-width:960px){:root{--s:0.4490}}
+@media (min-width:1000px){:root{--s:0.4698}}
+@media (min-width:1040px){:root{--s:0.4906}}
+@media (min-width:1080px){:root{--s:0.5115}}
+@media (min-width:1120px){:root{--s:0.5323}}
+@media (min-width:1160px){:root{--s:0.5531}}
+@media (min-width:1200px){:root{--s:0.5740}}
+@media (min-width:1240px){:root{--s:0.5948}}
+@media (min-width:1280px){:root{--s:0.6156}}
+@media (min-width:1320px){:root{--s:0.6365}}
+@media (min-width:1360px){:root{--s:0.6573}}
+@media (min-width:1400px){:root{--s:0.6781}}
+@media (min-width:1440px){:root{--s:0.6990}}
+@media (min-width:1480px){:root{--s:0.7198}}
+@media (min-width:1520px){:root{--s:0.7406}}
+@media (min-width:1560px){:root{--s:0.7615}}
+@media (min-width:1600px){:root{--s:0.7823}}
+@media (min-width:1640px){:root{--s:0.8031}}
+@media (min-width:1680px){:root{--s:0.8240}}
+@media (min-width:1720px){:root{--s:0.8448}}
+@media (min-width:1760px){:root{--s:0.8656}}
+@media (min-width:1800px){:root{--s:0.8865}}
+@media (min-width:1840px){:root{--s:0.9073}}
+@media (min-width:1880px){:root{--s:0.9281}}
+@media (min-width:1920px){:root{--s:0.9490}}
+@media (min-width:1960px){:root{--s:0.9698}}
+@media (min-width:2000px){:root{--s:0.9906}}
+@media (min-width:2040px){:root{--s:1.0115}}
+@media (min-width:2080px){:root{--s:1.0323}}
+@media (min-width:2120px){:root{--s:1.0531}}
+@media (min-width:2160px){:root{--s:1.0740}}
+@media (min-width:2200px){:root{--s:1.0948}}
+@media (min-width:2240px){:root{--s:1.1156}}
+@media (min-width:2280px){:root{--s:1.1365}}
+@media (min-width:2320px){:root{--s:1.1573}}
+@media (min-width:2360px){:root{--s:1.1781}}
+@media (min-width:2400px){:root{--s:1.1990}}
+@media (min-width:2440px){:root{--s:1.2198}}
+@media (min-width:2480px){:root{--s:1.2406}}
+@media (min-width:2520px){:root{--s:1.2615}}
+@media (min-width:2560px){:root{--s:1.2823}}
+@media (min-width:2600px){:root{--s:1.3031}}
+@media (min-width:2640px){:root{--s:1.3240}}
+@media (min-width:2680px){:root{--s:1.3448}}
+@media (min-width:2720px){:root{--s:1.3656}}
+@media (min-width:2760px){:root{--s:1.3865}}
+@media (min-width:2800px){:root{--s:1.4073}}
+@media (min-width:2840px){:root{--s:1.4281}}
+@media (min-width:2880px){:root{--s:1.4490}}
+@media (min-width:2920px){:root{--s:1.4698}}
+@media (min-width:2960px){:root{--s:1.4906}}
+@media (min-width:3000px){:root{--s:1.5115}}
+@media (min-width:3040px){:root{--s:1.5323}}
+@media (min-width:3080px){:root{--s:1.5531}}
+@media (min-width:3120px){:root{--s:1.5740}}
+@media (min-width:3160px){:root{--s:1.5948}}
+@media (min-width:3200px){:root{--s:1.6156}}
+@media (min-width:3240px){:root{--s:1.6365}}
+@media (min-width:3280px){:root{--s:1.6573}}
+@media (min-width:3320px){:root{--s:1.6781}}
+@media (min-width:3360px){:root{--s:1.6990}}
+@media (min-width:3400px){:root{--s:1.7198}}
+@media (min-width:3440px){:root{--s:1.7406}}
+@media (min-width:3480px){:root{--s:1.7615}}
+@media (min-width:3520px){:root{--s:1.7823}}
+@media (min-width:3560px){:root{--s:1.8031}}
+@media (min-width:3600px){:root{--s:1.8240}}
+@media (min-width:3640px){:root{--s:1.8448}}
+@media (min-width:3680px){:root{--s:1.8656}}
+@media (min-width:3720px){:root{--s:1.8865}}
+@media (min-width:3760px){:root{--s:1.9073}}
+@media (min-width:3800px){:root{--s:1.9281}}
+@media (min-width:3840px){:root{--s:1.9490}}
+:root{--bg:#0B0E10;--panel:#11171A;--bezel:#1A2124;--grid:#1E2A2E;--grid-maj:#2E4046;--text:#C9D6D8;--dim:#6F8287;--ch1:#7CFFB2;--ch2:#5FD3FF;--ch3:#FFC857;--alarm:#FF5C5C;--plan:#8FA3A8;--mono:"Cascadia Mono","Cascadia Code",Consolas,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:#080a0b;color:var(--text);font-family:var(--mono)}
+.page{padding:40px}
+@media (max-width:899px){.page{padding:16px}}
+.doc h1{font:600 26px var(--mono);margin:0 0 6px;color:var(--ch1);letter-spacing:.02em}
+.doc p{max-width:1100px;line-height:1.5;margin:0 0 10px;color:#aebcbf;font-family:"Segoe UI",system-ui,sans-serif;font-size:15px}
+.sw{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px}
+.sw span{font:12px/1 var(--mono);padding:6px 8px 6px 26px;border-radius:2px;background:#12181b;position:relative;color:#aebcbf}
+.sw span::before{content:"";position:absolute;left:6px;top:3px;width:14px;height:14px;background:var(--c);box-shadow:0 0 0 1px #000}
+.lbl{font:12px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin:18px 0 8px}
+.frame{position:relative;width:1920px;height:1080px;zoom:var(--s);overflow:hidden;background:var(--bg);box-shadow:0 0 0 1px #000}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;align-items:start}
+.pair .frame{zoom:calc(var(--s) * .49)}
+.pair .frame.strip{height:470px}
+figure{margin:0}
+figcaption{font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.45;color:#aebcbf;margin-top:8px}
+figcaption b{color:var(--ch1);font-weight:600}
+
+/* ---------- instrumento ---------- */
+.frame::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;opacity:.35;pointer-events:none}
+.cap{font:600 14px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.box{position:absolute;background:var(--panel);border:1px solid var(--grid-maj)}
+.box > .hd{display:flex;align-items:center;gap:14px;height:40px;padding:0 16px;border-bottom:1px solid var(--grid-maj);background:#0e1416}
+.box > .hd .n{font:600 13px var(--mono);color:#0B0E10;background:var(--dim);padding:2px 7px}
+.box > .hd .r{margin-left:auto}
+.ok{color:var(--ch1)}.warn{color:var(--ch3)}.bad{color:var(--alarm)}
+.pill{font:600 13px var(--mono);letter-spacing:.12em;padding:3px 9px;border:1.5px solid currentColor}
+.pill.done{color:var(--ch1)}
+.pill.plan{color:var(--plan);border-style:dashed}
+.pill.bad{color:var(--alarm)}
+@keyframes blink{50%{opacity:0}}
+.cur{display:inline-block;width:.55em;height:1em;background:currentColor;vertical-align:-2px;margin-left:4px;animation:blink 1.1s steps(1) infinite}
+
+/* top bar */
+.top{position:absolute;left:24px;right:24px;top:18px;height:62px;display:flex;align-items:center;gap:28px;border-bottom:2px solid var(--grid-maj)}
+.top .who{font:700 34px var(--mono);letter-spacing:.02em;color:#E8F1F2}
+.top .who span{color:var(--dim);font-weight:400}
+.top .dut{font:18px var(--mono);color:var(--text);display:flex;gap:18px;align-items:center}
+.top .dut i{font-style:normal;color:var(--dim)}
+.top .st{margin-left:auto;display:flex;align-items:center;gap:12px;font:600 20px var(--mono);color:var(--ch3);border:2px solid var(--ch3);padding:8px 16px}
+.top .st small{color:#d9c08a;font-weight:400;font-size:17px}
+
+/* proof report */
+.rep{left:24px;top:98px;width:590px;height:646px}
+.pr{display:grid;grid-template-columns:78px 1fr;gap:4px 14px;padding:13px 16px 12px;border-bottom:1px dashed var(--grid-maj)}
+.pr:last-child{border-bottom:0}
+.pr .id{font:700 15px var(--mono);color:var(--ch1);border:1.5px solid var(--ch1);text-align:center;height:26px;line-height:23px;align-self:start;margin-top:3px}
+.pr .d{font:19px/1.25 var(--mono);color:#dfe8ea}
+.pr .m{grid-column:2;font:700 32px/1.1 var(--mono);color:var(--ch1);text-shadow:0 0 12px rgba(124,255,178,.35)}
+.pr .m small{font:400 15px var(--mono);color:var(--dim);margin-left:10px}
+.pr .note{grid-column:2;font:15px/1.3 var(--mono);color:#9fb0b4}
+.pr .note::before{content:"↳ ";color:var(--ch3)}
+
+/* scope */
+.scope{left:630px;top:98px;width:744px;height:646px}
+.screen{position:absolute;left:16px;right:16px;top:52px;height:384px;background:radial-gradient(ellipse at 50% 50%,#0f1a17,#070b0a 80%);border:2px solid #263236;box-shadow:inset 0 0 40px rgba(0,0,0,.9)}
+.screen svg{position:absolute;inset:6px 6px 0 0;width:calc(100% - 6px);height:calc(100% - 6px)}
+.gmaj{stroke:#2E4046;stroke-width:1.6}.gmin{stroke:#1B2629;stroke-width:1}.gzero{stroke:#4F6A71;stroke-width:2}
+.glbl{font:20px var(--mono);fill:#6F8287}
+.tr{fill:none;stroke-width:4;stroke-linejoin:round}
+.tr.l{stroke:var(--ch1);filter:drop-shadow(0 0 5px rgba(124,255,178,.8))}
+.tr.r{stroke:var(--ch2);filter:drop-shadow(0 0 5px rgba(95,211,255,.8))}
+.tr.s{stroke:var(--ch3);filter:drop-shadow(0 0 5px rgba(255,200,87,.8))}
+.cursor{stroke-width:1.6;stroke-dasharray:6 6}
+.ann{font:600 19px var(--mono)}
+.chs{position:absolute;left:16px;right:16px;top:8px;display:flex;gap:18px;font:600 15px var(--mono);align-items:center;height:36px}
+.chs b{padding:2px 8px;color:#0B0E10}
+.chs .meta{margin-left:auto;color:var(--dim);font-weight:400}
+table.rd{position:absolute;left:16px;right:16px;top:450px;border-collapse:collapse;font:18px var(--mono);width:calc(100% - 32px)}
+table.rd th{font:600 13px var(--mono);letter-spacing:.14em;color:var(--dim);text-align:left;padding:4px 8px;border-bottom:1px solid var(--grid-maj)}
+table.rd td{padding:7px 8px;border-bottom:1px dashed #1f2b2f;white-space:nowrap}
+table.rd td.v{font-weight:700;color:#E8F1F2}
+table.rd .sw2{display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:0}
+table.rd .flag{font:600 12px var(--mono);color:var(--alarm);border:1px solid var(--alarm);padding:1px 5px;margin-left:8px;letter-spacing:.1em}
+table.rd .num{text-align:right}
+
+/* guardian */
+.guard{left:1390px;top:98px;width:506px;height:334px;border-color:#5a2a2a}
+.guard > .hd{background:#1a0f10;border-bottom-color:#5a2a2a}
+.guard .big{padding:14px 18px 6px;font:700 30px/1.15 var(--mono);color:var(--alarm);text-shadow:0 0 14px rgba(255,92,92,.35)}
+.al{display:grid;grid-template-columns:76px 1fr;gap:8px;padding:8px 18px;font:17px/1.3 var(--mono);color:#e3d7d7}
+.al b{font:700 14px var(--mono);color:var(--alarm);border:1px solid #6d3434;text-align:center;height:24px;line-height:22px}
+.al em{font-style:normal;color:var(--alarm);font-weight:700}
+.guard .ft{position:absolute;left:18px;right:18px;bottom:12px;font:15px var(--mono);color:#c9a8a8;border-top:1px dashed #5a2a2a;padding-top:8px}
+
+/* next */
+.next{left:1390px;top:446px;width:506px;height:298px;border-style:dashed;border-color:#4b5d62;background:rgba(17,23,26,.6)}
+.next > .hd{background:transparent;border-bottom-style:dashed}
+.nx{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:9px 18px 4px;font:17px/1.3 var(--mono);color:#a8b9bd}
+.nx .bx{width:22px;height:22px;border:1.5px dashed var(--plan);margin-top:1px}
+.nx b{color:#dfe8ea;font-weight:700}
+
+/* timeline */
+.tlb{left:24px;top:752px;width:1872px;height:160px}
+.axis{position:absolute;left:30px;right:30px;top:96px;height:2px;background:var(--grid-maj)}
+.evs{position:absolute;left:30px;right:30px;top:70px;display:grid;grid-template-columns:repeat(9,1fr)}
+.ev{position:relative;padding-top:42px;text-align:center}
+.ev::before{content:"";position:absolute;left:50%;top:20px;width:14px;height:14px;margin-left:-7px;background:var(--ch1);box-shadow:0 0 10px rgba(124,255,178,.7);transform:rotate(45deg)}
+.ev::after{content:"";position:absolute;left:50%;top:0;width:2px;height:18px;background:var(--ch1);opacity:.45}
+.ev .t{font:700 16px var(--mono);color:var(--ch1);position:absolute;top:-24px;left:0;right:0}
+.ev .x{font:16px/1.2 var(--mono);color:#dfe8ea;padding:0 6px}
+.tlb .hd .gap{color:var(--dim);font:14px var(--mono)}
+
+/* thumbs */
+.ths{position:absolute;left:24px;right:24px;top:922px;height:140px;display:grid;grid-template-columns:repeat(10,1fr);gap:10px}
+.th{position:relative;background:var(--panel);border:1px solid var(--grid-maj);display:grid;justify-items:center;align-content:start;padding:8px 6px 6px}
+.th .tn{position:absolute;left:6px;top:4px;font:12px var(--mono);color:var(--dim)}
+.th svg{width:150px;height:62px;margin-top:8px;fill:none;stroke:#4f7f6a;stroke-width:3;stroke-linecap:round;background-image:linear-gradient(#1b2629 1px,transparent 1px),linear-gradient(90deg,#1b2629 1px,transparent 1px);background-size:15px 15px;background-color:#070b0a;border:1px solid #263236;padding:4px}
+.th svg .hl{stroke:var(--ch1);filter:drop-shadow(0 0 3px rgba(124,255,178,.8))}
+.th svg circle.hl,.th svg rect.hl{fill:var(--ch1)}
+.th svg .hl2{stroke:var(--ch3)}
+.th svg g path{stroke-width:26}
+.th svg g path:last-child{stroke:var(--ch2)}
+.th b{font:700 15px var(--mono);color:#dfe8ea;margin-top:6px}
+.th small{font:12px var(--mono);color:var(--dim);white-space:nowrap}
+
+/* state: escrevendo */
+.con{left:24px;top:24px;width:1100px;height:422px}
+.log{padding:14px 22px;font:23px/1.55 var(--mono)}
+.log div{white-space:nowrap}
+.log .p{color:var(--dim)}
+.log .live{color:var(--ch3);text-shadow:0 0 10px rgba(255,200,87,.5)}
+.log .wait{color:#3f5257}
+.wr{left:1140px;top:24px;width:756px;height:422px;border-color:var(--ch3)}
+.wr > .hd{background:#1a1609;border-bottom-color:#5e4d22}
+.wr .big{padding:20px 24px 0;font:700 64px/1 var(--mono);color:#E8F1F2}
+.wr .big .to{color:var(--ch3);text-shadow:0 0 18px rgba(255,200,87,.5)}
+.wr .lbl2{padding:10px 24px 0;font:18px var(--mono);color:var(--dim)}
+.steps{margin:18px 24px 0;display:grid;gap:12px}
+.steps div{display:grid;grid-template-columns:40px 1fr auto;align-items:center;font:20px var(--mono);padding:10px 14px;border:1px solid var(--grid-maj)}
+.steps .k{font-weight:700}
+.steps .now{border-color:var(--ch3);background:rgba(255,200,87,.06)}
+.steps .todo{color:#4d6166;border-style:dashed}
+.bar{height:8px;background:#1f2b2f;margin:16px 24px 0;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:58%;background:var(--ch3);box-shadow:0 0 12px rgba(255,200,87,.7)}
+
+/* intro */
+.intro{background:radial-gradient(ellipse at 50% 50%,#0d1714,#050807 75%)}
+.intro::before{opacity:.6;background-size:96px 96px;background-image:linear-gradient(#1e2d29 2px,transparent 2px),linear-gradient(90deg,#1e2d29 2px,transparent 2px)}
+.intro .nm{position:absolute;left:0;right:0;top:400px;text-align:center;font:700 150px/1 var(--mono);color:#eafff3;letter-spacing:.04em;text-shadow:0 0 24px rgba(124,255,178,.85),0 0 70px rgba(124,255,178,.35)}
+.intro .sub{position:absolute;left:0;right:0;top:590px;text-align:center;font:30px var(--mono);color:var(--ch1);letter-spacing:.3em}
+.intro .meas{position:absolute;left:0;right:0;top:250px;text-align:center;font:22px var(--mono);color:var(--dim);letter-spacing:.2em}
+.intro svg.sweep{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.dim{stroke:#6F8287;stroke-width:2}
+.dimt{font:22px var(--mono);fill:#8FA3A8}
+@media (prefers-reduced-motion:reduce){.cur{animation:none}}
+</style>
+</head>
+<body>
+<main class="page">
+<section class="doc">
+  <h1>Direção 2 · Bancada de Medição</h1>
+  <p>O painel vira um instrumento de laboratório: graticule, traços de fósforo, leituras monoespaçadas e anotações de medição, como um osciloscópio ou um relatório de ensaio. Tudo o que está provado aparece como teste aprovado com o número medido, e o guardião aparece como alarme honesto; quem olha entende que houve engenharia de verdade por trás. É a direção mais densa e mais "técnica", feita para o Denis apontar e explicar cada número.</p>
+  <div class="sw">
+    <span style="--c:#0B0E10">#0B0E10 grafite</span><span style="--c:#11171A">#11171A painel</span><span style="--c:#2E4046">#2E4046 graticule</span><span style="--c:#C9D6D8">#C9D6D8 leitura</span><span style="--c:#6F8287">#6F8287 rótulo</span><span style="--c:#7CFFB2">#7CFFB2 CH1 · PASS</span><span style="--c:#5FD3FF">#5FD3FF CH2</span><span style="--c:#FFC857">#FFC857 CH3 · em curso</span><span style="--c:#FF5C5C">#FF5C5C alarme</span><span style="--c:#8FA3A8">#8FA3A8 planejado</span>
+  </div>
+</section>
+
+<div class="lbl">Tela principal · 1920 × 1080</div>
+<section class="frame hero" aria-label="Tela principal, direção Bancada de Medição">
+  <div class="top">
+    <div class="who">DENIS BORGES <span>/ Home Theater 2.1</span></div>
+    <div class="dut"><i>APARELHO</i> Taramps PRO 2.4BT + AUDIO <i>FW</i> R003 <i>LEITURA</i> 16/10 17:47</div>
+    <div class="st">EM EVOLUÇÃO <small>— protótipo</small><span class="cur"></span></div>
+  </div>
+
+  <div class="box rep">
+    <div class="hd"><span class="n">A</span><span class="cap">O que já está provado</span><span class="r pill done">5/5 PASS</span></div>
+    <div class="pr"><span class="id">PASS</span><div class="d">Protocolo BLE decifrado do APK</div><div class="m">texto ASCII<small>sem cifra</small></div></div>
+    <div class="pr"><span class="id">PASS</span><div class="d">Leitura do aparelho real</div><div class="m">84/84 <small>parâmetros em</small> 13 s</div></div>
+    <div class="pr"><span class="id">PASS</span><div class="d">Conferência com o app</div><div class="m">34/34 · 33/34</div><div class="note">o app reescreve o attack ao abrir o Limiter em Auto</div></div>
+    <div class="pr"><span class="id">PASS</span><div class="d">Escrita com guardião · releitura igual</div><div class="m">−11 → −12 → −11 dB</div></div>
+    <div class="pr"><span class="id">PASS</span><div class="d">Guardião recusou desligar o passa-alta da JBL</div><div class="m">trava 1 <small>bloqueou</small></div></div>
+  </div>
+
+  <div class="box scope">
+    <div class="chs"><b style="background:var(--ch1)">CH1</b>JBL L <b style="background:var(--ch2)">CH2</b>JBL R <b style="background:var(--ch3)">CH3+4</b>SUB <span class="meta">dB × Hz (log) · resposta dos filtros</span></div>
+    <div class="screen">
+      <svg viewBox="-74 -10 1094 452" preserveAspectRatio="none"><line class="gmaj" x1="0.0" y1="0" x2="0.0" y2="400"/><line class="gmaj" x1="299.2" y1="0" x2="299.2" y2="400"/><line class="gmaj" x1="598.4" y1="0" x2="598.4" y2="400"/><line class="gmaj" x1="897.6" y1="0" x2="897.6" y2="400"/><line class="gmin" x1="-209.1" y1="0" x2="-209.1" y2="400"/><line class="gmin" x1="-156.4" y1="0" x2="-156.4" y2="400"/><line class="gmin" x1="-119.1" y1="0" x2="-119.1" y2="400"/><line class="gmin" x1="-90.1" y1="0" x2="-90.1" y2="400"/><line class="gmin" x1="-66.4" y1="0" x2="-66.4" y2="400"/><line class="gmin" x1="-46.3" y1="0" x2="-46.3" y2="400"/><line class="gmin" x1="-29.0" y1="0" x2="-29.0" y2="400"/><line class="gmin" x1="-13.7" y1="0" x2="-13.7" y2="400"/><line class="gmin" x1="90.1" y1="0" x2="90.1" y2="400"/><line class="gmin" x1="142.7" y1="0" x2="142.7" y2="400"/><line class="gmin" x1="180.1" y1="0" x2="180.1" y2="400"/><line class="gmin" x1="209.1" y1="0" x2="209.1" y2="400"/><line class="gmin" x1="232.8" y1="0" x2="232.8" y2="400"/><line class="gmin" x1="252.8" y1="0" x2="252.8" y2="400"/><line class="gmin" x1="270.2" y1="0" x2="270.2" y2="400"/><line class="gmin" x1="285.5" y1="0" x2="285.5" y2="400"/><line class="gmin" x1="389.2" y1="0" x2="389.2" y2="400"/><line class="gmin" x1="441.9" y1="0" x2="441.9" y2="400"/><line class="gmin" x1="479.3" y1="0" x2="479.3" y2="400"/><line class="gmin" x1="508.3" y1="0" x2="508.3" y2="400"/><line class="gmin" x1="532.0" y1="0" x2="532.0" y2="400"/><line class="gmin" x1="552.0" y1="0" x2="552.0" y2="400"/><line class="gmin" x1="569.4" y1="0" x2="569.4" y2="400"/><line class="gmin" x1="584.7" y1="0" x2="584.7" y2="400"/><line class="gmin" x1="688.4" y1="0" x2="688.4" y2="400"/><line class="gmin" x1="741.1" y1="0" x2="741.1" y2="400"/><line class="gmin" x1="778.5" y1="0" x2="778.5" y2="400"/><line class="gmin" x1="807.5" y1="0" x2="807.5" y2="400"/><line class="gmin" x1="831.2" y1="0" x2="831.2" y2="400"/><line class="gmin" x1="851.2" y1="0" x2="851.2" y2="400"/><line class="gmin" x1="868.6" y1="0" x2="868.6" y2="400"/><line class="gmin" x1="883.9" y1="0" x2="883.9" y2="400"/><line class="gmin" x1="987.6" y1="0" x2="987.6" y2="400"/><line class="gzero" x1="0" y1="44.4" x2="1000" y2="44.4"/><line class="gmaj" x1="0" y1="133.3" x2="1000" y2="133.3"/><line class="gmaj" x1="0" y1="222.2" x2="1000" y2="222.2"/><line class="gmaj" x1="0" y1="311.1" x2="1000" y2="311.1"/><line class="gmaj" x1="0" y1="400.0" x2="1000" y2="400.0"/><line class="gmin" x1="0" y1="88.9" x2="1000" y2="88.9"/><line class="gmin" x1="0" y1="177.8" x2="1000" y2="177.8"/><line class="gmin" x1="0" y1="266.7" x2="1000" y2="266.7"/><line class="gmin" x1="0" y1="355.6" x2="1000" y2="355.6"/><text class="glbl" x="0.0" y="430" text-anchor="start">10</text><text class="glbl" x="90.1" y="430" text-anchor="middle">20</text><text class="glbl" x="209.1" y="430" text-anchor="middle">50</text><text class="glbl" x="299.2" y="430" text-anchor="middle">100</text><text class="glbl" x="389.2" y="430" text-anchor="middle">200</text><text class="glbl" x="508.3" y="430" text-anchor="middle">500</text><text class="glbl" x="598.4" y="430" text-anchor="middle">1k</text><text class="glbl" x="688.4" y="430" text-anchor="middle">2k</text><text class="glbl" x="807.5" y="430" text-anchor="middle">5k</text><text class="glbl" x="897.6" y="430" text-anchor="middle">10k</text><text class="glbl" x="1000.0" y="430" text-anchor="end">22k</text><text class="glbl" x="-12" y="51.4" text-anchor="end">0</text><text class="glbl" x="−12" y="140.3" text−anchor="end">−12</text><text class="glbl" x="−12" y="229.2" text−anchor="end">−24</text><text class="glbl" x="−12" y="318.1" text−anchor="end">−36</text><text class="glbl" x="−12" y="407.0" text−anchor="end">−48</text>
+        <line class="cursor" stroke="#FFC857" x1="133.8" y1="0" x2="133.8" y2="400"/>
+        <line class="cursor" stroke="#FFC857" x1="342.9" y1="0" x2="342.9" y2="400"/>
+        <line class="cursor" stroke="#5FD3FF" x1="322.9" y1="0" x2="322.9" y2="400"/>
+        <line class="cursor" stroke="#7CFFB2" x1="351.9" y1="0" x2="351.9" y2="400"/>
+        <path class="tr s" d="M0.0,309.4 L3.8,301.8 L7.7,294.2 L11.5,286.6 L15.4,279.0 L19.2,271.4 L23.1,263.8 L26.9,256.1 L30.8,248.5 L34.6,240.9 L38.5,233.3 L42.3,225.7 L46.2,218.2 L50.0,210.6 L53.8,203.0 L57.7,195.5 L61.5,187.9 L65.4,180.4 L69.2,172.9 L73.1,165.5 L76.9,158.0 L80.8,150.7 L84.6,143.4 L88.5,136.2 L92.3,129.0 L96.2,122.0 L100.0,115.2 L103.8,108.5 L107.7,102.0 L111.5,95.8 L115.4,89.9 L119.2,84.3 L123.1,79.1 L126.9,74.3 L130.8,70.0 L134.6,66.0 L138.5,62.6 L142.3,59.5 L146.2,56.9 L150.0,54.7 L153.8,52.8 L157.7,51.3 L161.5,50.0 L165.4,49.0 L169.2,48.2 L173.1,47.5 L176.9,47.0 L180.8,46.6 L184.6,46.3 L188.5,46.1 L192.3,45.9 L196.2,45.8 L200.0,45.8 L203.8,45.8 L207.7,45.8 L211.5,45.8 L215.4,45.9 L219.2,46.0 L223.1,46.2 L226.9,46.3 L230.8,46.5 L234.6,46.8 L238.5,47.0 L242.3,47.3 L246.2,47.7 L250.0,48.1 L253.8,48.5 L257.7,49.0 L261.5,49.5 L265.4,50.1 L269.2,50.8 L273.1,51.5 L276.9,52.4 L280.8,53.3 L284.6,54.3 L288.5,55.5 L292.3,56.7 L296.2,58.1 L300.0,59.7 L303.8,61.3 L307.7,63.2 L311.5,65.2 L315.4,67.4 L319.2,69.8 L323.1,72.4 L326.9,75.1 L330.8,78.1 L334.6,81.4 L338.5,84.8 L342.3,88.5 L346.2,92.3 L350.0,96.5 L353.8,100.8 L357.7,105.3 L361.5,110.1 L365.4,115.1 L369.2,120.3 L373.1,125.6 L376.9,131.2 L380.8,136.9 L384.6,142.8 L388.5,148.8 L392.3,155.0 L396.2,161.3 L400.0,167.8 L403.8,174.3 L407.7,181.0 L411.5,187.7 L415.4,194.6 L419.2,201.5 L423.1,208.5 L426.9,215.5 L430.8,222.6 L434.6,229.8 L438.5,237.0 L442.3,244.3 L446.2,251.6 L450.0,258.9 L453.8,266.3 L457.7,273.7 L461.5,281.1 L465.4,288.5 L469.2,296.0 L473.1,303.4 L476.9,310.9 L480.8,318.4 L484.6,325.9 L488.5,333.5 L492.3,341.0 L496.2,348.6 L500.0,356.1 L503.8,363.7 L507.7,371.2 L511.5,378.8 L515.4,386.4 L519.2,394.0 L523.1,401.6 L526.9,409.2 L530.8,416.7 L534.6,424.3 L538.5,429.6 L542.3,429.6 L546.2,429.6 L550.0,429.6 L553.8,429.6 L557.7,429.6 L561.5,429.6 L565.4,429.6 L569.2,429.6 L573.1,429.6 L576.9,429.6 L580.8,429.6 L584.6,429.6 L588.5,429.6 L592.3,429.6 L596.2,429.6 L600.0,429.6 L603.8,429.6 L607.7,429.6 L611.5,429.6 L615.4,429.6 L619.2,429.6 L623.1,429.6 L626.9,429.6 L630.8,429.6 L634.6,429.6 L638.5,429.6 L642.3,429.6 L646.2,429.6 L650.0,429.6 L653.8,429.6 L657.7,429.6 L661.5,429.6 L665.4,429.6 L669.2,429.6 L673.1,429.6 L676.9,429.6 L680.8,429.6 L684.6,429.6 L688.5,429.6 L692.3,429.6 L696.2,429.6 L700.0,429.6 L703.8,429.6 L707.7,429.6 L711.5,429.6 L715.4,429.6 L719.2,429.6 L723.1,429.6 L726.9,429.6 L730.8,429.6 L734.6,429.6 L738.5,429.6 L742.3,429.6 L746.2,429.6 L750.0,429.6 L753.8,429.6 L757.7,429.6 L761.5,429.6 L765.4,429.6 L769.2,429.6 L773.1,429.6 L776.9,429.6 L780.8,429.6 L784.6,429.6 L788.5,429.6 L792.3,429.6 L796.2,429.6 L800.0,429.6 L803.8,429.6 L807.7,429.6 L811.5,429.6 L815.4,429.6 L819.2,429.6 L823.1,429.6 L826.9,429.6 L830.8,429.6 L834.6,429.6 L838.5,429.6 L842.3,429.6 L846.2,429.6 L850.0,429.6 L853.8,429.6 L857.7,429.6 L861.5,429.6 L865.4,429.6 L869.2,429.6 L873.1,429.6 L876.9,429.6 L880.8,429.6 L884.6,429.6 L888.5,429.6 L892.3,429.6 L896.2,429.6 L900.0,429.6 L903.8,429.6 L907.7,429.6 L911.5,429.6 L915.4,429.6 L919.2,429.6 L923.1,429.6 L926.9,429.6 L930.8,429.6 L934.6,429.6 L938.5,429.6 L942.3,429.6 L946.2,429.6 L950.0,429.6 L953.8,429.6 L957.7,429.6 L961.5,429.6 L965.4,429.6 L969.2,429.6 L973.1,429.6 L976.9,429.6 L980.8,429.6 L984.6,429.6 L988.5,429.6 L992.3,429.6 L996.2,429.6 L1000.0,429.6"/><path class="tr r" d="M0.0,364.2 L3.8,360.4 L7.7,356.6 L11.5,352.8 L15.4,349.0 L19.2,345.2 L23.1,341.4 L26.9,337.5 L30.8,333.7 L34.6,329.9 L38.5,326.1 L42.3,322.3 L46.2,318.5 L50.0,314.7 L53.8,310.9 L57.7,307.1 L61.5,303.3 L65.4,299.5 L69.2,295.7 L73.1,291.8 L76.9,288.0 L80.8,284.2 L84.6,280.4 L88.5,276.6 L92.3,272.8 L96.2,269.0 L100.0,265.2 L103.8,261.4 L107.7,257.6 L111.5,253.8 L115.4,250.0 L119.2,246.2 L123.1,242.4 L126.9,238.6 L130.8,234.8 L134.6,231.0 L138.5,227.2 L142.3,223.4 L146.2,219.6 L150.0,215.8 L153.8,212.0 L157.7,208.2 L161.5,204.4 L165.4,200.7 L169.2,196.9 L173.1,193.1 L176.9,189.3 L180.8,185.6 L184.6,181.8 L188.5,178.1 L192.3,174.3 L196.2,170.6 L200.0,166.9 L203.8,163.1 L207.7,159.4 L211.5,155.7 L215.4,152.1 L219.2,148.4 L223.1,144.7 L226.9,141.1 L230.8,137.5 L234.6,133.9 L238.5,130.3 L242.3,126.8 L246.2,123.3 L250.0,119.9 L253.8,116.4 L257.7,113.1 L261.5,109.7 L265.4,106.4 L269.2,103.2 L273.1,100.0 L276.9,97.0 L280.8,93.9 L284.6,91.0 L288.5,88.1 L292.3,85.3 L296.2,82.6 L300.0,80.0 L303.8,77.5 L307.7,75.1 L311.5,72.8 L315.4,70.7 L319.2,68.6 L323.1,66.6 L326.9,64.8 L330.8,63.1 L334.6,61.5 L338.5,59.9 L342.3,58.5 L346.2,57.2 L350.0,56.0 L353.8,54.9 L357.7,53.9 L361.5,53.0 L365.4,52.1 L369.2,51.4 L373.1,50.7 L376.9,50.0 L380.8,49.4 L384.6,48.9 L388.5,48.5 L392.3,48.0 L396.2,47.7 L400.0,47.3 L403.8,47.0 L407.7,46.7 L411.5,46.5 L415.4,46.3 L419.2,46.1 L423.1,45.9 L426.9,45.7 L430.8,45.6 L434.6,45.5 L438.5,45.3 L442.3,45.2 L446.2,45.2 L450.0,45.1 L453.8,45.0 L457.7,44.9 L461.5,44.9 L465.4,44.8 L469.2,44.8 L473.1,44.8 L476.9,44.7 L480.8,44.7 L484.6,44.7 L488.5,44.6 L492.3,44.6 L496.2,44.6 L500.0,44.6 L503.8,44.6 L507.7,44.6 L511.5,44.5 L515.4,44.5 L519.2,44.5 L523.1,44.5 L526.9,44.5 L530.8,44.5 L534.6,44.5 L538.5,44.5 L542.3,44.5 L546.2,44.5 L550.0,44.5 L553.8,44.5 L557.7,44.5 L561.5,44.5 L565.4,44.5 L569.2,44.5 L573.1,44.5 L576.9,44.5 L580.8,44.5 L584.6,44.5 L588.5,44.5 L592.3,44.5 L596.2,44.5 L600.0,44.5 L603.8,44.5 L607.7,44.4 L611.5,44.4 L615.4,44.4 L619.2,44.4 L623.1,44.4 L626.9,44.4 L630.8,44.4 L634.6,44.4 L638.5,44.4 L642.3,44.4 L646.2,44.4 L650.0,44.4 L653.8,44.4 L657.7,44.4 L661.5,44.4 L665.4,44.4 L669.2,44.4 L673.1,44.4 L676.9,44.4 L680.8,44.4 L684.6,44.4 L688.5,44.4 L692.3,44.4 L696.2,44.4 L700.0,44.4 L703.8,44.4 L707.7,44.4 L711.5,44.4 L715.4,44.4 L719.2,44.4 L723.1,44.4 L726.9,44.4 L730.8,44.4 L734.6,44.4 L738.5,44.4 L742.3,44.4 L746.2,44.4 L750.0,44.4 L753.8,44.4 L757.7,44.4 L761.5,44.4 L765.4,44.4 L769.2,44.4 L773.1,44.4 L776.9,44.4 L780.8,44.4 L784.6,44.4 L788.5,44.4 L792.3,44.4 L796.2,44.4 L800.0,44.4 L803.8,44.4 L807.7,44.4 L811.5,44.4 L815.4,44.4 L819.2,44.4 L823.1,44.4 L826.9,44.4 L830.8,44.4 L834.6,44.4 L838.5,44.4 L842.3,44.4 L846.2,44.4 L850.0,44.4 L853.8,44.4 L857.7,44.4 L861.5,44.4 L865.4,44.4 L869.2,44.4 L873.1,44.4 L876.9,44.4 L880.8,44.4 L884.6,44.4 L888.5,44.4 L892.3,44.4 L896.2,44.4 L900.0,44.4 L903.8,44.4 L907.7,44.4 L911.5,44.4 L915.4,44.4 L919.2,44.4 L923.1,44.4 L926.9,44.4 L930.8,44.4 L934.6,44.4 L938.5,44.4 L942.3,44.4 L946.2,44.4 L950.0,44.4 L953.8,44.4 L957.7,44.4 L961.5,44.4 L965.4,44.4 L969.2,44.4 L973.1,44.4 L976.9,44.4 L980.8,44.4 L984.6,44.4 L988.5,44.4 L992.3,44.4 L996.2,44.4 L1000.0,44.4"/><path class="tr l" d="M0.0,392.9 L3.8,389.1 L7.7,385.3 L11.5,381.5 L15.4,377.7 L19.2,373.9 L23.1,370.1 L26.9,366.3 L30.8,362.4 L34.6,358.6 L38.5,354.8 L42.3,351.0 L46.2,347.2 L50.0,343.4 L53.8,339.6 L57.7,335.8 L61.5,332.0 L65.4,328.2 L69.2,324.4 L73.1,320.6 L76.9,316.7 L80.8,312.9 L84.6,309.1 L88.5,305.3 L92.3,301.5 L96.2,297.7 L100.0,293.9 L103.8,290.1 L107.7,286.3 L111.5,282.5 L115.4,278.7 L119.2,274.9 L123.1,271.1 L126.9,267.2 L130.8,263.4 L134.6,259.6 L138.5,255.8 L142.3,252.0 L146.2,248.2 L150.0,244.4 L153.8,240.6 L157.7,236.8 L161.5,233.0 L165.4,229.2 L169.2,225.4 L173.1,221.6 L176.9,217.8 L180.8,214.1 L184.6,210.3 L188.5,206.5 L192.3,202.7 L196.2,198.9 L200.0,195.1 L203.8,191.4 L207.7,187.6 L211.5,183.8 L215.4,180.1 L219.2,176.3 L223.1,172.6 L226.9,168.9 L230.8,165.1 L234.6,161.4 L238.5,157.7 L242.3,154.0 L246.2,150.4 L250.0,146.7 L253.8,143.1 L257.7,139.4 L261.5,135.8 L265.4,132.3 L269.2,128.7 L273.1,125.2 L276.9,121.7 L280.8,118.3 L284.6,114.9 L288.5,111.5 L292.3,108.2 L296.2,104.9 L300.0,101.7 L303.8,98.6 L307.7,95.5 L311.5,92.5 L315.4,89.6 L319.2,86.8 L323.1,84.1 L326.9,81.4 L330.8,78.9 L334.6,76.4 L338.5,74.1 L342.3,71.8 L346.2,69.7 L350.0,67.7 L353.8,65.8 L357.7,64.0 L361.5,62.3 L365.4,60.7 L369.2,59.3 L373.1,57.9 L376.9,56.7 L380.8,55.5 L384.6,54.5 L388.5,53.5 L392.3,52.6 L396.2,51.8 L400.0,51.0 L403.8,50.4 L407.7,49.8 L411.5,49.2 L415.4,48.7 L419.2,48.3 L423.1,47.9 L426.9,47.5 L430.8,47.2 L434.6,46.9 L438.5,46.6 L442.3,46.4 L446.2,46.2 L450.0,46.0 L453.8,45.8 L457.7,45.7 L461.5,45.5 L465.4,45.4 L469.2,45.3 L473.1,45.2 L476.9,45.1 L480.8,45.0 L484.6,45.0 L488.5,44.9 L492.3,44.9 L496.2,44.8 L500.0,44.8 L503.8,44.7 L507.7,44.7 L511.5,44.7 L515.4,44.7 L519.2,44.6 L523.1,44.6 L526.9,44.6 L530.8,44.6 L534.6,44.6 L538.5,44.5 L542.3,44.5 L546.2,44.5 L550.0,44.5 L553.8,44.5 L557.7,44.5 L561.5,44.5 L565.4,44.5 L569.2,44.5 L573.1,44.5 L576.9,44.5 L580.8,44.5 L584.6,44.5 L588.5,44.5 L592.3,44.5 L596.2,44.5 L600.0,44.5 L603.8,44.5 L607.7,44.5 L611.5,44.5 L615.4,44.5 L619.2,44.5 L623.1,44.5 L626.9,44.5 L630.8,44.5 L634.6,44.4 L638.5,44.4 L642.3,44.4 L646.2,44.4 L650.0,44.4 L653.8,44.4 L657.7,44.4 L661.5,44.4 L665.4,44.4 L669.2,44.4 L673.1,44.4 L676.9,44.4 L680.8,44.4 L684.6,44.4 L688.5,44.4 L692.3,44.4 L696.2,44.4 L700.0,44.4 L703.8,44.4 L707.7,44.4 L711.5,44.4 L715.4,44.4 L719.2,44.4 L723.1,44.4 L726.9,44.4 L730.8,44.4 L734.6,44.4 L738.5,44.4 L742.3,44.4 L746.2,44.4 L750.0,44.4 L753.8,44.4 L757.7,44.4 L761.5,44.4 L765.4,44.4 L769.2,44.4 L773.1,44.4 L776.9,44.4 L780.8,44.4 L784.6,44.4 L788.5,44.4 L792.3,44.4 L796.2,44.4 L800.0,44.4 L803.8,44.4 L807.7,44.4 L811.5,44.4 L815.4,44.4 L819.2,44.4 L823.1,44.4 L826.9,44.4 L830.8,44.4 L834.6,44.4 L838.5,44.4 L842.3,44.4 L846.2,44.4 L850.0,44.4 L853.8,44.4 L857.7,44.4 L861.5,44.4 L865.4,44.4 L869.2,44.4 L873.1,44.4 L876.9,44.4 L880.8,44.4 L884.6,44.4 L888.5,44.4 L892.3,44.4 L896.2,44.4 L900.0,44.4 L903.8,44.4 L907.7,44.4 L911.5,44.4 L915.4,44.4 L919.2,44.4 L923.1,44.4 L926.9,44.4 L930.8,44.4 L934.6,44.4 L938.5,44.4 L942.3,44.4 L946.2,44.4 L950.0,44.4 L953.8,44.4 L957.7,44.4 L961.5,44.4 L965.4,44.4 L969.2,44.4 L973.1,44.4 L976.9,44.4 L980.8,44.4 L984.6,44.4 L988.5,44.4 L992.3,44.4 L996.2,44.4 L1000.0,44.4"/>
+        <text class="ann" fill="#FFC857" x="133.8" y="372" text-anchor="end">28 Hz BT24 </text>
+        <text class="ann" fill="#FFC857" x="342.9" y="300" text-anchor="end">LR24 140 Hz </text>
+        <text class="ann" fill="#5FD3FF" x="322.9" y="140" text-anchor="end">BT12 120 Hz </text>
+        <text class="ann" fill="#7CFFB2" x="351.9" y="186" text-anchor="start"> BT12 150 Hz</text>
+        <text class="ann" fill="#6F8287" x="1000" y="30" text-anchor="end">−3 dB nos cortes BT · −6 dB no LR</text>
+      </svg>
+    </div>
+    <table class="rd">
+      <tr><th>SAÍDA</th><th>FILTRO</th><th>LIMITER</th><th class="num">GANHO</th></tr>
+      <tr><td><i class="sw2" style="background:var(--ch1)"></i>S1 JBL L</td><td>PA BT12 150 Hz</td><td class="v">0,56 V</td><td class="v num">−11 dB</td></tr>
+      <tr><td><i class="sw2" style="background:var(--ch2)"></i>S2 JBL R<span class="flag">MUTE</span></td><td>PA BT12 120 Hz</td><td class="v">0,56 V</td><td class="v num">−11 dB</td></tr>
+      <tr><td><i class="sw2" style="background:var(--ch3)"></i>S3 Sub · ponte</td><td>PA BT24 28 Hz + PB LR24 140 Hz</td><td class="v">1,00 V</td><td class="v num">−10 dB</td></tr>
+      <tr><td><i class="sw2" style="background:var(--ch3)"></i>S4 Sub · ponte</td><td>PA BT24 28 Hz + PB LR24 140 Hz</td><td class="v">1,00 V</td><td class="v num">−10 dB</td></tr>
+    </table>
+  </div>
+
+  <div class="box guard">
+    <div class="hd"><span class="n" style="background:var(--alarm)">!</span><span class="cap" style="color:#e3b3b3">Guardião · estado lido</span><span class="r pill bad">A CORRIGIR</span></div>
+    <div class="big">5 violações no<br>estado lido</div>
+    <div class="al"><b>S1 S2</b><span>JBL passa-alta <em>12 dB/oit</em> &lt; mínimo 24</span></div>
+    <div class="al"><b>S3 S4</b><span>Sub subsônico <em>28 Hz</em> &lt; 35 Hz</span></div>
+    <div class="al"><b>PONTE</b><span>Attack <em>50,0 × 50,1 ms</em> (devem ser iguais)</span></div>
+    <div class="ft">Corrigir na regulagem de sábado 17/10.</div>
+  </div>
+
+  <div class="box next">
+    <div class="hd"><span class="n" style="background:var(--plan)">B</span><span class="cap">Próximos passos</span><span class="r pill plan">PLANEJADO</span></div>
+    <div class="nx"><i class="bx"></i><span><b>Regulagem guiada · sáb 17/10</b><br>auditoria, correção das travas, teste dos +2 dB, memórias SPL HIGH / SPL-EQ / Filme-EQ</span></div>
+    <div class="nx"><i class="bx"></i><span><b>Fase 2</b> · microfone e equalização automática</span></div>
+    <div class="nx"><i class="bx"></i><span><b>Servidor MCP</b></span></div>
+    <div class="nx"><i class="bx"></i><span><b>Apresentar à Taramps</b></span></div>
+  </div>
+
+  <div class="box tlb">
+    <div class="hd"><span class="n">C</span><span class="cap">Evolução</span><span class="gap">14/10 → 16/10 · eixo não linear: o dia 16 aberto por hora</span><span class="r pill done">9/9 FEITO</span></div>
+    <div class="axis"></div>
+    <div class="evs">
+      <div class="ev"><span class="t">14/10</span><div class="x">BMAD instalado</div></div>
+      <div class="ev"><span class="t">15/10</span><div class="x">Forja da ideia e spec</div></div>
+      <div class="ev"><span class="t">16/10 12h</span><div class="x">Protocolo decifrado</div></div>
+      <div class="ev"><span class="t">16/10 15h</span><div class="x">Forja do protótipo</div></div>
+      <div class="ev"><span class="t">16/10 16h</span><div class="x">Leitura BLE</div></div>
+      <div class="ev"><span class="t">16/10 18h</span><div class="x">Primeira leitura real</div></div>
+      <div class="ev"><span class="t">16/10 20h</span><div class="x">Escrita com guardião provada</div></div>
+      <div class="ev"><span class="t">16/10 21h</span><div class="x">Facilitadora /regulagem</div></div>
+      <div class="ev"><span class="t">16/10 22h</span><div class="x">Painel</div></div>
+    </div>
+  </div>
+
+  <div class="ths"><div class="th"><span class="tn">01</span><svg viewBox="0 0 120 60" aria-hidden="true"><rect x="14" y="14" width="18" height="32" rx="3"/><rect x="40" y="14" width="18" height="32" rx="3"/><rect x="66" y="22" width="40" height="24" rx="3"/><circle cx="23" cy="34" r="5"/><circle cx="49" cy="34" r="5"/><circle cx="86" cy="34" r="7"/></svg><b>Home</b><small>4 saídas · S2 em mute</small></div><div class="th"><span class="tn">02</span><svg viewBox="0 0 120 60" aria-hidden="true"><circle cx="18" cy="20" r="4"/><circle cx="18" cy="42" r="4"/><path d="M22 20 L96 12 M22 20 L96 26 M22 42 L96 26 M22 20 L96 40 M22 42 L96 40 M22 20 L96 52 M22 42 L96 52"/><circle cx="100" cy="12" r="3"/><circle cx="100" cy="26" r="3"/><circle cx="100" cy="40" r="3"/><circle cx="100" cy="52" r="3"/></svg><b>Roteamento</b><small>S1 A+B · S2 B · Sub A+B</small></div><div class="th"><span class="tn">03</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M10 14 H110 M10 28 H110 M10 42 H110"/><path class="hl" d="M30 8 V20 M52 22 V34 M74 36 V48"/></svg><b>Alinhamento</b><small>&nbsp;</small></div><div class="th"><span class="tn">04</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 30 C 22 4, 36 4, 50 30 S 78 56, 92 30 S 106 12, 112 22"/><path class="hl" d="M8 30 C 22 56, 36 56, 50 30 S 78 4, 92 30 S 106 48, 112 38"/></svg><b>Fase</b><small>Sub 180°</small></div><div class="th"><span class="tn">05</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 30 H112"/><circle class="hl" cx="60" cy="30" r="4"/></svg><b>EQ Entrada</b><small>&nbsp;</small></div><div class="th"><span class="tn">06</span><svg viewBox="0 0 120 60" aria-hidden="true"><g transform="translate(6 6) scale(0.108 0.12)"><path class="hl2" d="M0.0,309.4 L3.8,301.8 L7.7,294.2 L11.5,286.6 L15.4,279.0 L19.2,271.4 L23.1,263.8 L26.9,256.1 L30.8,248.5 L34.6,240.9 L38.5,233.3 L42.3,225.7 L46.2,218.2 L50.0,210.6 L53.8,203.0 L57.7,195.5 L61.5,187.9 L65.4,180.4 L69.2,172.9 L73.1,165.5 L76.9,158.0 L80.8,150.7 L84.6,143.4 L88.5,136.2 L92.3,129.0 L96.2,122.0 L100.0,115.2 L103.8,108.5 L107.7,102.0 L111.5,95.8 L115.4,89.9 L119.2,84.3 L123.1,79.1 L126.9,74.3 L130.8,70.0 L134.6,66.0 L138.5,62.6 L142.3,59.5 L146.2,56.9 L150.0,54.7 L153.8,52.8 L157.7,51.3 L161.5,50.0 L165.4,49.0 L169.2,48.2 L173.1,47.5 L176.9,47.0 L180.8,46.6 L184.6,46.3 L188.5,46.1 L192.3,45.9 L196.2,45.8 L200.0,45.8 L203.8,45.8 L207.7,45.8 L211.5,45.8 L215.4,45.9 L219.2,46.0 L223.1,46.2 L226.9,46.3 L230.8,46.5 L234.6,46.8 L238.5,47.0 L242.3,47.3 L246.2,47.7 L250.0,48.1 L253.8,48.5 L257.7,49.0 L261.5,49.5 L265.4,50.1 L269.2,50.8 L273.1,51.5 L276.9,52.4 L280.8,53.3 L284.6,54.3 L288.5,55.5 L292.3,56.7 L296.2,58.1 L300.0,59.7 L303.8,61.3 L307.7,63.2 L311.5,65.2 L315.4,67.4 L319.2,69.8 L323.1,72.4 L326.9,75.1 L330.8,78.1 L334.6,81.4 L338.5,84.8 L342.3,88.5 L346.2,92.3 L350.0,96.5 L353.8,100.8 L357.7,105.3 L361.5,110.1 L365.4,115.1 L369.2,120.3 L373.1,125.6 L376.9,131.2 L380.8,136.9 L384.6,142.8 L388.5,148.8 L392.3,155.0 L396.2,161.3 L400.0,167.8 L403.8,174.3 L407.7,181.0 L411.5,187.7 L415.4,194.6 L419.2,201.5 L423.1,208.5 L426.9,215.5 L430.8,222.6 L434.6,229.8 L438.5,237.0 L442.3,244.3 L446.2,251.6 L450.0,258.9 L453.8,266.3 L457.7,273.7 L461.5,281.1 L465.4,288.5 L469.2,296.0 L473.1,303.4 L476.9,310.9 L480.8,318.4 L484.6,325.9 L488.5,333.5 L492.3,341.0 L496.2,348.6 L500.0,356.1 L503.8,363.7 L507.7,371.2 L511.5,378.8 L515.4,386.4 L519.2,394.0 L523.1,401.6 L526.9,409.2 L530.8,416.7 L534.6,424.3 L538.5,429.6 L542.3,429.6 L546.2,429.6 L550.0,429.6 L553.8,429.6 L557.7,429.6 L561.5,429.6 L565.4,429.6 L569.2,429.6 L573.1,429.6 L576.9,429.6 L580.8,429.6 L584.6,429.6 L588.5,429.6 L592.3,429.6 L596.2,429.6 L600.0,429.6 L603.8,429.6 L607.7,429.6 L611.5,429.6 L615.4,429.6 L619.2,429.6 L623.1,429.6 L626.9,429.6 L630.8,429.6 L634.6,429.6 L638.5,429.6 L642.3,429.6 L646.2,429.6 L650.0,429.6 L653.8,429.6 L657.7,429.6 L661.5,429.6 L665.4,429.6 L669.2,429.6 L673.1,429.6 L676.9,429.6 L680.8,429.6 L684.6,429.6 L688.5,429.6 L692.3,429.6 L696.2,429.6 L700.0,429.6 L703.8,429.6 L707.7,429.6 L711.5,429.6 L715.4,429.6 L719.2,429.6 L723.1,429.6 L726.9,429.6 L730.8,429.6 L734.6,429.6 L738.5,429.6 L742.3,429.6 L746.2,429.6 L750.0,429.6 L753.8,429.6 L757.7,429.6 L761.5,429.6 L765.4,429.6 L769.2,429.6 L773.1,429.6 L776.9,429.6 L780.8,429.6 L784.6,429.6 L788.5,429.6 L792.3,429.6 L796.2,429.6 L800.0,429.6 L803.8,429.6 L807.7,429.6 L811.5,429.6 L815.4,429.6 L819.2,429.6 L823.1,429.6 L826.9,429.6 L830.8,429.6 L834.6,429.6 L838.5,429.6 L842.3,429.6 L846.2,429.6 L850.0,429.6 L853.8,429.6 L857.7,429.6 L861.5,429.6 L865.4,429.6 L869.2,429.6 L873.1,429.6 L876.9,429.6 L880.8,429.6 L884.6,429.6 L888.5,429.6 L892.3,429.6 L896.2,429.6 L900.0,429.6 L903.8,429.6 L907.7,429.6 L911.5,429.6 L915.4,429.6 L919.2,429.6 L923.1,429.6 L926.9,429.6 L930.8,429.6 L934.6,429.6 L938.5,429.6 L942.3,429.6 L946.2,429.6 L950.0,429.6 L953.8,429.6 L957.7,429.6 L961.5,429.6 L965.4,429.6 L969.2,429.6 L973.1,429.6 L976.9,429.6 L980.8,429.6 L984.6,429.6 L988.5,429.6 L992.3,429.6 L996.2,429.6 L1000.0,429.6"/><path class="hl" d="M0.0,392.9 L3.8,389.1 L7.7,385.3 L11.5,381.5 L15.4,377.7 L19.2,373.9 L23.1,370.1 L26.9,366.3 L30.8,362.4 L34.6,358.6 L38.5,354.8 L42.3,351.0 L46.2,347.2 L50.0,343.4 L53.8,339.6 L57.7,335.8 L61.5,332.0 L65.4,328.2 L69.2,324.4 L73.1,320.6 L76.9,316.7 L80.8,312.9 L84.6,309.1 L88.5,305.3 L92.3,301.5 L96.2,297.7 L100.0,293.9 L103.8,290.1 L107.7,286.3 L111.5,282.5 L115.4,278.7 L119.2,274.9 L123.1,271.1 L126.9,267.2 L130.8,263.4 L134.6,259.6 L138.5,255.8 L142.3,252.0 L146.2,248.2 L150.0,244.4 L153.8,240.6 L157.7,236.8 L161.5,233.0 L165.4,229.2 L169.2,225.4 L173.1,221.6 L176.9,217.8 L180.8,214.1 L184.6,210.3 L188.5,206.5 L192.3,202.7 L196.2,198.9 L200.0,195.1 L203.8,191.4 L207.7,187.6 L211.5,183.8 L215.4,180.1 L219.2,176.3 L223.1,172.6 L226.9,168.9 L230.8,165.1 L234.6,161.4 L238.5,157.7 L242.3,154.0 L246.2,150.4 L250.0,146.7 L253.8,143.1 L257.7,139.4 L261.5,135.8 L265.4,132.3 L269.2,128.7 L273.1,125.2 L276.9,121.7 L280.8,118.3 L284.6,114.9 L288.5,111.5 L292.3,108.2 L296.2,104.9 L300.0,101.7 L303.8,98.6 L307.7,95.5 L311.5,92.5 L315.4,89.6 L319.2,86.8 L323.1,84.1 L326.9,81.4 L330.8,78.9 L334.6,76.4 L338.5,74.1 L342.3,71.8 L346.2,69.7 L350.0,67.7 L353.8,65.8 L357.7,64.0 L361.5,62.3 L365.4,60.7 L369.2,59.3 L373.1,57.9 L376.9,56.7 L380.8,55.5 L384.6,54.5 L388.5,53.5 L392.3,52.6 L396.2,51.8 L400.0,51.0 L403.8,50.4 L407.7,49.8 L411.5,49.2 L415.4,48.7 L419.2,48.3 L423.1,47.9 L426.9,47.5 L430.8,47.2 L434.6,46.9 L438.5,46.6 L442.3,46.4 L446.2,46.2 L450.0,46.0 L453.8,45.8 L457.7,45.7 L461.5,45.5 L465.4,45.4 L469.2,45.3 L473.1,45.2 L476.9,45.1 L480.8,45.0 L484.6,45.0 L488.5,44.9 L492.3,44.9 L496.2,44.8 L500.0,44.8 L503.8,44.7 L507.7,44.7 L511.5,44.7 L515.4,44.7 L519.2,44.6 L523.1,44.6 L526.9,44.6 L530.8,44.6 L534.6,44.6 L538.5,44.5 L542.3,44.5 L546.2,44.5 L550.0,44.5 L553.8,44.5 L557.7,44.5 L561.5,44.5 L565.4,44.5 L569.2,44.5 L573.1,44.5 L576.9,44.5 L580.8,44.5 L584.6,44.5 L588.5,44.5 L592.3,44.5 L596.2,44.5 L600.0,44.5 L603.8,44.5 L607.7,44.5 L611.5,44.5 L615.4,44.5 L619.2,44.5 L623.1,44.5 L626.9,44.5 L630.8,44.5 L634.6,44.4 L638.5,44.4 L642.3,44.4 L646.2,44.4 L650.0,44.4 L653.8,44.4 L657.7,44.4 L661.5,44.4 L665.4,44.4 L669.2,44.4 L673.1,44.4 L676.9,44.4 L680.8,44.4 L684.6,44.4 L688.5,44.4 L692.3,44.4 L696.2,44.4 L700.0,44.4 L703.8,44.4 L707.7,44.4 L711.5,44.4 L715.4,44.4 L719.2,44.4 L723.1,44.4 L726.9,44.4 L730.8,44.4 L734.6,44.4 L738.5,44.4 L742.3,44.4 L746.2,44.4 L750.0,44.4 L753.8,44.4 L757.7,44.4 L761.5,44.4 L765.4,44.4 L769.2,44.4 L773.1,44.4 L776.9,44.4 L780.8,44.4 L784.6,44.4 L788.5,44.4 L792.3,44.4 L796.2,44.4 L800.0,44.4 L803.8,44.4 L807.7,44.4 L811.5,44.4 L815.4,44.4 L819.2,44.4 L823.1,44.4 L826.9,44.4 L830.8,44.4 L834.6,44.4 L838.5,44.4 L842.3,44.4 L846.2,44.4 L850.0,44.4 L853.8,44.4 L857.7,44.4 L861.5,44.4 L865.4,44.4 L869.2,44.4 L873.1,44.4 L876.9,44.4 L880.8,44.4 L884.6,44.4 L888.5,44.4 L892.3,44.4 L896.2,44.4 L900.0,44.4 L903.8,44.4 L907.7,44.4 L911.5,44.4 L915.4,44.4 L919.2,44.4 L923.1,44.4 L926.9,44.4 L930.8,44.4 L934.6,44.4 L938.5,44.4 L942.3,44.4 L946.2,44.4 L950.0,44.4 L953.8,44.4 L957.7,44.4 L961.5,44.4 L965.4,44.4 L969.2,44.4 L973.1,44.4 L976.9,44.4 L980.8,44.4 L984.6,44.4 L988.5,44.4 L992.3,44.4 L996.2,44.4 L1000.0,44.4"/><path d="M0.0,364.2 L3.8,360.4 L7.7,356.6 L11.5,352.8 L15.4,349.0 L19.2,345.2 L23.1,341.4 L26.9,337.5 L30.8,333.7 L34.6,329.9 L38.5,326.1 L42.3,322.3 L46.2,318.5 L50.0,314.7 L53.8,310.9 L57.7,307.1 L61.5,303.3 L65.4,299.5 L69.2,295.7 L73.1,291.8 L76.9,288.0 L80.8,284.2 L84.6,280.4 L88.5,276.6 L92.3,272.8 L96.2,269.0 L100.0,265.2 L103.8,261.4 L107.7,257.6 L111.5,253.8 L115.4,250.0 L119.2,246.2 L123.1,242.4 L126.9,238.6 L130.8,234.8 L134.6,231.0 L138.5,227.2 L142.3,223.4 L146.2,219.6 L150.0,215.8 L153.8,212.0 L157.7,208.2 L161.5,204.4 L165.4,200.7 L169.2,196.9 L173.1,193.1 L176.9,189.3 L180.8,185.6 L184.6,181.8 L188.5,178.1 L192.3,174.3 L196.2,170.6 L200.0,166.9 L203.8,163.1 L207.7,159.4 L211.5,155.7 L215.4,152.1 L219.2,148.4 L223.1,144.7 L226.9,141.1 L230.8,137.5 L234.6,133.9 L238.5,130.3 L242.3,126.8 L246.2,123.3 L250.0,119.9 L253.8,116.4 L257.7,113.1 L261.5,109.7 L265.4,106.4 L269.2,103.2 L273.1,100.0 L276.9,97.0 L280.8,93.9 L284.6,91.0 L288.5,88.1 L292.3,85.3 L296.2,82.6 L300.0,80.0 L303.8,77.5 L307.7,75.1 L311.5,72.8 L315.4,70.7 L319.2,68.6 L323.1,66.6 L326.9,64.8 L330.8,63.1 L334.6,61.5 L338.5,59.9 L342.3,58.5 L346.2,57.2 L350.0,56.0 L353.8,54.9 L357.7,53.9 L361.5,53.0 L365.4,52.1 L369.2,51.4 L373.1,50.7 L376.9,50.0 L380.8,49.4 L384.6,48.9 L388.5,48.5 L392.3,48.0 L396.2,47.7 L400.0,47.3 L403.8,47.0 L407.7,46.7 L411.5,46.5 L415.4,46.3 L419.2,46.1 L423.1,45.9 L426.9,45.7 L430.8,45.6 L434.6,45.5 L438.5,45.3 L442.3,45.2 L446.2,45.2 L450.0,45.1 L453.8,45.0 L457.7,44.9 L461.5,44.9 L465.4,44.8 L469.2,44.8 L473.1,44.8 L476.9,44.7 L480.8,44.7 L484.6,44.7 L488.5,44.6 L492.3,44.6 L496.2,44.6 L500.0,44.6 L503.8,44.6 L507.7,44.6 L511.5,44.5 L515.4,44.5 L519.2,44.5 L523.1,44.5 L526.9,44.5 L530.8,44.5 L534.6,44.5 L538.5,44.5 L542.3,44.5 L546.2,44.5 L550.0,44.5 L553.8,44.5 L557.7,44.5 L561.5,44.5 L565.4,44.5 L569.2,44.5 L573.1,44.5 L576.9,44.5 L580.8,44.5 L584.6,44.5 L588.5,44.5 L592.3,44.5 L596.2,44.5 L600.0,44.5 L603.8,44.5 L607.7,44.4 L611.5,44.4 L615.4,44.4 L619.2,44.4 L623.1,44.4 L626.9,44.4 L630.8,44.4 L634.6,44.4 L638.5,44.4 L642.3,44.4 L646.2,44.4 L650.0,44.4 L653.8,44.4 L657.7,44.4 L661.5,44.4 L665.4,44.4 L669.2,44.4 L673.1,44.4 L676.9,44.4 L680.8,44.4 L684.6,44.4 L688.5,44.4 L692.3,44.4 L696.2,44.4 L700.0,44.4 L703.8,44.4 L707.7,44.4 L711.5,44.4 L715.4,44.4 L719.2,44.4 L723.1,44.4 L726.9,44.4 L730.8,44.4 L734.6,44.4 L738.5,44.4 L742.3,44.4 L746.2,44.4 L750.0,44.4 L753.8,44.4 L757.7,44.4 L761.5,44.4 L765.4,44.4 L769.2,44.4 L773.1,44.4 L776.9,44.4 L780.8,44.4 L784.6,44.4 L788.5,44.4 L792.3,44.4 L796.2,44.4 L800.0,44.4 L803.8,44.4 L807.7,44.4 L811.5,44.4 L815.4,44.4 L819.2,44.4 L823.1,44.4 L826.9,44.4 L830.8,44.4 L834.6,44.4 L838.5,44.4 L842.3,44.4 L846.2,44.4 L850.0,44.4 L853.8,44.4 L857.7,44.4 L861.5,44.4 L865.4,44.4 L869.2,44.4 L873.1,44.4 L876.9,44.4 L880.8,44.4 L884.6,44.4 L888.5,44.4 L892.3,44.4 L896.2,44.4 L900.0,44.4 L903.8,44.4 L907.7,44.4 L911.5,44.4 L915.4,44.4 L919.2,44.4 L923.1,44.4 L926.9,44.4 L930.8,44.4 L934.6,44.4 L938.5,44.4 L942.3,44.4 L946.2,44.4 L950.0,44.4 L953.8,44.4 L957.7,44.4 L961.5,44.4 L965.4,44.4 L969.2,44.4 L973.1,44.4 L976.9,44.4 L980.8,44.4 L984.6,44.4 L988.5,44.4 L992.3,44.4 L996.2,44.4 L1000.0,44.4"/></g></svg><b>Crossover</b><small>150 · 120 · 28/140 Hz</small></div><div class="th"><span class="tn">07</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M10 52 L62 20 L112 14"/><path class="hl" d="M62 6 V54" stroke-dasharray="3 4"/></svg><b>Limiter</b><small>0,56 V · 1,00 V</small></div><div class="th"><span class="tn">08</span><svg viewBox="0 0 120 60" aria-hidden="true"><rect x="18" y="26" width="14" height="28" rx="2"/><rect x="42" y="26" width="14" height="28" rx="2"/><rect x="66" y="23" width="14" height="31" rx="2"/><rect x="90" y="23" width="14" height="31" rx="2"/></svg><b>Nível</b><small>−11 −11 −10 −10 dB</small></div><div class="th"><span class="tn">09</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M8 30 H112"/><circle class="hl" cx="34" cy="30" r="3.5"/><circle class="hl" cx="60" cy="30" r="3.5"/><circle class="hl" cx="86" cy="30" r="3.5"/></svg><b>EQ Saída</b><small>&nbsp;</small></div><div class="th"><span class="tn">10</span><svg viewBox="0 0 120 60" aria-hidden="true"><path d="M10.0 10 V50"/><rect class="hl" x="7.6" y="27" width="5" height="6" rx="1"/><path d="M17.1 10 V50"/><rect class="hl" x="14.7" y="27" width="5" height="6" rx="1"/><path d="M24.2 10 V50"/><rect class="hl" x="21.8" y="27" width="5" height="6" rx="1"/><path d="M31.3 10 V50"/><rect class="hl" x="28.9" y="27" width="5" height="6" rx="1"/><path d="M38.4 10 V50"/><rect class="hl" x="36.0" y="27" width="5" height="6" rx="1"/><path d="M45.5 10 V50"/><rect class="hl" x="43.1" y="27" width="5" height="6" rx="1"/><path d="M52.6 10 V50"/><rect class="hl" x="50.2" y="27" width="5" height="6" rx="1"/><path d="M59.7 10 V50"/><rect class="hl" x="57.3" y="27" width="5" height="6" rx="1"/><path d="M66.8 10 V50"/><rect class="hl" x="64.4" y="27" width="5" height="6" rx="1"/><path d="M73.9 10 V50"/><rect class="hl" x="71.5" y="27" width="5" height="6" rx="1"/><path d="M81.0 10 V50"/><rect class="hl" x="78.6" y="27" width="5" height="6" rx="1"/><path d="M88.1 10 V50"/><rect class="hl" x="85.7" y="27" width="5" height="6" rx="1"/><path d="M95.2 10 V50"/><rect class="hl" x="92.8" y="27" width="5" height="6" rx="1"/><path d="M102.3 10 V50"/><rect class="hl" x="99.9" y="27" width="5" height="6" rx="1"/><path d="M109.4 10 V50"/><rect class="hl" x="107.0" y="27" width="5" height="6" rx="1"/></svg><b>EQ 15 Bandas</b><small>&nbsp;</small></div></div>
+</section>
+
+<div class="pair">
+  <figure>
+    <div class="lbl">Abertura · quadro de impacto máximo (revelação do nome)</div>
+    <div class="frame intro" aria-label="Quadro-chave da abertura">
+      <svg class="sweep" viewBox="0 0 1920 1080">
+        <g transform="translate(160 760) scale(1.6 0.55)"><path class="tr l" d="M0.0,392.9 L3.8,389.1 L7.7,385.3 L11.5,381.5 L15.4,377.7 L19.2,373.9 L23.1,370.1 L26.9,366.3 L30.8,362.4 L34.6,358.6 L38.5,354.8 L42.3,351.0 L46.2,347.2 L50.0,343.4 L53.8,339.6 L57.7,335.8 L61.5,332.0 L65.4,328.2 L69.2,324.4 L73.1,320.6 L76.9,316.7 L80.8,312.9 L84.6,309.1 L88.5,305.3 L92.3,301.5 L96.2,297.7 L100.0,293.9 L103.8,290.1 L107.7,286.3 L111.5,282.5 L115.4,278.7 L119.2,274.9 L123.1,271.1 L126.9,267.2 L130.8,263.4 L134.6,259.6 L138.5,255.8 L142.3,252.0 L146.2,248.2 L150.0,244.4 L153.8,240.6 L157.7,236.8 L161.5,233.0 L165.4,229.2 L169.2,225.4 L173.1,221.6 L176.9,217.8 L180.8,214.1 L184.6,210.3 L188.5,206.5 L192.3,202.7 L196.2,198.9 L200.0,195.1 L203.8,191.4 L207.7,187.6 L211.5,183.8 L215.4,180.1 L219.2,176.3 L223.1,172.6 L226.9,168.9 L230.8,165.1 L234.6,161.4 L238.5,157.7 L242.3,154.0 L246.2,150.4 L250.0,146.7 L253.8,143.1 L257.7,139.4 L261.5,135.8 L265.4,132.3 L269.2,128.7 L273.1,125.2 L276.9,121.7 L280.8,118.3 L284.6,114.9 L288.5,111.5 L292.3,108.2 L296.2,104.9 L300.0,101.7 L303.8,98.6 L307.7,95.5 L311.5,92.5 L315.4,89.6 L319.2,86.8 L323.1,84.1 L326.9,81.4 L330.8,78.9 L334.6,76.4 L338.5,74.1 L342.3,71.8 L346.2,69.7 L350.0,67.7 L353.8,65.8 L357.7,64.0 L361.5,62.3 L365.4,60.7 L369.2,59.3 L373.1,57.9 L376.9,56.7 L380.8,55.5 L384.6,54.5 L388.5,53.5 L392.3,52.6 L396.2,51.8 L400.0,51.0 L403.8,50.4 L407.7,49.8 L411.5,49.2 L415.4,48.7 L419.2,48.3 L423.1,47.9 L426.9,47.5 L430.8,47.2 L434.6,46.9 L438.5,46.6 L442.3,46.4 L446.2,46.2 L450.0,46.0 L453.8,45.8 L457.7,45.7 L461.5,45.5 L465.4,45.4 L469.2,45.3 L473.1,45.2 L476.9,45.1 L480.8,45.0 L484.6,45.0 L488.5,44.9 L492.3,44.9 L496.2,44.8 L500.0,44.8 L503.8,44.7 L507.7,44.7 L511.5,44.7 L515.4,44.7 L519.2,44.6 L523.1,44.6 L526.9,44.6 L530.8,44.6 L534.6,44.6 L538.5,44.5 L542.3,44.5 L546.2,44.5 L550.0,44.5 L553.8,44.5 L557.7,44.5 L561.5,44.5 L565.4,44.5 L569.2,44.5 L573.1,44.5 L576.9,44.5 L580.8,44.5 L584.6,44.5 L588.5,44.5 L592.3,44.5 L596.2,44.5 L600.0,44.5 L603.8,44.5 L607.7,44.5 L611.5,44.5 L615.4,44.5 L619.2,44.5 L623.1,44.5 L626.9,44.5 L630.8,44.5 L634.6,44.4 L638.5,44.4 L642.3,44.4 L646.2,44.4 L650.0,44.4 L653.8,44.4 L657.7,44.4 L661.5,44.4 L665.4,44.4 L669.2,44.4 L673.1,44.4 L676.9,44.4 L680.8,44.4 L684.6,44.4 L688.5,44.4 L692.3,44.4 L696.2,44.4 L700.0,44.4 L703.8,44.4 L707.7,44.4 L711.5,44.4 L715.4,44.4 L719.2,44.4 L723.1,44.4 L726.9,44.4 L730.8,44.4 L734.6,44.4 L738.5,44.4 L742.3,44.4 L746.2,44.4 L750.0,44.4 L753.8,44.4 L757.7,44.4 L761.5,44.4 L765.4,44.4 L769.2,44.4 L773.1,44.4 L776.9,44.4 L780.8,44.4 L784.6,44.4 L788.5,44.4 L792.3,44.4 L796.2,44.4 L800.0,44.4 L803.8,44.4 L807.7,44.4 L811.5,44.4 L815.4,44.4 L819.2,44.4 L823.1,44.4 L826.9,44.4 L830.8,44.4 L834.6,44.4 L838.5,44.4 L842.3,44.4 L846.2,44.4 L850.0,44.4 L853.8,44.4 L857.7,44.4 L861.5,44.4 L865.4,44.4 L869.2,44.4 L873.1,44.4 L876.9,44.4 L880.8,44.4 L884.6,44.4 L888.5,44.4 L892.3,44.4 L896.2,44.4 L900.0,44.4 L903.8,44.4 L907.7,44.4 L911.5,44.4 L915.4,44.4 L919.2,44.4 L923.1,44.4 L926.9,44.4 L930.8,44.4 L934.6,44.4 L938.5,44.4 L942.3,44.4 L946.2,44.4 L950.0,44.4 L953.8,44.4 L957.7,44.4 L961.5,44.4 L965.4,44.4 L969.2,44.4 L973.1,44.4 L976.9,44.4 L980.8,44.4 L984.6,44.4 L988.5,44.4 L992.3,44.4 L996.2,44.4 L1000.0,44.4" vector-effect="non-scaling-stroke" style="stroke-width:5"/><path class="tr s" d="M0.0,309.4 L3.8,301.8 L7.7,294.2 L11.5,286.6 L15.4,279.0 L19.2,271.4 L23.1,263.8 L26.9,256.1 L30.8,248.5 L34.6,240.9 L38.5,233.3 L42.3,225.7 L46.2,218.2 L50.0,210.6 L53.8,203.0 L57.7,195.5 L61.5,187.9 L65.4,180.4 L69.2,172.9 L73.1,165.5 L76.9,158.0 L80.8,150.7 L84.6,143.4 L88.5,136.2 L92.3,129.0 L96.2,122.0 L100.0,115.2 L103.8,108.5 L107.7,102.0 L111.5,95.8 L115.4,89.9 L119.2,84.3 L123.1,79.1 L126.9,74.3 L130.8,70.0 L134.6,66.0 L138.5,62.6 L142.3,59.5 L146.2,56.9 L150.0,54.7 L153.8,52.8 L157.7,51.3 L161.5,50.0 L165.4,49.0 L169.2,48.2 L173.1,47.5 L176.9,47.0 L180.8,46.6 L184.6,46.3 L188.5,46.1 L192.3,45.9 L196.2,45.8 L200.0,45.8 L203.8,45.8 L207.7,45.8 L211.5,45.8 L215.4,45.9 L219.2,46.0 L223.1,46.2 L226.9,46.3 L230.8,46.5 L234.6,46.8 L238.5,47.0 L242.3,47.3 L246.2,47.7 L250.0,48.1 L253.8,48.5 L257.7,49.0 L261.5,49.5 L265.4,50.1 L269.2,50.8 L273.1,51.5 L276.9,52.4 L280.8,53.3 L284.6,54.3 L288.5,55.5 L292.3,56.7 L296.2,58.1 L300.0,59.7 L303.8,61.3 L307.7,63.2 L311.5,65.2 L315.4,67.4 L319.2,69.8 L323.1,72.4 L326.9,75.1 L330.8,78.1 L334.6,81.4 L338.5,84.8 L342.3,88.5 L346.2,92.3 L350.0,96.5 L353.8,100.8 L357.7,105.3 L361.5,110.1 L365.4,115.1 L369.2,120.3 L373.1,125.6 L376.9,131.2 L380.8,136.9 L384.6,142.8 L388.5,148.8 L392.3,155.0 L396.2,161.3 L400.0,167.8 L403.8,174.3 L407.7,181.0 L411.5,187.7 L415.4,194.6 L419.2,201.5 L423.1,208.5 L426.9,215.5 L430.8,222.6 L434.6,229.8 L438.5,237.0 L442.3,244.3 L446.2,251.6 L450.0,258.9 L453.8,266.3 L457.7,273.7 L461.5,281.1 L465.4,288.5 L469.2,296.0 L473.1,303.4 L476.9,310.9 L480.8,318.4 L484.6,325.9 L488.5,333.5 L492.3,341.0 L496.2,348.6 L500.0,356.1 L503.8,363.7 L507.7,371.2 L511.5,378.8 L515.4,386.4 L519.2,394.0 L523.1,401.6 L526.9,409.2 L530.8,416.7 L534.6,424.3 L538.5,429.6 L542.3,429.6 L546.2,429.6 L550.0,429.6 L553.8,429.6 L557.7,429.6 L561.5,429.6 L565.4,429.6 L569.2,429.6 L573.1,429.6 L576.9,429.6 L580.8,429.6 L584.6,429.6 L588.5,429.6 L592.3,429.6 L596.2,429.6 L600.0,429.6 L603.8,429.6 L607.7,429.6 L611.5,429.6 L615.4,429.6 L619.2,429.6 L623.1,429.6 L626.9,429.6 L630.8,429.6 L634.6,429.6 L638.5,429.6 L642.3,429.6 L646.2,429.6 L650.0,429.6 L653.8,429.6 L657.7,429.6 L661.5,429.6 L665.4,429.6 L669.2,429.6 L673.1,429.6 L676.9,429.6 L680.8,429.6 L684.6,429.6 L688.5,429.6 L692.3,429.6 L696.2,429.6 L700.0,429.6 L703.8,429.6 L707.7,429.6 L711.5,429.6 L715.4,429.6 L719.2,429.6 L723.1,429.6 L726.9,429.6 L730.8,429.6 L734.6,429.6 L738.5,429.6 L742.3,429.6 L746.2,429.6 L750.0,429.6 L753.8,429.6 L757.7,429.6 L761.5,429.6 L765.4,429.6 L769.2,429.6 L773.1,429.6 L776.9,429.6 L780.8,429.6 L784.6,429.6 L788.5,429.6 L792.3,429.6 L796.2,429.6 L800.0,429.6 L803.8,429.6 L807.7,429.6 L811.5,429.6 L815.4,429.6 L819.2,429.6 L823.1,429.6 L826.9,429.6 L830.8,429.6 L834.6,429.6 L838.5,429.6 L842.3,429.6 L846.2,429.6 L850.0,429.6 L853.8,429.6 L857.7,429.6 L861.5,429.6 L865.4,429.6 L869.2,429.6 L873.1,429.6 L876.9,429.6 L880.8,429.6 L884.6,429.6 L888.5,429.6 L892.3,429.6 L896.2,429.6 L900.0,429.6 L903.8,429.6 L907.7,429.6 L911.5,429.6 L915.4,429.6 L919.2,429.6 L923.1,429.6 L926.9,429.6 L930.8,429.6 L934.6,429.6 L938.5,429.6 L942.3,429.6 L946.2,429.6 L950.0,429.6 L953.8,429.6 L957.7,429.6 L961.5,429.6 L965.4,429.6 L969.2,429.6 L973.1,429.6 L976.9,429.6 L980.8,429.6 L984.6,429.6 L988.5,429.6 L992.3,429.6 L996.2,429.6 L1000.0,429.6" vector-effect="non-scaling-stroke" style="stroke-width:5"/></g>
+        <line x1="1760" y1="720" x2="1760" y2="1000" stroke="#7CFFB2" stroke-width="3" opacity=".9"/>
+        <line class="dim" x1="250" y1="370" x2="1670" y2="370"/><line class="dim" x1="250" y1="356" x2="250" y2="384"/><line class="dim" x1="1670" y1="356" x2="1670" y2="384"/>
+        <text class="dimt" x="960" y="355" text-anchor="middle">14/10 → 16/10 22h · 9 marcos</text>
+      </svg>
+      <div class="meas">MEDIÇÃO TRAVADA · HOME THEATER 2.1</div>
+      <div class="nm">DENIS BORGES</div>
+      <div class="sub">PRO 2.4BT + AUDIO · R003</div>
+    </div>
+    <figcaption><b>O que anima:</b> um traço de fósforo varre a tela de 10 Hz a 22 kHz desenhando a curva dos crossovers; quando a varredura trava, as linhas de cota se esticam e o nome se acende como uma leitura medida. <b>Som (só na abertura):</b> uma varredura senoidal curta e baixa, de grave a agudo, fechando com um bipe duplo de "medição travada".</figcaption>
+  </figure>
+  <figure>
+    <div class="lbl">Variante de estado · agente escrevendo</div>
+    <div class="frame strip" aria-label="Variante: agente escrevendo no aparelho">
+      <div class="box con">
+        <div class="hd"><span class="n" style="background:var(--ch3)">&gt;</span><span class="cap">Agente · registro ao vivo</span><span class="r pill" style="color:var(--ch3)">ESCREVENDO</span></div>
+        <div class="log">
+          <div><span class="p">20:21:32</span> simulação 042:0=0 (desligar PA da JBL L) <span class="bad">RECUSADO · trava 1</span></div>
+          <div><span class="p">20:21:47</span> pedido: ganho da saída 1 de −11 para −12 dB</div>
+          <div><span class="p">20:21:47</span> guardião ▸ 081:0=-12.0 <span class="ok">APROVADO</span> · não piora nenhuma trava</div>
+          <div class="live"><span class="p">20:21:47</span> BLE ▸ escrevendo 081:0=-12.0 …<span class="cur"></span></div>
+          <div class="wait"><span>· · ·</span> relendo 081:0 e conferindo</div>
+          <div class="wait"><span>· · ·</span> depois: 081:0=-11.0 e nova releitura</div>
+        </div>
+      </div>
+      <div class="box wr">
+        <div class="hd"><span class="n" style="background:var(--ch1)">S1</span><span class="cap">JBL L · ganho</span><span class="r cap warn">BLE ATIVO</span></div>
+        <div class="big">−11,0 <span class="to">→ −12,0</span> dB</div>
+        <div class="lbl2">comando 081:0 · releitura obrigatória antes de seguir</div>
+        <div class="bar"><i></i></div>
+        <div class="steps">
+          <div><span class="k ok">✓</span><span>Guardião</span><span class="ok">APROVADO</span></div>
+          <div class="now"><span class="k warn">▸</span><span class="warn">Escrita BLE</span><span class="warn">em curso</span></div>
+          <div class="todo"><span class="k">·</span><span>Releitura igual</span><span>aguardando</span></div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Estado:</b> o agente está escrevendo no aparelho. A linha ao vivo fica âmbar com cursor piscando, os passos seguintes aparecem tracejados e só ficam verdes depois da releitura. Horários e comandos tirados do registro real de ajustes de 16/10 (20:21–20:22).</figcaption>
+  </figure>
+</div>
+</main>
+</body>
+</html>

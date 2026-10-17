@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine · Keynote</title>
+<style>
+/* ==========================================================
+   Direção 1 · KEYNOTE  (lançamento de produto Apple / B&O)
+   Paleta:
+     --preto      #000000  fundo puro
+     --branco     #FFFFFF  tipografia e núcleo da luz
+     --cinza-1    #A1A1A6  textos de apoio
+     --cinza-2    #6E6E73  textos terciários / anotações
+     --luz-fria   #8FB4FF  halo (azul)
+     --luz-lilas  #C59BFF  halo (lilás)
+     --luz-quente #FFD6A8  halo (âmbar) e ponto do selo
+   Tipografia: Segoe UI Variable Display, peso 200–300, enorme e fina.
+   ========================================================== */
+:root{
+  --preto:#000000; --branco:#FFFFFF; --cinza-1:#A1A1A6; --cinza-2:#6E6E73;
+  --luz-fria:#8FB4FF; --luz-lilas:#C59BFF; --luz-quente:#FFD6A8;
+  --sans:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;color:var(--branco);font-family:var(--sans)}
+body{overflow-x:hidden}
+
+/* ---------- Quadro 16:9 (1920×1080 em tela cheia) ---------- */
+.frame{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:var(--preto);container-type:inline-size}
+.frame:fullscreen{width:100vw;height:100vh;aspect-ratio:auto}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.brand{position:absolute;left:0;right:0;top:37.6cqw;text-align:center}
+.wordmark{font-size:6.6cqw;line-height:1;letter-spacing:-.02em;font-weight:200;color:var(--branco)}
+.wordmark b{font-weight:500;letter-spacing:.01em}
+.sign{margin-top:1.15cqw;font-size:1.3cqw;letter-spacing:.34em;color:var(--cinza-1);font-weight:400;text-transform:none}
+.sign i{font-style:normal;color:var(--branco);font-weight:500}
+
+.ia{position:absolute;left:0;right:0;bottom:3.3cqw;text-align:center;font-size:1.42cqw;font-weight:300;color:var(--cinza-1);letter-spacing:.01em}
+.ia .sep{display:inline-block;width:.32cqw;height:.32cqw;border-radius:50%;background:var(--cinza-2);vertical-align:middle;margin:0 1.1cqw}
+.ia .modo{color:var(--branco);font-weight:500}
+
+.selo{position:absolute;top:2.4cqw;right:2.6cqw;display:flex;align-items:center;gap:.6cqw;font-size:.86cqw;letter-spacing:.14em;color:var(--cinza-1);border:1px solid rgba(255,255,255,.18);border-radius:99px;padding:.42cqw 1cqw .46cqw .8cqw}
+.selo::before{content:"";width:.46cqw;height:.46cqw;border-radius:50%;background:var(--luz-quente);box-shadow:0 0 .6cqw var(--luz-quente);animation:pisca 2.6s ease-in-out infinite}
+@keyframes pisca{50%{opacity:.25}}
+
+.bastidores{position:absolute;right:2.2cqw;bottom:2.2cqw;width:2.3cqw;height:2.3cqw;border-radius:50%;border:1px solid rgba(255,255,255,.10);background:transparent;display:grid;place-items:center;opacity:.32;cursor:pointer;transition:opacity .3s}
+.bastidores:hover,.bastidores:focus-visible{opacity:.9;outline:none}
+.bastidores svg{width:1cqw;height:1cqw}
+
+.mock{position:absolute;top:2.3cqw;left:2.4cqw;font:500 .72cqw/1.2 Consolas,"Cascadia Mono",monospace;color:#8E8E93;border:1px dashed rgba(255,255,255,.22);border-radius:.3cqw;padding:.35cqw .6cqw;letter-spacing:.02em}
+.toast{position:absolute;left:50%;bottom:7.4cqw;transform:translate(-50%,1cqw);opacity:0;font-size:.9cqw;color:var(--cinza-1);transition:.4s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- Fora do quadro: controles, racional e storyboard ---------- */
+.below{max-width:1500px;margin:0 auto;padding:48px 32px 80px;color:#D2D2D7}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:40px;font-size:14px;color:#86868B}
+.ctl button{font:inherit;color:#F5F5F7;background:#1C1C1E;border:1px solid #2C2C2E;border-radius:99px;padding:7px 16px;cursor:pointer}
+.ctl button[aria-pressed="true"]{background:#F5F5F7;color:#000}
+.ctl .sp{flex:1}
+h2{font-weight:300;font-size:30px;letter-spacing:-.01em;color:#fff;margin-bottom:8px}
+.why{font-size:16px;line-height:1.6;max-width:880px;color:#A1A1A6;margin-bottom:22px}
+.pal{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:56px}
+.pal span{display:flex;align-items:center;gap:8px;font:13px Consolas,monospace;color:#A1A1A6}
+.pal i{width:22px;height:22px;border-radius:50%;border:1px solid #333}
+.sbh{font-size:20px;font-weight:400;color:#fff;margin-bottom:4px}
+.sbs{font-size:14px;color:#86868B;margin-bottom:20px}
+.sb{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media (max-width:900px){.sb{grid-template-columns:1fr 1fr}}
+.panel{position:relative;aspect-ratio:16/9;background:#000;border:1px solid #232325;border-radius:10px;overflow:hidden;container-type:inline-size}
+.cap{margin-top:10px;font-size:13.5px;line-height:1.5;color:#A1A1A6}
+.cap b{color:#fff;font-weight:600}
+.tag{position:absolute;top:6cqw;left:6cqw;font:600 4.2cqw Consolas,monospace;color:#6E6E73}
+/* painel 1: ponto de luz */
+.p1 .dot{position:absolute;left:50%;top:42%;width:3cqw;height:3cqw;border-radius:50%;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6cqw 2cqw rgba(143,180,255,.55),0 0 2cqw #fff}
+/* painel 2: anel nascendo */
+.p2 .ring,.p3 .ring,.p4 .ring{position:absolute;left:50%;top:38%;border-radius:50%;transform:translate(-50%,-50%);border:.45cqw solid #fff;box-shadow:0 0 3cqw rgba(197,155,255,.7),inset 0 0 3cqw rgba(143,180,255,.5)}
+.p2 .ring{width:24cqw;height:24cqw}
+.p2 .echo{position:absolute;left:50%;top:38%;width:34cqw;height:34cqw;border-radius:50%;transform:translate(-50%,-50%);border:.25cqw dashed rgba(255,255,255,.25)}
+.p3 .ring,.p4 .ring{width:31cqw;height:31cqw}
+.p3 .wm,.p4 .wm{position:absolute;left:0;right:0;top:62%;text-align:center;font-weight:200;font-size:8cqw;letter-spacing:-.02em}
+.p3 .wm{filter:blur(.25cqw);-webkit-mask-image:linear-gradient(90deg,#000 45%,transparent 70%);mask-image:linear-gradient(90deg,#000 45%,transparent 70%)}
+.p4 .sg{position:absolute;left:0;right:0;top:82.5%;text-align:center;font-size:2.2cqw;letter-spacing:.3em;color:#A1A1A6}
+.p4 .ln{position:absolute;left:0;right:0;bottom:4%;text-align:center;font-size:2.3cqw;color:#A1A1A6}
+.p4 .ln b{color:#fff;font-weight:500}
+.fim{position:absolute;right:4cqw;top:4cqw;font-size:3.2cqw;color:#000;background:#F5F5F7;border-radius:99px;padding:.6cqw 2cqw}
+</style>
+</head>
+<body>
+
+<section class="frame" id="frame" aria-label="Vitrine BGS Sound Lab, direção Keynote">
+  <canvas id="cv"></canvas>
+
+  <div class="mock">simulação do mock: no app real reage ao microfone</div>
+  <div class="selo">em evolução</div>
+
+  <div class="brand">
+    <h1 class="wordmark"><b>BGS</b> Sound Lab</h1>
+    <p class="sign">by <i>Denis Borges</i></p>
+  </div>
+
+  <p class="ia">Som ajustado por inteligência artificial<span class="sep"></span><span class="modo">Modo: <span data-modo>Filme</span></span></p>
+
+  <button class="bastidores" id="bast" title="Bastidores" aria-label="Abrir Bastidores">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2" fill="#000"/><circle cx="12" cy="8" r="2.2" fill="#000"/><circle cx="19" cy="16" r="2.2" fill="#000"/></svg>
+  </button>
+  <div class="toast" id="toast">Bastidores · no app real pede o login do Denis</div>
+</section>
+
+<div class="below">
+  <div class="ctl">
+    <span>Modo atual (estado da tela):</span>
+    <button data-set="Filme" aria-pressed="true">Filme</button>
+    <button data-set="Música SPL" aria-pressed="false">Música SPL</button>
+    <button data-set="Música EQ" aria-pressed="false">Música EQ</button>
+    <span class="sp"></span>
+    <button id="fs">Tela cheia</button>
+  </div>
+
+  <h2>Keynote</h2>
+  <p class="why">Um lançamento de produto: preto absoluto, quase nada na tela, e a luz é a estrela. O anel de luz é o próprio símbolo da marca e respira com o grave, então o convidado entende sozinho que a tela está ouvindo o som. A tipografia enorme e fina faz o nome "BGS Sound Lab" parecer de empresa grande, e a assinatura logo abaixo deixa claro de quem é.</p>
+  <div class="pal">
+    <span><i style="background:#000000"></i>#000000</span>
+    <span><i style="background:#FFFFFF"></i>#FFFFFF</span>
+    <span><i style="background:#A1A1A6"></i>#A1A1A6</span>
+    <span><i style="background:#6E6E73"></i>#6E6E73</span>
+    <span><i style="background:#8FB4FF"></i>#8FB4FF</span>
+    <span><i style="background:#C59BFF"></i>#C59BFF</span>
+    <span><i style="background:#FFD6A8"></i>#FFD6A8</span>
+  </div>
+
+  <p class="sbh">Abertura · cerca de 6 segundos</p>
+  <p class="sbs">O único momento com som. Depois da abertura, silêncio: só a luz seguindo a música da sala.</p>
+  <div class="sb">
+    <div>
+      <div class="panel p1"><span class="tag">1</span><div class="dot"></div></div>
+      <p class="cap"><b>0 a 1,5 s</b> · no preto total, um ponto de luz acende no centro · som: um grave macio que cresce devagar.</p>
+    </div>
+    <div>
+      <div class="panel p2"><span class="tag">2</span><div class="echo"></div><div class="ring"></div></div>
+      <p class="cap"><b>1,5 a 3 s</b> · o ponto se abre num anel que se expande e ganha cor · som: um sopro de ar brilhante subindo.</p>
+    </div>
+    <div>
+      <div class="panel p3"><span class="tag">3</span><div class="ring"></div><div class="wm">BGS Sound Lab</div></div>
+      <p class="cap"><b>3 a 4,5 s</b> · "BGS Sound Lab" surge do desfoque, letra por letra · som: um único toque de cristal, limpo.</p>
+    </div>
+    <div>
+      <div class="panel p4"><span class="tag">4</span><span class="fim">Vitrine</span><div class="ring"></div><div class="wm">BGS Sound Lab</div><div class="sg">by Denis Borges</div><div class="ln">Som ajustado por inteligência artificial · <b>Modo: Filme</b></div></div>
+      <p class="cap"><b>4,5 a 6 s</b> · assinatura e linha da IA aparecem; o anel passa a respirar com a sala · som: o cristal some até o silêncio. Fica a Vitrine.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Sinal falso: SIMULAÇÃO DO MOCK (no app real vem do microfone) ===== */
+const Sig=(()=>{const N=64,out=new Float32Array(N);let s=7,lastBeat=-1;
+const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+const st={bands:out,bass:0,mid:0,high:0,level:0,kick:0,onBeat:false};
+const avg=(a,b)=>{let x=0;for(let i=a;i<b;i++)x+=out[i];return x/(b-a)};
+st.step=(t,dt)=>{const beat=t*116/60,p=beat%1,bi=Math.floor(beat);
+ const kick=Math.exp(-p*6),snare=(bi%2===1)?Math.exp(-p*8):0,hat=Math.exp(-((beat*2)%1)*12);
+ const phrase=.62+.38*Math.sin(t*.21)*Math.sin(t*.083+1.3);
+ const ka=1-Math.exp(-dt*60*.55),kr=1-Math.exp(-dt*60*.10);
+ for(let i=0;i<N;i++){const f=i/(N-1);
+  let v=.78*Math.pow(1-f,2.2)*(.25+.75*kick)+.34*Math.exp(-((f-.32)**2)/.03)*(.55+.45*Math.sin(t*2.3+i*.45))
+   +.30*snare*Math.exp(-((f-.55)**2)/.05)+.24*hat*Math.pow(f,1.3)+.10*rnd();
+  v=Math.min(1,v*(.45+.55*phrase));out[i]=Math.max(0,Math.min(1,out[i]+(v-out[i])*(v>out[i]?ka:kr)));}
+ st.bass=avg(0,8);st.mid=avg(8,32);st.high=avg(32,64);st.level=.5*st.bass+.3*st.mid+.2*st.high;
+ st.kick=kick*(.45+.55*phrase);st.onBeat=bi!==lastBeat;lastBeat=bi;};
+return st;})();
+
+/* ===== Desenho: anel de luz ===== */
+const frame=document.getElementById('frame'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+function fit(){const r=frame.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);ctx.setTransform(cv.width/1920,0,0,cv.height/1080,0,0)}
+new ResizeObserver(fit).observe(frame);fit();
+const CX=960,CY=402,R0=232,ripples=[];let T=0;
+function ringPath(R,t,amp){ctx.beginPath();const n=260;
+ for(let i=0;i<=n;i++){const a=i/n*Math.PI*2;
+  let d=0;for(let h=2;h<=6;h++){d+=Sig.bands[h*5]*Math.sin(h*a+t*(.35+h*.11)+h*1.7)}
+  d=d*.013*R*amp+.004*R*Sig.high*Math.sin(18*a+t*4);
+  const r=R+d,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+ ctx.closePath()}
+function draw(dt){
+ ctx.clearRect(0,0,1920,1080);
+ const b=Sig.bass,R=R0*(1+.075*b+.02*Sig.kick);
+ const g=ctx.createRadialGradient(CX,CY,0,CX,CY,R*1.6);
+ g.addColorStop(0,`rgba(150,170,255,${.015+.05*b})`);g.addColorStop(.6,`rgba(197,155,255,${.03+.07*b})`);g.addColorStop(1,'rgba(0,0,0,0)');
+ ctx.fillStyle=g;ctx.fillRect(0,0,1920,1080);
+ if(Sig.onBeat&&Sig.kick>.45)ripples.push({r:R,a:.32});
+ ctx.globalCompositeOperation='lighter';
+ for(const p of ripples){p.r+=dt*95;p.a*=Math.pow(.955,dt*60);ctx.strokeStyle=`rgba(255,255,255,${p.a})`;ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(CX,CY,p.r,0,7);ctx.stroke()}
+ while(ripples.length&&ripples[0].a<.01)ripples.shift();
+ const cg=ctx.createConicGradient(T*.18,CX,CY);
+ cg.addColorStop(0,'#8FB4FF');cg.addColorStop(.33,'#C59BFF');cg.addColorStop(.66,'#FFD6A8');cg.addColorStop(1,'#8FB4FF');
+ ctx.strokeStyle=cg;
+ ctx.filter='blur(22px)';ctx.globalAlpha=.22+.35*b;ctx.lineWidth=70;ringPath(R,T,1);ctx.stroke();
+ ctx.filter='blur(7px)';ctx.globalAlpha=.55+.3*b;ctx.lineWidth=16;ringPath(R,T,1);ctx.stroke();
+ ctx.filter='none';ctx.globalAlpha=.10+.08*b;ctx.lineWidth=1;ctx.strokeStyle='#fff';ringPath(R*.88,T+2,.6);ctx.stroke();
+ ctx.globalAlpha=.96;ctx.lineWidth=2.6+1.6*b;ctx.shadowColor='#fff';ctx.shadowBlur=22;ringPath(R,T,1);ctx.stroke();
+ ctx.shadowBlur=0;ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+}
+/* aquecimento: o primeiro quadro (e o print) já nasce vivo, num pico de grave */
+const tEnd=(Math.ceil(3*116/60)+.05)*60/116;while(T<tEnd){T+=1/60;Sig.step(T,1/60)}draw(1/60);
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
+function loop(now){const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=Math.max(last,now);T+=dt;Sig.step(T,dt);draw(dt);requestAnimationFrame(loop)}
+if(!still)requestAnimationFrame(loop);
+
+/* ===== UI do mock ===== */
+document.querySelectorAll('[data-set]').forEach(btn=>btn.onclick=()=>{
+ document.querySelectorAll('[data-set]').forEach(x=>x.setAttribute('aria-pressed',x===btn));
+ document.querySelectorAll('[data-modo]').forEach(x=>x.textContent=btn.dataset.set)});
+document.getElementById('fs').onclick=()=>frame.requestFullscreen&&frame.requestFullscreen();
+const toast=document.getElementById('toast');
+document.getElementById('bast').onclick=()=>{toast.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>toast.classList.remove('on'),2600)};
+</script>
+</body>
+</html>

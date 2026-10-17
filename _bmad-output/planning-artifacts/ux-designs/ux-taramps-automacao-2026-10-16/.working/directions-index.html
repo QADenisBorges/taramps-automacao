@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direções visuais</title>
+<style>
+/* Índice das três direções visuais do painel. Sem rede, sem fontes baixadas.
+   Neutros do índice: #0A0A0B fundo · #141416 cartão · #26262A fio · #EDEDED texto · #9A9AA0 secundário */
+*{box-sizing:border-box}
+html,body{margin:0;background:#0A0A0B;color:#EDEDED;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif}
+.page{padding:32px 32px 48px;max-width:2400px;margin:0 auto}
+@media (max-width:700px){.page{padding:16px}}
+h1{font-size:28px;font-weight:600;margin:0 0 6px}
+.lead{color:#9A9AA0;font-size:15px;line-height:1.55;max-width:1100px;margin:0 0 22px}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+@media (max-width:1100px){.cols{grid-template-columns:1fr}}
+.col{background:#141416;border:1px solid #26262A;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.col h2{margin:0;font-size:22px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+.col h2 small{font-size:13px;color:#9A9AA0;font-weight:400}
+.one{font-size:15px;color:#EDEDED;margin:0;font-weight:600}
+.col p{margin:0;font-size:14px;line-height:1.55;color:#B9B9BF}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal span{font:12px/1 Consolas,monospace;padding:5px 8px 5px 24px;border-radius:4px;background:#0E0E10;position:relative;color:#B9B9BF;border:1px solid #222}
+.pal span::before{content:"";position:absolute;left:6px;top:4px;width:12px;height:12px;border-radius:3px;background:var(--c);box-shadow:0 0 0 1px #000}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;color:#9A9AA0;margin:0}
+.meta dt{color:#EDEDED}
+.meta dd{margin:0}
+iframe{width:100%;height:760px;border:1px solid #26262A;border-radius:10px;background:#000}
+a{color:#EDEDED}
+.open{font-size:13px}
+.acc1{border-top:3px solid #FFB347}.acc2{border-top:3px solid #7CFFB2}.acc3{border-top:3px solid #E3262F}
+.same{margin-top:26px;background:#141416;border:1px solid #26262A;border-radius:14px;padding:18px;font-size:14px;color:#B9B9BF;line-height:1.6}
+.same b{color:#EDEDED}
+</style>
+</head>
+<body>
+<main class="page">
+  <h1>Painel do Home Theater 2.1 · três direções visuais</h1>
+  <p class="lead">A mesma tela principal (1920 × 1080, para TV ou projetor lido a 3 m) desenhada em três personalidades completas, com os dados reais de 16/10. Cada direção traz também o quadro-chave da abertura (a revelação do nome, com o som que toca só ali) e uma variante de estado. Role dentro de cada quadro ou abra em tela cheia.</p>
+
+  <div class="cols">
+    <section class="col acc1">
+      <h2>1 · Rack Âmbar <small>rack hi-fi analógico</small></h2>
+      <p class="one">Um rack de áudio premium: alumínio escovado, VUs com agulha e luz âmbar.</p>
+      <p>Cada bloco da tela é um "aparelho" parafusado no rack, e a regra de leitura é física: lâmpada acesa é feito, lâmpada apagada é planejado. É a direção mais calorosa e mais próxima do mundo do home theater, e os VUs dão vida aos ganhos mesmo parados. O risco é o excesso de textura competir com os números.</p>
+      <div class="pal"><span style="--c:#070707">#070707</span><span style="--c:#1F1E1C">#1F1E1C</span><span style="--c:#141311">#141311</span><span style="--c:#CDCFD1">#CDCFD1</span><span style="--c:#9B9EA1">#9B9EA1</span><span style="--c:#D9D4C7">#D9D4C7</span><span style="--c:#FFB347">#FFB347</span><span style="--c:#FF9F1C">#FF9F1C</span><span style="--c:#5A3E17">#5A3E17</span><span style="--c:#F6D58E">#F6D58E</span><span style="--c:#E5402A">#E5402A</span><span style="--c:#F3E3B5">#F3E3B5</span><span style="--c:#FF7A3D">#FF7A3D</span></div>
+      <dl class="meta"><dt>Densidade</dt><dd>média-alta, em faixas horizontais</dd><dt>Tipo</dt><dd>Bahnschrift, caixa alta espaçada</dd><dt>Movimento</dt><dd>agulhas que assentam, lâmpadas que respiram</dd><dt>Estado</dt><dd>leitura antiga + botão LER AGORA</dd></dl>
+      <iframe src="direction-rack-ambar.html" title="Direção 1 · Rack Âmbar" loading="lazy"></iframe>
+      <a class="open" href="direction-rack-ambar.html">Abrir em tela cheia →</a>
+    </section>
+
+    <section class="col acc2">
+      <h2>2 · Bancada de Medição <small>instrumentação de engenharia</small></h2>
+      <p class="one">Um osciloscópio de laboratório: graticule, fósforo e relatório de ensaio.</p>
+      <p>Tudo o que está provado aparece como teste PASS com o número medido, o crossover vira o traço principal da tela e o guardião é um alarme honesto. É a direção que mais mostra o trabalho de engenharia e a que melhor sustenta o Denis apontando e explicando. É também a mais densa, então pede cuidado com o tamanho mínimo das letras.</p>
+      <div class="pal"><span style="--c:#0B0E10">#0B0E10</span><span style="--c:#11171A">#11171A</span><span style="--c:#1A2124">#1A2124</span><span style="--c:#1E2A2E">#1E2A2E</span><span style="--c:#2E4046">#2E4046</span><span style="--c:#C9D6D8">#C9D6D8</span><span style="--c:#6F8287">#6F8287</span><span style="--c:#7CFFB2">#7CFFB2</span><span style="--c:#5FD3FF">#5FD3FF</span><span style="--c:#FFC857">#FFC857</span><span style="--c:#FF5C5C">#FF5C5C</span><span style="--c:#8FA3A8">#8FA3A8</span></div>
+      <dl class="meta"><dt>Densidade</dt><dd>alta, em grade de instrumentos</dd><dt>Tipo</dt><dd>Cascadia Mono / Consolas</dd><dt>Movimento</dt><dd>varredura do traço, cursor piscando</dd><dt>Estado</dt><dd>agente escrevendo 081:0=-12.0 ao vivo</dd></dl>
+      <iframe src="direction-bancada-medicao.html" title="Direção 2 · Bancada de Medição" loading="lazy"></iframe>
+      <a class="open" href="direction-bancada-medicao.html">Abrir em tela cheia →</a>
+    </section>
+
+    <section class="col acc3">
+      <h2>3 · Vidro Negro <small>produto premium moderno</small></h2>
+      <p class="one">Um lançamento de produto: preto profundo, vidro, letras grandes e o vermelho da Taramps.</p>
+      <p>Poucos números enormes ("84/84") contam a história num olhar, o detalhe técnico fica calmo em segundo plano e o vermelho aparece só no status, no guardião e no que ainda falta. A linha do tempo une feito (sólido) e planejado (tracejado) com um marcador "hoje". É a mais elegante a 3 m e a que menos parece protótipo, por isso o selo "em evolução" precisa ficar sempre visível.</p>
+      <div class="pal"><span style="--c:#050506">#050506</span><span style="--c:#101014">#101014</span><span style="--c:#1C1C21">#1C1C21</span><span style="--c:#2A2A30">#2A2A30</span><span style="--c:#F5F5F7">#F5F5F7</span><span style="--c:#A1A1A6">#A1A1A6</span><span style="--c:#6E6E73">#6E6E73</span><span style="--c:#E3262F">#E3262F</span><span style="--c:#FF3B44">#FF3B44</span><span style="--c:#C7C7CC">#C7C7CC</span></div>
+      <dl class="meta"><dt>Densidade</dt><dd>baixa, hierarquia por tamanho</dd><dt>Tipo</dt><dd>Segoe UI Variable, pesos 200 e 600</dd><dt>Movimento</dt><dd>luz que abre, pulso discreto no status</dd><dt>Estado</dt><dd>guardião recusou (caso real das 20:21)</dd></dl>
+      <iframe src="direction-vidro-negro.html" title="Direção 3 · Vidro Negro" loading="lazy"></iframe>
+      <a class="open" href="direction-vidro-negro.html">Abrir em tela cheia →</a>
+    </section>
+  </div>
+
+  <div class="same"><b>O que é igual nas três:</b> cabeçalho (Denis Borges · Home Theater 2.1 · Taramps PRO 2.4BT + AUDIO · firmware R003 · EM EVOLUÇÃO — protótipo); os 5 marcos provados; a evolução de 14/10 a 16/10 22h marcada como feita; os próximos passos marcados como planejados; as 4 saídas com crossover, limiter e ganho da leitura de 16/10 17:47 e a curva de resposta (10 Hz – 22 kHz, eixo log); o guardião com as 5 violações a corrigir na regulagem; e as 10 telas do app em miniatura. <b>Dado real extra</b> mostrado nas três: a saída 2 estava em mute nessa leitura.</div>
+</main>
+</body>
+</html>

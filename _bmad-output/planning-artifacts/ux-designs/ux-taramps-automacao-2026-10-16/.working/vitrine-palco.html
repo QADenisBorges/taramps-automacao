@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine · Show / palco</title>
+<style>
+/* ==========================================================
+   Direção 2 · SHOW / PALCO  (energia de show e festival)
+   Paleta:
+     --noite     #07030F  fundo (palco apagado)
+     --magenta   #FF2E93  cor quente principal, centro do espectro
+     --violeta   #8A2BFF  transição
+     --azul      #2B4DFF  bordas do espectro
+     --ciano     #39D5FF  brilho frio pontual
+     --laranja   #FF8A3D  ponto do selo "em evolução"
+     --branco    #FFF3FA  tipografia, pontas quentes das barras
+   Tipografia: Segoe UI Black (BGS), Bahnschrift Condensed (SOUND LAB),
+               Segoe Script (assinatura, como autógrafo de artista).
+   ========================================================== */
+:root{
+  --noite:#07030F; --magenta:#FF2E93; --violeta:#8A2BFF; --azul:#2B4DFF; --ciano:#39D5FF; --laranja:#FF8A3D; --branco:#FFF3FA;
+  --kick:0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#05020B;color:var(--branco);font-family:"Segoe UI Variable","Segoe UI",system-ui,sans-serif}
+body{overflow-x:hidden}
+
+.frame{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;container-type:inline-size;
+  background:
+   radial-gradient(60cqw 34cqw at 18% 8%, rgba(255,46,147,.42), transparent 70%),
+   radial-gradient(60cqw 34cqw at 85% 18%, rgba(43,77,255,.45), transparent 70%),
+   radial-gradient(70cqw 30cqw at 50% 70%, rgba(138,43,255,.38), transparent 75%),
+   linear-gradient(180deg,#12052A 0%,#07030F 62%,#040108 100%)}
+.frame:fullscreen{width:100vw;height:100vh;aspect-ratio:auto}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* feixes de luz de palco (CSS), intensidade segue o bumbo via --kick */
+.beams{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:calc(.45 + var(--kick)*.55)}
+.beam{position:absolute;top:-8cqw;width:9cqw;height:62cqw;transform-origin:50% 0;filter:blur(1.2cqw);
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 85%);
+  clip-path:polygon(44% 0,56% 0,100% 100%,0 100%)}
+.beam.b1{left:8%;background:linear-gradient(180deg,rgba(255,46,147,.75),transparent 80%);animation:swing 7s ease-in-out infinite}
+.beam.b2{left:30%;background:linear-gradient(180deg,rgba(138,43,255,.7),transparent 80%);animation:swing 9s ease-in-out infinite reverse}
+.beam.b3{left:62%;background:linear-gradient(180deg,rgba(57,213,255,.6),transparent 80%);animation:swing 8s ease-in-out -2s infinite}
+.beam.b4{left:84%;background:linear-gradient(180deg,rgba(255,46,147,.7),transparent 80%);animation:swing 6.5s ease-in-out -1s infinite reverse}
+@keyframes swing{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(18deg)}}
+.haze{position:absolute;inset:0;pointer-events:none;background:radial-gradient(40cqw 12cqw at 50% 44%,rgba(255,46,147,calc(.06 + var(--kick)*.16)),transparent 70%)}
+
+/* logotipo */
+.logo{position:absolute;left:0;right:0;top:3.4cqw;display:flex;justify-content:center;align-items:center;gap:1.6cqw}
+.badge{width:7.4cqw;height:7.4cqw;filter:drop-shadow(0 0 calc(.6cqw + var(--kick)*1.4cqw) rgba(255,46,147,.8))}
+.bgs{font-family:"Segoe UI Black","Arial Black","Segoe UI",sans-serif;font-weight:900;font-size:12.4cqw;line-height:.82;letter-spacing:-.035em;transform:skewX(-7deg);
+  background:linear-gradient(180deg,#FFFFFF 0%,#FFE1F0 45%,#FF8CC6 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 calc(.8cqw + var(--kick)*2cqw) rgba(255,46,147,.75))}
+.stack{display:flex;flex-direction:column;font-family:"Bahnschrift SemiBold Condensed","Bahnschrift","Segoe UI",sans-serif;font-weight:700;font-stretch:condensed;font-size:5.1cqw;line-height:.86;letter-spacing:.05em;transform:skewX(-7deg)}
+.stack span:last-child{background:linear-gradient(90deg,#FF2E93,#8A2BFF 55%,#39D5FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sign{position:absolute;left:54%;top:15.2cqw;font-family:"Segoe Script","Brush Script MT",cursive;font-size:2.55cqw;color:#fff;transform:rotate(-4deg);text-shadow:0 0 1.2cqw rgba(255,46,147,.9),0 0 .3cqw rgba(255,255,255,.6)}
+
+/* linha da IA */
+.ia{position:absolute;left:50%;bottom:2.7cqw;transform:translateX(-50%);display:flex;align-items:center;gap:1.1cqw;white-space:nowrap;
+  padding:.75cqw .9cqw .75cqw 1.5cqw;border-radius:99px;background:rgba(10,4,24,.62);backdrop-filter:blur(.8cqw);
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 0 2.4cqw rgba(138,43,255,.35)}
+.ia .txt{font-size:1.5cqw;font-weight:600;letter-spacing:.005em}
+.ia .spark{width:1.4cqw;height:1.4cqw}
+.ia .modo{font-family:"Bahnschrift SemiBold Condensed","Bahnschrift",sans-serif;font-size:1.45cqw;letter-spacing:.12em;text-transform:uppercase;padding:.35cqw 1.1cqw;border-radius:99px;background:linear-gradient(90deg,#FF2E93,#8A2BFF);color:#fff}
+
+.selo{position:absolute;top:2.4cqw;right:2.6cqw;display:flex;align-items:center;gap:.55cqw;font-family:"Bahnschrift SemiBold Condensed","Bahnschrift",sans-serif;font-size:.95cqw;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,243,250,.72);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:.38cqw 1cqw}
+.selo::before{content:"";width:.5cqw;height:.5cqw;border-radius:50%;background:var(--laranja);box-shadow:0 0 .7cqw var(--laranja);animation:pisca 1.6s ease-in-out infinite}
+@keyframes pisca{50%{opacity:.3}}
+
+.bastidores{position:absolute;right:2.2cqw;bottom:2.4cqw;width:2.3cqw;height:2.3cqw;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);display:grid;place-items:center;opacity:.35;cursor:pointer;transition:opacity .3s}
+.bastidores:hover,.bastidores:focus-visible{opacity:.95;outline:none}
+.bastidores svg{width:1cqw;height:1cqw}
+.mock{position:absolute;top:2.3cqw;left:2.4cqw;font:500 .72cqw/1.2 Consolas,"Cascadia Mono",monospace;color:rgba(255,243,250,.7);background:rgba(0,0,0,.35);border:1px dashed rgba(255,255,255,.3);border-radius:.3cqw;padding:.35cqw .6cqw}
+.toast{position:absolute;left:50%;bottom:8.6cqw;transform:translate(-50%,1cqw);opacity:0;font-size:.95cqw;font-weight:600;color:#fff;transition:.4s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- Fora do quadro ---------- */
+.below{max-width:1500px;margin:0 auto;padding:48px 32px 80px;color:#E9DDF5}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:40px;font-size:14px;color:#9C8FB5}
+.ctl button{font:600 14px "Segoe UI",sans-serif;color:#fff;background:#1A0E2E;border:1px solid #33204F;border-radius:99px;padding:7px 16px;cursor:pointer}
+.ctl button[aria-pressed="true"]{background:linear-gradient(90deg,#FF2E93,#8A2BFF);border-color:transparent}
+.ctl .sp{flex:1}
+h2{font-family:"Segoe UI Black","Segoe UI",sans-serif;font-weight:900;font-size:34px;color:#fff;margin-bottom:8px}
+.why{font-size:16px;line-height:1.6;max-width:880px;color:#B9A9D3;margin-bottom:22px}
+.pal{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:56px}
+.pal span{display:flex;align-items:center;gap:8px;font:13px Consolas,monospace;color:#B9A9D3}
+.pal i{width:22px;height:22px;border-radius:50%;border:1px solid #3a2a55}
+.sbh{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+.sbs{font-size:14px;color:#9C8FB5;margin-bottom:20px}
+.sb{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media (max-width:900px){.sb{grid-template-columns:1fr 1fr}}
+.panel{position:relative;aspect-ratio:16/9;background:#07030F;border:1px solid #2A1A45;border-radius:10px;overflow:hidden;container-type:inline-size}
+.cap{margin-top:10px;font-size:13.5px;line-height:1.5;color:#B9A9D3}
+.cap b{color:#fff}
+.tag{position:absolute;top:5cqw;left:5cqw;font:700 4.2cqw Consolas,monospace;color:rgba(255,255,255,.5);z-index:3}
+.cone{position:absolute;top:0;width:22cqw;height:100%;transform-origin:50% 0;clip-path:polygon(45% 0,55% 0,100% 100%,0 100%);filter:blur(.8cqw)}
+.p1 .cone:nth-of-type(1){left:10%;background:linear-gradient(180deg,rgba(255,46,147,.9),transparent 85%);transform:rotate(-14deg)}
+.p1 .cone:nth-of-type(2){left:39%;background:linear-gradient(180deg,rgba(255,255,255,.85),transparent 85%)}
+.p1 .cone:nth-of-type(3){left:68%;background:linear-gradient(180deg,rgba(43,77,255,.9),transparent 85%);transform:rotate(14deg)}
+.p2{background:linear-gradient(180deg,#12052A,#07030F)}
+.bars{position:absolute;left:4%;right:4%;bottom:22%;height:50%;display:flex;align-items:flex-end;gap:1.2%}
+.bars i{flex:1;border-radius:.5cqw .5cqw 0 0;background:linear-gradient(180deg,#fff,#FF2E93 25%,#8A2BFF);box-shadow:0 0 2cqw rgba(255,46,147,.6)}
+.floor{position:absolute;left:0;right:0;bottom:22%;height:.4cqw;background:linear-gradient(90deg,transparent,#FF2E93,transparent);box-shadow:0 0 2cqw #FF2E93}
+.p3{background:radial-gradient(circle at 50% 45%,#fff 0,#FFD0E8 12%,#FF2E93 34%,#3A0A5C 70%,#07030F 100%)}
+.p3 .big{position:absolute;left:0;right:0;top:22%;text-align:center;font-family:"Segoe UI Black","Arial Black",sans-serif;font-weight:900;font-size:26cqw;line-height:1;color:#fff;transform:skewX(-7deg);text-shadow:0 0 4cqw #fff}
+.p4{background:radial-gradient(60% 50% at 20% 10%,rgba(255,46,147,.45),transparent),radial-gradient(60% 50% at 85% 20%,rgba(43,77,255,.45),transparent),linear-gradient(180deg,#12052A,#07030F)}
+.p4 .mini{position:absolute;left:0;right:0;top:8%;text-align:center;font-family:"Segoe UI Black","Arial Black",sans-serif;font-weight:900;font-size:13cqw;line-height:1;transform:skewX(-7deg)}
+.p4 .mini small{font-family:"Bahnschrift SemiBold Condensed","Bahnschrift",sans-serif;font-size:6cqw;letter-spacing:.05em;color:#FF7CC0}
+.p4 .ms{position:absolute;left:52%;top:30%;font-family:"Segoe Script",cursive;font-size:3.4cqw;transform:rotate(-4deg);text-shadow:0 0 1.5cqw #FF2E93}
+.p4 .bars{bottom:20%;height:36%}
+.p4 .floor{bottom:20%}
+.p4 .pill{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);white-space:nowrap;font-size:2.4cqw;font-weight:600;background:rgba(10,4,24,.7);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:.8cqw 2cqw}
+.p4 .pill b{background:linear-gradient(90deg,#FF2E93,#8A2BFF);border-radius:99px;padding:.2cqw 1.2cqw;margin-left:1cqw}
+.fim{position:absolute;right:4cqw;top:4cqw;font-size:3.2cqw;font-weight:700;color:#fff;background:linear-gradient(90deg,#FF2E93,#8A2BFF);border-radius:99px;padding:.6cqw 2cqw;z-index:3}
+</style>
+</head>
+<body>
+
+<section class="frame" id="frame" aria-label="Vitrine BGS Sound Lab, direção Show / palco">
+  <div class="beams"><div class="beam b1"></div><div class="beam b2"></div><div class="beam b3"></div><div class="beam b4"></div></div>
+  <div class="haze"></div>
+  <canvas id="cv"></canvas>
+
+  <div class="mock">simulação do mock: no app real reage ao microfone</div>
+  <div class="selo">em evolução</div>
+
+  <div class="logo" role="img" aria-label="BGS Sound Lab">
+    <svg class="badge" viewBox="0 0 100 100" aria-hidden="true">
+      <defs><linearGradient id="gb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF2E93"/><stop offset=".55" stop-color="#8A2BFF"/><stop offset="1" stop-color="#39D5FF"/></linearGradient></defs>
+      <rect x="4" y="4" width="92" height="92" rx="24" fill="none" stroke="url(#gb)" stroke-width="6"/>
+      <g fill="#fff"><rect x="22" y="44" width="9" height="20" rx="4.5"/><rect x="36" y="28" width="9" height="44" rx="4.5"/><rect x="50" y="18" width="9" height="64" rx="4.5"/><rect x="64" y="34" width="9" height="32" rx="4.5"/><rect x="78" y="46" width="0" height="0"/></g>
+      <circle cx="74" cy="72" r="6" fill="url(#gb)"/>
+    </svg>
+    <span class="bgs">BGS</span>
+    <span class="stack"><span>SOUND</span><span>LAB</span></span>
+  </div>
+  <div class="sign">by Denis Borges</div>
+
+  <div class="ia">
+    <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l2.4 7.1 7.1 2.4-7.1 2.4L12 20.5l-2.4-7.1L2.5 11l7.1-2.4z" fill="#FF8CC6"/></svg>
+    <span class="txt">Som ajustado por inteligência artificial</span>
+    <span class="modo">Modo: <span data-modo>Filme</span></span>
+  </div>
+
+  <button class="bastidores" id="bast" title="Bastidores" aria-label="Abrir Bastidores">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2" fill="#07030F"/><circle cx="12" cy="8" r="2.2" fill="#07030F"/><circle cx="19" cy="16" r="2.2" fill="#07030F"/></svg>
+  </button>
+  <div class="toast" id="toast">Bastidores · no app real pede o login do Denis</div>
+</section>
+
+<div class="below">
+  <div class="ctl">
+    <span>Modo atual (estado da tela):</span>
+    <button data-set="Filme" aria-pressed="true">Filme</button>
+    <button data-set="Música SPL" aria-pressed="false">Música SPL</button>
+    <button data-set="Música EQ" aria-pressed="false">Música EQ</button>
+    <span class="sp"></span>
+    <button id="fs">Tela cheia</button>
+  </div>
+
+  <h2>Show / palco</h2>
+  <p class="why">A sala vira palco de show: luzes de festival varrendo o fundo e um espectro de barras de ponta a ponta, com brilho e reflexo no chão, pulando junto com a música. O "BGS" gigante e inclinado tem a força de pôster de turnê, e a assinatura escrita à mão funciona como autógrafo do artista. É a direção que mais provoca o "que som é esse?!" logo no primeiro segundo.</p>
+  <div class="pal">
+    <span><i style="background:#07030F"></i>#07030F</span>
+    <span><i style="background:#FF2E93"></i>#FF2E93</span>
+    <span><i style="background:#8A2BFF"></i>#8A2BFF</span>
+    <span><i style="background:#2B4DFF"></i>#2B4DFF</span>
+    <span><i style="background:#39D5FF"></i>#39D5FF</span>
+    <span><i style="background:#FF8A3D"></i>#FF8A3D</span>
+    <span><i style="background:#FFF3FA"></i>#FFF3FA</span>
+  </div>
+
+  <p class="sbh">Abertura · cerca de 7 segundos</p>
+  <p class="sbs">O único momento com som. Depois, silêncio dos efeitos: as barras passam a seguir a música da sala.</p>
+  <div class="sb">
+    <div>
+      <div class="panel p1"><span class="tag">1</span><div class="cone"></div><div class="cone"></div><div class="cone"></div></div>
+      <p class="cap"><b>0 a 1,2 s</b> · palco escuro; três refletores acendem um de cada vez · som: três batidas secas de refletor ligando.</p>
+    </div>
+    <div>
+      <div class="panel p2"><span class="tag">2</span><div class="bars"><i style="height:6%"></i><i style="height:10%"></i><i style="height:22%"></i><i style="height:40%"></i><i style="height:62%"></i><i style="height:88%"></i><i style="height:100%"></i><i style="height:92%"></i><i style="height:66%"></i><i style="height:42%"></i><i style="height:20%"></i><i style="height:9%"></i><i style="height:5%"></i></div><div class="floor"></div></div>
+      <p class="cap"><b>1,2 a 3 s</b> · as barras sobem do centro para as bordas, cada vez mais rápido · som: subida de tensão acelerando.</p>
+    </div>
+    <div>
+      <div class="panel p3"><span class="tag">3</span><div class="big">BGS</div></div>
+      <p class="cap"><b>3 a 4 s</b> · o "drop": clarão branco e o "BGS" entra de uma vez, tremendo a tela · som: impacto grave forte com estalo.</p>
+    </div>
+    <div>
+      <div class="panel p4"><span class="tag">4</span><span class="fim">Vitrine</span><div class="mini">BGS <small>SOUND LAB</small></div><div class="ms">by Denis Borges</div><div class="bars"><i style="height:20%"></i><i style="height:34%"></i><i style="height:52%"></i><i style="height:70%"></i><i style="height:90%"></i><i style="height:76%"></i><i style="height:58%"></i><i style="height:80%"></i><i style="height:64%"></i><i style="height:44%"></i><i style="height:30%"></i><i style="height:18%"></i></div><div class="floor"></div><div class="pill">Som ajustado por inteligência artificial <b>MODO: FILME</b></div></div>
+      <p class="cap"><b>4 a 7 s</b> · "SOUND LAB" encaixa, a assinatura se escreve e a linha da IA sobe · som: eco do impacto e aplausos sumindo. Fica a Vitrine.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Sinal falso: SIMULAÇÃO DO MOCK (no app real vem do microfone) ===== */
+const Sig=(()=>{const N=64,out=new Float32Array(N);let s=7,lastBeat=-1;
+const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+const st={bands:out,bass:0,mid:0,high:0,level:0,kick:0,onBeat:false};
+const avg=(a,b)=>{let x=0;for(let i=a;i<b;i++)x+=out[i];return x/(b-a)};
+st.step=(t,dt)=>{const beat=t*116/60,p=beat%1,bi=Math.floor(beat);
+ const kick=Math.exp(-p*6),snare=(bi%2===1)?Math.exp(-p*8):0,hat=Math.exp(-((beat*2)%1)*12);
+ const phrase=.62+.38*Math.sin(t*.21)*Math.sin(t*.083+1.3);
+ const ka=1-Math.exp(-dt*60*.55),kr=1-Math.exp(-dt*60*.10);
+ for(let i=0;i<N;i++){const f=i/(N-1);
+  let v=.78*Math.pow(1-f,2.2)*(.25+.75*kick)+.34*Math.exp(-((f-.32)**2)/.03)*(.55+.45*Math.sin(t*2.3+i*.45))
+   +.30*snare*Math.exp(-((f-.55)**2)/.05)+.24*hat*Math.pow(f,1.3)+.10*rnd();
+  v=Math.min(1,v*(.45+.55*phrase));out[i]=Math.max(0,Math.min(1,out[i]+(v-out[i])*(v>out[i]?ka:kr)));}
+ st.bass=avg(0,8);st.mid=avg(8,32);st.high=avg(32,64);st.level=.5*st.bass+.3*st.mid+.2*st.high;
+ st.kick=kick*(.45+.55*phrase);st.onBeat=bi!==lastBeat;lastBeat=bi;};
+return st;})();
+
+/* ===== Desenho: espectro de palco, simétrico (grave no centro) ===== */
+const frame=document.getElementById('frame'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+function fit(){const r=frame.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);ctx.setTransform(cv.width/1920,0,0,cv.height/1080,0,0)}
+new ResizeObserver(fit).observe(frame);fit();
+const NB=58,X0=56,X1=1864,FLOOR=842,HMAX=400,caps=new Float32Array(NB);let T=0;
+const slot=(X1-X0)/NB,BW=slot*.64;
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h);ctx.closePath()}
+function draw(dt){
+ ctx.clearRect(0,0,1920,1080);
+ const k=Sig.kick;frame.style.setProperty('--kick',k.toFixed(3));
+ // brilho de fundo atrás das barras
+ const g=ctx.createRadialGradient(960,FLOOR,0,960,FLOOR,820);
+ g.addColorStop(0,`rgba(255,46,147,${.18+.32*k})`);g.addColorStop(.5,`rgba(138,43,255,${.08+.14*k})`);g.addColorStop(1,'rgba(0,0,0,0)');
+ ctx.fillStyle=g;ctx.fillRect(0,300,1920,780);
+ ctx.globalCompositeOperation='lighter';
+ for(let i=0;i<NB;i++){
+  const dist=Math.abs(i-(NB-1)/2)/((NB-1)/2),bi=Math.min(63,Math.floor(dist*54)+1);
+  const v=Math.pow(Sig.bands[bi],.72)*(1.18-.2*dist);
+  const h=10+Math.min(1,v)*HMAX,x=X0+i*slot+(slot-BW)/2,y=FLOOR-h;
+  const hue=330-dist*105;
+  // reflexo no chão
+  const rg=ctx.createLinearGradient(0,FLOOR+6,0,FLOOR+6+h*.5);
+  rg.addColorStop(0,`hsla(${hue},100%,62%,.32)`);rg.addColorStop(1,`hsla(${hue},100%,62%,0)`);
+  ctx.fillStyle=rg;ctx.fillRect(x,FLOOR+6,BW,h*.5);
+  // barra com brilho
+  const bg=ctx.createLinearGradient(0,y,0,FLOOR);
+  bg.addColorStop(0,`hsla(${hue},100%,86%,1)`);bg.addColorStop(.18,`hsla(${hue},100%,64%,1)`);bg.addColorStop(1,`hsla(${hue+18},100%,40%,.9)`);
+  ctx.shadowColor=`hsla(${hue},100%,60%,.9)`;ctx.shadowBlur=28;ctx.fillStyle=bg;rr(x,y,BW,h,BW/2);ctx.fill();
+  // tampinhas que caem devagar
+  caps[i]=Math.max(caps[i]-dt*150,h);
+  ctx.shadowBlur=16;ctx.shadowColor='#fff';ctx.fillStyle='rgba(255,243,250,.92)';ctx.fillRect(x,FLOOR-caps[i]-16,BW,5);
+  ctx.shadowBlur=0;
+ }
+ // linha do chão
+ const fl=ctx.createLinearGradient(X0,0,X1,0);
+ fl.addColorStop(0,'rgba(43,77,255,0)');fl.addColorStop(.25,'rgba(138,43,255,.8)');fl.addColorStop(.5,'rgba(255,46,147,1)');fl.addColorStop(.75,'rgba(138,43,255,.8)');fl.addColorStop(1,'rgba(43,77,255,0)');
+ ctx.fillStyle=fl;ctx.shadowColor='#FF2E93';ctx.shadowBlur=24;ctx.fillRect(X0,FLOOR+1,X1-X0,3);ctx.shadowBlur=0;
+ ctx.globalCompositeOperation='source-over';
+ // névoa escurecendo o reflexo
+ const fog=ctx.createLinearGradient(0,FLOOR,0,1080);fog.addColorStop(0,'rgba(7,3,15,0)');fog.addColorStop(1,'rgba(4,1,8,.85)');
+ ctx.fillStyle=fog;ctx.fillRect(0,FLOOR+4,1920,1080-FLOOR);
+}
+const tEnd=(Math.ceil(3*116/60)+.05)*60/116;while(T<tEnd){T+=1/60;Sig.step(T,1/60);for(let i=0;i<NB;i++)caps[i]=Math.max(caps[i]-2.5,0)}draw(1/60);
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
+function loop(now){const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=Math.max(last,now);T+=dt;Sig.step(T,dt);draw(dt);requestAnimationFrame(loop)}
+if(!still)requestAnimationFrame(loop);
+
+/* ===== UI do mock ===== */
+document.querySelectorAll('[data-set]').forEach(btn=>btn.onclick=()=>{
+ document.querySelectorAll('[data-set]').forEach(x=>x.setAttribute('aria-pressed',x===btn));
+ document.querySelectorAll('[data-modo]').forEach(x=>x.textContent=btn.dataset.set)});
+document.getElementById('fs').onclick=()=>frame.requestFullscreen&&frame.requestFullscreen();
+const toast=document.getElementById('toast');
+document.getElementById('bast').onclick=()=>{toast.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>toast.classList.remove('on'),2600)};
+</script>
+</body>
+</html>
