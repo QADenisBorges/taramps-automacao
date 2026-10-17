@@ -1,0 +1,26 @@
+{
+  "formato": 1,
+  "_comentario": "Riscos aceitos conscientemente pelo Denis. Uma auditoria que encontrar um destes itens o classifica como RISCO ACEITO (não como bloqueio) somente se TODAS as contramedidas estiverem presentes e nenhuma medição indicar dano; faltando uma contramedida, ou com indício de dano, volta a ser risco ALTO. Só o Denis edita este arquivo.",
+  "riscos": [
+    {
+      "id": "musica-high",
+      "nome": "Perfil MUSICA HIGH (memória 1)",
+      "decidido_por": "Denis",
+      "data": "2026-10-17",
+      "o_que": "Máximo de volume e impacto para demonstração: JBL podem trabalhar acima do teto conservador de 11 V (12,6 V pela regra da ficha ou 15,5 V para demonstração curta), escolhido e medido pelo Denis na etapa 3 da /regulagem.",
+      "por_que": "Impressionar em demonstrações curtas; o projeto prevê esse perfil desde a forja (forged-idea: 'Música SPL HIGH: máximo dentro da calibração, por 15 min ou mais').",
+      "limites": {
+        "duracao_max_min": 15,
+        "teto_jbl_v_max": 15.5
+      },
+      "contramedidas": [
+        "Corte das JBL em Linkwitz-Riley 24 dB/oit a 150 Hz (sub cobre até 150 Hz): reduz o movimento do cone na faixa de 100–130 Hz.",
+        "Limitador das saídas 1 e 2 no teto escolhido, medido com multímetro (tom de 400 Hz) nas duas saídas (medidas saida1_teto_novo_vac e saida2_teto_novo_vac).",
+        "Guardião continua ativo: passa-alta e subsônico nunca abaixo do mínimo, limitador nunca OFF nem acima do teto, ponte idêntica, G_ef ≤ −1 dB.",
+        "Duração máxima de 15 minutos por demonstração.",
+        "Ao fim de cada rodada: mão no dissipador do SD800.4 ('morno' segue; 'quente' para e anota).",
+        "Auditoria das resistências das JBL e do sub depois da demonstração, comparando com as da etapa 3."
+      ]
+    }
+  ]
+}
