@@ -113,8 +113,8 @@ Responda: ok
 ```
 Etapa 1 · Passo 9 de 11 — Roteamento e mute (desconhecido: lido em 16/10)
 Faça: lembre o que você configurou no app
-Confira: saída 1 = A+B, saída 2 = B, saída 2 MUTADA, 3 e 4 = A+B. Para estéreo: saída 1 = A, saída 2 = B, nada mutado.
-Responda: "manter" ou "corrigir"
+Confira: lido: saída 1 = A+B, saída 2 = B, saída 2 MUTADA, 3 e 4 = A+B. A auditoria de 17/10 marcou a saída 1 em A+B como risco ALTO (+6 dB antes do limitador: o cone da JBL L anda quase o dobro). Correção obrigatória: saída 1 = A, saída 2 = B, nada mutado; o sub segue em A+B.
+Responda: ok
 ```
 
 ```
@@ -166,7 +166,7 @@ Confira: Guardião: APROVADO
 Responda: ok para aplicar
 ```
 
-Passo 4 só se o 1.9 foi "corrigir"; senão, `Etapa 2 · Passo 4 de 4 — Roteamento: mantido. Responda: ok`.
+Passo 4 é obrigatório (auditoria de 17/10): sem ele, o teto de demonstração das JBL não vale.
 
 ```
 Etapa 2 · Passo 4 de 4 — Roteamento e mute
@@ -177,144 +177,196 @@ Responda: ok para aplicar
 
 ---
 
-## Etapa 3 · Teste dos +2 dB e teto novo das JBL, sem falantes (M = 14)
+## Etapa 3 · Teste dos +2 dB, sub na ponte e teto das JBL, sem falantes (M = 19)
 
-Precisa: multímetro, celular com tom de **400 Hz** a 0 dBFS (arquivo ou gerador de tom) pareado por
-Bluetooth no processador. Depois da etapa 2 as JBL cortam abaixo de 150 Hz: um tom de 60 Hz sairia
-~30 dB mais baixo e a medida não valeria. 400 Hz fica dentro da faixa delas, e a maioria dos
-multímetros mede bem até ~400 Hz. Passos 2 a 4 são as resistências que nunca foram medidas: já que os
-falantes vão ficar soltos, é a hora. Medidas: `jbl_l_ohm`, `jbl_r_ohm`, `sub_ohm`, `saida1_vac`,
-`saida1_mais2db_vac`, `teto_jbl_escolhido`, `saida1_teto_novo_vac`, `saida2_teto_novo_vac`.
+Esta etapa cumpre as contramedidas da auditoria independente de 17/10
+(`estado/auditorias/2026-10-17_guardiao.md`): +2 dB testado nas **duas** JBL, o **sub medido na
+ponte** (≤ 28 V), a regra 6 desligada **só nas saídas que passaram** e o teto de demonstração das
+JBL **amarrado** ao corte de 150 Hz a 24 dB/oit e à rota sem A+B. O guardião faz valer essa
+amarração; a etapa só mede e registra.
+
+Precisa: multímetro, celular pareado por Bluetooth no processador, com dois tons a 0 dBFS (arquivo
+ou gerador): **400 Hz** para as JBL e **50 Hz** para o sub. Depois da etapa 2 as JBL cortam abaixo
+de 150 Hz: um tom de 60 Hz sairia ~30 dB mais baixo e a medida não valeria. Medidas:
+`jbl_l_ohm`, `jbl_r_ohm`, `sub_ohm`, `saida1_vac`, `saida1_mais2db_vac`, `saida2_vac`,
+`saida2_mais2db_vac`, `sub_ponte_vac`, `multimetro_banda_400hz`, `teto_jbl_escolhido`,
+`saida1_teto_novo_vac`, `saida2_teto_novo_vac`.
 
 ```
-Etapa 3 · Passo 1 de 14 — Soltar os falantes
+Etapa 3 · Passo 1 de 19 — Soltar os falantes
 Faça: tire a fonte da tomada e solte os fios das JBL L, JBL R e do sub nos bornes do módulo
 Confira: nenhum fio de falante encostando em borne
 Responda: ok
 ```
 
 ```
-Etapa 3 · Passo 2 de 14 — Resistência da JBL L · medida jbl_l_ohm
+Etapa 3 · Passo 2 de 19 — Resistência da JBL L · medida jbl_l_ohm
 Faça: multímetro em Ω nas pontas do cabo da JBL L
 Confira: esperado ≈ 3,4 Ω
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 3 de 14 — Resistência da JBL R · medida jbl_r_ohm
+Etapa 3 · Passo 3 de 19 — Resistência da JBL R · medida jbl_r_ohm
 Faça: multímetro em Ω nas pontas do cabo da JBL R
 Confira: esperado ≈ 3,4 Ω
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 4 de 14 — Resistência do sub · medida sub_ohm
+Etapa 3 · Passo 4 de 19 — Resistência do sub · medida sub_ohm
 Faça: multímetro em Ω nas pontas do cabo do sub
 Confira: esperado 3 a 3,6 Ω (perto de 7 Ω muda o alvo da ponte: me avise)
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 5 de 14 — Tom pelo Bluetooth · medida saida1_vac
+Etapa 3 · Passo 5 de 19 — Tom de 400 Hz na saída 1 · medida saida1_vac
 Faça: fonte na tomada; celular a 100 % tocando o tom de 400 Hz; multímetro em V AC nos bornes CH1 do módulo
 Confira: esperado ≈ 11 V (o limiter calibrado)
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 6 de 14 — +2 dB pelo app · medida saida1_mais2db_vac
+Etapa 3 · Passo 6 de 19 — +2 dB na saída 1 · medida saida1_mais2db_vac
 Faça: abra o app, Saída 1, ganho de −11,0 para −9,0 dB; leia o multímetro com o tom tocando
-Confira: se ficar em 11,0 V ou menos, o limitador é o teto (passou); se passar de 11,0 V, não passou
+Confira: 11,0 V ou menos = o limitador é o teto (passou); mais de 11,0 V = não passou
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 7 de 14 — Voltar o ganho
-Faça: no app, ganho da saída 1 de volta para −11,0 dB; pare o tom; feche o app
-Confira: app fechado
+Etapa 3 · Passo 7 de 19 — Voltar o ganho da saída 1
+Faça: no app, ganho da saída 1 de volta para −11,0 dB
+Confira: o app mostra −11,0
 Responda: ok
 ```
 
-**3.8 Releitura. IA roda** `uv run ferramentas/ler_processador.py` (o app escreveu). Confira
-`081:0 = −11,0` e que mais nada mudou. Se o ganho não voltou, **IA roda** `ajustar_processador.py
---simular 081:0=-11.0` e aplica com o ok (baixar sempre passa).
+```
+Etapa 3 · Passo 8 de 19 — Tom de 400 Hz na saída 2 · medida saida2_vac
+Faça: tom de 400 Hz ainda tocando; multímetro em V AC nos bornes CH2 do módulo
+Confira: esperado ≈ 11 V
+Responda: o número
+```
 
 ```
-Etapa 3 · Passo 8 de 14 — Reler o aparelho
+Etapa 3 · Passo 9 de 19 — +2 dB na saída 2 · medida saida2_mais2db_vac
+Faça: no app, Saída 2, ganho de −11,0 para −9,0 dB; leia o multímetro
+Confira: 11,0 V ou menos = passou; mais de 11,0 V = não passou
+Responda: o número
+```
+
+```
+Etapa 3 · Passo 10 de 19 — Voltar o ganho da saída 2
+Faça: no app, ganho da saída 2 de volta para −11,0 dB; pare o tom de 400 Hz
+Confira: o app mostra −11,0
+Responda: ok
+```
+
+```
+Etapa 3 · Passo 11 de 19 — Sub na ponte, tom de 50 Hz · medida sub_ponte_vac
+Faça: celular a 100 % tocando o tom de 50 Hz; multímetro em V AC entre CH4 ⊕ e CH3 ⊖ (os dois bornes do sub em ponte)
+Confira: alvo: 28 V ou menos (400 W × 4 Ω, menos 3 dB). Com rota A+B e o EQ de +3 dB em 50 Hz, o limiter do sub já está atuando: o que você lê é o teto real do sub
+Responda: o número
+```
+
+Se `sub_ponte_vac` > 28: **IA calcula** a redução `r = 20·log10(sub_ponte_vac ÷ 28)`, arredonda
+para cima em 0,5 dB e **IA roda** `--simular 071:2=<−6,0 − r>` (baixar sempre passa; espelha na
+4), aplica com o ok e pede a medida de novo com `--refazer "limiter do sub baixou <r> dB"`. Repita
+até ≤ 28 V. Pare o tom de 50 Hz ao fim.
+
+**3.12 Releitura. IA roda** `uv run ferramentas/ler_processador.py` (o app escreveu). Confira
+`081:0 = 081:1 = −11,0` e que mais nada mudou além do limiter do sub, se ele baixou.
+
+```
+Etapa 3 · Passo 12 de 19 — Reler o aparelho
 Faça: nada; eu leio
-Confira: ganho da saída 1 em −11,0 dB; mudou mais alguma coisa: <nada | lista>
+Confira: ganhos das JBL em −11,0; limiter do sub em <valor>; mudou mais alguma coisa: <nada | lista>
 Responda: ok
 ```
 
-Passo 9 só se `saida1_mais2db_vac` é um número ≤ 11,0. Se é maior, ou não é número ("pular",
-texto): `Etapa 3 · Passo 9 de 14 — Não passou (ou não medido): a regra 6 fica ligada (nível não
-sobe; EQ só por corte). Responda: ok`.
+Passo 13 só se **as duas** medidas de +2 dB (`saida1_mais2db_vac` e `saida2_mais2db_vac`) são
+números ≤ 11,0. Senão: `Etapa 3 · Passo 13 de 19 — Não passou (ou não medido): a regra 6 fica
+ligada em todas as saídas (nível não sobe; EQ só por corte). Responda: ok`, e os passos 14 a 19
+viram telas de uma linha (`Teto das JBL fica em 11 V. Responda: ok`).
 
 ```
-Etapa 3 · Passo 9 de 14 — Desligar a regra 6 (só o Denis edita)
-Faça: abra estado/guardiao.json e troque  "regra6": true  por  "regra6": false ; salve
-Confira: eu rodo ajustar_processador.py --simular 081:0=-9.0 (só simula, nunca aplica): com a regra 6 desligada diz "Guardião: APROVADO"; se disser RECUSADO (regra 6), a edição não pegou
+Etapa 3 · Passo 13 de 19 — Desligar a regra 6 só nas JBL (só o Denis edita)
+Faça: abra estado/guardiao.json; nas saídas "1" e "2" troque  "regra6": true  por  "regra6": false ; nas saídas "3" e "4" deixe true ; salve
+Confira: eu rodo --simular 081:0=-9.0 (só simula): diz "Guardião: APROVADO"; e --simular 081:2=-9.0 tem que continuar RECUSADO (regra 6): o sub segue travado
 Responda: ok
 ```
 
-O ganho da saída 1 **não** é aplicado nesse passo: o `--simular` serve só para provar que a regra 6
-saiu. O ganho real das JBL sobe só na memória MUSICA HIGH (etapa 5).
+```
+Etapa 3 · Passo 14 de 19 — O multímetro mede 400 Hz? · medida multimetro_banda_400hz
+Faça: olhe no manual ou na etiqueta do multímetro a faixa de frequência do V AC (às vezes "True RMS 40–400 Hz" ou "40 Hz–1 kHz")
+Confira: se a faixa inclui 400 Hz, as medidas de hoje valem até 15,5 V; se não sabe, valem só para o teto da ficha
+Responda: "sim", "não" ou "não sei"
+```
 
-### Teto novo das JBL (passos 10 a 14; só se o passo 9 desligou a regra 6)
+### Teto das JBL (passos 15 a 19)
 
-O teto de 11 V foi validado pelo **movimento do cone com o corte antigo** (BT12 perto de 120 Hz).
-Com LR24 em 150 Hz, o limite da JBL passa a ser o **calor** (80 W RMS, 4 Ω). Duas opções:
+O teto de 11 V foi validado pelo movimento do cone com o corte antigo. Com LR24 em 150 Hz e a rota
+sem A+B, a auditoria aceita até ~12,6 V (0,98× o Xmax com o limiter só aparando). 15,5 V passa do
+Xmax (1,21×) e só entra como **risco aceito** da MUSICA HIGH (`estado/riscos_aceitos.json`) com
+**todas** as condições abaixo; senão, o máximo é 12,6 V.
 
-| Opção | Tensão no módulo | `teto_limiter_db` das saídas 1 e 2 | Ganho sobre hoje |
+| Opção | Tensão no módulo | `teto_demo.teto_limiter_db` | Condições |
 |---|---|---|---|
-| Ficha (recomendada para o dia a dia) | ~12,6 V | `-9.8` | +1,2 dB |
-| Demonstração curta (até ~15 min, aceite de risco) | ~15,5 V | `-8.0` | +3 dB |
+| Ficha | ~12,6 V | `-9.8` | +2 dB passou nas saídas 1 e 2; corte LR24 em 150 Hz; saída 1 em A e saída 2 em B |
+| Demonstração (risco aceito) | ~15,5 V | `-8.0` | tudo da ficha + `sub_ponte_vac` ≤ 28 + `multimetro_banda_400hz` = "sim" + na MUSICA HIGH: attack ≤ 10 ms e Auto desligado + máx. 15 min + mão no módulo + resistências antes e depois |
 
 Conta: o módulo multiplica a saída do processador por ~19,6 (0,56 V → 11 V);
-`teto_limiter_db` = 20·log10(V_módulo ÷ 19,6 ÷ 2,0). Se o passo 9 **não** desligou a regra 6, os
-passos 10 a 14 viram telas de uma linha: `Etapa 3 · Passo N de 14 — Teto das JBL fica em 11 V
-(o +2 dB não passou). Responda: ok`.
+`teto_limiter_db` = 20·log10(V_módulo ÷ 19,6 ÷ 2,0).
 
 ```
-Etapa 3 · Passo 10 de 14 — Escolher o teto novo das JBL · medida teto_jbl_escolhido
+Etapa 3 · Passo 15 de 19 — Escolher o teto das JBL · medida teto_jbl_escolhido
 Faça: nada, decida
-Confira: 12,6 V = regra da ficha, +1,2 dB, seguro para o dia a dia · 15,5 V = demonstração curta, +3 dB, você aceita o risco (pôr a mão no módulo no fim)
-Responda: 12,6 ou 15,5
+Confira: 12,6 V = ficha (+1,2 dB). 15,5 V = demonstração (+3 dB), só se tudo da tabela estiver ok: <ok | falta: …>
+Responda: 12,6 ou 15,5 (ou 11 para manter)
 ```
 
-Registre `medida teto_jbl_escolhido <12.6|15.5> V`.
+Registre `medida teto_jbl_escolhido <12.6|15.5|11> V`. Com 11, os passos 16 a 19 viram telas de uma
+linha.
 
 ```
-Etapa 3 · Passo 11 de 14 — Subir o teto no guardião (só o Denis edita)
-Faça: abra estado/guardiao.json e, nas saídas 1 e 2, troque  "teto_limiter_db": -11.0  por  "teto_limiter_db": <-9.8 | -8.0> ; salve
-Confira: eu rodo ajustar_processador.py --simular 071:0=<-9.8|-8.0> (só simula): com o teto novo diz "Guardião: APROVADO"; se disser RECUSADO (trava 3), a edição não pegou
+Etapa 3 · Passo 16 de 19 — Teto de demonstração no guardião (só o Denis edita)
+Faça: em estado/guardiao.json, nas saídas "1" e "2", troque  "teto_demo": null  por  "teto_demo": {"teto_limiter_db": <-9.8 | -8.0>, "exige_passa_alta_hz": 150, "exige_inclinacao_db_oit": 24, "proibe_rota_ab": true} ; salve
+Confira: eu rodo --simular 071:0=<-9.8|-8.0> (só simula): com o corte de 150 Hz e a rota A diz "Guardião: APROVADO"; se disser RECUSADO (trava 3), a edição ou o corte não pegou
 Responda: ok
 ```
 
+O guardião só aceita esse teto **enquanto** a saída tiver passa-alta ≥ 150 Hz, ≥ 24 dB/oit e rota
+sem A+B. Se alguém baixar o corte ou puser A+B, ele exige o limiter de volta em −11,0 no mesmo lote.
+
 ```
-Etapa 3 · Passo 12 de 14 — Subir o limitador das JBL
+Etapa 3 · Passo 17 de 19 — Subir o limitador das JBL
 Faça: nada; eu simulo: ajustar_processador.py --simular 071:0=<-9.8|-8.0> 071:1=<-9.8|-8.0>
 Confira: Guardião: APROVADO
 Responda: ok para aplicar
 ```
 
 ```
-Etapa 3 · Passo 13 de 14 — Medir o teto novo na saída 1 · medida saida1_teto_novo_vac
-Faça: celular a 100 % com o tom de 400 Hz; no app, ganho da saída 1 em −9,0 dB (o tom passa do limitador); multímetro em V AC no CH1; depois volte o ganho para −11,0 e feche o app
+Etapa 3 · Passo 18 de 19 — Medir o teto novo na saída 1 · medida saida1_teto_novo_vac
+Faça: celular a 100 % com o tom de 400 Hz; no app, ganho da saída 1 em −9,0 dB (o tom passa do limitador); multímetro em V AC no CH1; depois volte o ganho para −11,0
 Confira: esperado ≈ <12,6 | 15,5> V; se passar mais de 0,5 V, me diga: eu baixo o limitador 0,5 dB por vez
 Responda: o número
 ```
 
 ```
-Etapa 3 · Passo 14 de 14 — Medir o teto novo na saída 2 · medida saida2_teto_novo_vac
+Etapa 3 · Passo 19 de 19 — Medir o teto novo na saída 2 · medida saida2_teto_novo_vac
 Faça: o mesmo no CH2 (ganho da saída 2 em −9,0 dB, medir, voltar para −11,0); pare o tom; feche o app
 Confira: esperado ≈ <12,6 | 15,5> V
 Responda: o número
 ```
 
-Depois do passo 14, **IA roda** uma leitura (o app escreveu) e confere os ganhos em −11,0 e os
+Depois do passo 19, **IA roda** uma leitura (o app escreveu) e confere os ganhos em −11,0 e os
 limitadores no teto novo. Se alguma medida passou mais de 0,5 V do alvo, baixe o `071` daquela
 saída em 0,5 dB (`--simular` antes) e peça a medida de novo com `--refazer "limitador baixou 0,5 dB"`.
+
+**Auditoria independente de novo:** ao fim da etapa 3, peça (fora da conversa com o Denis, com um
+agente sem o contexto da sessão) a reauditoria do guardião com as medidas novas, gravada em
+`estado/auditorias/<data>_<hora>_pos-etapa3.md`. Só siga para a etapa 4 se ela não apontar risco
+ALTO fora dos riscos aceitos.
 
 ---
 
@@ -375,7 +427,7 @@ Propostas iniciais (ajuste pelo que ele ouvir, uma ou duas bandas por vez, sempr
 
 | Memória | Lote inicial | O que muda |
 |---|---|---|
-| MUSICA HIGH | Com a regra 6 off e o teto novo: JBL até o limitador novo, `081:0=-9.0 081:1=-9.0` (12,6 V) ou `-8.0` (15,5 V); EQ 0; sub como está (sem folga, regra 7) | volume e impacto para demonstração de até 15 min; sem teto novo, fica o máximo da calibração (11 V) |
+| MUSICA HIGH | Com a regra 6 off nas JBL e o teto novo: `070:0=0 070:1=0 072:0=10.0 072:1=10.0 081:0=-9.0 081:1=-9.0` (12,6 V) ou ganho `-8.0` (15,5 V); EQ 0 (nada de reforço abaixo de 300 Hz); sub como está (regra 6 ligada nele) | volume e impacto para demonstração de até 15 min; sem teto novo, fica o máximo da calibração (11 V) |
 | MUSICA ORIGINAL | `081:0=-11.0 081:1=-11.0 071:0=-11.0 071:1=-11.0 020:5=-2.0 020:6=-1.5 020:10=-1.0` | dia a dia: ganho e limitador das JBL de volta aos 11 V (baixar sempre passa); tira o embolado (250/400) e a aspereza (2,5 k) |
 | FILME | `081:0=-11.0 081:1=-11.0 071:0=-11.0 071:1=-11.0 081:2=-12.0 020:3=-2.0 020:4=-2.0 020:5=-2.0 020:12=-1.0` | sub −2 dB e corte em 100–250 Hz: a fala sobe em relação; −1 em 6,3 k tira o chiado |
 

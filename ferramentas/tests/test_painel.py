@@ -195,6 +195,39 @@ class EstadoTest(Base):
         self.assertEqual(e["agente"]["ajustes"], [])
         self.assertEqual(e["problemas"], ["ajustes: RuntimeError"])
 
+    def test_regra6_por_saida_e_teto_efetivo(self):
+        self.com_retrato_real()
+        g = self.montar()["guardiao"]
+        self.assertEqual(g["regra6_saidas"], {"1": True, "2": True, "3": True, "4": True})
+        self.assertEqual(g["tetos"]["1"], {"base": -11.0, "demo": None, "condicoes": None,
+                                           "efetivo": -11.0, "demo_valendo": False})
+        self.assertEqual(g["tetos"]["3"]["efetivo"], -6.0)
+        # O Denis preenche o teto de demonstração e desliga a regra 6 só nas JBL.
+        dados = json.loads(GUARDIAO_REAL.read_text(encoding="utf-8"))
+        for n in ("1", "2"):
+            dados["saidas"][n]["teto_demo"] = {"teto_limiter_db": -9.8, "exige_passa_alta_hz": 150,
+                                               "exige_inclinacao_db_oit": 24, "proibe_rota_ab": True}
+            dados["saidas"][n]["regra6"] = False
+        (self.estado / "guardiao.json").write_text(json.dumps(dados), encoding="utf-8")
+        g = self.montar()["guardiao"]
+        self.assertFalse(g["regra6"])
+        self.assertEqual(g["regra6_saidas"], {"1": False, "2": False, "3": True, "4": True})
+        # Retrato real: JBL em BT12 → o teto de demonstração não vale.
+        self.assertEqual((g["tetos"]["1"]["efetivo"], g["tetos"]["1"]["demo_valendo"]), (-11.0, False))
+        self.assertEqual(g["tetos"]["1"]["demo"], -9.8)
+        self.assertIn("150 Hz/24 dB/oit", g["tetos"]["1"]["condicoes"])
+        # Com LR24 em 150 Hz e rota A, vale o de demonstração.
+        caminho = next((self.estado / "leituras").glob("*.json"))
+        retrato = json.loads(caminho.read_text(encoding="utf-8"))
+        for x in retrato["leituras"]:
+            novo = {("042", 0): 3, ("040", 0): 150, ("010", 0): "a"}.get((x["codigo"], x["canal"]))
+            if novo is not None:
+                x["valor"] = novo
+        caminho.write_text(json.dumps(retrato), encoding="utf-8")
+        g = self.montar()["guardiao"]
+        self.assertEqual((g["tetos"]["1"]["efetivo"], g["tetos"]["1"]["demo_valendo"]), (-9.8, True))
+        self.assertEqual(g["tetos"]["2"]["efetivo"], -11.0)  # saída 2 continua em BT12
+
     def test_guardiao_json_invalido_nao_derruba(self):
         self.com_retrato_real()
         (self.estado / "guardiao.json").write_text("{}", encoding="utf-8")

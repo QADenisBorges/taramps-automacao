@@ -199,6 +199,8 @@ class AjusteTest(unittest.TestCase):
         self.assertIn("Para desfazer: uv run ferramentas/ajustar_processador.py 081:0=-11.0", ex.saida)
         import hashlib
         self.assertEqual(r["guardiao"]["sha256"], hashlib.sha256(GUARDIAO.read_bytes()).hexdigest())
+        # Regra 6 por saída: o registro guarda o valor de cada uma.
+        self.assertEqual(r["guardiao"]["regra6"], {"1": True, "2": True, "3": True, "4": True})
         self.assertEqual(r["estado_relido"][0]["valor"], -12.0)
         self.assertTrue(r["decisao"]["aprovado"])
         self.assertIn("1/1 081:0=-12.0 … igual", ex.saida)

@@ -308,14 +308,27 @@ def curvas(valores: dict) -> dict:
 
 
 def violacoes(retrato: dict | None, estado: Path) -> dict:
-    """Regra 6 e a lista das violações do último retrato, pelas checagens do guardião."""
-    saida: dict = {"regra6": None, "violacoes": None, "motivo": None, "config": None}
+    """Regra 6 (por saída), tetos do limiter e a lista das violações do último retrato, pelas
+    checagens do guardião.
+
+    `regra6` é True só com a regra ligada em todas as saídas (False com alguma desligada);
+    `regra6_saidas` traz cada uma. Em `tetos`, o `efetivo` é o teto que vale na leitura atual
+    (o de demonstração só com o corte e a rota amarrados), ou None sem leitura avaliável."""
+    saida: dict = {"regra6": None, "regra6_saidas": None, "tetos": None, "violacoes": None,
+                   "motivo": None, "config": None}
     try:
         cfg = gd.carregar_config(estado / "guardiao.json")
     except gd.ConfigInvalida as erro:
         saida["motivo"] = f"guardiao.json: {erro}"
         return saida
-    saida["regra6"] = cfg.regra6
+    saida["regra6_saidas"] = {str(s.numero): s.regra6 for s in cfg.saidas}
+    saida["regra6"] = all(s.regra6 for s in cfg.saidas)
+    saida["tetos"] = {
+        str(s.numero): {"base": s.teto_limiter,
+                        "demo": s.teto_demo.teto_limiter if s.teto_demo else None,
+                        "condicoes": s.teto_demo.condicoes() if s.teto_demo else None,
+                        "efetivo": None, "demo_valendo": None}
+        for s in cfg.saidas}
     saida["config"] = _relativo(estado / "guardiao.json")
     if retrato is None:
         saida["motivo"] = "sem leitura"
@@ -326,6 +339,9 @@ def violacoes(retrato: dict | None, estado: Path) -> dict:
     except (gd.EstadoInvalido, KeyError, TypeError, ValueError) as erro:
         saida["motivo"] = str(erro) or "leitura que o guardião não consegue avaliar"
         return saida
+    for s in cfg.saidas:
+        vale = gd.demo_valendo(s, lido)
+        saida["tetos"][str(s.numero)].update(efetivo=gd.teto_efetivo(s, lido), demo_valendo=vale)
     lista = [
         {"id": c.id, "regra": c.regra, "rotulo": gd.ROTULOS.get(c.regra, f"regra {c.regra}"),
          "saida": c.saida, "sev": round(c.sev, 2), "motivo": c.motivo}
@@ -662,7 +678,8 @@ def montar_estado(estado: Path, *, agora: dt.datetime | None = None,
         "telas": telas,
         "curvas": secao("curvas", lambda: curvas(valores) if retrato is not None else None, None),
         "guardiao": secao("guardiao", lambda: violacoes(retrato, estado),
-                          {"regra6": None, "violacoes": None, "motivo": "sem avaliação", "config": None}),
+                          {"regra6": None, "regra6_saidas": None, "tetos": None, "violacoes": None,
+                           "motivo": "sem avaliação", "config": None}),
         "memorias": mem,
         # O modo da Vitrine ({nome, por, hora}), declarado pela /regulagem ou pelo seletor dos
         # Bastidores. None = sem registro: a Vitrine diz só "Som ajustado pela KARINA".

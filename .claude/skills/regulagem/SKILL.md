@@ -141,7 +141,7 @@ uma banda baixa o volume total ~1 dB: avise, é pequeno.
 | 0 | Preparação: senha, Bluetooth, leitura nova | 3 | Denis cria a senha e fecha o app; IA lê |
 | 1 | Auditoria do inventário: um item por tela, marcado **fato com fonte**, **decisão do Som** (a IA reavalia) ou **desconhecido** (mede ou usa o padrão seguro); vale só com o ok dele | 11 | Denis confirma |
 | 2 | Correção das violações lidas: BT24 nas JBL, subsônico ≥ 39 Hz (proposta 40), ponte igual; roteamento/mute se decidido na auditoria | 4 | IA simula e aplica |
-| 3 | Teste dos +2 dB e teto novo das JBL (sem falantes, tom de 400 Hz a 0 dBFS, celular a 100 %): resistências, fonte, 11 V, +2 dB pelo app; se ≤ 11 V, o Denis desliga a regra 6 e pode subir o teto das JBL para 12,6 V (ficha) ou 15,5 V (demonstração) no `estado/guardiao.json`, medido nas saídas 1 e 2 | 14 | Denis mede e mexe no app; IA relê |
+| 3 | Teste dos +2 dB nas JBL 1 e 2, sub medido na ponte (≤ 28 V), regra 6 desligada só nas JBL que passaram, teto de demonstração das JBL (12,6 V ficha ou 15,5 V com risco aceito) amarrado ao corte de 150 Hz/24 dB e à rota sem A+B, tudo com tom de 400 Hz (JBL) e 50 Hz (sub), falantes soltos; reauditoria independente no fim | 19 | Denis mede e edita o guardião; IA relê e aplica |
 | 4 | P2 a 100 % e zumbido | 4 | Denis liga cabos e mede |
 | 5 | Memórias MUSICA HIGH (máximo de volume e impacto, demonstração de até 15 min), MUSICA ORIGINAL (dia a dia, equilíbrio) e FILME, todas com as JBL em LR24 150 Hz e o sub até 150 Hz: IA propõe, aplica, ele ouve e dá nota, salva pelo app | 3×3 | ✅ ao fim |
 | 6 | Camadas de gênero no EQ de 15 bandas, salvas no celular | 1 + 2 por gênero | melhoria |

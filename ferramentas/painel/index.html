@@ -762,7 +762,17 @@ function desenharChips() {
   if (v == null) partes.push(chip('Guardião · <b>sem avaliação</b>'));
   else if (v.length) partes.push(chip(`Guardião · <b>${v.length} ${v.length === 1 ? 'alerta' : 'alertas'}</b>`, 'q'));
   else partes.push(chip('Guardião · <b>sem alertas</b>', 'ok'));
-  if (g.regra6 === true) partes.push(chip('Regra 6 ligada', 'ok'));
+  const r6 = g.regra6_saidas;
+  if (r6 && typeof r6 === 'object') {
+    // Regra 6 por saída: "ligada", "desligada" (todas) ou "Regra 6: 1 e 2 desligadas".
+    const nums = Object.keys(r6).sort(), off = nums.filter(n => r6[n] === false);
+    if (!off.length) partes.push(chip('Regra 6 ligada', 'ok'));
+    else if (off.length === nums.length) partes.push(chip('Regra 6 desligada'));
+    else {
+      const lista = off.length === 1 ? off[0] : `${off.slice(0, -1).join(', ')} e ${off[off.length - 1]}`;
+      partes.push(chip(`Regra 6: <b>${esc(lista)}</b> ${off.length === 1 ? 'desligada' : 'desligadas'}`, 'q'));
+    }
+  } else if (g.regra6 === true) partes.push(chip('Regra 6 ligada', 'ok'));
   else if (g.regra6 === false) partes.push(chip('Regra 6 desligada'));
   if (mic.ouvindo) partes.push(chip('microfone ouvindo', 'f'));
   else {
@@ -1097,7 +1107,25 @@ function desenharAgora() {
   if (v == null) h += `<p class="nota">Sem avaliação: ${esc(br(g.motivo || 'sem leitura'))}.</p>`;
   else if (!v.length) h += '<p class="nota">Nenhuma violação na leitura atual.</p>';
   else h += '<ul class="viol">' + v.map(x => `<li><span class="rg">${esc(x.rotulo)}</span><span>${esc(br(x.motivo))}</span></li>`).join('') + '</ul>';
+  h += notaTetos(g.tetos);
   setHtml($('agora'), h);
+}
+
+// Teto efetivo do limiter: o de demonstração só vale com o corte e a rota amarrados.
+function notaTetos(tetos) {
+  if (!tetos || typeof tetos !== 'object') return '';
+  const partes = Object.keys(tetos).sort().map(n => {
+    const t = tetos[n] || {};
+    if (t.efetivo == null) return `saída ${esc(n)} sem leitura`;
+    let txt = `saída ${esc(n)} <b class="num">${fmt(t.efetivo, 1)} dB</b>`;
+    if (t.demo != null) {
+      txt += t.demo_valendo
+        ? ' (demonstração valendo)'
+        : ` (demonstração ${fmt(t.demo, 1)} dB só com ${esc(t.condicoes || '')})`;
+    }
+    return txt;
+  });
+  return partes.length ? `<p class="nota">Teto do limiter agora: ${partes.join(' · ')}.</p>` : '';
 }
 
 // ---- KARINA: o passo da regulagem e a linha do tempo

@@ -8,12 +8,15 @@ só emite uma aprovação (selada, com a ordem de escrita) se as regras passarem
    do f_min (trava 1).
 2. Sub (saídas 3 e 4): subsônico ligado e curva somada nunca acima da referência abaixo do
    f_min (trava 2).
-3. Limiter nunca em OFF (0.5) e threshold nunca acima do teto de cada saída (trava 3).
+3. Limiter nunca em OFF (0.5) e threshold nunca acima do teto efetivo de cada saída
+   (trava 3). Uma JBL pode ter um teto de demonstração (`teto_demo`), que só vale enquanto o
+   estado da saída cumprir as condições amarradas (passa-alta, inclinação e rota); fora delas
+   vale o teto base (spec-guardiao-teto-amarrado.md).
 4. Saídas 3 e 4 idênticas em todos os parâmetros. Pedido em uma é espelhado na outra.
 5. Só códigos do catálogo do Marco 1, com valor dentro da faixa. Reset, memórias, gerador,
    senha, nome, remote out e preset de EQ são sempre recusados.
-6. (ligada por padrão) master + ganho + maior reforço de EQ (+6 dB na rota A+B) de cada
-   saída nunca acima da linha de base.
+6. (ligada por padrão, por saída) master + ganho + maior reforço de EQ (+6 dB na rota A+B)
+   da saída nunca acima da linha de base. O `regra6` global é o padrão das saídas sem o campo.
 7. G_ef = master + ganho + pico da curva somada (+6 dB na rota A+B) ≤ −1 dB.
 
 Princípio 6: uma escrita não cria violação nova nem piora uma existente, e um lote que mexe
@@ -101,13 +104,29 @@ class EscritaNaoAprovada(PermissionError):
 
 
 @dataclass(frozen=True)
+class TetoDemo:
+    """Teto de demonstração de uma JBL: vale só com o corte e a rota amarrados."""
+
+    teto_limiter: float  # dB
+    exige_passa_alta: float  # Hz: frequência mínima do passa-alta
+    exige_inclinacao: int  # dB/oit: inclinação mínima do passa-alta (6·N de BTn ou LRn)
+    proibe_rota_ab: bool
+
+    def condicoes(self) -> str:
+        texto = f"passa-alta ≥ {self.exige_passa_alta:g} Hz/{self.exige_inclinacao} dB/oit"
+        return texto + (" e rota sem A+B" if self.proibe_rota_ab else "")
+
+
+@dataclass(frozen=True)
 class Saida:
     numero: int  # 1 a 4
     nome: str
     trava: str  # "passa-alta" (trava 1) | "subsônico" (trava 2)
     f_min: float
     inclinacao: int  # dB/oit da referência
-    teto_limiter: float  # dB
+    teto_limiter: float  # dB: teto base
+    teto_demo: TetoDemo | None = None  # só em saída de passa-alta
+    regra6: bool = True
 
     @property
     def canal(self) -> int:
@@ -123,7 +142,7 @@ class Config:
     saidas: tuple[Saida, ...]
     tolerancia: float
     g_ef_max: float
-    regra6: bool
+    regra6: bool  # padrão das saídas sem "regra6" próprio (cada Saida já traz o valor resolvido)
     nivel_base: dict  # canal -> master + ganho + maior reforço de EQ da linha de base
     caminho: str = ""
 
@@ -136,6 +155,55 @@ def _num(valor, onde: str, minimo: float | None = None, maximo: float | None = N
     return float(valor)
 
 
+_INCLINACOES = (6, 12, 18, 24, 30, 36, 42, 48)
+
+# Amarras mínimas do teto de demonstração (auditoria de 17/10/2026): nunca acima de −8,0 dB
+# (15,5 V, o teto auditado), só com passa-alta ≥ 150 Hz a ≥ 24 dB/oit e sem a rota A+B.
+TETO_DEMO_MAX_DB = -8.0
+DEMO_PASSA_ALTA_MIN_HZ = 150.0
+DEMO_INCLINACAO_MIN = 24
+
+
+def _teto_demo(valor, n: int, trava: str, teto_base: float, f_min: float,
+               inclinacao_min: int) -> TetoDemo | None:
+    """O `teto_demo` opcional de uma saída. Sem o campo ou null: None.
+
+    Recusa (ConfigInvalida) o que desfaria a amarra: teto fora de (base, −8,0 dB], corte
+    abaixo de max(150 Hz, f_min), inclinação abaixo de max(24, inclinação da trava) ou rota
+    A+B permitida."""
+    if valor is None:
+        return None
+    onde = f"saída {n}, teto_demo"
+    if trava != "passa-alta":
+        raise ConfigInvalida(f"{onde}: o teto de demonstração só vale para saída de passa-alta "
+                             f"(a saída {n} é de {trava})")
+    if not isinstance(valor, dict):
+        raise ConfigInvalida(f"{onde}: objeto ou null esperado")
+    faltam = [k for k in ("teto_limiter_db", "exige_passa_alta_hz", "exige_inclinacao_db_oit",
+                          "proibe_rota_ab") if k not in valor]
+    if faltam:
+        raise ConfigInvalida(f"{onde}: falta {', '.join(faltam)}")
+    inclinacao = valor["exige_inclinacao_db_oit"]
+    if isinstance(inclinacao, bool) or inclinacao not in _INCLINACOES:
+        raise ConfigInvalida(f"{onde}.exige_inclinacao_db_oit é múltiplo de 6, de 6 a 48")
+    if valor["proibe_rota_ab"] is not True:
+        raise ConfigInvalida(f"{onde}.proibe_rota_ab precisa ser true (a rota A+B soma +6 dB "
+                             f"antes do limiter)")
+    teto = _num(valor["teto_limiter_db"], f"{onde}.teto_limiter_db", -48, 0)
+    if not teto_base < teto <= TETO_DEMO_MAX_DB:
+        raise ConfigInvalida(f"{onde}.teto_limiter_db precisa ficar acima do teto base "
+                             f"({teto_base:g} dB) e no máximo {TETO_DEMO_MAX_DB:g} dB")
+    passa_alta = _num(valor["exige_passa_alta_hz"], f"{onde}.exige_passa_alta_hz", 20, 22000)
+    passa_alta_min = max(DEMO_PASSA_ALTA_MIN_HZ, f_min)
+    if passa_alta < passa_alta_min:
+        raise ConfigInvalida(f"{onde}.exige_passa_alta_hz precisa ser ≥ {passa_alta_min:g} Hz")
+    inclinacao_req = max(DEMO_INCLINACAO_MIN, inclinacao_min)
+    if inclinacao < inclinacao_req:
+        raise ConfigInvalida(f"{onde}.exige_inclinacao_db_oit precisa ser ≥ {inclinacao_req}")
+    return TetoDemo(teto_limiter=teto, exige_passa_alta=passa_alta,
+                    exige_inclinacao=int(inclinacao), proibe_rota_ab=True)
+
+
 def carregar_config(caminho: Path) -> Config:
     """Lê e valida estado/guardiao.json. Nunca escreve nada."""
     try:
@@ -146,6 +214,9 @@ def carregar_config(caminho: Path) -> Config:
         raise ConfigInvalida(f"não consegui ler {caminho}: {erro}") from None
     if not isinstance(dados, dict):
         raise ConfigInvalida("o guardiao.json precisa ser um objeto")
+    regra6 = dados.get("regra6", True)  # padrão das saídas sem "regra6" próprio
+    if not isinstance(regra6, bool):
+        raise ConfigInvalida("regra6 é true ou false")
     saidas_cfg = dados.get("saidas")
     if not isinstance(saidas_cfg, dict) or set(saidas_cfg) != {"1", "2", "3", "4"}:
         raise ConfigInvalida("o guardiao.json precisa das saídas 1, 2, 3 e 4")
@@ -158,19 +229,26 @@ def carregar_config(caminho: Path) -> Config:
         if trava not in ("passa-alta", "subsônico"):
             raise ConfigInvalida(f"saída {n}: trava é passa-alta ou subsônico")
         inclinacao = s.get("inclinacao_db_oit")
-        if inclinacao not in (6, 12, 18, 24, 30, 36, 42, 48) or isinstance(inclinacao, bool):
+        if inclinacao not in _INCLINACOES or isinstance(inclinacao, bool):
             raise ConfigInvalida(f"saída {n}: inclinacao_db_oit é múltiplo de 6, de 6 a 48")
+        regra6_saida = s.get("regra6", regra6)
+        if not isinstance(regra6_saida, bool):
+            raise ConfigInvalida(f"saída {n}: regra6 é true ou false")
+        f_min = _num(s.get("f_min_hz"), f"saída {n}, f_min_hz", 20, 22000)
+        teto_base = _num(s.get("teto_limiter_db"), f"saída {n}, teto_limiter_db", -48, 0)
         saidas.append(Saida(
             numero=n,
             nome=str(s.get("nome") or f"saída {n}"),
             trava=trava,
-            f_min=_num(s.get("f_min_hz"), f"saída {n}, f_min_hz", 20, 22000),
+            f_min=f_min,
             inclinacao=int(inclinacao),
-            teto_limiter=_num(s.get("teto_limiter_db"), f"saída {n}, teto_limiter_db", -48, 0),
+            teto_limiter=teto_base,
+            teto_demo=_teto_demo(s.get("teto_demo"), n, trava, teto_base, f_min, int(inclinacao)),
+            regra6=regra6_saida,
         ))
-    regra6 = dados.get("regra6", True)
-    if not isinstance(regra6, bool):
-        raise ConfigInvalida("regra6 é true ou false")
+    ponte = [saidas[c] for c in PONTE]
+    if ponte[0].regra6 != ponte[1].regra6:
+        raise ConfigInvalida("saídas 3 e 4 (ponte) precisam do mesmo regra6")
     base = dados.get("linha_de_base")
     if not isinstance(base, dict):
         raise ConfigInvalida("falta a linha_de_base")
@@ -382,6 +460,30 @@ def _volts(db: float) -> str:
     return f"{2.0 * 10 ** (db / 20):.2f}".replace(".", ",")
 
 
+def _db(db: float) -> str:
+    """−9,8 (sinal de menos e vírgula), para as mensagens do teto de demonstração."""
+    return f"{db:.1f}".replace(".", ",").replace("-", "−")
+
+
+def demo_valendo(s: Saida, estado: dict) -> bool:
+    """O estado da saída cumpre as condições do teto de demonstração?"""
+    d = s.teto_demo
+    if d is None:
+        return False
+    c = s.canal
+    nome = pt.FILTROS.get(estado[("042", c)], "OFF")
+    if nome == "OFF":
+        return False
+    if estado[("040", c)] < d.exige_passa_alta or int(nome[2:]) < d.exige_inclinacao:
+        return False
+    return not (d.proibe_rota_ab and estado[("010", c)] == "a+b")
+
+
+def teto_efetivo(s: Saida, estado: dict) -> float:
+    """Teto do limiter da saída neste estado: o de demonstração só com as condições cumpridas."""
+    return s.teto_demo.teto_limiter if demo_valendo(s, estado) else s.teto_limiter
+
+
 def checar(estado: dict, cfg: Config) -> dict[str, Checagem]:
     """Todas as checagens das regras 1 a 4, 6 e 7 sobre um estado."""
     saida: dict[str, Checagem] = {}
@@ -404,18 +506,29 @@ def checar(estado: dict, cfg: Config) -> dict[str, Checagem]:
             motivo = f"reforço de EQ abaixo do corte da saída {s.numero} ({s.nome})"
         saida[f"trava:{s.numero}"] = Checagem(f"trava:{s.numero}", s.regra, s.numero, sev, motivo)
 
-        # Trava 3: limiter ligado e threshold no teto ou abaixo.
+        # Trava 3: limiter ligado e threshold no teto efetivo ou abaixo.
         thr = estado[("071", c)]
+        d = s.teto_demo
+        vale = demo_valendo(s, estado)
+        teto = teto_efetivo(s, estado)
         if thr == 0.5:
             sev, motivo = 100.0, f"limiter da saída {s.numero} em OFF"
         else:
-            sev = max(0.0, round(thr - s.teto_limiter, 3))
-            motivo = (f"threshold da saída {s.numero} em {thr:.1f} dB, acima do teto "
-                      f"{s.teto_limiter:.1f} dB ({_volts(s.teto_limiter)} V)")
+            sev = max(0.0, round(thr - teto, 3))
+            if d is not None and not vale and s.teto_limiter + EPS < thr <= d.teto_limiter + EPS:
+                motivo = (f"limiter da saída {s.numero} em {_db(thr)} dB só vale com "
+                          f"{d.condicoes()} (teto de demonstração); fora disso o teto é "
+                          f"{_db(s.teto_limiter)} dB")
+            elif vale:
+                motivo = (f"threshold da saída {s.numero} em {thr:.1f} dB, acima do teto de "
+                          f"demonstração {d.teto_limiter:.1f} dB ({_volts(d.teto_limiter)} V)")
+            else:
+                motivo = (f"threshold da saída {s.numero} em {thr:.1f} dB, acima do teto "
+                          f"{s.teto_limiter:.1f} dB ({_volts(s.teto_limiter)} V)")
         saida[f"limiter:{s.numero}"] = Checagem(f"limiter:{s.numero}", 3, s.numero, sev, motivo)
 
-        # Regra 6: nível nunca acima da linha de base.
-        if cfg.regra6:
+        # Regra 6 (por saída): nível nunca acima da linha de base.
+        if s.regra6:
             nivel = round(master + estado[("081", c)] + _reforco_eq(ps[4:], globais)
                           + _rota(estado[("010", c)]), 3)
             base = cfg.nivel_base[c]
@@ -448,8 +561,14 @@ def checar(estado: dict, cfg: Config) -> dict[str, Checagem]:
     return saida
 
 
-def toca(id_checagem: str, chave: Chave, valor_novo) -> bool:
-    """O ajuste `chave = valor_novo` mexe no que a checagem avalia?"""
+_AMARRAS_DEMO = frozenset({"040", "042", "010"})  # o que decide se o teto de demonstração vale
+
+
+def toca(id_checagem: str, chave: Chave, valor_novo, cfg: Config | None = None) -> bool:
+    """O ajuste `chave = valor_novo` mexe no que a checagem avalia?
+
+    Com `cfg`, o limiter de uma saída com teto de demonstração também é tocado pelo
+    passa-alta (040, 042) e pela rota (010) dessa saída."""
     codigo, canal = chave
     tipo, alvo = id_checagem.split(":")
     if tipo == "ponte":
@@ -461,7 +580,12 @@ def toca(id_checagem: str, chave: Chave, valor_novo) -> bool:
     if tipo == "trava":
         return curva
     if tipo == "limiter":
-        return codigo == "071" and canal == c
+        if canal != c:
+            return False
+        if codigo == "071":
+            return True
+        return (codigo in _AMARRAS_DEMO and cfg is not None
+                and cfg.saidas[c].teto_demo is not None)
     if tipo == "nivel":
         return (codigo == "080" or (codigo in ("081", "010") and canal == c)
                 or (codigo in EQ_CANAL and canal == c) or codigo in CURVA_GLOBAL)
@@ -777,7 +901,7 @@ class _Avaliador:
             if _piorou(novo, lido):
                 ruins.append(novo)
             elif final and _viola(lido) and _viola(novo) \
-                    and any(toca(id_, e.chave, e.valor) for e in escritas):
+                    and any(toca(id_, e.chave, e.valor, self.cfg) for e in escritas):
                 ruins.append(novo)
         return ruins
 
@@ -796,7 +920,8 @@ def _sugerir(av: _Avaliador, escritas: list[Escrita], indice: int) -> str | None
     p = pt.POR_CODIGO[e.codigo]
     grupo = _grupo(escritas, e)
     atual = av.lido[e.chave]
-    ids = [i for i in av.base if toca(i, e.chave, e.valor) or toca(i, e.chave, atual)]
+    ids = [i for i in av.base
+           if toca(i, e.chave, e.valor, av.cfg) or toca(i, e.chave, atual, av.cfg)]
 
     def passa(v) -> bool:
         try:
@@ -869,7 +994,11 @@ def _caminho_seguro(c: Checagem, cfg: Config) -> str:
                 f"ou mais íngreme, 040:{s.canal} ≥ {s.f_min:g} Hz e nenhum reforço de EQ abaixo disso")
     if tipo == "limiter":
         s = cfg.saidas[int(alvo) - 1]
-        return f"071:{s.canal}={s.teto_limiter:.1f} ou menos"
+        seguro = f"071:{s.canal}={s.teto_limiter:.1f} ou menos"
+        if s.teto_demo is not None:
+            seguro += (f"; o teto de demonstração ({s.teto_demo.teto_limiter:.1f}) só vale com "
+                       f"{s.teto_demo.condicoes()}")
+        return seguro
     if tipo == "ponte":
         return f"iguale as saídas 3 e 4 em {alvo} ({alvo}:2=v espelha na saída 4)"
     if tipo == "nivel":
@@ -914,7 +1043,7 @@ def avaliar_lote(retrato: dict, pedidos: list[Pedido], cfg: Config) -> Decisao:
     for c in av.problemas(mudancas, final=True):
         # Culpados: os ajustes que mexem nesta regra; o par da ponte aparece pela saída 3.
         culpados = list(dict.fromkeys(min(_grupo(mudancas, e)) for e in mudancas
-                                      if toca(c.id, e.chave, e.valor)))
+                                      if toca(c.id, e.chave, e.valor, cfg)))
         itens = ", ".join(dict.fromkeys(mudancas[i].texto() for i in culpados)) or None
         chave = (c.regra, c.id.split(":")[0], itens)
         if chave in por_chave:  # mesma regra, mesmos ajustes, outra saída: uma linha só

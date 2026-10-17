@@ -504,5 +504,22 @@ class ModoTest(Base):
             sessao.gravar_modo(self.estado, None, "denis", agora)
 
 
+class RoteiroTest(unittest.TestCase):
+    def test_passos_por_etapa_batem_com_os_titulos_do_roteiro(self):
+        import re
+        roteiro = (Path(__file__).resolve().parents[2] / ".claude" / "skills" / "regulagem"
+                   / "references" / "roteiro.md").read_text(encoding="utf-8")
+        titulos = {int(m.group(1)): m.group(2) for m in re.finditer(
+            r"^## Etapa (\d+) · .*?\(M = ([^)]*)\)", roteiro, re.MULTILINE)}
+        self.assertEqual(set(titulos), set(sessao.PASSOS_POR_ETAPA))
+        for etapa, passos in sessao.PASSOS_POR_ETAPA.items():
+            if etapa == 6:  # varia por gênero
+                continue
+            with self.subTest(etapa=etapa):
+                m = re.match(r"(\d+)\s*(?:[:;]|$)", titulos[etapa])
+                self.assertIsNotNone(m, titulos[etapa])
+                self.assertEqual(int(m.group(1)), passos)
+
+
 if __name__ == "__main__":
     unittest.main()

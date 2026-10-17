@@ -14,13 +14,18 @@
         "teto_jbl_v_max": 15.5
       },
       "contramedidas": [
-        "Corte das JBL em Linkwitz-Riley 24 dB/oit a 150 Hz (sub cobre até 150 Hz): reduz o movimento do cone na faixa de 100–130 Hz.",
-        "Limitador das saídas 1 e 2 no teto escolhido, medido com multímetro (tom de 400 Hz) nas duas saídas (medidas saida1_teto_novo_vac e saida2_teto_novo_vac).",
-        "Guardião continua ativo: passa-alta e subsônico nunca abaixo do mínimo, limitador nunca OFF nem acima do teto, ponte idêntica, G_ef ≤ −1 dB.",
-        "Duração máxima de 15 minutos por demonstração.",
-        "Ao fim de cada rodada: mão no dissipador do SD800.4 ('morno' segue; 'quente' para e anota).",
-        "Auditoria das resistências das JBL e do sub depois da demonstração, comparando com as da etapa 3."
-      ]
+        "Corte das JBL em Linkwitz-Riley 24 dB/oit a 150 Hz, com o sub cobrindo até 150 Hz; o guardião só aceita o teto de demonstração com passa-alta ≥ 150 Hz e ≥ 24 dB/oit (teto_demo amarrado).",
+        "Saída 1 na rota A e saída 2 na rota B (nunca A+B nas JBL); o guardião recusa o teto de demonstração com rota A+B.",
+        "Teste dos +2 dB aprovado nas saídas 1 e 2 (medidas saida1_mais2db_vac e saida2_mais2db_vac ≤ 11 V); a regra 6 só é desligada nas JBL e continua ligada no sub.",
+        "Sub medido na ponte com leitura ≤ 28 V (medida sub_ponte_vac) antes da demonstração.",
+        "Multímetro com banda AC confirmada em 400 Hz (medida multimetro_banda_400hz = sim) para valer o teto de 15,5 V.",
+        "Limitador das saídas 1 e 2 no teto escolhido, medido nas duas saídas (saida1_teto_novo_vac e saida2_teto_novo_vac), com attack ≤ 10 ms e Auto desligado na MUSICA HIGH.",
+        "Sem reforço de EQ abaixo de 300 Hz nas JBL na MUSICA HIGH.",
+        "Duração máxima de 15 minutos por demonstração; ao fim, mão no dissipador do SD800.4 ('quente' para e anota).",
+        "Resistências das JBL e do sub medidas antes (etapa 3) e depois da demonstração; diferença ou som raspando em volume baixo = risco ALTO.",
+        "Ao sair da demonstração, as memórias MUSICA ORIGINAL e FILME voltam o limitador das JBL a −11 dB."
+      ],
+      "auditoria": "estado/auditorias/2026-10-17_guardiao.md: sem as contramedidas 1 a 5, os 15,5 V seguem em risco ALTO; 12,6 V é aceitável com as contramedidas 1 a 3."
     }
   ]
 }

@@ -2,7 +2,8 @@
 title: 'Guardião: teto de demonstração amarrado ao corte e regra 6 por saída'
 type: 'feature'
 created: '2026-10-17'
-status: 'draft'
+status: 'done'
+baseline_commit: 'd3ab3750e8bf82aa5c9cc1d38aba9bc1f7dee82b'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -64,14 +65,43 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `ferramentas/guardiao.py` -- `teto_demo`, teto efetivo, regra 6 por saída, recusas e "Seguro:".
-- [ ] `estado/guardiao.json` -- migração de formato.
-- [ ] `ferramentas/painel.py` e `ferramentas/painel/index.html` -- regra 6 por saída e teto efetivo nos Bastidores.
-- [ ] `ferramentas/tests/test_guardiao.py` (+ painel) -- todos os casos da matriz; os testes atuais continuam passando.
+- [x] `ferramentas/guardiao.py` -- `teto_demo`, teto efetivo, regra 6 por saída, recusas e "Seguro:".
+- [x] `estado/guardiao.json` -- migração de formato.
+- [x] `ferramentas/painel.py` e `ferramentas/painel/index.html` -- regra 6 por saída e teto efetivo nos Bastidores.
+- [x] `ferramentas/tests/test_guardiao.py` (+ painel) -- todos os casos da matriz; os testes atuais continuam passando.
 
 **Acceptance Criteria:**
 - Given o arquivo migrado sem `teto_demo` e com a regra 6 `true` em todas as saídas, when a suíte roda, then todos os testes atuais passam sem mudar as expectativas.
 - Given `teto_demo` −9,8 nas saídas 1 e 2 e a regra 6 `false` só nelas, when a KARINA aplica `071:0=-9.8 071:1=-9.8` com o corte LR24 em 150 Hz e as rotas A/B, then é aprovado; e `081:2` acima da linha de base continua recusado.
+
+## Implementation Notes
+
+- `guardiao.py`: `teto_demo` com limites no carregamento (base < teto ≤ −8,0 dB; passa-alta ≥ 150 Hz e ≥ f_min; inclinação ≥ 24; `proibe_rota_ab` obrigatório). `teto_efetivo`/`demo_valendo` valem em todo estado, e `toca` amarra 040/042/010 ao limiter. Regra 6 por saída, com as saídas 3 e 4 obrigatoriamente iguais.
+- `estado/guardiao.json`: migração de formato (regra 6 por saída, `teto_demo: null` nas JBL, global removido); nenhum valor mudou.
+- Painel: chip da regra 6 por saída e linha "Teto do limiter agora".
+- Testes: matriz completa, limites do config, ramo do princípio 6 com amarra (confirmado por mutação) e consistência do M de cada etapa com o roteiro.
+- O roteiro da /regulagem (etapa 3, M = 19) e o `riscos_aceitos.json` foram atualizados na mesma rodada, fora do Code Map, pelas contramedidas da auditoria de 17/10.
+
+## Review Triage Log
+
+| # | Achado | Veredito | Evidência / rota |
+|---|---|---|---|
+| 1 | O config aceita teto demo de 0 dB, demo ≤ base, amarra abaixo de 150 Hz ou 24 dB/oit e `proibe_rota_ab=false` (blind, edge, claim) | high | O loader só checa a faixa −48..0. Uma edição desfaz a amarração exigida pela auditoria. Patch: limites no loader (máx −8,0 dB). |
+| 2 | Saídas 3 e 4 podem divergir na regra 6 (blind) | medium | A ponte espelha a escrita; um lado passa e o outro não. Patch. |
+| 3 | `checar` reimplementa `teto_efetivo` (blind) | low | O painel e o guardião podem divergir. Patch. |
+| 4 | Motivo enganoso quando o limiter está abaixo do base (blind) | low | Correção direta. Patch. |
+| 5 | `regra6` global morto, uma armadilha (blind, edge, deletion) | medium | Mudar o global não faz nada. Patch: remover do arquivo. |
+| 6 | Painel diz "agora" sem leitura (blind, edge) | low | Correção direta. Patch. |
+| 7 | Teste concorrente instável no Windows (gap, other) | medium | PermissionError na leitura. Patch: retry. |
+| 8 | Princípio 6 com amarra sem teste do ramo de `toca` (gap) | high | Confirmado por mutação: o `cfg` em `problemas` pode sumir sem falha. Patch (teste). |
+| 9 | `PASSOS_POR_ETAPA[3]` sem amarra com o roteiro (blind, gap) | medium | Retomada pularia os passos 15–19. Patch (teste de consistência). |
+| 10 | Registro de ajuste com `regra6` por saída sem teste (blind, gap) | low | Trilha de auditoria. Patch (uma linha). |
+| 11 | Reparo parcial (só 042) recusado com o limiter acima do base (blind, edge) | false | É intencional e seguro: o lote precisa baixar o limiter junto, e a ordem segura resolve. Coberto pelo teste novo (8). |
+| 12 | Dois formatos de número nas mensagens da trava 3 (blind) | low | Cosmético, e os testes fixam os textos. Rejeitado. |
+| 13 | Falta campo de prova (`_origem`) para `teto_demo` e `regra6` (blind) | low | O roteiro registra as medidas e o diário. Rejeitado. |
+| 14 | `FORMATO` não subiu com M 14→19 (blind) | low | Nenhuma sessão está na etapa 3. Rejeitado. |
+| 15 | Chip e `notaTetos` sem teste de JS (gap) | maybe-false | Sem harness de JS no repositório. Defer (entrada já existente). |
+| 16 | `_caminho_seguro` com a frase do teto demo sem teste (gap) | low | Ramo raro; o texto principal está fixado. Rejeitado. |
 
 ## Verification
 

@@ -61,7 +61,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 FORMATO = 1
 
 # Passos de cada etapa do roteiro (references/roteiro.md). None = varia (etapa 6: por gênero).
-PASSOS_POR_ETAPA = {0: 3, 1: 11, 2: 4, 3: 14, 4: 4, 5: 9, 6: None, 7: 3, 8: 1}
+PASSOS_POR_ETAPA = {0: 3, 1: 11, 2: 4, 3: 19, 4: 4, 5: 9, 6: None, 7: 3, 8: 1}
 ULTIMA_ETAPA = max(PASSOS_POR_ETAPA)
 
 SAIDA_OK, SAIDA_USO, SAIDA_REPETIDA = range(3)
@@ -153,6 +153,19 @@ def _substituir(origem: Path, destino: Path) -> None:
             if tentativa == 9:
                 raise
             time.sleep(0.05)
+
+
+def _ler_texto(caminho: Path) -> str:
+    """read_text com a mesma espera curta: no Windows, a troca (os.replace) de outro gravador
+    faz a leitura falhar por um instante com PermissionError."""
+    for tentativa in range(10):
+        try:
+            return caminho.read_text(encoding="utf-8")
+        except PermissionError:
+            if tentativa == 9:
+                raise
+            time.sleep(0.05)
+    raise AssertionError("inalcançável")
 
 
 def _relativo(caminho: Path) -> str:
@@ -271,7 +284,7 @@ def carregar_memorias(estado: Path) -> dict:
     if not caminho.exists():
         return memorias_vazias()
     try:
-        return validar_memorias(json.loads(caminho.read_text(encoding="utf-8")))
+        return validar_memorias(json.loads(_ler_texto(caminho)))
     except (OSError, ValueError) as erro:
         raise ProgressoIlegivel(f"{_relativo(caminho)}: {erro}") from None
 

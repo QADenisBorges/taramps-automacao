@@ -121,7 +121,9 @@ class _Registro:
             "lote": [p.original for p in pedidos],
             "guardiao": {"config": lp.relativo(Path(cfg.caminho)) if cfg else None,
                          "sha256": _sha256(Path(cfg.caminho)) if cfg else None,
-                         "regra6": cfg.regra6 if cfg else None},
+                         # Regra 6 por saída ({"1": true, ...}): o global é só o padrão.
+                         "regra6": ({str(s.numero): s.regra6 for s in cfg.saidas}
+                                    if cfg else None)},
             "status": None,
             "backup": None,
             "log": None,
