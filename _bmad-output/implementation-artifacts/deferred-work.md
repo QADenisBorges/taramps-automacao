@@ -9,3 +9,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-escrita-ble-guardiao.md`
   summary: Os caminhos de saída 3 (sem conexão) e 5 (sem resposta à senha) do ajustar_processador.py não têm teste, e o transporte falso não simula aparelho ausente nem senha muda.
   evidence: Não verificado (medium). Esses caminhos terminam antes de qualquer escrita; um interruptor `encontrado`/`resposta_000` no falso resolve.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-vitrine-bgs.md`
+  summary: O comportamento da página (Vitrine mostrando o Modo, AudioContext fechado depois da abertura, sequência de fases, seletor) só é verificado por texto da fonte e pela checagem manual; falta um harness de testes de JS (ex.: Playwright).
+  evidence: Não verificado (medium). Uma mutação em `modoAtual()` ou a remoção de `som.fechar()` passaria nos testes atuais.

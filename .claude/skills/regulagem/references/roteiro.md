@@ -354,6 +354,16 @@ da proposta da IA; se o Denis mudou o lote por conta própria, `--por denis`). �
 painel (`estado/memorias.json`); quem salvou no aparelho foi ele, pelo app. Registre antes do
 `passo`.
 
+Logo depois, **IA roda** `uv run ferramentas/sessao.py modo "<modo>"`: a memória recém-salva é a
+que está tocando, e a Vitrine do painel passa a dizer "Som ajustado pela KARINA · Modo: <modo>".
+Memória → modo: SPL HIGH → `"Música SPL"`, SPL-EQ → `"Música EQ"`, Filme-EQ → `"Filme"`. Só
+esses três nomes (nada técnico vai para a TV); `--por ia` é o padrão.
+
+**Sempre que pedir para carregar uma memória no app** (aqui, na etapa 6 ou quando o Denis
+disser que trocou), com o ok dele **IA roda** o mesmo `sessao.py modo "<modo>"` da tabela acima.
+Se ele carregou algo fora das três, `sessao.py modo nenhum` (a Vitrine fica só com "Som ajustado
+pela KARINA"). O modo é declarado, não lido do aparelho: não registre sem o ok.
+
 Depois do passo 9: `✅ Pronto para sábado. O resto é melhoria.` e proponha congelar se já
 passou das 16h30.
 
@@ -397,7 +407,8 @@ Com o ok, **IA roda** `uv run ferramentas/sessao.py preset "<Gênero>" --por ia`
 a camada foi ideia dele). Mesmo nome substitui o registro anterior. Registre antes do `passo`.
 
 Ao fim: `Faça: no app, carregue a memória SPL-EQ e feche o app` (o DSP ficou com a última
-camada), e **IA roda** uma leitura para confirmar o EQ da SPL-EQ.
+camada); com o ok, **IA roda** `uv run ferramentas/sessao.py modo "Música EQ"` e uma leitura
+para confirmar o EQ da SPL-EQ.
 
 ---
 

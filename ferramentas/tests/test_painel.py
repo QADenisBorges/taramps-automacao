@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import http.client
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -280,6 +282,10 @@ class AgenteTest(Base):
         self.assertEqual(recusado["lote"], ["042:0=0"])
         self.assertIn("trava 1: passa-alta da saída 1 (JBL L) desligado", recusado["recusas"][0])
         self.assertEqual(recusado["alertas"], 5)
+        # A frase em português vem com o código exato ao lado.
+        self.assertEqual(lista[0]["frases"], ["Ganho da saída 1 para −11,0 dB"])
+        self.assertEqual(recusado["recusas_det"], [{"item": "042:0=0 (OFF)", "rotulo": "trava 1",
+                                                    "motivo": "passa-alta da saída 1 (JBL L) desligado"}])
 
     def test_progresso_e_memorias(self):
         agora = dt.datetime(2026, 10, 17, 14, 0)
@@ -296,6 +302,59 @@ class AgenteTest(Base):
         self.assertEqual(m["dsp"]["1"], {"nome": "SPL HIGH", "por": "ia", "hora": "2026-10-17T14:00:00"})
         self.assertIsNone(m["dsp"]["2"])
         self.assertEqual(m["presets"], [{"nome": "Rock", "por": "denis", "hora": "2026-10-17T14:00:00"}])
+
+
+class ModoAtivoTest(Base):
+    def test_sem_registro_o_estado_nao_tem_modo(self):
+        e = self.montar()
+        self.assertIsNone(e["modo_ativo"])
+        self.assertIsNone(e["memorias"]["modo_ativo"])
+
+    def test_modo_gravado_pela_regulagem_aparece_no_estado(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            sessao.main(["modo", "Filme"], estado=self.estado, agora=dt.datetime(2026, 10, 17, 12, 40))
+        e = self.montar()
+        self.assertEqual(e["modo_ativo"], {"nome": "Filme", "por": "ia", "hora": "2026-10-17T12:40:00"})
+        self.assertEqual(e["memorias"]["modo_ativo"], e["modo_ativo"])
+
+    def test_memorias_ilegivel_sem_modo(self):
+        (self.estado / "memorias.json").write_text("{", encoding="utf-8")
+        self.assertIsNone(self.montar()["modo_ativo"])
+
+
+class FraseTest(unittest.TestCase):
+    """A linha do tempo da KARINA: primeiro a frase, depois o código exato."""
+
+    def test_frases_das_escritas(self):
+        casos = {
+            "081:0=-12.0": "Ganho da saída 1 para −12,0 dB",
+            "081:0=-11.0": "Ganho da saída 1 para −11,0 dB",
+            "042:0=0": "Passa-alta da saída 1 desligado",
+            "042:2=BT24": "Filtro do passa-alta da saída 3 para BT24",
+            "040:0=100": "Passa-alta da saída 1 para 100 Hz",
+            "071:2=-6.0": "Limiter da saída 3 para −6,0 dB (1,00 V)",
+            "071:2=0.5": "Limiter da saída 3 desligado",
+            "020:5=-2.0": "Banda de 250 Hz para −2,0 dB",
+            "091:2=3": "Ganho do EQ da saída 3 para +3,0 dB",
+            "100:1=1": "Saída 2 mutada",
+            "080=-3": "Master para −3,0 dB",
+            "070:0=1": "Limiter automático da saída 1 ligado",
+            "070:0=0": "Limiter automático da saída 1 desligado",
+            "100:0=0": "Saída 1 com som",
+            "010:1=a+b": "Roteamento da saída 2 para A+B",
+            "010:1=ab": "Roteamento da saída 2 para A+B",
+            "043:2=0": "Passa-baixa da saída 3 desligado",
+            "072:0=0.05": "Attack do limiter da saída 1 para auto",
+            "092:1=1": "Q do EQ da saída 2 para 1,0",  # unidade vazia: sem espaço sobrando
+        }
+        for texto, esperado in casos.items():
+            with self.subTest(texto=texto):
+                self.assertEqual(painel.frase(texto), esperado)
+        # Valor duvidoso: nada de frase confiante, fica o código como veio.
+        for estranho in ("xx", "999:0=1", "081:0=abc", "020:40=1", "042:0=1.7", "042:0=99", "100:0=xyz",
+                         "100:0=1.0", "070:0=talvez", "010:0=c"):
+            with self.subTest(estranho=estranho):
+                self.assertEqual(painel.frase(estranho), estranho)  # fora do formato: o próprio texto
 
 
 class ServidorBase(Base):
@@ -435,6 +494,176 @@ class PaginaTest(ServidorBase):
         self.assertEqual(e["leitura"]["firmware"], "R003")
         self.assertEqual(len(e["guardiao"]["violacoes"]), 5)
         self.assertEqual(e["leitor"], {"lendo": False, "segundos": 0, "resultado": None})
+
+
+class PaginaNovaTest(ServidorBase):
+    """A Vitrine e os Bastidores: módulos locais, nada técnico na Vitrine, som só na abertura."""
+
+    PASTA = Path(painel.__file__).resolve().parent / "painel"
+
+    def vitrine(self, html: str) -> str:
+        inicio = html.index('<section id="palco"')
+        return html[inicio:html.index("</section>", inicio)]
+
+    def test_modulos_locais_sao_servidos_e_sem_cdn(self):
+        codigo, html = self.pedir("/")
+        self.assertEqual(codigo, 200)
+        modulos = re.findall(r"""from\s+['"]\./([\w.-]+\.js)['"]""", html)
+        self.assertEqual(sorted(modulos), ["abertura.js", "anel.js"])
+        for nome in modulos:
+            with self.subTest(nome=nome):
+                with urllib.request.urlopen(f"{self.url}/{nome}", timeout=5) as resp:
+                    self.assertEqual(resp.status, 200)
+                    self.assertTrue(resp.headers["Content-Type"].startswith("text/javascript"))
+                    js = resp.read().decode("utf-8")
+                for proibido in ("https://", "http://", "cdn", "@import", "<audio", ".mp3", ".wav", "fetch("):
+                    self.assertNotIn(proibido, js.lower() if proibido == "cdn" else js)
+
+    def test_vitrine_sem_texto_tecnico(self):
+        _, html = self.pedir("/")
+        vitrine = self.vitrine(html)
+        for marca in ("BGS", "Sound Lab", "Denis Borges", "KARINA", "Som ajustado pela", "em evolução",
+                      "Toque para começar"):
+            self.assertIn(marca, vitrine)
+        texto = re.sub(r"<[^>]+>", " ", vitrine)  # só o que o convidado lê
+        for tecnico in ("Hz", "dB", "BLE", "firmware", "Firmware", "DSP", "R003", "guardião", "agente"):
+            self.assertNotIn(tecnico, texto)
+
+    def test_som_so_na_abertura_e_microfone_so_escuta(self):
+        abertura = (self.PASTA / "abertura.js").read_text(encoding="utf-8")
+        anel = (self.PASTA / "anel.js").read_text(encoding="utf-8")
+        _, html = self.pedir("/")
+        for trecho in ("createDynamicsCompressor", "threshold.value = TETO_DB", "TETO_DB = -12",
+                       "RAZAO = 20", "attack.value = 0.003", "ctx.close()", "createConvolver"):
+            self.assertIn(trecho, abertura)
+        # Só a abertura liga algo à saída de áudio; o anel e a página nunca.
+        self.assertIn("ctx.destination", abertura)
+        self.assertNotIn("destination", anel)
+        self.assertNotIn("destination", html)
+        self.assertNotIn("getUserMedia", abertura)
+        self.assertNotIn("getUserMedia", html)  # o pedido do microfone mora no anel.js
+        self.assertIn("echoCancellation: false", anel)
+        self.assertIn("'granted'", anel)  # a Vitrine só abre o microfone já autorizado
+
+    def test_bastidores_mantem_as_funcoes(self):
+        _, html = self.pedir("/")
+        for trecho in ("/api/estado", "/api/ler", "/api/senha", "/api/modo", "POLL_MS = 3000", "Ler agora",
+                       "voltar à Vitrine", "KARINA", "Jornada", "feito", "planejado", "em evolução",
+                       'data-modo="Filme"', 'data-modo="Música SPL"', 'data-modo="Música EQ"', 'data-modo="nenhum"',
+                       'role="dialog"', "escrevendo", "prefers-reduced-motion", "As 10 telas do app"):
+            self.assertIn(trecho, html)
+
+
+class ModoApiTest(ServidorBase):
+    def memorias(self) -> dict:
+        return json.loads((self.estado / "memorias.json").read_text(encoding="utf-8"))
+
+    def test_seletor_grava_pelo_denis_e_o_estado_mostra(self):
+        codigo, corpo = self.pedir("/api/modo", {"nome": "Música SPL"})
+        self.assertEqual(codigo, 200)
+        resposta = json.loads(corpo)
+        self.assertTrue(resposta["ok"])
+        self.assertEqual((resposta["modo_ativo"]["nome"], resposta["modo_ativo"]["por"]), ("Música SPL", "denis"))
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+        e = json.loads(self.pedir("/api/estado")[1])
+        self.assertEqual((e["modo_ativo"]["nome"], e["modo_ativo"]["por"]), ("Música SPL", "denis"))
+        # Vale a última gravação, de qualquer origem.
+        with contextlib.redirect_stdout(io.StringIO()):
+            sessao.main(["modo", "Filme"], estado=self.estado)
+        self.assertEqual(json.loads(self.pedir("/api/estado")[1])["modo_ativo"]["por"], "ia")
+        diario = next((self.estado / "sessoes").glob("*.md")).read_text(encoding="utf-8")
+        self.assertIn("Modo da Vitrine", diario)
+        self.assertIn("- Música SPL (por Denis)", diario)  # o seletor também fica no diário
+        codigo, corpo = self.pedir("/api/modo", {"nome": "nenhum"})
+        self.assertEqual((codigo, json.loads(corpo)["modo_ativo"]), (200, None))
+        self.assertNotIn("modo_ativo", self.memorias())
+        self.assertIsNone(json.loads(self.pedir("/api/estado")[1])["modo_ativo"])
+
+    def test_nome_invalido_nao_grava(self):
+        for corpo in ({"nome": "Rock"}, {"nome": 3}, {}, {"nome": ""}):
+            with self.subTest(corpo=corpo):
+                self.assertEqual(self.pedir("/api/modo", corpo)[0], 400)
+        self.assertFalse((self.estado / "memorias.json").exists())
+
+    def test_memorias_ilegivel_recusa_sem_estragar(self):
+        (self.estado / "memorias.json").write_text("{", encoding="utf-8")
+        codigo, corpo = self.pedir("/api/modo", {"nome": "Filme"})
+        self.assertEqual(codigo, 409)
+        self.assertFalse(json.loads(corpo)["ok"])
+        self.assertEqual((self.estado / "memorias.json").read_text(encoding="utf-8"), "{")
+
+    def test_outra_origem_e_recusada(self):
+        self.assertEqual(self.pedir("/api/modo", {"nome": "Filme"}, origem="http://exemplo.com")[0], 403)
+        self.assertFalse((self.estado / "memorias.json").exists())
+
+    def test_modo_preserva_memorias_e_nao_toca_o_aparelho(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            sessao.main(["memoria", "3", "Filme-EQ", "--por", "ia"], estado=self.estado)
+        self.assertEqual(self.pedir("/api/modo", {"nome": "Filme"})[0], 200)
+        self.assertEqual(self.memorias()["dsp"]["3"]["nome"], "Filme-EQ")
+        self.assertEqual(list((self.estado / "ajustes").iterdir()), [])  # nenhum ajuste no processador
+        self.assertFalse(self.leitor.lendo)
+
+
+class EstaticoTest(ServidorBase):
+    """GET /<arquivo> serve só o que está direto em painel/, sem sair da pasta."""
+
+    def setUp(self):
+        super().setUp()
+        raiz = Path(self.tmp.name)
+        self.pasta = raiz / "web"
+        self.pasta.mkdir()
+        (self.pasta / "index.html").write_text("<p>pagina</p>", encoding="utf-8")
+        (self.pasta / "app.js").write_text("export const x = 1;", encoding="utf-8")
+        (self.pasta / "estilo.css").write_text("p{}", encoding="utf-8")
+        (self.pasta / "segredo.txt").write_text("nao", encoding="utf-8")
+        (self.pasta / ".oculto.js").write_text("nao", encoding="utf-8")
+        (self.pasta / "sub").mkdir()
+        (self.pasta / "sub" / "dentro.js").write_text("nao", encoding="utf-8")
+        (raiz / "fora.js").write_text("FORA", encoding="utf-8")
+        self.servidor.html = self.pasta / "index.html"
+
+    def bruto(self, caminho: str) -> tuple[int, bytes, str]:
+        conexao = http.client.HTTPConnection("127.0.0.1", self.servidor.porta, timeout=5)
+        try:
+            conexao.request("GET", caminho)  # sem normalizar: ".." e %xx chegam como vieram
+            resp = conexao.getresponse()
+            return resp.status, resp.read(), resp.getheader("Content-Type") or ""
+        finally:
+            conexao.close()
+
+    def test_serve_os_arquivos_da_pasta_com_o_tipo_certo(self):
+        codigo, corpo, tipo = self.bruto("/app.js")
+        self.assertEqual((codigo, corpo), (200, b"export const x = 1;"))
+        self.assertTrue(tipo.startswith("text/javascript"))
+        codigo, _, tipo = self.bruto("/estilo.css")
+        self.assertEqual(codigo, 200)
+        self.assertTrue(tipo.startswith("text/css"))
+        self.assertEqual(self.bruto("/app.js?v=2")[0], 200)
+        self.assertEqual(self.bruto("/")[1], b"<p>pagina</p>")
+
+    def test_nao_sai_da_pasta(self):
+        for caminho in ("/../fora.js", "/%2e%2e/fora.js", "/..%2ffora.js", "/..%5cfora.js", "/%2e%2e%5cfora.js",
+                        "/sub/../../fora.js", "/sub/dentro.js", "/sub%2fdentro.js", "//fora.js",
+                        "/C:/Windows/win.ini", "/C:%5cWindows%5cwin.ini", "/.oculto.js", "/segredo.txt",
+                        "/app.js%00.js", "/app.js.", "/app.js%20", "/nada.js", "/painel.py", "/../painel.py",
+                        "/" + str(Path(self.tmp.name) / "fora.js").replace("\\", "/")):
+            with self.subTest(caminho=caminho):
+                codigo, corpo, _ = self.bruto(caminho)
+                self.assertEqual(codigo, 404)
+                self.assertNotIn(b"FORA", corpo)
+
+    def test_favicon_ausente_nao_e_erro(self):
+        self.assertEqual(self.bruto("/favicon.ico")[0], 204)
+
+    def test_rota_de_api_desconhecida_continua_404(self):
+        self.assertEqual(self.bruto("/api/nada.js")[0], 404)
+
+    def test_funcao_sozinha(self):
+        self.assertEqual(painel.arquivo_estatico(self.pasta, "/app.js"), (self.pasta / "app.js").resolve())
+        self.assertIsNone(painel.arquivo_estatico(self.pasta, "/%2e%2e/fora.js"))
+        self.assertIsNone(painel.arquivo_estatico(self.pasta, "app.js"))
+        self.assertIsNone(painel.arquivo_estatico(self.pasta, "/"))
 
 
 class LerAgoraTest(ServidorBase):

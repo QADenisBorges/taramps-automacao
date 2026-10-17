@@ -1,30 +1,39 @@
 #!/usr/bin/env python3
-"""Painel do protótipo: o estado do PRO 2.4BT + AUDIO numa tela só, no navegador.
+"""Painel BGS Sound Lab: a Vitrine (TV, tela cheia) e os Bastidores (o estado do PRO 2.4BT +
+AUDIO numa tela só), no navegador.
 
 Uso (na pasta do projeto):
 
     uv run ferramentas/painel.py
-        Sobe em http://localhost:8765 e abre o navegador. Ctrl+C para parar.
+        Sobe em http://127.0.0.1:8765 e abre o navegador. Ctrl+C para parar.
 
     uv run ferramentas/painel.py --sem-navegador
         Só sobe o servidor (para testes e para abrir à mão).
 
 O servidor é só biblioteca padrão. Ele lê a pasta estado/ (a última leitura em
-estado/leituras/, as memórias em estado/memorias.json, o progresso em
-estado/sessoes/progresso.json e os ajustes em estado/ajustes/) e nunca escreve nela. O único
-arquivo que ele grava é o da senha, no login único, fora do projeto. A leitura do aparelho é
-delegada ao CLI ler_processador.py, em subprocesso. A página (painel/index.html) busca
-/api/estado a cada 3 s e desenha tudo a partir dela.
+estado/leituras/, as memórias e o modo da Vitrine em estado/memorias.json, o progresso em
+estado/sessoes/progresso.json e os ajustes em estado/ajustes/). Dentro de estado/ ele só
+escreve pelo POST /api/modo (o seletor de modo dos Bastidores): regrava estado/memorias.json
+inteiro por sessao.gravar_modo (gravação atômica, com o modo_ativo novo e o resto como estava)
+e anota "Modo da Vitrine" no diário do dia, em estado/sessoes/. Fora do projeto, grava o
+arquivo da senha no login único. A leitura do aparelho é delegada ao CLI ler_processador.py,
+em subprocesso. A página (painel/index.html, com os módulos painel/*.js) busca /api/estado a
+cada 3 s e desenha tudo a partir dela.
 
 Rotas:
-    GET  /            a página (HTML, CSS e JS inline, sem CDN)
-    GET  /api/estado  o estado montado na hora a partir dos arquivos
+    GET  /            a página (painel/index.html; sem CDN, sem fonte nem áudio de fora)
+    GET  /<arquivo>   os arquivos de painel/ (.js, .css, .svg…), só os que estão direto na
+                      pasta: nada de subir de pasta, caminho absoluto ou extensão desconhecida
+    GET  /api/estado  o estado montado na hora a partir dos arquivos (inclui modo_ativo)
     POST /api/senha   login único: grava ~/.taramps/senha (4 caracteres, sem BOM nem quebra)
     POST /api/ler     roda ler_processador.py em subprocesso (só leitura), um por vez
+    POST /api/modo    {"nome": "Filme" | "Música SPL" | "Música EQ" | "nenhum"}: regrava
+                      estado/memorias.json com modo_ativo = {nome, por: "denis", hora} ("nenhum"
+                      apaga o campo) e anota no diário da sessão
 
-Nunca escreve no processador nem expõe ajustar_processador.py. A senha nunca aparece em
-log, resposta, HTML ou console. Só escuta em localhost. Arquivo corrompido em estado/ é
-ignorado: o servidor nunca cai por causa de um JSON inválido.
+Nunca escreve no processador nem expõe ajustar_processador.py, nem pelo /api/modo: o modo é só
+o que a Vitrine diz. A senha nunca aparece em log, resposta, HTML ou console. Só escuta em localhost. Arquivo
+corrompido em estado/ é ignorado: o servidor nunca cai por causa de um JSON inválido.
 """
 
 from __future__ import annotations
@@ -40,7 +49,7 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -59,6 +68,16 @@ MAX_AJUSTES = 30  # linhas da linha do tempo do agente
 TIMEOUT_LER_S = 120  # o leitor leva ~13 s; preso além disso é cancelado
 MAX_CORPO = 4096  # bytes de corpo aceitos num POST
 PONTOS_POR_OITAVA = 12  # resolução das curvas desenhadas
+
+# Arquivos que a rota estática serve de painel/, por extensão. O resto é 404.
+TIPOS_ESTATICOS = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+}
 
 # O "Ler agora" roda o leitor em subprocesso, com uv run (spec). Se o uv não estiver no PATH,
 # cai para o Python atual (o mesmo ambiente, com o bleak).
@@ -355,15 +374,104 @@ def _lista(valor) -> list:
     return [x for x in valor if x is not None] if isinstance(valor, list) else []
 
 
+# --------------------------------------------------------------------------- frases da linha do tempo
+
+_MENOS = "−"  # sinal de menos tipográfico, como no resto do painel
+_FRASE_ROTULO = {
+    "080": "Master", "081": "Ganho", "040": "Passa-alta", "041": "Passa-baixa",
+    "050": "Atraso", "060": "Fase", "072": "Attack do limiter", "073": "Release do limiter",
+    "090": "Frequência do EQ", "091": "Ganho do EQ", "092": "Q do EQ", "010": "Roteamento",
+    "030": "Ganho do EQ de entrada", "031": "Frequência do EQ de entrada",
+    "032": "Q do EQ de entrada",
+}
+_COM_SINAL = {"091", "030", "020"}  # ganhos de EQ: o "+" ajuda a ler o reforço
+_VERDADE = {"1", "true", "on", "sim", "ligado"}
+_FALSO = {"0", "false", "off", "nao", "não", "desligado"}  # fora das duas listas: o texto cru
+_ROTEAMENTO_POR_TEXTO = {"a": "A", "b": "B", "a+b": "A+B", "ab": "A+B"}
+_FILTRO_POR_NOME = {nome.lower(): i for i, nome in pt.FILTROS.items()}
+
+
+def _num_br(v: float, casas: int = 1, sinal: bool = False) -> str:
+    """Número com vírgula decimal e o sinal de menos tipográfico ("−12,0")."""
+    texto = f"{abs(v):.{casas}f}"
+    zero = float(texto) == 0
+    prefixo = _MENOS if v < 0 and not zero else ("+" if sinal and v > 0 and not zero else "")
+    return prefixo + texto.replace(".", ",")
+
+
+def _valor_frase(p: pt.Parametro, numero: float) -> str:
+    especial = (p.especiais or {}).get(numero)
+    if especial is not None:  # ex.: attack 0,01 / 0,05 = "auto"
+        return str(especial)
+    casas = 0 if p.casas == 0 and numero.is_integer() else max(p.casas, 1)
+    texto = _num_br(numero, casas, sinal=p.codigo in _COM_SINAL)
+    unidade = "°" if p.unidade == "graus" else (f" {p.unidade}" if p.unidade else "")
+    return f"{texto}{unidade}"
+
+
+def frase(texto) -> str:
+    """Uma escrita do lote em português simples, para a linha do tempo da KARINA:
+    "081:0=-12.0" → "Ganho da saída 1 para −12,0 dB". Fora do formato, devolve o texto."""
+    texto = str(texto)
+    try:
+        pedido = gd.interpretar(texto)
+    except gd.PedidoInvalido:
+        return texto
+    p = pt.POR_CODIGO.get(pedido.codigo)
+    if p is None or pedido.valor is None:
+        return texto
+    c = pedido.canal
+    saida = f" da saída {c + 1}" if p.escopo == pt.ESCOPO_CANAL and isinstance(c, int) else ""
+    bruto = str(pedido.valor).strip()
+    try:
+        if p.codigo in ("100", "070"):
+            if bruto.lower() not in _VERDADE | _FALSO:
+                return texto  # valor estranho: sem frase confiante
+            ligado = bruto.lower() in _VERDADE
+            if p.codigo == "100":
+                return f"Saída {c + 1} {'mutada' if ligado else 'com som'}" if saida else texto
+            return f"Limiter automático{saida} {'ligado' if ligado else 'desligado'}"
+        if p.codigo == "010":
+            rota = _ROTEAMENTO_POR_TEXTO.get(bruto.lower().replace(" ", ""))
+            return f"Roteamento{saida} para {rota}" if rota else texto
+        if p.codigo in ("042", "043"):
+            qual = "Passa-alta" if p.codigo == "042" else "Passa-baixa"
+            indice = _FILTRO_POR_NOME.get(bruto.lower())
+            if indice is None:
+                numero = pt.ler_numero(bruto)
+                if not numero.is_integer() or int(numero) not in pt.FILTROS:
+                    return texto  # índice que o aparelho não tem
+                indice = int(numero)
+            if indice == 0:
+                return f"{qual}{saida} desligado"
+            return f"Filtro do {qual.lower()}{saida} para {pt.FILTROS[indice]}"
+        numero = pt.ler_numero(bruto)
+        if p.codigo == "071":
+            if numero == 0.5:
+                return f"Limiter{saida} desligado"
+            return (f"Limiter{saida} para {_num_br(numero)} dB "
+                    f"({_num_br(2.0 * 10 ** (numero / 20), 2)} V)")
+        if p.codigo == "020":
+            if not isinstance(c, int) or not 0 <= c < len(pt.BANDAS_HZ):
+                return texto
+            return f"Banda de {pt.BANDAS_HZ[c]} Hz para {_valor_frase(p, numero)}"
+        rotulo = _FRASE_ROTULO.get(p.codigo, p.rotulo)
+        return f"{rotulo}{saida} para {_valor_frase(p, numero)}"
+    except (pt.EscritaInvalida, ValueError, TypeError, OverflowError):
+        return texto
+
+
 def _ajuste(nome: str, dados: dict, agora: dt.datetime) -> dict:
     decisao = dados.get("decisao") if isinstance(dados.get("decisao"), dict) else None
     aprovado = decisao.get("aprovado") if decisao else None
-    recusas = []
+    recusas, recusas_det = [], []
     if decisao:
         for r in _lista(decisao.get("recusas")):
             if isinstance(r, dict):
                 item = f"{r.get('item')} · " if r.get("item") else ""
                 recusas.append(f"{item}{r.get('rotulo') or ''}: {r.get('motivo') or ''}".strip())
+                recusas_det.append({campo: str(r[campo]) if r.get(campo) is not None else None
+                                    for campo in ("item", "rotulo", "motivo")})
     status = dados.get("status") if isinstance(dados.get("status"), str) else None
     fim = dados.get("fim") if isinstance(dados.get("fim"), str) else None
     em_andamento = dados.get("em_andamento") if isinstance(dados.get("em_andamento"), str) else None
@@ -376,6 +484,7 @@ def _ajuste(nome: str, dados: dict, agora: dt.datetime) -> dict:
             aberto = False
             status = "interrompido?"
     inicio = _quando(dados.get("inicio"))
+    lote = [str(x) for x in _lista(dados.get("lote"))]
     return {
         "arquivo": f"estado/ajustes/{nome}",
         "inicio": dados.get("inicio") if isinstance(dados.get("inicio"), str) else None,
@@ -383,13 +492,15 @@ def _ajuste(nome: str, dados: dict, agora: dt.datetime) -> dict:
         "data": inicio.strftime("%d/%m") if inicio else None,
         "fim": fim,
         "simular": bool(dados.get("simular")),
-        "lote": [str(x) for x in _lista(dados.get("lote"))],
+        "lote": lote,
+        "frases": [frase(x) for x in lote],
         "status": status,
         "decisao": None if aprovado is None else ("APROVADO" if aprovado else "RECUSADO"),
         "ordem": [str(x) for x in _lista(decisao.get("ordem") if decisao else None)],
         "aplicados": [str(x) for x in _lista(dados.get("aplicados"))],
         "nao_aplicados": [str(x) for x in _lista(dados.get("nao_aplicados"))],
         "recusas": recusas,
+        "recusas_det": recusas_det,
         "alertas": len(_lista(decisao.get("alertas") if decisao else None)),
         "em_andamento": em_andamento,
         "aberto": aberto,
@@ -541,6 +652,7 @@ def montar_estado(estado: Path, *, agora: dt.datetime | None = None,
         senha_guardada = senha_disponivel()
     situacao = leitor.situacao(agora) if leitor else {"lendo": False, "segundos": 0,
                                                        "resultado": None}
+    mem = secao("memorias", lambda: memorias(estado), sessao.memorias_vazias())
     return {
         "agora": agora.isoformat(timespec="seconds"),
         "senha_guardada": bool(senha_guardada),
@@ -551,7 +663,10 @@ def montar_estado(estado: Path, *, agora: dt.datetime | None = None,
         "curvas": secao("curvas", lambda: curvas(valores) if retrato is not None else None, None),
         "guardiao": secao("guardiao", lambda: violacoes(retrato, estado),
                           {"regra6": None, "violacoes": None, "motivo": "sem avaliação", "config": None}),
-        "memorias": secao("memorias", lambda: memorias(estado), sessao.memorias_vazias()),
+        "memorias": mem,
+        # O modo da Vitrine ({nome, por, hora}), declarado pela /regulagem ou pelo seletor dos
+        # Bastidores. None = sem registro: a Vitrine diz só "Som ajustado pela KARINA".
+        "modo_ativo": mem.get("modo_ativo") if isinstance(mem, dict) else None,
         "agente": {
             "progresso": secao("progresso", lambda: progresso(estado), None),
             "ajustes": lista_ajustes,
@@ -567,6 +682,29 @@ def montar_estado(estado: Path, *, agora: dt.datetime | None = None,
 
 
 _HOSTS_LOCAIS = {"localhost", "127.0.0.1", "[::1]", "::1"}
+
+
+def arquivo_estatico(pasta: Path, caminho_url: str) -> Path | None:
+    """O arquivo de painel/ pedido por GET /<nome>, ou None. Só nomes simples, direto na pasta,
+    com extensão de TIPOS_ESTATICOS: nada de "..", barras invertidas, unidade (C:), caminho
+    absoluto, subpasta ou arquivo oculto, mesmo codificados em %xx."""
+    nome = unquote(caminho_url or "")
+    if not nome.startswith("/"):
+        return None
+    nome = nome[1:]
+    if (not nome or "/" in nome or "\\" in nome or ":" in nome or "\x00" in nome
+            or nome.startswith(".") or nome != nome.strip()):
+        return None
+    if Path(nome).suffix.lower() not in TIPOS_ESTATICOS:
+        return None
+    try:
+        base = pasta.resolve()
+        alvo = (base / nome).resolve()
+    except (OSError, ValueError, RuntimeError):
+        return None
+    if alvo.parent != base or not alvo.is_file():
+        return None
+    return alvo
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -602,6 +740,21 @@ class _Handler(BaseHTTPRequestHandler):
                             "text/plain; charset=utf-8")
             return
         self._responder(200, corpo, "text/html; charset=utf-8")
+
+    def _estatico(self, caminho: str) -> None:
+        alvo = arquivo_estatico(self.server.html.parent, caminho)
+        if alvo is None:
+            if caminho == "/favicon.ico":  # o navegador pede sozinho; sem ícone não é erro
+                self._responder(204, b"", "image/x-icon")
+                return
+            self._json(404, {"erro": "não existe"})
+            return
+        try:
+            corpo = alvo.read_bytes()
+        except OSError:
+            self._json(404, {"erro": "não existe"})
+            return
+        self._responder(200, corpo, TIPOS_ESTATICOS[alvo.suffix.lower()])
 
     def _origem_ok(self) -> bool:
         """POST só da própria página: sem Origin (ferramentas locais) ou Origin em localhost."""
@@ -644,15 +797,17 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(500, {"erro": f"não consegui montar o estado: {type(erro).__name__}"})
                 return
             self._json(200, dados)
-        else:
+        elif caminho.startswith("/api/"):
             self._json(404, {"erro": "não existe"})
+        else:
+            self._estatico(caminho)
 
     def do_POST(self):  # noqa: N802
         caminho = urlsplit(self.path).path
         if not self._origem_ok():
             self._json(403, {"ok": False, "erro": "só a própria página pode chamar"})
             return
-        if caminho not in ("/api/senha", "/api/ler"):
+        if caminho not in ("/api/senha", "/api/ler", "/api/modo"):
             self._json(404, {"ok": False, "erro": "não existe"})
             return
         dados = self._corpo_json()
@@ -661,8 +816,29 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if caminho == "/api/senha":
             self._senha(dados)
+        elif caminho == "/api/modo":
+            self._modo(dados)
         else:
             self._ler()
+
+    def _modo(self, dados: dict) -> None:
+        """O seletor de modo dos Bastidores: só o campo modo_ativo de estado/memorias.json.
+        Não toca o processador."""
+        nome = dados.get("nome")
+        try:
+            with self.server.trava_modo:
+                novo, _ = sessao.gravar_modo(self.server.estado, nome, "denis", dt.datetime.now())
+        except sessao.ProgressoIlegivel:
+            self._json(409, {"ok": False, "erro": "Não consegui ler as memórias; nada foi gravado."})
+            return
+        except sessao.ModoInvalido:
+            self._json(400, {"ok": False,
+                             "erro": "Modo inválido: Filme, Música SPL, Música EQ ou nenhum."})
+            return
+        except OSError:
+            self._json(500, {"ok": False, "erro": "Não consegui gravar o modo."})
+            return
+        self._json(200, {"ok": True, "modo_ativo": novo})
 
     def _senha(self, dados: dict) -> None:
         senha = dados.get("senha")
@@ -730,7 +906,8 @@ class Servidor(ThreadingHTTPServer):
                  html: Path = ARQUIVO_HTML):
         self.estado = estado
         self.leitor = leitor
-        self.html = html
+        self.html = html  # a pasta dele é a da rota estática
+        self.trava_modo = threading.Lock()  # dois cliques no seletor não gravam ao mesmo tempo
         super().__init__(("127.0.0.1", porta), _Handler)
 
     def handle_error(self, request, client_address):

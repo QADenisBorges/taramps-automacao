@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "ferramentas/painel.py", "--sem-navegador"],
       "port": 8765,
       "url": "http://127.0.0.1:8765"
+    },
+    {
+      "name": "painel-teste",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "ferramentas/painel.py", "--sem-navegador", "--porta", "8766"],
+      "port": 8766,
+      "url": "http://127.0.0.1:8766"
     }
   ]
 }

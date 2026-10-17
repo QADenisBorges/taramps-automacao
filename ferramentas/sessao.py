@@ -31,9 +31,15 @@ Guarda fora da conversa o que a facilitadora precisa para retomar sem repetir na
         `memoria N --limpar` esvazia o registro da memória N; `preset "NOME" --remover` tira o
         preset do registro (nada disso toca o aparelho).
 
+    uv run ferramentas/sessao.py modo "Filme" [--por ia|denis]
+        Registra o modo que a Vitrine do painel mostra ("Som ajustado pela KARINA · Modo: Filme").
+        Só "Filme", "Música SPL" e "Música EQ"; "nenhum" apaga o registro. A /regulagem roda isto
+        ao salvar ou carregar uma memória (--por ia é o padrão). É declarado, não lido do aparelho.
+
 Arquivos: estado/sessoes/progresso.json (etapa, passo, medidas, ideias; a cópia anterior fica em
 progresso.json.bak), estado/sessoes/AAAA-MM-DD.md (diário legível do dia: pedido, resposta,
-dúvida, travou) e estado/memorias.json (memórias do DSP e presets do celular).
+dúvida, travou) e estado/memorias.json (memórias do DSP, presets do celular e o modo_ativo da
+Vitrine: {nome, por, hora}; sem o campo, a Vitrine não mostra modo).
 
 Códigos de saída: 0 ok; 1 erro de uso ou arquivo ilegível; 2 medida repetida sem --refazer.
 """
@@ -46,7 +52,9 @@ import json
 import math
 import os
 import sys
+import tempfile
 import time
+import unicodedata
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -174,11 +182,56 @@ def anotar_diario(pasta: Path, agora: dt.datetime, titulo: str, linhas: list[str
 
 SLOTS_DSP = ("1", "2", "3")
 ORIGENS = ("ia", "denis")
+# Modos que a Vitrine pode mostrar: palavras que o convidado entende, nada técnico.
+MODOS = ("Filme", "Música SPL", "Música EQ")
+SEM_MODO = "nenhum"
+
+
+class ModoInvalido(ValueError):
+    """Nome de modo fora de MODOS (e diferente de "nenhum")."""
+
+
+def _chave_modo(texto: str) -> str:
+    sem_acento = "".join(c for c in unicodedata.normalize("NFKD", texto.casefold())
+                         if not unicodedata.combining(c))
+    return " ".join(sem_acento.replace("-", " ").split())
+
+
+_MODOS_POR_CHAVE = {_chave_modo(m): m for m in MODOS}
+
+
+def normalizar_modo(nome) -> str | None:
+    """O nome canônico do modo ("musica spl" vira "Música SPL"), ou None para "nenhum".
+    Qualquer outro nome levanta ModoInvalido."""
+    if not isinstance(nome, str) or not nome.strip():
+        raise ModoInvalido("modo vazio")
+    chave = _chave_modo(nome)
+    if chave == SEM_MODO:
+        return None
+    if chave not in _MODOS_POR_CHAVE:
+        raise ModoInvalido(f"modo desconhecido: {nome.strip()}")
+    return _MODOS_POR_CHAVE[chave]
 
 
 def memorias_vazias() -> dict:
     return {"formato": FORMATO, "atualizado": None, "dsp": {n: None for n in SLOTS_DSP},
-            "presets": [], "erro": None}
+            "presets": [], "modo_ativo": None, "erro": None}
+
+
+def _validar_modo(dados) -> dict | None:
+    """modo_ativo validado; um registro estranho é ignorado (a Vitrine omite o modo) em vez de
+    tornar o arquivo inteiro ilegível."""
+    if not isinstance(dados, dict):
+        return None
+    try:
+        nome = normalizar_modo(dados.get("nome"))
+    except ModoInvalido:
+        return None
+    if nome is None:
+        return None
+    por = dados.get("por")
+    return {"nome": nome, "por": por if por in ORIGENS else None,
+            "hora": dados.get("hora") if isinstance(dados.get("hora"), str) else None}
 
 
 def _validar_registro(dados, origem: str) -> dict | None:
@@ -206,6 +259,7 @@ def validar_memorias(dados) -> dict:
         raise ProgressoIlegivel("memorias.json: presets fora do formato")
     base["presets"] = [r for r in (_validar_registro(x, "preset") for x in presets or [])
                        if r is not None]
+    base["modo_ativo"] = _validar_modo(dados.get("modo_ativo"))
     return base
 
 
@@ -220,14 +274,23 @@ def carregar_memorias(estado: Path) -> dict:
 
 
 def gravar_memorias(estado: Path, dados: dict, agora: dt.datetime) -> Path:
-    """Mesma gravação atômica do progresso: temporário e troca de uma vez."""
+    """Gravação atômica: um temporário com nome único na mesma pasta e troca de uma vez. O nome
+    único deixa o CLI (a /regulagem) e o painel (POST /api/modo) gravarem ao mesmo tempo sem um
+    apagar o temporário do outro."""
     estado.mkdir(parents=True, exist_ok=True)
     caminho = estado / "memorias.json"
-    dados = {k: v for k, v in dados.items() if k != "erro"}
+    dados = {k: v for k, v in dados.items()
+             if k != "erro" and not (k == "modo_ativo" and v is None)}  # sem modo = sem o campo
     dados["atualizado"] = agora.isoformat(timespec="seconds")
-    temporario = caminho.with_suffix(".json.tmp")
-    temporario.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    _substituir(temporario, caminho)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=estado, prefix="memorias.",
+                                     suffix=".tmp", delete=False) as arquivo:
+        arquivo.write(json.dumps(dados, ensure_ascii=False, indent=2) + "\n")
+        temporario = Path(arquivo.name)
+    try:
+        _substituir(temporario, caminho)
+    except BaseException:
+        temporario.unlink(missing_ok=True)
+        raise
     return caminho
 
 
@@ -304,6 +367,56 @@ def cmd_preset(args, estado: Path, agora: dt.datetime) -> int:
     anotar_diario(estado / "sessoes", agora, "Preset do celular salvo",
                   [f"{nome} (por {quem})" + (" · substituiu o anterior" if repetido else "")])
     print(f"Preset registrado: {nome}, por {quem}{' (substituído)' if repetido else ''}.")
+    return SAIDA_OK
+
+
+def gravar_modo(estado: Path, nome, por: str, agora: dt.datetime) -> tuple[dict | None, dict | None]:
+    """Grava estado/memorias.json → modo_ativo = {nome, por, hora} ("nenhum" apaga o campo).
+    Devolve (novo, anterior). Usado pelo CLI (por ia) e pelo POST /api/modo do painel (por denis);
+    nos dois casos anota "Modo da Vitrine" no diário do dia, com quem gravou. ModoInvalido para
+    nome ou origem fora da lista; ProgressoIlegivel se o arquivo não abre (nada é gravado)."""
+    modo = normalizar_modo(nome)
+    if por not in ORIGENS:
+        raise ModoInvalido(f"origem desconhecida: {por}")
+    dados = carregar_memorias(estado)
+    anterior = dados.get("modo_ativo")
+    novo = None if modo is None else {"nome": modo, "por": por,
+                                      "hora": agora.isoformat(timespec="seconds")}
+    if novo is None and anterior is None:
+        return None, None  # já estava sem modo: nada a gravar
+    dados["modo_ativo"] = novo
+    gravar_memorias(estado, dados, agora)
+    quem = "IA" if por == "ia" else "Denis"
+    if novo is None:
+        anotar_diario(estado / "sessoes", agora, "Modo da Vitrine apagado",
+                      [f"Antes: {anterior['nome']}", f"Por {quem}"])
+    else:
+        anotar_diario(estado / "sessoes", agora, "Modo da Vitrine",
+                      [f"{novo['nome']} (por {quem})"]
+                      + ([f"Antes: {anterior['nome']}"] if anterior else []))
+    return novo, anterior
+
+
+def cmd_modo(args, estado: Path, agora: dt.datetime) -> int:
+    nome = " ".join(args.nome).strip()
+    try:
+        novo, anterior = gravar_modo(estado, nome, args.por, agora)
+    except ProgressoIlegivel as erro:
+        print(f"Não consegui ler as memórias ({erro}). Nada foi gravado.")
+        return SAIDA_USO
+    except ModoInvalido:
+        print(f'Modo desconhecido: {nome or "(vazio)"}. Use "Filme", "Música SPL", "Música EQ" '
+              'ou "nenhum".')
+        return SAIDA_USO
+    antes = f" (antes: {anterior['nome']})" if anterior else ""
+    if novo is None:
+        if anterior is None:
+            print("A Vitrine já estava sem modo.")
+            return SAIDA_OK
+        print(f'Modo da Vitrine apagado{antes}. A Vitrine mostra só "Som ajustado pela KARINA".')
+        return SAIDA_OK
+    quem = "IA" if args.por == "ia" else "Denis"
+    print(f"Modo da Vitrine: {novo['nome']}, por {quem}{antes}.")
     return SAIDA_OK
 
 
@@ -505,6 +618,12 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
     pr.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
     pr.add_argument("--remover", action="store_true", help="tira o preset do registro")
 
+    mo = sub.add_parser("modo", help='registra o modo da Vitrine ("Filme", "Música SPL", '
+                                     '"Música EQ" ou "nenhum")')
+    mo.add_argument("nome", nargs="+", help='ex.: "Filme"')
+    mo.add_argument("--por", choices=ORIGENS, default="ia",
+                    help="quem definiu: ia (padrão, a /regulagem) ou denis")
+
     args = ap.parse_args(argv)
     raiz_estado = estado or RAIZ / "estado"
     pasta = raiz_estado / "sessoes"
@@ -515,6 +634,8 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
         return cmd_memoria(args, raiz_estado, agora)
     if args.comando == "preset":
         return cmd_preset(args, raiz_estado, agora)
+    if args.comando == "modo":
+        return cmd_modo(args, raiz_estado, agora)
     try:
         dados = carregar(pasta)
     except ProgressoIlegivel as erro:

@@ -387,5 +387,122 @@ class MemoriaTest(Base):
             sessao.validar_memorias({"formato": 1, "dsp": {"1": "SPL"}})
 
 
+class ModoTest(Base):
+    """sessao.py modo grava estado/memorias.json → modo_ativo, o que a Vitrine do painel mostra."""
+
+    def memorias(self) -> dict:
+        return json.loads((self.estado / "memorias.json").read_text(encoding="utf-8"))
+
+    def test_modo_registrado_pela_ia_por_padrao(self):
+        codigo, saida = self.rodar("modo", "Filme")
+        self.assertEqual(codigo, 0)
+        self.assertIn("Modo da Vitrine: Filme, por IA.", saida)
+        self.assertEqual(self.memorias()["modo_ativo"],
+                         {"nome": "Filme", "por": "ia", "hora": "2026-10-17T12:01:00"})
+        self.assertIn("## 12:01 · Modo da Vitrine", self.diario())
+        self.assertIn("- Filme (por IA)", self.diario())
+
+    def test_nome_sem_acento_ou_sem_aspas_vira_o_canonico(self):
+        self.assertEqual(self.rodar("modo", "musica", "spl")[0], 0)
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+        codigo, saida = self.rodar("modo", "MÚSICA-EQ", "--por", "denis")
+        self.assertEqual(codigo, 0)
+        self.assertIn("(antes: Música SPL)", saida)
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música EQ")
+        self.assertEqual(self.memorias()["modo_ativo"]["por"], "denis")
+
+    def test_nenhum_apaga_o_campo(self):
+        self.rodar("modo", "Filme")
+        codigo, saida = self.rodar("modo", "nenhum")
+        self.assertEqual(codigo, 0)
+        self.assertIn("apagado (antes: Filme)", saida)
+        self.assertNotIn("modo_ativo", self.memorias())  # sem registro = sem o campo
+        self.assertIsNone(sessao.carregar_memorias(self.estado)["modo_ativo"])
+        codigo, saida = self.rodar("modo", "nenhum")
+        self.assertEqual((codigo, "já estava sem modo" in saida), (0, True))
+
+    def test_modo_desconhecido_nao_grava(self):
+        for nome in ("Rock", "SPL HIGH", "Filme-EQ 2"):
+            with self.subTest(nome=nome):
+                codigo, saida = self.rodar("modo", nome)
+                self.assertEqual(codigo, 1)
+                self.assertIn("Modo desconhecido", saida)
+        self.assertFalse((self.estado / "memorias.json").exists())
+        with self.assertRaises(SystemExit) as ctx, contextlib.redirect_stderr(io.StringIO()):
+            sessao.main(["modo", "Filme", "--por", "app"], estado=self.estado)
+        self.assertEqual(ctx.exception.code, 1)
+
+    def test_memorias_ilegivel_nao_grava_o_modo(self):
+        self.estado.mkdir(parents=True, exist_ok=True)
+        (self.estado / "memorias.json").write_text("{", encoding="utf-8")
+        codigo, saida = self.rodar("modo", "Filme")
+        self.assertEqual(codigo, 1)
+        self.assertIn("Nada foi gravado", saida)
+        self.assertEqual((self.estado / "memorias.json").read_text(encoding="utf-8"), "{")
+
+    def test_memoria_e_preset_preservam_o_modo(self):
+        self.rodar("modo", "Música SPL")
+        self.rodar("memoria", "1", "SPL HIGH", "--por", "ia")
+        self.rodar("preset", "Rock", "--por", "denis")
+        dados = self.memorias()
+        self.assertEqual(dados["modo_ativo"]["nome"], "Música SPL")
+        self.assertEqual(dados["dsp"]["1"]["nome"], "SPL HIGH")
+        # E o modo sobrevive a limpar a memória.
+        self.rodar("memoria", "1", "--limpar")
+        self.assertEqual(self.memorias()["modo_ativo"]["nome"], "Música SPL")
+
+    def test_validar_ignora_modo_estranho_sem_perder_o_resto(self):
+        for estranho in ({"nome": "Rock", "por": "ia"}, "Filme", {"por": "ia"}, {"nome": "nenhum"}):
+            with self.subTest(estranho=estranho):
+                dados = sessao.validar_memorias({"formato": 1, "dsp": {"1": {"nome": "SPL HIGH", "por": "ia"}},
+                                                 "modo_ativo": estranho})
+                self.assertIsNone(dados["modo_ativo"])
+                self.assertEqual(dados["dsp"]["1"]["nome"], "SPL HIGH")
+        dados = sessao.validar_memorias({"formato": 1, "modo_ativo": {"nome": "filme", "por": "x", "hora": 3}})
+        self.assertEqual(dados["modo_ativo"], {"nome": "Filme", "por": None, "hora": None})
+
+    def test_gravacoes_concorrentes_nao_disputam_o_temporario(self):
+        import threading
+        agora = dt.datetime(2026, 10, 17, 14, 0)
+        erros = []
+
+        def gravar(nome):
+            try:
+                for _ in range(15):
+                    sessao.gravar_modo(self.estado, nome, "denis", agora)
+            except Exception as erro:  # noqa: BLE001
+                erros.append(erro)
+
+        fios = [threading.Thread(target=gravar, args=(n,)) for n in ("Filme", "Música SPL", "Música EQ")]
+        for f in fios:
+            f.start()
+        for f in fios:
+            f.join()
+        self.assertEqual(erros, [])
+        self.assertIn(self.memorias()["modo_ativo"]["nome"], sessao.MODOS)
+        self.assertEqual(list(self.estado.glob("*.tmp")), [])
+
+    def test_gravar_modo_anota_no_diario_com_quem_gravou(self):
+        agora = dt.datetime(2026, 10, 17, 14, 0)
+        sessao.gravar_modo(self.estado, "Música EQ", "denis", agora)
+        sessao.gravar_modo(self.estado, "nenhum", "ia", agora)
+        diario = self.diario()
+        self.assertIn("## 14:00 · Modo da Vitrine\n- Música EQ (por Denis)", diario)
+        self.assertIn("## 14:00 · Modo da Vitrine apagado\n- Antes: Música EQ\n- Por IA", diario)
+
+    def test_gravar_modo_devolve_novo_e_anterior(self):
+        agora = dt.datetime(2026, 10, 17, 14, 0)
+        novo, anterior = sessao.gravar_modo(self.estado, "Filme", "denis", agora)
+        self.assertEqual((novo["nome"], novo["por"], anterior), ("Filme", "denis", None))
+        novo, anterior = sessao.gravar_modo(self.estado, "nenhum", "denis", agora)
+        self.assertEqual((novo, anterior["nome"]), (None, "Filme"))
+        with self.assertRaises(sessao.ModoInvalido):
+            sessao.gravar_modo(self.estado, "Rock", "denis", agora)
+        with self.assertRaises(sessao.ModoInvalido):
+            sessao.gravar_modo(self.estado, "Filme", "app", agora)
+        with self.assertRaises(sessao.ModoInvalido):
+            sessao.gravar_modo(self.estado, None, "denis", agora)
+
+
 if __name__ == "__main__":
     unittest.main()

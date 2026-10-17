@@ -2,7 +2,8 @@
 title: 'Vitrine BGS Sound Lab: abertura audiovisual, tela-título e Bastidores'
 type: 'feature'
 created: '2026-10-17'
-status: 'draft'
+status: 'done'
+baseline_commit: 'f0f13a966915dea00bdbfa4d498f98d702228960'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -80,17 +81,55 @@ Nos Bastidores ficam todas as funções que já existem, com visual novo, mais a
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `ferramentas/painel/` -- nova página: toque para começar, abertura (animação + `abertura.js` com o som em 4 fases e o contexto fechado ao fim), Vitrine com a KARINA e o Modo, Bastidores com as regiões do EXPERIENCE, seletor de Modo, Jornada, as 10 telas e o modal.
-- [ ] `ferramentas/painel.py` -- arquivos estáticos, `POST /api/modo`, `modo_ativo` e docstring.
-- [ ] `ferramentas/sessao.py` -- `modo`.
-- [ ] `.claude/skills/regulagem/references/roteiro.md` -- registrar o modo.
-- [ ] `ferramentas/tests/` -- testes de `/api/modo`, `modo_ativo`, rota estática (sem sair da pasta) e `sessao.py modo`. Os testes da página continuam valendo (sem CDN, os 10 títulos).
+- [x] `ferramentas/painel/` -- nova página: toque para começar, abertura (animação + `abertura.js` com o som em 4 fases e o contexto fechado ao fim), Vitrine com a KARINA e o Modo, Bastidores com as regiões do EXPERIENCE, seletor de Modo, Jornada, as 10 telas e o modal.
+- [x] `ferramentas/painel.py` -- arquivos estáticos, `POST /api/modo`, `modo_ativo` e docstring.
+- [x] `ferramentas/sessao.py` -- `modo`.
+- [x] `.claude/skills/regulagem/references/roteiro.md` -- registrar o modo.
+- [x] `ferramentas/tests/` -- testes de `/api/modo`, `modo_ativo`, rota estática (sem sair da pasta) e `sessao.py modo`. Os testes da página continuam valendo (sem CDN, os 10 títulos).
 
 **Acceptance Criteria:**
 - Given o painel aberto, when o Denis clica em "Toque para começar", then a abertura roda em tela cheia com as 4 fases e termina na Vitrine.
 - Given a abertura terminada ou pulada, when se inspeciona a página, then o contexto de áudio de saída está `closed` e nenhum elemento ou nó de áudio toca.
 - Given a Vitrine, when se aperta Enter, then os Bastidores aparecem em janela normal, com todas as funções antigas operando ("Ler agora", expansão das telas, linha do tempo).
 - Given a página inteira, when se procura texto técnico na Vitrine (Hz, dB, BLE, firmware), then não aparece nada.
+
+## Implementation Notes
+
+- `ferramentas/painel/index.html` foi reescrito, com os módulos novos `abertura.js` (som em 4 fases no Web Audio, limitado a ~−12,6 dBFS de pico medido offline, contexto fechado no fim ou ao pular) e `anel.js` (anel no canvas; o microfone só vai para um analisador e só abre se a permissão já existir).
+- Fluxo: login (se necessário) → Toque para começar → abertura → Vitrine → Enter/B/Esc → Bastidores → B → Vitrine sem som. Sem conexão no início, aparece "tentando de novo", nunca o login.
+- `painel.py`: rota estática restrita a `painel/`, `POST /api/modo`, `modo_ativo`, frases legíveis na linha do tempo.
+- `sessao.py`: `modo` e `gravar_modo` (com diário); gravação com temporário único.
+- Roteiro da `/regulagem`: registra o modo ao salvar ou carregar uma memória.
+- Validado no navegador (porta 8766): abertura até a Vitrine, `data-audio=closed` depois, zero elementos de áudio, Enter → Bastidores, `/api/estado` com as 10 telas.
+- Não validado: o som ouvido no home theater, o microfone de verdade e a compensação de latência com saída BT.
+
+## Review Triage Log
+
+| # | Achado | Veredito | Evidência / rota |
+|---|---|---|---|
+| 1 | Exceção na montagem do áudio deixa a abertura presa, sem chegar à Vitrine (edge) | high | Nenhum timer é agendado depois do throw. Na festa, a tela travaria. Patch. |
+| 2 | Esc antes de 1 s pula a abertura, furando a guarda (edge) | medium | `fullscreenchange` chama terminar direto. Patch. |
+| 3 | `data-audio` diz "tocando" com o contexto suspenso (blind) | low | Correção direta. Patch. |
+| 4 | Visual adiantado em relação ao som por BT (blind) | medium | Os timers usam `performance.now()`; BT soma ~200 ms. Patch: compensar a latência. |
+| 5 | Loop do anel para para sempre numa exceção (edge) | medium | `raf` fica ≠ 0. Patch. |
+| 6 | Canvas em DPR cheio com blur por quadro, pesado numa TV 4K (blind) | medium | Sem teto nem fallback. Patch. |
+| 7 | Microfone: contexto de entrada vaza a cada reabertura (blind, edge) | low | Correção direta. Patch. |
+| 8 | Sem conexão no início mostra o login mesmo com senha guardada (blind) | medium | Herdado, mas na festa pediria a senha à toa. Patch. |
+| 9 | Jornada fixa "retomando na etapa 0, passo 2", que fica errado hoje (blind) | medium | Dado vivo embutido no HTML. Patch. |
+| 10 | Linha do tempo perdeu "N alertas já no aparelho" (edge, deletion) | low | Regressão de paridade. Patch. |
+| 11 | EQ15 vazio diz "todas em 0,0 dB" (edge) | low | Correção direta. Patch. |
+| 12 | Rótulo do modo sem data quando não é de hoje (blind) | low | Correção direta. Patch. |
+| 13 | `frase()`: bool "1.0"/lixo, especiais do attack, "ab", truncamento do filtro e ramos sem teste (blind, edge, gap) | medium | A linha do tempo poderia dizer o contrário do que foi escrito. Patch + testes. |
+| 14 | `memorias.json.tmp` compartilhado entre CLI e painel; diário não registra o modo do painel (blind, edge) | medium | Escrita concorrente pode dar 500. Patch: temporário único + diário em `gravar_modo`. |
+| 15 | Docstring do painel subestima o que é escrito (blind, edge) | low | Correção direta. Patch. |
+| 16 | Vitrine com "Modo" e áudio `closed` sem teste executado (gap) | maybe-false | Sem harness de JS no repositório; a checagem manual no navegador cobre. Defer. |
+| 17 | Perda de atualização entre processos em `memorias.json` (blind) | low | Raro, uso de uma pessoa; o temporário único evita o erro. Rejeitado o lock. |
+| 18 | Permissão do microfone sem `onchange`; Firefox (blind) | low | O Denis usa Edge/Chrome; clicar no chip resolve. Rejeitado. |
+| 19 | Mapeamento memória → modo só no roteiro (blind) | low | A /regulagem roda `modo`; o seletor manual cobre falhas. Rejeitado. |
+| 20 | Symlink com sufixo permitido gera KeyError (edge) | low | Não há symlinks na pasta. Rejeitado. |
+| 21 | Modal cobre o login se a senha sumir (edge) | low | Caso artificial. Rejeitado. |
+| 22 | Tela cheia recusada → Vitrine em janela (edge) | low | O EXPERIENCE aceita rodar na janela. Rejeitado. |
+| 23 | `window.bgs` de depuração na página (blind) | low | Usado na validação; inofensivo. Rejeitado. |
 
 ## Verification
 
