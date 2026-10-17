@@ -14,8 +14,9 @@ Uso (na pasta do projeto, com o processador ligado e o celular desconectado dele
         Mostra a amostra de conferência com o app, um valor por vez. Enter = igual,
         x = diferente. O resultado fica ao lado do retrato (-conferencia.json).
 
-A senha BT vem da variável TARAMPS_SENHA ou é pedida sem eco. Ela não é gravada em
-lugar nenhum: no log aparece como *000*****.
+A senha BT vem, nesta ordem, da variável TARAMPS_SENHA, do arquivo
+%USERPROFILE%\\.taramps\\senha (fora do projeto; só o Denis cria e lê) ou é pedida sem eco.
+Ela nunca é mostrada nem gravada pelo projeto: no log aparece como *000*****.
 
 Códigos de saída: 0 tudo lido; 1 alguma consulta falhou ou erro de uso; 2 senha
 recusada; 3 processador não encontrado ou sem conexão; 4 leitura interrompida: a
@@ -46,8 +47,39 @@ NAO_ENCONTRADO = "Processador não encontrado. O celular ainda está conectado a
 SAIDA_OK, SAIDA_FALHAS, SAIDA_SENHA, SAIDA_SEM_APARELHO, SAIDA_QUEDA, SAIDA_SEM_RESPOSTA = range(6)
 
 
+def arquivo_senha() -> Path:
+    """%USERPROFILE%\\.taramps\\senha no Windows (HOME nos outros). Fora do projeto."""
+    return Path.home() / ".taramps" / "senha"
+
+
+class SenhaInvalida(ValueError):
+    """O arquivo ~/.taramps/senha existe, mas o conteúdo não é uma senha (nunca é mostrado)."""
+
+
+SENHA_INVALIDA_NO_ARQUIVO = ("Senha inválida no arquivo ~/.taramps/senha: corrija ou apague o "
+                             "arquivo.")
+
+
+def _senha_do_arquivo() -> str | None:
+    """Conteúdo do arquivo (None se não existe ou está em branco). Bytes ilegíveis contam como
+    conteúdo inválido, para a mensagem certa aparecer sem mostrar nada."""
+    try:
+        texto = arquivo_senha().read_text(encoding="utf-8-sig")
+    except OSError:
+        return None
+    except UnicodeDecodeError:
+        return "�"
+    return texto if texto.strip() else None
+
+
 def _obter_senha() -> str | None:
+    """Ordem: env TARAMPS_SENHA → arquivo ~/.taramps/senha → getpass. Nunca imprime a senha.
+    Arquivo com conteúdo inválido levanta SenhaInvalida (sem cair no getpass)."""
     senha = os.environ.get("TARAMPS_SENHA")
+    do_arquivo = False
+    if not senha:
+        senha = _senha_do_arquivo()
+        do_arquivo = senha is not None
     if not senha:
         try:
             senha = getpass.getpass("Senha BT do processador: ")
@@ -57,6 +89,8 @@ def _obter_senha() -> str | None:
     try:
         pt.montar_autenticacao(senha)
     except ValueError:
+        if do_arquivo:
+            raise SenhaInvalida(SENHA_INVALIDA_NO_ARQUIVO) from None
         return None
     return senha
 
@@ -336,9 +370,13 @@ def main(argv: list[str] | None = None, *, transporte=None, estado: Path | None 
             print(f"{erro}.")
             return SAIDA_FALHAS
 
-    senha = _obter_senha()
+    try:
+        senha = _obter_senha()
+    except SenhaInvalida as erro:
+        print(erro)
+        return SAIDA_FALHAS
     if senha is None:
-        print("A senha tem 4 letras ou números (TARAMPS_SENHA ou digitada).")
+        print("A senha tem 4 letras ou números (TARAMPS_SENHA, ~/.taramps/senha ou digitada).")
         return SAIDA_FALHAS
 
     return asyncio.run(_sessao(

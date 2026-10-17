@@ -484,5 +484,84 @@ class ConferirTest(unittest.TestCase):
         self.assertGreater(resultado["sem_resposta"], 0)
 
 
+class SenhaTest(unittest.TestCase):
+    """Ordem da senha: env TARAMPS_SENHA, depois %USERPROFILE%/.taramps/senha, depois getpass.
+    HOME e USERPROFILE apontam para uma pasta temporária, nunca para a casa de verdade."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.casa = Path(self.tmp.name)
+        patch = mock.patch.dict(os.environ, {"HOME": str(self.casa), "USERPROFILE": str(self.casa)})
+        patch.start()
+        self.addCleanup(patch.stop)
+        os.environ.pop("TARAMPS_SENHA", None)
+        self.getpass = mock.patch("ler_processador.getpass.getpass", side_effect=AssertionError("getpass chamado"))
+        self.getpass.start()
+        self.addCleanup(self.getpass.stop)
+
+    def gravar(self, conteudo: str, encoding: str = "utf-8") -> Path:
+        arquivo = self.casa / ".taramps" / "senha"
+        arquivo.parent.mkdir(parents=True)
+        arquivo.write_text(conteudo, encoding=encoding)
+        return arquivo
+
+    def test_arquivo_fica_fora_do_projeto_na_casa_do_usuario(self):
+        self.assertEqual(lp.arquivo_senha(), self.casa / ".taramps" / "senha")
+
+    def test_le_do_arquivo_sem_imprimir(self):
+        self.gravar(SENHA + "\r\n")  # Set-Content do PowerShell deixa a quebra de linha
+        saida = io.StringIO()
+        with contextlib.redirect_stdout(saida):
+            self.assertEqual(lp.obter_senha(), SENHA)
+        self.assertNotIn(SENHA, saida.getvalue())
+        self.assertEqual(saida.getvalue(), "")
+
+    def test_arquivo_com_bom_do_powershell(self):
+        self.gravar(SENHA, encoding="utf-8-sig")
+        self.assertEqual(lp.obter_senha(), SENHA)
+
+    def test_env_vence_o_arquivo(self):
+        self.gravar("AAAA")
+        with mock.patch.dict(os.environ, {"TARAMPS_SENHA": SENHA}):
+            self.assertEqual(lp.obter_senha(), SENHA)
+
+    def test_sem_env_nem_arquivo_pede_sem_eco(self):
+        self.getpass.stop()
+        with mock.patch("ler_processador.getpass.getpass", return_value=SENHA) as pedido:
+            self.assertEqual(lp.obter_senha(), SENHA)
+        pedido.assert_called_once()
+
+    def test_arquivo_vazio_pede_sem_eco(self):
+        self.gravar("  \n")
+        self.getpass.stop()
+        with mock.patch("ler_processador.getpass.getpass", return_value=SENHA) as pedido:
+            self.assertEqual(lp.obter_senha(), SENHA)
+        pedido.assert_called_once()
+
+    def test_arquivo_com_senha_invalida_avisa_sem_mostrar(self):
+        self.gravar("ABCDE")  # 5 caracteres: fora do formato do app
+        with self.assertRaises(lp.SenhaInvalida) as ctx:
+            lp.obter_senha()
+        self.assertEqual(str(ctx.exception), lp.SENHA_INVALIDA_NO_ARQUIVO)
+        self.assertNotIn("ABCDE", str(ctx.exception))
+
+    def test_arquivo_ilegivel_conta_como_invalido(self):
+        arquivo = self.casa / ".taramps" / "senha"
+        arquivo.parent.mkdir(parents=True)
+        arquivo.write_bytes(b"\xff\xfe\x00\x01")
+        with self.assertRaises(lp.SenhaInvalida):
+            lp.obter_senha()
+
+    def test_main_explica_arquivo_invalido_sem_conectar(self):
+        self.gravar("ABCDE")
+        saida = io.StringIO()
+        with contextlib.redirect_stdout(saida):
+            codigo = lp.main([], transporte=object())
+        self.assertEqual(codigo, lp.SAIDA_FALHAS)
+        self.assertIn(lp.SENHA_INVALIDA_NO_ARQUIVO, saida.getvalue())
+        self.assertNotIn("ABCDE", saida.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,8 +22,8 @@ Fail-safe: releitura diferente do pedido, queda ou timeout param o lote na hora.
 diz o que foi aplicado, o que não foi e o que foi relido. Não salva nem carrega memória:
 quem salva é o Denis, pelo app.
 
-A senha BT vem da variável TARAMPS_SENHA ou é pedida sem eco. Ela não é gravada nem
-mostrada.
+A senha BT vem da variável TARAMPS_SENHA, do arquivo %USERPROFILE%\\.taramps\\senha ou é
+pedida sem eco (ver ler_processador.py). Ela não é gravada nem mostrada.
 
 Códigos de saída: 0 aplicado (ou aprovado, com --simular); 1 erro de uso, lote ilegível
 ou guardiao.json inválido; 2 senha recusada; 3 processador não encontrado ou sem conexão;
@@ -389,9 +389,13 @@ def main(argv: list[str] | None = None, *, transporte=None, estado: Path | None 
         print(f"Resultado: {lp.relativo(reg.caminho)}")
         return SAIDA_RECUSADO
 
-    senha = lp.obter_senha()
+    try:
+        senha = lp.obter_senha()
+    except lp.SenhaInvalida as erro:
+        print(erro)
+        return SAIDA_USO
     if senha is None:
-        print("A senha tem 4 letras ou números (TARAMPS_SENHA ou digitada).")
+        print("A senha tem 4 letras ou números (TARAMPS_SENHA, ~/.taramps/senha ou digitada).")
         return SAIDA_USO
 
     codigo = asyncio.run(_sessao(pedidos, cfg, args.simular, senha,
