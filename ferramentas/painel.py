@@ -44,6 +44,7 @@ import json
 import math
 import os
 import subprocess
+import socket
 import sys
 import threading
 import webbrowser
@@ -699,6 +700,7 @@ def montar_estado(estado: Path, *, agora: dt.datetime | None = None,
 
 
 _HOSTS_LOCAIS = {"localhost", "127.0.0.1", "[::1]", "::1"}
+_IPS_LOCAIS = {"127.0.0.1", "::1"}
 
 
 def arquivo_estatico(pasta: Path, caminho_url: str) -> Path | None:
@@ -773,6 +775,10 @@ class _Handler(BaseHTTPRequestHandler):
             return
         self._responder(200, corpo, TIPOS_ESTATICOS[alvo.suffix.lower()])
 
+    def _cliente_local(self) -> bool:
+        """O pedido veio do próprio notebook? Com --rede, os outros aparelhos só olham."""
+        return (self.client_address[0] or "") in _IPS_LOCAIS
+
     def _origem_ok(self) -> bool:
         """POST só da própria página: sem Origin (ferramentas locais) ou Origin em localhost."""
         origem = self.headers.get("Origin")
@@ -813,6 +819,9 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as erro:  # noqa: BLE001 - nunca derrubar o servidor
                 self._json(500, {"erro": f"não consegui montar o estado: {type(erro).__name__}"})
                 return
+            if not self._cliente_local():
+                # Outro aparelho na rede: só acompanha. Nunca vê o login nem dispara nada.
+                dados = dict(dados, somente_leitura=True, senha_guardada=True)
             self._json(200, dados)
         elif caminho.startswith("/api/"):
             self._json(404, {"erro": "não existe"})
@@ -821,6 +830,9 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802
         caminho = urlsplit(self.path).path
+        if not self._cliente_local():
+            self._json(403, {"ok": False, "erro": "na rede o painel é só para acompanhar"})
+            return
         if not self._origem_ok():
             self._json(403, {"ok": False, "erro": "só a própria página pode chamar"})
             return
@@ -896,6 +908,26 @@ class _Handler(BaseHTTPRequestHandler):
         self._json(200, {"ok": True})
 
 
+def ips_da_rede() -> list[str]:
+    """IPs IPv4 do notebook na rede local (para o link do celular), sem 127.x."""
+    ips: list[str] = []
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))  # não envia nada; só escolhe a interface
+            ips.append(s.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        ips += socket.gethostbyname_ex(socket.gethostname())[2]
+    except OSError:
+        pass
+    vistos: list[str] = []
+    for ip in ips:
+        if not ip.startswith("127.") and ip not in vistos:
+            vistos.append(ip)
+    return vistos
+
+
 def gravar_senha(senha: str) -> Path:
     """Grava ~/.taramps/senha no formato que as ferramentas leem: 4 caracteres, sem BOM nem
     quebra de linha. Nunca sobrescreve um arquivo que já existe (FileExistsError)."""
@@ -920,12 +952,13 @@ class Servidor(ThreadingHTTPServer):
     allow_reuse_address = sys.platform != "win32"
 
     def __init__(self, estado: Path, porta: int = PORTA, leitor: Leitor | None = None,
-                 html: Path = ARQUIVO_HTML):
+                 html: Path = ARQUIVO_HTML, rede: bool = False):
         self.estado = estado
         self.leitor = leitor
         self.html = html  # a pasta dele é a da rota estática
         self.trava_modo = threading.Lock()  # dois cliques no seletor não gravam ao mesmo tempo
-        super().__init__(("127.0.0.1", porta), _Handler)
+        self.rede = rede
+        super().__init__(("0.0.0.0" if rede else "127.0.0.1", porta), _Handler)
 
     def handle_error(self, request, client_address):
         """Navegador que fecha a conexão keep-alive não é erro: fica em silêncio."""
@@ -956,17 +989,22 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None) -> int:
     ap = argparse.ArgumentParser(description="Painel do protótipo (só leitura, só localhost).")
     ap.add_argument("--sem-navegador", action="store_true", help="não abre o navegador")
     ap.add_argument("--porta", type=int, default=PORTA)
+    ap.add_argument("--rede", action="store_true",
+                    help="aceita outros aparelhos do Wi-Fi, só para acompanhar (sem login, sem Ler agora)")
     args = ap.parse_args(argv)
     estado = estado or RAIZ / "estado"
     if not ARQUIVO_HTML.exists():
         print(f"Falta {_relativo(ARQUIVO_HTML)}.")
         return 1
     try:
-        servidor = Servidor(estado, args.porta, Leitor())
+        servidor = Servidor(estado, args.porta, Leitor(), rede=args.rede)
     except OSError as erro:
         print(f"Não consegui abrir a porta {args.porta}: {erro}. O painel já está aberto?")
         return 1
     print(f"Painel em {servidor.url}  (Ctrl+C para parar)")
+    if args.rede:
+        for ip in ips_da_rede():
+            print(f"Na rede (só para acompanhar): http://{ip}:{servidor.porta}")
     if not args.sem_navegador:
         threading.Timer(0.5, lambda: webbrowser.open(servidor.url)).start()
     try:

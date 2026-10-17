@@ -426,6 +426,41 @@ class ServidorBase(Base):
             return erro.code, erro.read().decode("utf-8")
 
 
+class RedeTest(ServidorBase):
+    """Com --rede, outro aparelho (aqui: o teste fingindo não ser o notebook) só acompanha."""
+
+    def setUp(self):
+        super().setUp()
+        patch = mock.patch.object(painel, "_IPS_LOCAIS", set())  # todo pedido vira "de outro aparelho"
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_outro_aparelho_ve_o_estado_sem_login(self):
+        self.com_retrato_real()
+        codigo, corpo = self.pedir("/api/estado")
+        self.assertEqual(codigo, 200)
+        e = json.loads(corpo)
+        self.assertTrue(e["somente_leitura"])
+        self.assertTrue(e["senha_guardada"])  # nunca cai no login no celular da família
+
+    def test_outro_aparelho_nao_dispara_nada(self):
+        for caminho, corpo in (("/api/ler", {}), ("/api/modo", {"nome": "Filme"}), ("/api/senha", {"senha": "AB12"})):
+            codigo, resposta = self.pedir(caminho, corpo)
+            self.assertEqual(codigo, 403, caminho)
+            self.assertIn("só para acompanhar", resposta)
+        self.assertFalse(self.senha.exists())
+
+    def test_servidor_padrao_so_no_notebook(self):
+        self.assertEqual(self.servidor.server_address[0], "127.0.0.1")
+        self.assertFalse(self.servidor.rede)
+
+
+class IpsDaRedeTest(unittest.TestCase):
+    def test_sem_loopback(self):
+        for ip in painel.ips_da_rede():
+            self.assertFalse(ip.startswith("127."))
+
+
 class SenhaTest(ServidorBase):
     def test_login_unico_grava_no_formato_e_nunca_devolve(self):
         self.com_retrato_real()

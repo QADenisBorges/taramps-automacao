@@ -108,6 +108,8 @@ button { font: inherit; }
 .chip b { font-weight: 500; color: var(--texto-claro); }
 .chip .x { color: var(--cinza-3); }
 .chip-mic { color: var(--cinza-3); cursor: pointer; }
+body.somente-leitura #ler, body.somente-leitura #seletor, body.somente-leitura .chip-mic { display: none !important; }
+body.somente-leitura #ler + * { margin-left: 0; }
 .chip-mic:hover { border-color: rgba(255,255,255,.45); color: var(--texto-apoio); }
 .acoes { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .acoes-linha { display: flex; gap: 12px; }
@@ -702,10 +704,12 @@ async function buscar() {
   conexaoOk = true;
   estado = novo;
   recebidoEm = performance.now();
+  if (estado.somente_leitura) document.body.classList.add('somente-leitura');
   if (fase === 'carregando' || fase === 'conectando') { // a primeira resposta decide: login só sem senha
-    if (estado.senha_guardada) irToque(); else mostrarLogin();
+    if (estado.somente_leitura) entrarBastidores(); // celular da família: só acompanha, sem abertura nem som
+    else if (estado.senha_guardada) irToque(); else mostrarLogin();
   }
-  if (fase === 'bastidores' && !estado.senha_guardada) { mostrarLogin(); return true; }
+  if (fase === 'bastidores' && !estado.senha_guardada && !estado.somente_leitura) { mostrarLogin(); return true; }
   if (fase === 'vitrine') desenharLinha(false);
   const chave = JSON.stringify(Object.assign({}, estado, { agora: null }));
   if (chave === ultimaChave && !voltou) return true;
