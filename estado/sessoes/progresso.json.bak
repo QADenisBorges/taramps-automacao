@@ -1,12 +1,253 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-16T21:09:53",
-  "etapa": 0,
+  "atualizado": "2026-10-18T14:43:28",
+  "etapa": 5,
   "passo": 1,
   "travou": false,
   "passos_feitos": [
-    "0.1"
+    "0.1",
+    "0.2",
+    "0.3",
+    "1.1",
+    "1.2",
+    "1.3",
+    "1.4",
+    "1.5",
+    "1.6",
+    "1.7",
+    "1.8",
+    "1.9",
+    "1.10",
+    "1.11",
+    "2.1",
+    "2.2",
+    "2.3",
+    "2.4",
+    "3.1",
+    "3.2",
+    "3.3",
+    "3.4",
+    "3.5",
+    "3.6",
+    "3.7",
+    "3.8",
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13",
+    "3.14",
+    "3.15",
+    "3.16",
+    "3.17",
+    "3.18",
+    "3.19",
+    "4.1",
+    "4.2",
+    "4.3",
+    "4.4",
+    "5.1"
   ],
-  "medidas": {},
-  "ideias": []
+  "medidas": {
+    "fusivel_proc_a": {
+      "valor": 5.0,
+      "unidade": "A",
+      "hora": "2026-10-17T18:12:17",
+      "etapa": 1,
+      "passo": 3,
+      "anteriores": []
+    },
+    "fonte_vdc": {
+      "valor": 13.89,
+      "unidade": "V",
+      "hora": "2026-10-17T18:31:10",
+      "etapa": 1,
+      "passo": 10,
+      "anteriores": []
+    },
+    "jbl_l_ohm": {
+      "valor": 3.6,
+      "unidade": "ohm",
+      "hora": "2026-10-18T14:43:28",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": [
+        {
+          "valor": 3.69,
+          "unidade": "ohm",
+          "hora": "2026-10-17T18:40:41",
+          "etapa": 3,
+          "passo": 1,
+          "motivo_da_refeita": "18/10: depois do grave sem corte (RCA trocados); 4,9 lido - 1,3 das pontas"
+        }
+      ]
+    },
+    "jbl_r_ohm": {
+      "valor": 3.69,
+      "unidade": "ohm",
+      "hora": "2026-10-17T18:40:42",
+      "etapa": 3,
+      "passo": 1,
+      "anteriores": []
+    },
+    "sub_ohm": {
+      "valor": 3.7,
+      "unidade": "ohm",
+      "hora": "2026-10-17T18:42:15",
+      "etapa": 3,
+      "passo": 3,
+      "anteriores": []
+    },
+    "saida1_vac": {
+      "valor": 11.0,
+      "unidade": "V",
+      "hora": "2026-10-17T19:05:59",
+      "etapa": 3,
+      "passo": 4,
+      "anteriores": []
+    },
+    "saida1_mais2db_vac": {
+      "valor": 11.6,
+      "unidade": "V",
+      "hora": "2026-10-17T19:13:18",
+      "etapa": 3,
+      "passo": 6,
+      "anteriores": [
+        {
+          "valor": 11.0,
+          "unidade": "V",
+          "hora": "2026-10-17T19:06:59",
+          "etapa": 3,
+          "passo": 5,
+          "motivo_da_refeita": "confirmado pelo Denis: gerador 0 dB, 400 Hz, saída 1 em −9,0, V~ 200 = 11,6 V; o 11 V das 19:06 não vale"
+        }
+      ]
+    },
+    "saida2_vac": {
+      "valor": 11.0,
+      "unidade": "V",
+      "hora": "2026-10-17T19:15:27",
+      "etapa": 3,
+      "passo": 7,
+      "anteriores": []
+    },
+    "saida2_mais2db_vac": {
+      "valor": 11.6,
+      "unidade": "V",
+      "hora": "2026-10-17T19:16:20",
+      "etapa": 3,
+      "passo": 8,
+      "anteriores": []
+    },
+    "sub_ponte_vac": {
+      "valor": 23.4,
+      "unidade": "V",
+      "hora": "2026-10-17T19:23:42",
+      "etapa": 3,
+      "passo": 10,
+      "anteriores": []
+    },
+    "multimetro_banda_400hz": {
+      "valor": "pular",
+      "unidade": "-",
+      "hora": "2026-10-17T19:29:05",
+      "etapa": 3,
+      "passo": 13,
+      "anteriores": []
+    },
+    "teto_jbl_escolhido": {
+      "valor": 11.0,
+      "unidade": "V",
+      "hora": "2026-10-17T19:29:07",
+      "etapa": 3,
+      "passo": 14,
+      "anteriores": []
+    },
+    "saida1_teto_novo_vac": {
+      "valor": "pular",
+      "unidade": "-",
+      "hora": "2026-10-17T19:29:11",
+      "etapa": 3,
+      "passo": 17,
+      "anteriores": []
+    },
+    "saida2_teto_novo_vac": {
+      "valor": "pular",
+      "unidade": "-",
+      "hora": "2026-10-17T19:29:13",
+      "etapa": 3,
+      "passo": 18,
+      "anteriores": []
+    },
+    "p2_100_vac": {
+      "valor": "pular",
+      "unidade": "-",
+      "hora": "2026-10-17T19:42:46",
+      "etapa": 4,
+      "passo": 1,
+      "anteriores": []
+    },
+    "zumbido": {
+      "valor": "pular",
+      "unidade": "-",
+      "hora": "2026-10-17T19:42:49",
+      "etapa": 4,
+      "passo": 3,
+      "anteriores": []
+    },
+    "nota_musica_high": {
+      "valor": "fraco",
+      "unidade": "-",
+      "hora": "2026-10-17T20:18:48",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "saida1_bt400_menos5db_vac": {
+      "valor": 4.8,
+      "unidade": "Vac",
+      "hora": "2026-10-18T14:41:10",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "saida2_bt400_menos5db_vac": {
+      "valor": 4.7,
+      "unidade": "Vac",
+      "hora": "2026-10-18T14:41:10",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    }
+  },
+  "ideias": [
+    {
+      "hora": "2026-10-17T18:12:18",
+      "texto": "trocar o fusível do processador de 5 A (provisório) por 1–2 A"
+    },
+    {
+      "hora": "2026-10-17T18:17:51",
+      "texto": "medir a Fb do duto (varredura 25–60 Hz) e soltar o subsônico"
+    },
+    {
+      "hora": "2026-10-17T18:21:10",
+      "texto": "medir a Fb do duto (varredura 25–60 Hz) e soltar o subsônico"
+    },
+    {
+      "hora": "2026-10-17T18:47:43",
+      "texto": "automação: ligar o remote out (252, liga o módulo) e o gerador (200–202) pelo notebook, com trava própria no guardião e teste; hoje a regra 5 recusa de propósito"
+    },
+    {
+      "hora": "2026-10-17T19:33:00",
+      "texto": "filme por BT: testar o atraso no streaming; comprar cabo P2 macho → 2 RCA (o Y de 1 RCA fêmea → 2 RCA macho que existe não serve)"
+    },
+    {
+      "hora": "2026-10-17T19:50:32",
+      "texto": "auditoria 19:29 (MÉDIO): confirmar o teto do sub em ponte medindo com o limiter do sub em −9 dB (≈18 V = 23,4 era o teto); subir o f_min do sub no guardião para 40 Hz até medir a Fb"
+    },
+    {
+      "hora": "2026-10-17T20:29:56",
+      "texto": "MUSICA HIGH mais alta: com auditoria nova, avaliar se o ganho das JBL a −9,0 (pico medido 11,6 V, abaixo dos 12,6 V da ficha com LR24 150 Hz) pode valer; ganho esperado: +2 dB na média (nítido), +0,5 dB no pico"
+    }
+  ]
 }

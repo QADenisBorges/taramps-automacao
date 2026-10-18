@@ -1,0 +1,78 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T14:16:54",
+  "fim": "2026-10-18T14:17:08",
+  "simular": false,
+  "lote": [
+    "081:0=-5.0",
+    "081:1=-5.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "2c18f62521791e1272e9038e2813f1485a63ab95f6050624520c15c8e5e34a37",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-18_1416-2.json",
+  "log": "estado/log-ble/2026-10-18_1416-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "081:0=-5.0",
+      "081:1=-5.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "081",
+      "canal": 0,
+      "escrito": "*081*0*-5.0*",
+      "pedido": -5.0,
+      "relido": -5.0,
+      "cru": "#081#0#-5.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "081",
+      "canal": 1,
+      "escrito": "*081*1*-5.0*",
+      "pedido": -5.0,
+      "relido": -5.0,
+      "cru": "#081#1#-5.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "081:0=-5.0",
+    "081:1=-5.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "081:1=-11.0",
+    "081:0=-11.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "081",
+      "canal": 0,
+      "valor": -5.0,
+      "cru": "#081#0#-5.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 1,
+      "valor": -5.0,
+      "cru": "#081#1#-5.0#"
+    }
+  ]
+}

@@ -20,7 +20,8 @@
       "inclinacao_db_oit": 24,
       "teto_limiter_db": -11.0,
       "teto_demo": null,
-      "regra6": true,
+      "regra6": false,
+      "_regra6": "Desligada em 18/10/2026 às 14h05 por decisão do Denis no chat (editado pela IA a pedido dele): o ganho das JBL sobe até o limitador, que continua em -11 dB e segura os picos (+2 dB deram 11,6 V em 17/10). Conferência obrigatória: tom de 400 Hz com o ganho novo deve ficar <= 12,6 V.",
       "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
     },
     "2": {
@@ -30,7 +31,8 @@
       "inclinacao_db_oit": 24,
       "teto_limiter_db": -11.0,
       "teto_demo": null,
-      "regra6": true,
+      "regra6": false,
+      "_regra6": "Desligada em 18/10/2026 às 14h05 por decisão do Denis no chat (editado pela IA a pedido dele): o ganho das JBL sobe até o limitador, que continua em -11 dB e segura os picos (+2 dB deram 11,6 V em 17/10). Conferência obrigatória: tom de 400 Hz com o ganho novo deve ficar <= 12,6 V.",
       "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
     },
     "3": {
