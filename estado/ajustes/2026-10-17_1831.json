@@ -1,0 +1,51 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-17T18:31:51",
+  "fim": "2026-10-17T18:32:05",
+  "simular": true,
+  "lote": [
+    "042:0=LR24",
+    "040:0=150",
+    "042:1=LR24",
+    "040:1=150"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "da434057125368a1f355636672897f52159224072b2c6ee103966b3ee164b947",
+    "regra6": {
+      "1": true,
+      "2": true,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "simulado",
+  "backup": "estado/backups/2026-10-17_1831.json",
+  "log": "estado/log-ble/2026-10-17_1831-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "042:0=3 (LR24)",
+      "042:1=3 (LR24)",
+      "040:1=150"
+    ],
+    "recusas": [],
+    "alertas": [
+      "trava 1: passa-alta da saída 1 (JBL L) abaixo do mínimo (100 Hz, 24 dB/oit): BT12 em 150 Hz",
+      "trava 1: passa-alta da saída 2 (JBL R) abaixo do mínimo (100 Hz, 24 dB/oit): BT12 em 120 Hz",
+      "trava 2: subsônico da saída 3 (sub (ponte com a 4)) abaixo do mínimo (35 Hz, 24 dB/oit): BT24 em 28 Hz",
+      "trava 2: subsônico da saída 4 (sub (ponte com a 3)) abaixo do mínimo (35 Hz, 24 dB/oit): BT24 em 28 Hz",
+      "regra 4: saídas 3 e 4 diferentes em Limiter attack (072): 50.0 × 50.1"
+    ],
+    "sem_mudanca": [
+      "040:0=150"
+    ],
+    "espelhados": []
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

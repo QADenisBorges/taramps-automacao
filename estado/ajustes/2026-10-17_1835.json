@@ -1,0 +1,65 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-17T18:35:41",
+  "fim": "2026-10-17T18:35:55",
+  "simular": false,
+  "lote": [
+    "072:2=50.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "da434057125368a1f355636672897f52159224072b2c6ee103966b3ee164b947",
+    "regra6": {
+      "1": true,
+      "2": true,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-17_1835.json",
+  "log": "estado/log-ble/2026-10-17_1835-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "072:3=50.0"
+    ],
+    "recusas": [],
+    "alertas": [
+      "regra 4: saídas 3 e 4 diferentes em Limiter attack (072): 50.0 × 50.1"
+    ],
+    "sem_mudanca": [
+      "072:2=50.0"
+    ],
+    "espelhados": [
+      "072:3=50.0"
+    ]
+  },
+  "escritas": [
+    {
+      "codigo": "072",
+      "canal": 3,
+      "escrito": "*072*3*50.0*",
+      "pedido": 50.0,
+      "relido": 50.0,
+      "cru": "#072#3#50.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "072:3=50.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "072:3=50.1"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "072",
+      "canal": 3,
+      "valor": 50.0,
+      "cru": "#072#3#50.0#"
+    }
+  ]
+}

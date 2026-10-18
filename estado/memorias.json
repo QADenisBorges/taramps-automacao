@@ -1,19 +1,23 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-18T13:46:24",
+  "atualizado": "2026-10-18T13:50:06",
   "dsp": {
     "1": {
       "nome": "MUSICA HIGH",
       "por": "ia",
       "hora": "2026-10-18T13:46:23"
     },
-    "2": null,
+    "2": {
+      "nome": "MUSICA ORIGINAL",
+      "por": "ia",
+      "hora": "2026-10-18T13:50:05"
+    },
     "3": null
   },
   "presets": [],
   "modo_ativo": {
-    "nome": "Música High",
+    "nome": "Música Original",
     "por": "ia",
-    "hora": "2026-10-18T13:46:24"
+    "hora": "2026-10-18T13:50:06"
   }
 }
