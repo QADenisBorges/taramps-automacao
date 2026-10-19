@@ -1,0 +1,38 @@
+# Pedaço 1 da ordem de entrega (conectar e ler). Os pedaços 2 a 4 entram depois.
+- id: "1"
+  title: Esqueleto do app Android e conexão com o processador
+  description: >-
+    Cria o app, encontra o PRO 2.4BT, conecta pelo BLE, autentica com a senha
+    e lê o firmware, entrando em modo só leitura se não for R003 (CAP-1).
+  spec_checkpoint: true
+  done_checkpoint: true
+  invoke_dev_with: >-
+    A tecnologia ainda não foi decidida: proponha no plano, para o Denis
+    revisar (recomendação: Kotlin nativo, a mesma base do app da Taramps).
+    Tudo é escrito do zero; o código em ferramentas/ é só consulta. A senha
+    nunca aparece em log nem na tela. O teste no aparelho exige o app da
+    Taramps fechado (uma conexão BLE por vez).
+- id: "2"
+  title: Catálogo de parâmetros e leitura completa do aparelho
+  description: >-
+    Codifica e decodifica cada parâmetro do MAPA §4, mais o gerador, a
+    monitoração e os nomes das memórias, e faz a leitura completa (CAP-2).
+  invoke_dev_with: >-
+    Testes automáticos sem o aparelho para cada parâmetro. Na leitura real, a
+    meta é 84 de 84, como no protótipo (MAPA §9). As lacunas do MAPA §8 ainda
+    estão abertas: registre o que a leitura real revelar.
+- id: "3"
+  title: Telas de leitura do estado
+  description: >-
+    Mostra todos os valores lidos, por canal e globais, mais os nomes das
+    memórias e o firmware; sem nenhuma escrita (CAP-2).
+- id: "4"
+  title: Teste de paridade nas 3 memórias
+  description: >-
+    Para cada memória, carrega no app da Taramps, fecha esse app, lê pelo app
+    novo e compara valor a valor; é o teste 3 do sinal de sucesso.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Ver os cuidados em conhecimento-herdado.md: deslizar uma memória na tela
+    Salvar do app da Taramps a carrega; não abrir a tela Limiter com o Auto
+    ligado. Registre o resultado de cada memória e explique cada diferença.

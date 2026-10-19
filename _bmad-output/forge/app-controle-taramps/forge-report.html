@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja: App de Controle</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2a2420;--muted:#6b6058;--line:#e2d8c8;--seal:#9b2226;--seal2:#c0392b;--ok:#2d6a4f;--warn:#a05a00;--no:#7a7068}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1815;--card:#24201c;--ink:#efe7db;--muted:#b3a797;--line:#3a332c;--seal:#c0392b;--seal2:#e05a47;--ok:#6fcf97;--warn:#f2b257;--no:#9a9087}}
+:root[data-theme="dark"]{--bg:#1b1815;--card:#24201c;--ink:#efe7db;--muted:#b3a797;--line:#3a332c;--seal:#c0392b;--seal2:#e05a47;--ok:#6fcf97;--warn:#f2b257;--no:#9a9087}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+header .t{flex:1;min-width:240px}
+h1{font-size:1.7rem;margin:0 0 6px}
+h2{font-size:1.1rem;margin:0 0 12px;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0}
+.seal{width:170px;height:170px;flex:none}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:18px}
+ul{margin:0;padding-left:20px}
+li{margin:6px 0}
+.lock li::marker{content:"🔒 "}
+.no li::marker{content:"✕ ";color:var(--no)}
+.weak li::marker{content:"⚠ ";color:var(--warn)}
+.done li::marker{content:"✓ ";color:var(--ok)}
+.road{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.step{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.step b{display:block;margin-bottom:4px}
+.step.now{border-color:var(--seal2)}
+.cast{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.p{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.p .i{font-size:1.5rem;line-height:1}
+.p small{color:var(--muted);display:block}
+.tag{font-size:.72rem;padding:1px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
+footer{color:var(--muted);font-size:.85rem;text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <svg class="seal" viewBox="0 0 200 200" role="img" aria-label="Selo: Forjada (Hardened)">
+    <defs>
+      <radialGradient id="g" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="var(--seal2)"/><stop offset="1" stop-color="var(--seal)"/></radialGradient>
+      <path id="arc" d="M100,100 m-66,0 a66,66 0 1,1 132,0 a66,66 0 1,1 -132,0"/>
+    </defs>
+    <path fill="url(#g)" d="M100 8 C120 14 128 6 144 18 C160 30 172 28 182 46 C192 64 186 78 192 98 C196 118 188 130 182 148 C172 166 160 168 144 182 C128 194 118 188 100 194 C82 198 70 190 54 182 C38 172 28 170 18 152 C8 134 14 120 8 100 C4 80 12 68 20 52 C30 34 42 32 56 20 C72 8 82 4 100 8Z"/>
+    <circle cx="100" cy="100" r="74" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2"/>
+    <circle cx="100" cy="100" r="52" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.5"/>
+    <text font-size="12.5" font-weight="700" fill="#fff" fill-opacity=".9" letter-spacing="3"><textPath href="#arc" startOffset="2%">BGS SOUND LAB · FORJA DE IDEIAS · 19 OUT 2026 ·</textPath></text>
+    <text x="100" y="98" text-anchor="middle" font-size="19" font-weight="800" fill="#fff" letter-spacing="1.5">FORJADA</text>
+    <text x="100" y="117" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" fill-opacity=".85" letter-spacing="2">HARDENED</text>
+  </svg>
+  <div class="t">
+    <h1>App de controle do PRO 2.4BT</h1>
+    <p class="sub">Um app Android, sem IA dentro, que faz tudo o que o app da Taramps faz e fala direto com o processador pelo Bluetooth. A IA pode comandá-lo, com segurança. É o primeiro POC do caminho para o BGS Sound Lab.</p>
+  </div>
+</header>
+
+<section>
+  <h2>Resultado</h2>
+  <p style="margin:0">A conversa começou para <b>esclarecer</b> a ideia e terminou com ela <b>forjada</b>: o escopo, a plataforma, o acesso da IA, a segurança e a linha de chegada estão travados. Os pontos fracos que restam são conhecidos e nenhum impede de planejar.</p>
+</section>
+
+<section>
+  <h2>Decisões travadas</h2>
+  <ul class="lock">
+    <li><b>Andaime:</b> o BGS Sound Lab será reescrito do zero; deste app passa só o conhecimento.</li>
+    <li><b>Tudo do zero</b>, inclusive o protocolo e o guardião. Entram os valores atuais, as 3 memórias, os presets e as preferências.</li>
+    <li><b>Paridade total</b> com o app da Taramps, mais o remote out (252) e o Bluetooth de áudio (251).</li>
+    <li><b>Chaves de acesso</b> para as operações de risco: cada uma vem ligada ou desligada conforme a segurança (o reset de fábrica vem desligado). Você decide, e o app avisa o risco.</li>
+    <li><b>Telas completas</b>, com avisos customizados, para você largar o app da Taramps de vez.</li>
+    <li><b>Android, no celular.</b> O notebook sai das configurações.</li>
+    <li><b>Presets próprios</b>, separados dos do app da Taramps. As 3 memórias do DSP ficam no aparelho, e os dois apps acessam.</li>
+    <li><b>Porta de comandos no Wi-Fi</b>, com 5 travas: desligada por padrão, pareamento por código de 6 dígitos, só a rede da casa, tudo visível com botão "Parar IA", e risco só com o seu toque na tela.</li>
+    <li><b>Firmware diferente da R003:</b> o app entra em modo só leitura e avisa.</li>
+    <li><b>A proteção nova</b> é provada por testes de várias formas, inclusive ao vivo com o RCA dos módulos desconectado.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Pronto quando passar nos três testes</h2>
+  <ul class="done">
+    <li>Você refaz a MUSICA ORIG e salva na memória 2 só pelo celular, sem abrir o app da Taramps.</li>
+    <li>A IA, pela porta de comandos, lê tudo, muda um ajuste e salva uma memória, com a tela mostrando ao vivo.</li>
+    <li>Paridade: cada valor lido é igual ao que o app da Taramps mostra, nas 3 memórias.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>O que foi rejeitado, e por quê</h2>
+  <ul class="no">
+    <li><b>Levar o protocolo e o guardião antigos:</b> você preferiu reescrever tudo e usar o código antigo só como consulta.</li>
+    <li><b>Só comandos, ou uma tela simples:</b> você quer deixar o app da Taramps e mexer em tudo à mão.</li>
+    <li><b>Notebook com as telas no navegador:</b> o celular é mais prático e combina com um kit portátil.</li>
+    <li><b>IA pelo cabo USB, ou já dentro do app:</b> a IA dentro do app fica para o BGS Sound Lab.</li>
+    <li><b>Deixar os comandos perigosos de fora:</b> eles entram, como chaves de acesso.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Pontos fracos que sobreviveram</h2>
+  <ul class="weak">
+    <li>As telas completas são o maior trabalho do projeto, e este app é andaime. Isso pesa no prazo.</li>
+    <li>O protocolo veio por engenharia reversa: um firmware novo quebra o app, e a Taramps pode ver isso como ameaça ou como vitrine.</li>
+    <li>Tudo foi provado num único sistema, o seu 2.1. Para uma parceria, faltam outras instalações.</li>
+    <li>Os grandes (DSP Concepts e LG) já levam áudio com IA às montadoras: a janela existe, mas fecha.</li>
+    <li>Fatos que limitam: não existe comando para desligar o processador (só o remote out), e só cabe uma conexão Bluetooth por vez.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>O caminho</h2>
+  <div class="road">
+    <div class="step now"><b>POC 1 · este app</b>Controle completo do processador pelo celular, com a porta para a IA.</div>
+    <div class="step"><b>POC 2 · leitor de dados</b>Lê dados como os softwares profissionais, para a IA decidir.</div>
+    <div class="step"><b>POC 3 · tensão por saída</b>Aparelho de 4 entradas e 4 saídas que recebe o sinal, mede a tensão de cada saída do módulo e repassa.</div>
+    <div class="step"><b>BGS Sound Lab</b>Um só app: processador, EQ, microfone, modo manual ou IA que ensina e protege. Acessível, com bom custo-benefício, como pontapé para a Taramps ou outras marcas nacionais.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Quem pôs a ideia à prova</h2>
+  <div class="cast">
+    <div class="p"><span class="i">🏗️</span><div><b>Winston</b><span class="tag">arquiteto</span><small>"Se ela fica, merece mais cuidado agora."</small></div></div>
+    <div class="p"><span class="i">📋</span><div><b>John</b><span class="tag">produto</span><small>"Não achar não é provar que não existe."</small></div></div>
+    <div class="p"><span class="i">🎨</span><div><b>Sally</b><span class="tag">UX</span><small>"Telas iguais às da Taramps são o trabalho mais longo de todo o projeto."</small></div></div>
+    <div class="p"><span class="i">💻</span><div><b>Amelia</b><span class="tag">dev</span><small>"O Bluetooth do notebook já funciona com o processador."</small></div></div>
+    <div class="p"><span class="i">📊</span><div><b>Mary</b><span class="tag">analista</span><small>"O diferencial é a IA que explica, pede permissão e mede tensão."</small></div></div>
+    <div class="p"><span class="i">😤</span><div><b>Grumbal</b><span class="tag">crítico</span><small>"Sem linha de chegada, o protótipo nunca termina."</small></div></div>
+    <div class="p"><span class="i">🔒</span><div><b>Vex</b><span class="tag">segurança</span><small>"Basta entrar no seu Wi-Fi e falar com a porta."</small></div></div>
+    <div class="p"><span class="i">🔧</span><div><b>Rafael</b><span class="tag">instalador · criado</span><small>"A ferramenta você troca à vontade. A trava, eu levaria junto."</small></div></div>
+    <div class="p"><span class="i">🛠️</span><div><b>Carla</b><span class="tag">bancada · criada</span><small>"Um reset de fábrica apaga a senha e as memórias numa tecla só."</small></div></div>
+    <div class="p"><span class="i">🔊</span><div><b>Bruno</b><span class="tag">loja de som · criado</span><small>"Se a IA travar, eu preciso mexer à mão."</small></div></div>
+    <div class="p"><span class="i">📱</span><div><b>Léo</b><span class="tag">Android · criado</span><small>"Ninguém regula o som com um notebook no colo."</small></div></div>
+    <div class="p"><span class="i">🏢</span><div><b>Helena</b><span class="tag">fabricante · criada</span><small>"Quero ver várias instalações e zero alto-falante queimado."</small></div></div>
+    <div class="p"><span class="i">🧪</span><div><b>Paulo</b><span class="tag">testador · criado</span><small>"O melhor teste é um trabalho de verdade que já está na fila."</small></div></div>
+  </div>
+</section>
+
+<footer>Forja de ideias · BGS Sound Lab · 19/10/2026 · resumo: forged-idea.md · registro: .memlog.md</footer>
+</main>
+</body>
+</html>
