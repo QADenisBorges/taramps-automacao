@@ -1,12 +1,12 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-18T15:37:24",
+  "atualizado": "2026-10-18T21:48:34",
   "dsp": {
     "1": {
       "nome": "MUSICA HIGH",
       "por": "ia",
-      "hora": "2026-10-18T15:36:47",
-      "retrato": "79e407cd5d8f2e4e9478ed5b2e8d0e8d18f7c8ba3274178ea46b44e7e1022ea0"
+      "hora": "2026-10-18T19:21:17",
+      "retrato": "6cbd894aa7edbcd342aa4750a54b5ead4df9204bf783877912fa9184a734e451"
     },
     "2": {
       "nome": "MUSICA ORIG",
@@ -14,12 +14,17 @@
       "hora": "2026-10-18T15:34:29",
       "retrato": "1068e8db3e12f1c174f19eb069c3a28c2b028c385481c3b9f7d2af7c59b75bc3"
     },
-    "3": null
+    "3": {
+      "nome": "FILME",
+      "por": "ia",
+      "hora": "2026-10-18T21:48:34",
+      "retrato": "fe612dd6daf91c2e5cdf90dc7c5061883beaaf872ff03b2097f0603ec0c41280"
+    }
   },
   "presets": [],
   "modo_ativo": {
-    "nome": "Música Original",
+    "nome": "Filme",
     "por": "ia",
-    "hora": "2026-10-18T15:37:24"
+    "hora": "2026-10-18T21:45:55"
   }
 }

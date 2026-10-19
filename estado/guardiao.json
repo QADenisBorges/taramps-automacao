@@ -4,8 +4,8 @@
   "data": "2026-10-16",
   "tolerancia_db": 0.5,
   "_tolerancia_db": "Folga da comparação da curva somada com a referência, abaixo do f_min (damage-thresholds, travas 1 e 2).",
-  "g_ef_max_db": -1.0,
-  "_g_ef_max_db": "Regra 7: master + ganho + pico da curva somada (+6 dB na rota A+B) nunca acima disto.",
+  "g_ef_max_db": 18.0,
+  "_g_ef_max_db": "Regra 7: master + ganho + pico da curva somada (+6 dB na rota A+B) nunca acima disto. Era -1,0 dB; passou a +3,0, +8,0, +11,0 e por fim +18,0 dB em 18/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele; o +18 foi aprovado por ele para a FILME no máximo de L, R e sub: JBL +10 e sub +9, com o BT a 100 % ainda ~1 dB abaixo do 0 dB interno): estrutura de ganho com o BT a 100 % encostando no teto dos limitadores (proteção calibrada para o BT; o gerador só em -13 dB ou em 0 dB sem os alto-falantes). A medida de 18/10 mostrou que o sub não soma +6 dB com L e R iguais, então a conta da regra 7 é 6 dB pessimista no sub. O BT entra ~13 dB abaixo do 0 dB interno; acima de 0 dB só uma fonte forte (gerador, P2 no máximo) pode ceifar dentro do DSP. Os limitadores (-11 dB nas JBL, -6 dB no sub) e os cortes continuam valendo.",
   "gerador": {
     "liberado": false,
     "caminho_provado": null,
@@ -40,18 +40,22 @@
       "trava": "subsônico",
       "f_min_hz": 35,
       "inclinacao_db_oit": 24,
-      "teto_limiter_db": -6.0,
-      "regra6": true,
-      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -6,0 dB (1,00 V)."
+      "teto_limiter_db": -9.0,
+      "regra6": false,
+      "_regra6": "Desligada em 18/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele), para dar impacto ao sub na FILME (ganho -6 dB e +3 dB em 50 Hz, ~58 W com o BT). O limitador em -6 dB (~23 V na ponte) e o subsônico de 40 Hz continuam valendo.",
+      
+      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -9,0 dB (0,71 V), desde 18/10/2026 (era -6,0 dB): o ganho do módulo em ponte é ~×40, e com -6 dB o gerador a 0 dB deu 40,6 V; com -9 dB deu 28,6 V (medido pelo Denis, falantes soltos). Editado pela IA a pedido dele; a mudança só aperta o guardião."
     },
     "4": {
       "nome": "sub (ponte com a 3)",
       "trava": "subsônico",
       "f_min_hz": 35,
       "inclinacao_db_oit": 24,
-      "teto_limiter_db": -6.0,
-      "regra6": true,
-      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -6,0 dB (1,00 V)."
+      "teto_limiter_db": -9.0,
+      "regra6": false,
+      "_regra6": "Desligada em 18/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele), para dar impacto ao sub na FILME (ganho -6 dB e +3 dB em 50 Hz, ~58 W com o BT). O limitador em -6 dB (~23 V na ponte) e o subsônico de 40 Hz continuam valendo.",
+      
+      "_origem": "Subsônico mínimo de 35 Hz a 24 dB/oit enquanto a Fb do duto for desconhecida (damage-thresholds, trava 2). Teto do limiter: -9,0 dB (0,71 V), desde 18/10/2026 (era -6,0 dB): o ganho do módulo em ponte é ~×40, e com -6 dB o gerador a 0 dB deu 40,6 V; com -9 dB deu 28,6 V (medido pelo Denis, falantes soltos). Editado pela IA a pedido dele; a mudança só aperta o guardião."
     }
   },
   "_regra6": "Regra 6: master + ganho + maior reforço de EQ (+6 dB na rota A+B) de cada saída nunca acima da linha de base. Só conta o campo regra6 de cada saída (em saidas); não existe chave regra6 global. Uma saída só desliga (false) quando o Denis registrar aqui que ela passou no teste dos +2 dB.",

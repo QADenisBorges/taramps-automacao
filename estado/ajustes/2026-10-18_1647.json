@@ -1,0 +1,46 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T16:47:01",
+  "fim": "2026-10-18T16:47:13",
+  "simular": true,
+  "lote": [
+    "020:7=1.5",
+    "020:8=2.0",
+    "020:9=1.5"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "b4b9ffcf564a1f1fa05e80634f5b8bafd3eaf89d518554c94bc4aeee41122013",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "recusado",
+  "backup": "estado/backups/2026-10-18_1647.json",
+  "log": "estado/log-ble/2026-10-18_1647-ajuste.log",
+  "decisao": {
+    "aprovado": false,
+    "ordem": [],
+    "recusas": [
+      {
+        "regra": 6,
+        "rotulo": "regra 6",
+        "item": "020:7=1.5, 020:8=2.0, 020:9=1.5",
+        "motivo": "nível da saída 3 2.5 dB acima da linha de base (master + ganho + maior reforço de EQ + 6 dB na rota A+B) (também na saída 4)",
+        "seguro": "020:8=-8.2"
+      }
+    ],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

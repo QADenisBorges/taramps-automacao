@@ -1,0 +1,74 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T19:14:42",
+  "fim": "2026-10-18T19:14:55",
+  "simular": true,
+  "lote": [
+    "071:2=-9.0",
+    "081:0=2.0",
+    "081:1=2.0",
+    "081:2=-1.4",
+    "091:0=0.0",
+    "091:1=0.0",
+    "091:2=0.0",
+    "020:5=0.0",
+    "020:11=0.0",
+    "020:12=0.0",
+    "020:13=0.0",
+    "020:14=0.0",
+    "072:0=10.0",
+    "072:1=10.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "319761ff66dc734a6a37b7cb72b3642e404a2080cd4f3b6b9c2b029ed5985899",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "simulado",
+  "backup": "estado/backups/2026-10-18_1914.json",
+  "log": "estado/log-ble/2026-10-18_1914-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "071:2=-9.0",
+      "071:3=-9.0",
+      "081:0=2.0",
+      "081:1=2.0",
+      "081:2=-1.4",
+      "081:3=-1.4",
+      "091:0=0.0",
+      "091:1=0.0",
+      "091:2=0.0",
+      "091:3=0.0",
+      "020:5=0.0",
+      "020:11=0.0",
+      "020:12=0.0",
+      "020:13=0.0",
+      "020:14=0.0",
+      "072:0=10.0",
+      "072:1=10.0"
+    ],
+    "recusas": [],
+    "alertas": [
+      "trava 3: threshold da saída 3 em -6.0 dB, acima do teto -9.0 dB (0,71 V)",
+      "trava 3: threshold da saída 4 em -6.0 dB, acima do teto -9.0 dB (0,71 V)"
+    ],
+    "sem_mudanca": [],
+    "espelhados": [
+      "071:3=-9.0",
+      "081:3=-1.4",
+      "091:3=0.0"
+    ]
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

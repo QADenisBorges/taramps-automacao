@@ -1,0 +1,121 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T16:47:52",
+  "fim": "2026-10-18T16:48:09",
+  "simular": false,
+  "lote": [
+    "090:0=1000",
+    "092:0=0.7",
+    "091:0=2.0",
+    "090:1=1000",
+    "092:1=0.7",
+    "091:1=2.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "b4b9ffcf564a1f1fa05e80634f5b8bafd3eaf89d518554c94bc4aeee41122013",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-18_1647-4.json",
+  "log": "estado/log-ble/2026-10-18_1647-4-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "092:0=0.7",
+      "091:0=2.0",
+      "092:1=0.7",
+      "091:1=2.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [
+      "090:0=1000",
+      "090:1=1000"
+    ],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "092",
+      "canal": 0,
+      "escrito": "*092*0*0.7*",
+      "pedido": 0.7,
+      "relido": 0.7,
+      "cru": "#092#0#+0.7#",
+      "status": "igual"
+    },
+    {
+      "codigo": "091",
+      "canal": 0,
+      "escrito": "*091*0*2.0*",
+      "pedido": 2.0,
+      "relido": 2.0,
+      "cru": "#091#0#+2.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "092",
+      "canal": 1,
+      "escrito": "*092*1*0.7*",
+      "pedido": 0.7,
+      "relido": 0.7,
+      "cru": "#092#1#+0.7#",
+      "status": "igual"
+    },
+    {
+      "codigo": "091",
+      "canal": 1,
+      "escrito": "*091*1*2.0*",
+      "pedido": 2.0,
+      "relido": 2.0,
+      "cru": "#091#1#+2.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "092:0=0.7",
+    "091:0=2.0",
+    "092:1=0.7",
+    "091:1=2.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "091:1=0.0",
+    "092:1=1.0",
+    "091:0=0.0",
+    "092:0=1.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "092",
+      "canal": 0,
+      "valor": 0.7,
+      "cru": "#092#0#+0.7#"
+    },
+    {
+      "codigo": "091",
+      "canal": 0,
+      "valor": 2.0,
+      "cru": "#091#0#+2.0#"
+    },
+    {
+      "codigo": "092",
+      "canal": 1,
+      "valor": 0.7,
+      "cru": "#092#1#+0.7#"
+    },
+    {
+      "codigo": "091",
+      "canal": 1,
+      "valor": 2.0,
+      "cru": "#091#1#+2.0#"
+    }
+  ]
+}

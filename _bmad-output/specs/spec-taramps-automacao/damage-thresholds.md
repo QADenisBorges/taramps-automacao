@@ -2,6 +2,13 @@
 
 As regras do guardião para as 3 travas de dano físico (CAP-4) e para a calibração guiada (CAP-13). São regras genéricas: os valores vêm do inventário do setup (CAP-11). Quando falta dado, o guardião usa um padrão fixo e conservador.
 
+> **Status (decisão do Denis, 18/10/2026):** os limites do guardião (`estado/guardiao.json` e as
+> regras 6 e 7 em `ferramentas/guardiao.py`) **ainda estão em definição**. Eles não são regra
+> nem referência para analisar ou propor ajustes. A análise parte da física, isto é, das fichas,
+> das medidas e das contas (ver `analise-nivel-2026-10-18.md`). O guardião continua barrando
+> as escritas até o Denis mudar os valores. Se a análise propuser algo que ele recusa, a saída
+> é mostrar o número e a decisão ao Denis, e não contornar o guardião.
+
 ## Equipamento (manual do PRO 2.4BT + AUDIO)
 
 - Crossover por saída, de 10 Hz a 22 kHz. Opções: OFF, Butterworth de 6 a 48 dB/oit e Linkwitz-Riley de 12 a 48 dB/oit.

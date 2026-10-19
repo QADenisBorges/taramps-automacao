@@ -1,0 +1,78 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T20:25:31",
+  "fim": "2026-10-18T20:25:49",
+  "simular": false,
+  "lote": [
+    "050:2=60.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "f18741d2461e13950a7c068c5e144a5229f2cc391b6ff8ab0de48b518d2575bc",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-18_2025-2.json",
+  "log": "estado/log-ble/2026-10-18_2025-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "050:2=60.0",
+      "050:3=60.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": [
+      "050:3=60.0"
+    ]
+  },
+  "escritas": [
+    {
+      "codigo": "050",
+      "canal": 2,
+      "escrito": "*050*2*60.0*",
+      "pedido": 60.0,
+      "relido": 60.0,
+      "cru": "#050#2#60.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "050",
+      "canal": 3,
+      "escrito": "*050*3*60.0*",
+      "pedido": 60.0,
+      "relido": 60.0,
+      "cru": "#050#3#60.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "050:2=60.0",
+    "050:3=60.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "050:2=30.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "050",
+      "canal": 2,
+      "valor": 60.0,
+      "cru": "#050#2#60.0#"
+    },
+    {
+      "codigo": "050",
+      "canal": 3,
+      "valor": 60.0,
+      "cru": "#050#3#60.0#"
+    }
+  ]
+}

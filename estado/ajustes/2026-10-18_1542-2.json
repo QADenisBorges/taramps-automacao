@@ -1,0 +1,135 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T15:42:35",
+  "fim": "2026-10-18T15:42:51",
+  "simular": false,
+  "lote": [
+    "072:0=10.0",
+    "072:1=10.0",
+    "020:5=0.0",
+    "020:6=0.0",
+    "020:10=0.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "2c18f62521791e1272e9038e2813f1485a63ab95f6050624520c15c8e5e34a37",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-18_1542-2.json",
+  "log": "estado/log-ble/2026-10-18_1542-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "072:0=10.0",
+      "072:1=10.0",
+      "020:5=0.0",
+      "020:6=0.0",
+      "020:10=0.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "072",
+      "canal": 0,
+      "escrito": "*072*0*10.0*",
+      "pedido": 10.0,
+      "relido": 10.0,
+      "cru": "#072#0#10.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "072",
+      "canal": 1,
+      "escrito": "*072*1*10.0*",
+      "pedido": 10.0,
+      "relido": 10.0,
+      "cru": "#072#1#10.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 5,
+      "escrito": "020*5*0.0",
+      "pedido": 0.0,
+      "relido": 0.0,
+      "cru": "020#5#+0.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 6,
+      "escrito": "020*6*0.0",
+      "pedido": 0.0,
+      "relido": 0.0,
+      "cru": "020#6#+0.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 10,
+      "escrito": "020*10*0.0",
+      "pedido": 0.0,
+      "relido": 0.0,
+      "cru": "020#10#+0.0",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "072:0=10.0",
+    "072:1=10.0",
+    "020:5=0.0",
+    "020:6=0.0",
+    "020:10=0.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "020:10=-1.0",
+    "020:6=-1.5",
+    "020:5=-2.0",
+    "072:1=50.0",
+    "072:0=50.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "072",
+      "canal": 0,
+      "valor": 10.0,
+      "cru": "#072#0#10.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 1,
+      "valor": 10.0,
+      "cru": "#072#1#10.0#"
+    },
+    {
+      "codigo": "020",
+      "canal": 5,
+      "valor": 0.0,
+      "cru": "020#5#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 6,
+      "valor": 0.0,
+      "cru": "020#6#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 10,
+      "valor": 0.0,
+      "cru": "020#10#+0.0"
+    }
+  ]
+}

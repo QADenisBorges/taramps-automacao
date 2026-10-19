@@ -1,0 +1,41 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T17:23:08",
+  "fim": "2026-10-18T17:23:21",
+  "simular": true,
+  "lote": [
+    "071:2=-12.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "170f7ed3b067c81719f3671af0e686053b69373d7d8d976ce8dd7b5d2d861ee9",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "simulado",
+  "backup": "estado/backups/2026-10-18_1723.json",
+  "log": "estado/log-ble/2026-10-18_1723-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "071:2=-12.0",
+      "071:3=-12.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": [
+      "071:3=-12.0"
+    ]
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

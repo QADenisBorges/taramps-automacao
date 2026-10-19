@@ -1,0 +1,36 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T15:51:26",
+  "fim": "2026-10-18T15:51:37",
+  "simular": true,
+  "lote": [
+    "072:0=50.0",
+    "072:1=50.0",
+    "081:2=-12.0",
+    "081:3=-12.0",
+    "020:3=-2.0",
+    "020:4=-2.0",
+    "020:5=-2.0",
+    "020:12=-1.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "2c18f62521791e1272e9038e2813f1485a63ab95f6050624520c15c8e5e34a37",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "sem conexão",
+  "backup": null,
+  "log": "estado/log-ble/2026-10-18_1551-2-ajuste.log",
+  "decisao": null,
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

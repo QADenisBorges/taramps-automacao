@@ -1,0 +1,154 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-18T16:43:12",
+  "fim": "2026-10-18T16:43:30",
+  "simular": false,
+  "lote": [
+    "020:4=0.0",
+    "020:5=-1.0",
+    "020:11=-1.0",
+    "020:12=-2.0",
+    "020:13=-2.0",
+    "020:14=-1.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "2c18f62521791e1272e9038e2813f1485a63ab95f6050624520c15c8e5e34a37",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": true,
+      "4": true
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-18_1643.json",
+  "log": "estado/log-ble/2026-10-18_1643-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "020:4=0.0",
+      "020:5=-1.0",
+      "020:11=-1.0",
+      "020:12=-2.0",
+      "020:13=-2.0",
+      "020:14=-1.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "020",
+      "canal": 4,
+      "escrito": "020*4*0.0",
+      "pedido": 0.0,
+      "relido": 0.0,
+      "cru": "020#4#+0.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 5,
+      "escrito": "020*5*-1.0",
+      "pedido": -1.0,
+      "relido": -1.0,
+      "cru": "020#5#-1.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 11,
+      "escrito": "020*11*-1.0",
+      "pedido": -1.0,
+      "relido": -1.0,
+      "cru": "020#11#-1.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 12,
+      "escrito": "020*12*-2.0",
+      "pedido": -2.0,
+      "relido": -2.0,
+      "cru": "020#12#-2.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 13,
+      "escrito": "020*13*-2.0",
+      "pedido": -2.0,
+      "relido": -2.0,
+      "cru": "020#13#-2.0",
+      "status": "igual"
+    },
+    {
+      "codigo": "020",
+      "canal": 14,
+      "escrito": "020*14*-1.0",
+      "pedido": -1.0,
+      "relido": -1.0,
+      "cru": "020#14#-1.0",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "020:4=0.0",
+    "020:5=-1.0",
+    "020:11=-1.0",
+    "020:12=-2.0",
+    "020:13=-2.0",
+    "020:14=-1.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "020:14=0.0",
+    "020:13=0.0",
+    "020:12=-1.0",
+    "020:11=0.0",
+    "020:5=-2.0",
+    "020:4=-1.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "020",
+      "canal": 4,
+      "valor": 0.0,
+      "cru": "020#4#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 5,
+      "valor": -1.0,
+      "cru": "020#5#-1.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 11,
+      "valor": -1.0,
+      "cru": "020#11#-1.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 12,
+      "valor": -2.0,
+      "cru": "020#12#-2.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 13,
+      "valor": -2.0,
+      "cru": "020#13#-2.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 14,
+      "valor": -1.0,
+      "cru": "020#14#-1.0"
+    }
+  ]
+}
