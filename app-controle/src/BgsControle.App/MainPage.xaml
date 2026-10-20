@@ -48,8 +48,9 @@
                        MaxLength="12"
                        ReturnType="Send"
                        ReturnCommand="{Binding EnviarSenha}"
+                       Completed="AoEnviarSenha"
                        Placeholder="••••" />
-                <Button Text="Enviar a senha" Command="{Binding EnviarSenha}" />
+                <Button Text="Enviar a senha" Command="{Binding EnviarSenha}" Clicked="AoEnviarSenha" />
             </VerticalStackLayout>
 
             <!-- Ações -->

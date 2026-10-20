@@ -50,7 +50,7 @@ public sealed class Sessao
     public const string MsgSemResposta = "O processador não respondeu à senha.";
     public const string MsgSenhaErrada = "Senha errada.";
     public const string MsgTresRecusas = "Senha recusada 3 vezes. Desconectei.";
-    public const string MsgPrazoSenha = "O prazo para digitar a senha acabou. Desconectei.";
+    public const string MsgPrazoSenha = "O prazo para digitar a senha acabou. Toque em Conectar para tentar de novo.";
     public const string MsgCaiu = "A conexão caiu.";
     public const string MsgPedeSenha = "Digite a senha do processador.";
     public const string MsgSenhaApagada = "Senha apagada do celular.";
@@ -140,6 +140,7 @@ public sealed class Sessao
                 return;
             LimparConexao();
             Mensagem = null;
+            _tentativasSenha = 0;
             Estado = EstadoSessao.Procurando;
             (geracao, ct) = NovaOperacao();
         }
@@ -365,10 +366,7 @@ public sealed class Sessao
             {
                 valida = geracao == _geracao;
                 if (valida)
-                {
                     SegurandoConexao = true;
-                    _tentativasSenha = 0;
-                }
             }
             if (!valida)
             {
@@ -469,6 +467,11 @@ public sealed class Sessao
                     esgotou = _tentativasSenha >= TentativasDeSenha;
                     if (!esgotou)
                     {
+                        // O processador derruba a conexão uns 29 s depois de um ERRO (medido em
+                        // 20/10). O app solta já; a próxima senha abre uma conexão nova, e as
+                        // tentativas seguem contando até o próximo toque em Conectar.
+                        SegurandoConexao = false;
+                        LimparConexao();
                         Estado = EstadoSessao.PedindoSenha;
                         Mensagem = $"{MsgSenhaErrada} Digite de novo (tentativa {_tentativasSenha + 1} de {TentativasDeSenha}).";
                         IniciarPrazo(geracao);
@@ -476,9 +479,15 @@ public sealed class Sessao
                 }
                 _log.Evento("senha errada");
                 if (esgotou)
+                {
                     await EncerrarAsync(geracao, MsgTresRecusas);
+                }
                 else
+                {
                     Notificar();
+                    await DesconectarTransporteAsync();
+                    _log.Evento("conexão solta; a próxima senha abre outra");
+                }
                 break;
 
             default:
@@ -517,7 +526,7 @@ public sealed class Sessao
         }
         bool vencer;
         lock (_trava)
-            vencer = geracao == _geracao && Estado == EstadoSessao.PedindoSenha && SegurandoConexao;
+            vencer = geracao == _geracao && Estado == EstadoSessao.PedindoSenha;
         if (vencer)
             await EncerrarAsync(geracao, MsgPrazoSenha);
     }
@@ -628,6 +637,7 @@ public sealed class Sessao
             segurava = SegurandoConexao;
             SegurandoConexao = false;
             LimparConexao();
+            _tentativasSenha = 0;
             Estado = EstadoSessao.Desconectado;
             Mensagem = mensagem;
         }
