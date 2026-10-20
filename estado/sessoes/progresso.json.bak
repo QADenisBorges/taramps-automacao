@@ -1,6 +1,6 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-18T20:14:50",
+  "atualizado": "2026-10-19T22:11:45",
   "etapa": 5,
   "passo": 1,
   "travou": false,
@@ -561,6 +561,14 @@
       "etapa": 5,
       "passo": 1,
       "anteriores": []
+    },
+    "nota_dialogo_atraso60": {
+      "valor": 4.6,
+      "unidade": "-",
+      "hora": "2026-10-18T20:27:59",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
     }
   },
   "ideias": [
@@ -591,6 +599,30 @@
     {
       "hora": "2026-10-17T20:29:56",
       "texto": "MUSICA HIGH mais alta: com auditoria nova, avaliar se o ganho das JBL a −9,0 (pico medido 11,6 V, abaixo dos 12,6 V da ficha com LR24 150 Hz) pode valer; ganho esperado: +2 dB na média (nítido), +0,5 dB no pico"
+    },
+    {
+      "hora": "2026-10-19T22:11:44",
+      "texto": "Refazer a MUSICA ORIG (Memória 2): ainda é a versão antiga, com o limitador do sub em -6 dB (passa 40 V). Base: HIGH + atrasos da FILME + EQ do dia a dia."
+    },
+    {
+      "hora": "2026-10-19T22:11:44",
+      "texto": "Presets DIALOGO e NOITE do celular foram salvos antes dos atrasos e da compressão: refazer a partir da FILME definitiva ou apagar."
+    },
+    {
+      "hora": "2026-10-19T22:11:44",
+      "texto": "Físico, grátis: virar as JBL para o ouvinte (toe-in), levantar à altura do ouvido, sentar entre elas (hoje 0,9 m à direita da R); tapete. Depois recalcular atrasos e níveis."
+    },
+    {
+      "hora": "2026-10-19T22:11:45",
+      "texto": "Tweeter da JBL esquerda mais fraco (acompanha a caixa): abrir, conferir fibra e tweeter/capacitor. Sem EQ de compensação até lá."
+    },
+    {
+      "hora": "2026-10-19T22:11:45",
+      "texto": "UMIK-1 + REW: medir a sala e a Fb do duto do sub; só então descer o subsônico de 40 Hz (o guardião barrou 35 Hz)."
+    },
+    {
+      "hora": "2026-10-19T22:11:45",
+      "texto": "Fonte melhor que o BT do celular: TV box Android 14 + extrator HDMI->RCA (sem SBC, 5.1 com modo noturno); exige recalibrar o ganho (cabo ~13 dB mais forte)."
     }
   ]
 }
