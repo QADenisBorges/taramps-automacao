@@ -1,0 +1,116 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-20T12:43:53",
+  "fim": "2026-10-20T12:44:07",
+  "simular": false,
+  "lote": [
+    "071:0=-7.0",
+    "071:1=-7.0",
+    "081:0=6.0",
+    "081:1=6.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "1c642cfb1c7769b4db3c9612692ae6c99d5946ff3b4f73dc7eeb9088bb83d0a2",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-20_1243-2.json",
+  "log": "estado/log-ble/2026-10-20_1243-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "071:0=-7.0",
+      "071:1=-7.0",
+      "081:0=6.0",
+      "081:1=6.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "escritas": [
+    {
+      "codigo": "071",
+      "canal": 0,
+      "escrito": "*071*0*-7.0*",
+      "pedido": -7.0,
+      "relido": -7.0,
+      "cru": "#071#0#-7.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "071",
+      "canal": 1,
+      "escrito": "*071*1*-7.0*",
+      "pedido": -7.0,
+      "relido": -7.0,
+      "cru": "#071#1#-7.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "081",
+      "canal": 0,
+      "escrito": "*081*0*6.0*",
+      "pedido": 6.0,
+      "relido": 6.0,
+      "cru": "#081#0#+6.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "081",
+      "canal": 1,
+      "escrito": "*081*1*6.0*",
+      "pedido": 6.0,
+      "relido": 6.0,
+      "cru": "#081#1#+6.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "071:0=-7.0",
+    "071:1=-7.0",
+    "081:0=6.0",
+    "081:1=6.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "081:1=5.0",
+    "081:0=5.0",
+    "071:1=-8.0",
+    "071:0=-8.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "071",
+      "canal": 0,
+      "valor": -7.0,
+      "cru": "#071#0#-7.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 1,
+      "valor": -7.0,
+      "cru": "#071#1#-7.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 0,
+      "valor": 6.0,
+      "cru": "#081#0#+6.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 1,
+      "valor": 6.0,
+      "cru": "#081#1#+6.0#"
+    }
+  ]
+}

@@ -14,10 +14,14 @@ só emite uma aprovação (selada, com a ordem de escrita) se as regras passarem
    vale o teto base (spec-guardiao-teto-amarrado.md).
 4. Saídas 3 e 4 idênticas em todos os parâmetros. Pedido em uma é espelhado na outra.
 5. Só códigos do catálogo do Marco 1, com valor dentro da faixa. Reset, memórias, gerador,
-   senha, nome, remote out e preset de EQ são sempre recusados.
+   senha, nome, remote out e preset de EQ são sempre recusados no lote. O tom fixo (200–202),
+   salvar memória (240 + 231–233) e o remote out (252) têm um caminho próprio, com aprovação
+   separada (`avaliar_tom`, `avaliar_salvar_memoria`, spec-gerador-memoria.md;
+   `avaliar_energia`, liberado pelo Denis em 18/10/2026).
 6. (ligada por padrão, por saída) master + ganho + maior reforço de EQ (+6 dB na rota A+B)
    da saída nunca acima da linha de base. O `regra6` global é o padrão das saídas sem o campo.
-7. G_ef = master + ganho + pico da curva somada (+6 dB na rota A+B) ≤ −1 dB.
+7. G_ef = master + ganho + pico da curva somada (+6 dB na rota A+B) ≤ g_ef_max_db do
+   guardiao.json (−1 dB até 18/10/2026; +18 dB desde então, por decisão do Denis).
 
 Princípio 6: uma escrita não cria violação nova nem piora uma existente, e um lote que mexe
 numa saída já em violação só passa se resolver essa violação. Cada estado intermediário do
@@ -64,19 +68,23 @@ ROTULOS = {
     6: "regra 6", 7: "regra 7", 8: "ordem",
 }
 
-_GERADOR = "gerador de sinal"
+_TOM = "gerador de tom (só pelo ferramentas/tom.py, com o caminho provado)"
+_SWEEP = "sweep do gerador"
+_NOME_MEMORIA = "nome de memória (só pelo ferramentas/memoria.py)"
+# Fora do lote de ajustes, sempre. O tom fixo (200–202) e salvar memória (240 + 231–233) têm
+# um caminho próprio, atrás de aprovações separadas (avaliar_tom, avaliar_salvar_memoria).
 PROIBIDOS = {
     "004": "reset de fábrica",
     "242": "reset das configurações de áudio",
-    "240": "salvar memória (o Denis salva pelo app)",
+    "240": "salvar memória (só pelo ferramentas/memoria.py)",
     "241": "carregar memória",
     "000": "senha",
     "001": "troca de senha",
     "002": "nome do produto",
-    "231": "nome de memória", "232": "nome de memória", "233": "nome de memória",
-    "200": _GERADOR, "201": _GERADOR, "202": _GERADOR,
-    "210": _GERADOR, "211": _GERADOR, "212": _GERADOR, "213": _GERADOR,
-    "252": "remote out (liga os amplificadores)",
+    "231": _NOME_MEMORIA, "232": _NOME_MEMORIA, "233": _NOME_MEMORIA,
+    "200": _TOM, "201": _TOM, "202": _TOM,
+    "210": _SWEEP, "211": _SWEEP, "212": _SWEEP, "213": _SWEEP,
+    "252": "remote out (liga os amplificadores; só pelo ferramentas/energia.py)",
     "220": "preset de EQ (troca as 15 bandas por valores que o guardião não conhece)",
     "005": "voltímetro (só leitura)",
     "111": "clip da entrada (só leitura)",
@@ -112,8 +120,13 @@ class TetoDemo:
     exige_inclinacao: int  # dB/oit: inclinação mínima do passa-alta (6·N de BTn ou LRn)
     proibe_rota_ab: bool
 
+    def exige_lr(self) -> bool:
+        """Acima de −8,0 dB o teto só vale com passa-alta Linkwitz-Riley (memória SPL)."""
+        return self.teto_limiter > TETO_DEMO_MAX_DB + EPS
+
     def condicoes(self) -> str:
-        texto = f"passa-alta ≥ {self.exige_passa_alta:g} Hz/{self.exige_inclinacao} dB/oit"
+        tipo = "LR " if self.exige_lr() else ""
+        texto = f"passa-alta {tipo}≥ {self.exige_passa_alta:g} Hz/{self.exige_inclinacao} dB/oit"
         return texto + (" e rota sem A+B" if self.proibe_rota_ab else "")
 
 
@@ -138,6 +151,15 @@ class Saida:
 
 
 @dataclass(frozen=True)
+class Gerador:
+    """Bloco "gerador" do guardiao.json (só o Denis edita). O tom fixo só toca com
+    `liberado` e com o arquivo do teste de caminho em `caminho_provado`."""
+
+    liberado: bool = False
+    caminho_provado: str | None = None  # ex.: "estado/auditorias/2026-10-17_caminho-gerador.json"
+
+
+@dataclass(frozen=True)
 class Config:
     saidas: tuple[Saida, ...]
     tolerancia: float
@@ -145,6 +167,7 @@ class Config:
     regra6: bool  # padrão das saídas sem "regra6" próprio (cada Saida já traz o valor resolvido)
     nivel_base: dict  # canal -> master + ganho + maior reforço de EQ da linha de base
     caminho: str = ""
+    gerador: Gerador = Gerador()  # sem o bloco no arquivo: não liberado
 
 
 def _num(valor, onde: str, minimo: float | None = None, maximo: float | None = None) -> float:
@@ -162,13 +185,20 @@ _INCLINACOES = (6, 12, 18, 24, 30, 36, 42, 48)
 TETO_DEMO_MAX_DB = -8.0
 DEMO_PASSA_ALTA_MIN_HZ = 150.0
 DEMO_INCLINACAO_MIN = 24
+# Memória SPL (decisão do Denis, 20/10/2026; cálculo em _bmad-output/regulagem/memoria-spl.md,
+# seção 12): até −7,0 dB (~17,6 V medidos pela escala de 20/10, 80 W RMS da ficha) só com o
+# passa-alta Linkwitz-Riley ≥ 200 Hz a ≥ 24 dB/oit, em que o cone fica em ~0,8 × Xmax. Com
+# Butterworth no mesmo corte a excursão é maior, por isso o tipo entra na amarra (demo_valendo).
+TETO_DEMO_SPL_MAX_DB = -7.0
+DEMO_SPL_PASSA_ALTA_MIN_HZ = 200.0
 
 
 def _teto_demo(valor, n: int, trava: str, teto_base: float, f_min: float,
                inclinacao_min: int) -> TetoDemo | None:
     """O `teto_demo` opcional de uma saída. Sem o campo ou null: None.
 
-    Recusa (ConfigInvalida) o que desfaria a amarra: teto fora de (base, −8,0 dB], corte
+    Recusa (ConfigInvalida) o que desfaria a amarra: teto fora de (base, −8,0 dB] (até
+    −7,0 dB com corte exigido ≥ 200 Hz, e aí só com Linkwitz-Riley), corte
     abaixo de max(150 Hz, f_min), inclinação abaixo de max(24, inclinação da trava) ou rota
     A+B permitida."""
     if valor is None:
@@ -190,10 +220,15 @@ def _teto_demo(valor, n: int, trava: str, teto_base: float, f_min: float,
         raise ConfigInvalida(f"{onde}.proibe_rota_ab precisa ser true (a rota A+B soma +6 dB "
                              f"antes do limiter)")
     teto = _num(valor["teto_limiter_db"], f"{onde}.teto_limiter_db", -48, 0)
-    if not teto_base < teto <= TETO_DEMO_MAX_DB:
-        raise ConfigInvalida(f"{onde}.teto_limiter_db precisa ficar acima do teto base "
-                             f"({teto_base:g} dB) e no máximo {TETO_DEMO_MAX_DB:g} dB")
     passa_alta = _num(valor["exige_passa_alta_hz"], f"{onde}.exige_passa_alta_hz", 20, 22000)
+    teto_max = (TETO_DEMO_SPL_MAX_DB if passa_alta >= DEMO_SPL_PASSA_ALTA_MIN_HZ
+                else TETO_DEMO_MAX_DB)
+    if not teto_base < teto <= teto_max:
+        extra = ("" if teto_max == TETO_DEMO_SPL_MAX_DB else
+                 f" (até {TETO_DEMO_SPL_MAX_DB:g} dB só com exige_passa_alta_hz ≥ "
+                 f"{DEMO_SPL_PASSA_ALTA_MIN_HZ:g})")
+        raise ConfigInvalida(f"{onde}.teto_limiter_db precisa ficar acima do teto base "
+                             f"({teto_base:g} dB) e no máximo {teto_max:g} dB{extra}")
     passa_alta_min = max(DEMO_PASSA_ALTA_MIN_HZ, f_min)
     if passa_alta < passa_alta_min:
         raise ConfigInvalida(f"{onde}.exige_passa_alta_hz precisa ser ≥ {passa_alta_min:g} Hz")
@@ -282,11 +317,30 @@ def carregar_config(caminho: Path) -> Config:
     return Config(
         saidas=tuple(saidas),
         tolerancia=_num(dados.get("tolerancia_db"), "tolerancia_db", 0, 1),
-        g_ef_max=_num(dados.get("g_ef_max_db"), "g_ef_max_db", -48, 0),
+        # Até +20 dB (aprovado pelo Denis em 18/10/2026): o BT entra ~13 dB abaixo do 0 dB
+        # interno (analise-nivel-2026-10-18.md) e o sub não soma os +6 dB de A+B com L = R;
+        # acima de 0 só uma fonte forte (gerador, P2 no máximo) ceifa por dentro.
+        g_ef_max=_num(dados.get("g_ef_max_db"), "g_ef_max_db", -48, 20),
         regra6=regra6,
         nivel_base=nivel_base,
         caminho=str(caminho),
+        gerador=_gerador(dados.get("gerador")),
     )
+
+
+def _gerador(valor) -> Gerador:
+    """O bloco "gerador". Ausente ou null: não liberado."""
+    if valor is None:
+        return Gerador()
+    if not isinstance(valor, dict):
+        raise ConfigInvalida("gerador: objeto esperado")
+    liberado = valor.get("liberado", False)
+    if not isinstance(liberado, bool):
+        raise ConfigInvalida("gerador.liberado é true ou false")
+    caminho = valor.get("caminho_provado")
+    if caminho is not None and (not isinstance(caminho, str) or not caminho.strip()):
+        raise ConfigInvalida("gerador.caminho_provado é null ou o caminho do arquivo do teste")
+    return Gerador(liberado=liberado, caminho_provado=caminho.strip() if caminho else None)
 
 
 # --------------------------------------------------------------------------- curvas
@@ -476,6 +530,8 @@ def demo_valendo(s: Saida, estado: dict) -> bool:
         return False
     if estado[("040", c)] < d.exige_passa_alta or int(nome[2:]) < d.exige_inclinacao:
         return False
+    if d.exige_lr() and not nome.startswith("LR"):
+        return False
     return not (d.proibe_rota_ab and estado[("010", c)] == "a+b")
 
 
@@ -537,7 +593,7 @@ def checar(estado: dict, cfg: Config) -> dict[str, Checagem]:
                       f"(master + ganho + maior reforço de EQ + 6 dB na rota A+B)")
             saida[f"nivel:{s.numero}"] = Checagem(f"nivel:{s.numero}", 6, s.numero, sev, motivo)
 
-        # Regra 7: G_ef ≤ −1 dB, +6 dB na rota A+B.
+        # Regra 7: G_ef ≤ g_ef_max_db, +6 dB na rota A+B.
         gef = round(master + estado[("081", c)] + _pico_curva(ps, globais)
                     + _rota(estado[("010", c)]), 3)
         sev = max(0.0, round(gef - cfg.g_ef_max, 3))
@@ -1151,3 +1207,162 @@ def procurar_ordem(n: int, seguro: Callable[[frozenset], bool],
         return None
 
     return dfs(frozenset(), [])
+
+
+# --------------------------------------------------------------------------- comandos especiais
+#
+# Tom fixo do gerador e salvar memória (spec-gerador-memoria.md). Cada um tem a sua aprovação
+# (`AprovacaoEspecial`), separada da `Aprovacao` dos ajustes: uma não vale no lugar da outra.
+# A aprovação traz os textos exatos que podem sair (protocolo_taramps.verificar_comando_especial
+# confere aqui, em `comando_especial_aprovado`) e só nasce com o estado lido sem violação.
+
+TOM_MAX_S = 30.0  # duração máxima de um tom (o padrão do tom.py é 20 s)
+REGRAS_TOM = frozenset({1, 2, 3, 4, 7})  # travas 1–4 e regra 7 (a regra 6 não barra o tom)
+DESLIGAR_GERADOR = "*202*0*"
+
+
+@dataclass(frozen=True)
+class AprovacaoEspecial:
+    """Emitida só por avaliar_tom, avaliar_salvar_memoria, aprovar_desligar_gerador e
+    avaliar_energia."""
+
+    tipo: str  # "tom" | "memoria" | "desligar" | "energia"
+    comandos: tuple[str, ...]  # textos exatos liberados
+    retrato: str  # "início da leitura | SHA-256 das leituras" (vazio no desligar)
+    selo: str
+
+
+def _assinatura_especial(tipo: str, comandos: tuple[str, ...], retrato: str) -> str:
+    corpo = json.dumps(["especial", tipo, retrato, list(comandos)], ensure_ascii=True)
+    return hmac.new(_CHAVE_SELO, corpo.encode("ascii"), hashlib.sha256).hexdigest()
+
+
+def _aprovar_especial(tipo: str, comandos: tuple[str, ...], retrato: dict | None) -> AprovacaoEspecial:
+    marca = _aprovar((), retrato).retrato if retrato is not None else ""
+    return AprovacaoEspecial(tipo, comandos, marca, _assinatura_especial(tipo, comandos, marca))
+
+
+def comando_especial_aprovado(aprovacao, texto: str) -> None:
+    """Nada se `texto` está numa aprovação especial válida; senão EscritaNaoAprovada."""
+    if not isinstance(aprovacao, AprovacaoEspecial):
+        raise EscritaNaoAprovada("comando especial recusado: falta a aprovação do guardião")
+    esperado = _assinatura_especial(aprovacao.tipo, tuple(aprovacao.comandos), aprovacao.retrato)
+    if not hmac.compare_digest(esperado, str(aprovacao.selo)):
+        raise EscritaNaoAprovada("comando especial recusado: a aprovação não é do guardião ou "
+                                 "foi alterada")
+    if texto not in aprovacao.comandos:
+        raise EscritaNaoAprovada(f"comando especial recusado: {texto} fora da aprovação")
+
+
+def aprovar_desligar_gerador() -> AprovacaoEspecial:
+    """Desligar o gerador (`*202*0*`) é sempre seguro: aprovado sem condição, para o
+    desligamento garantido valer mesmo com o estado em violação ou sem leitura."""
+    return _aprovar_especial("desligar", (DESLIGAR_GERADOR,), None)
+
+
+@dataclass
+class DecisaoEspecial:
+    aprovado: bool
+    aprovacao: AprovacaoEspecial | None = None
+    recusas: list[Recusa] = field(default_factory=list)
+    alertas: list[str] = field(default_factory=list)
+
+    @property
+    def ordem(self) -> list[str]:
+        return list(self.aprovacao.comandos) if self.aprovacao else []
+
+    def como_dict(self) -> dict:
+        return {"aprovado": self.aprovado, "ordem": self.ordem,
+                "recusas": [r.como_dict() for r in self.recusas], "alertas": self.alertas,
+                "sem_mudanca": [], "espelhados": []}
+
+
+def _violacoes(retrato: dict, cfg: Config, regras: frozenset | None,
+               contexto: str) -> tuple[list[Recusa], list[str]]:
+    """(recusas, alertas) do estado lido: cada violação vira recusa (só as `regras`, ou todas
+    com None); as outras viram alerta. Leitura incompleta também é recusa."""
+    try:
+        lido = estado_do_retrato(retrato)
+    except EstadoInvalido as erro:
+        return [Recusa(0, f"{erro}; leia de novo")], []
+    recusas, alertas = [], []
+    for c in checar(lido, cfg).values():
+        if not _viola(c):
+            continue
+        if regras is None or c.regra in regras:
+            recusas.append(Recusa(c.regra, f"{c.motivo}; {contexto}", None, _caminho_seguro(c, cfg)))
+        else:
+            alertas.append(f"{ROTULOS[c.regra]}: {c.motivo}")
+    return recusas, alertas
+
+
+def avaliar_tom(retrato: dict, cfg: Config, hz, db, segundos,
+                teste_de_caminho: bool = False) -> DecisaoEspecial:
+    """Tom fixo: frequência de 10 Hz a 20 kHz, ganho de −60 a 0 dB, até 30 s, gerador liberado
+    (exceto no teste de caminho) e o estado lido sem violação nas travas 1–4 e na regra 7.
+    Aprova `*200*dB*`, `*201*Hz*`, `*202*1*` e `*202*0*`."""
+    comandos, recusas = pre_checar_tom(cfg, hz, db, segundos, teste_de_caminho)
+    if recusas:
+        return DecisaoEspecial(False, recusas=recusas)
+    recusas, alertas = _violacoes(retrato, cfg, REGRAS_TOM, "o tom só toca com o guardião limpo")
+    if recusas:
+        return DecisaoEspecial(False, recusas=recusas, alertas=alertas)
+    comandos += ["*202*1*", DESLIGAR_GERADOR]
+    return DecisaoEspecial(True, _aprovar_especial("tom", tuple(comandos), retrato), alertas=alertas)
+
+
+def pre_checar_tom(cfg: Config, hz, db, segundos,
+                   teste_de_caminho: bool = False) -> tuple[list[str], list[Recusa]]:
+    """O que dá para recusar sem ler o aparelho: limites do tom e gerador não liberado.
+    Devolve (`*200*dB*` e `*201*Hz*`, recusas)."""
+    recusas: list[Recusa] = []
+    comandos: list[str] = []
+    for codigo, valor, nome in (("200", db, "ganho"), ("201", hz, "frequência")):
+        try:
+            comandos.append(pt.montar_comando_especial(codigo, valor))
+        except pt.EscritaInvalida as erro:
+            recusas.append(Recusa(5, str(erro), f"tom, {nome}"))
+    try:
+        s = pt.ler_numero(segundos)
+    except pt.EscritaInvalida:
+        s = math.nan
+    if not 0 < s <= TOM_MAX_S:
+        recusas.append(Recusa(5, f"a duração do tom vai até {TOM_MAX_S:g} s", "tom, duração",
+                              "--s 20"))
+    if not teste_de_caminho and not cfg.gerador.liberado:
+        recusas.append(Recusa(5, "o gerador não está liberado (guardiao.json: gerador.liberado "
+                                 "= false)", "tom", "rode o teste de caminho: tom.py --caminho"))
+    return comandos, recusas
+
+
+def avaliar_salvar_memoria(retrato: dict, cfg: Config, slot, nome) -> DecisaoEspecial:
+    """Salvar o estado na memória `slot` (1 a 3) com o nome: só com o estado lido sem nenhuma
+    violação (não se salva estado perigoso). Aprova `*240*slot-1*` e `*23slot*NOME*`."""
+    if isinstance(slot, bool) or slot not in pt.SLOTS_MEMORIA:
+        return DecisaoEspecial(False, recusas=[Recusa(5, "a memória é 1, 2 ou 3", "memória")])
+    try:
+        texto_nome = pt.montar_comando_especial(f"23{slot}", nome)
+    except pt.EscritaInvalida as erro:
+        return DecisaoEspecial(False, recusas=[Recusa(5, str(erro), "nome da memória")])
+    recusas, _ = _violacoes(retrato, cfg, None, "não se salva estado em violação")
+    if recusas:
+        return DecisaoEspecial(False, recusas=recusas)
+    comandos = (pt.montar_comando_especial("240", slot - 1), texto_nome)
+    return DecisaoEspecial(True, _aprovar_especial("memoria", comandos, retrato))
+
+
+def avaliar_energia(ligar: bool, retrato: dict | None, cfg: Config) -> DecisaoEspecial:
+    """Remote out (252), que liga e desliga os amplificadores; a energia do processador não
+    tem comando. Desligar (`*252*0*`) é sempre aprovado, mesmo sem leitura. Ligar
+    (`*252*1*`) só com o estado lido sem nenhuma violação: não se liga o módulo com o
+    processador em estado perigoso. Liberado pelo Denis em 18/10/2026."""
+    if not ligar:
+        return DecisaoEspecial(True, _aprovar_especial("energia", ("*252*0*",), None))
+    if retrato is None:
+        return DecisaoEspecial(False, recusas=[Recusa(5, "ligar exige a leitura do estado",
+                                                      "remote out")])
+    recusas, alertas = _violacoes(retrato, cfg, None, "não se liga o módulo em violação")
+    if recusas:
+        return DecisaoEspecial(False, recusas=recusas)
+    return DecisaoEspecial(True, _aprovar_especial("energia", ("*252*1*",), retrato),
+                           alertas=alertas)

@@ -21,10 +21,11 @@ Guarda fora da conversa o que a facilitadora precisa para retomar sem repetir na
         Arquiva o progresso atual em progresso-AAAA-MM-DD_HHMM.json e começa do zero. Só quando
         o Denis pedir para recomeçar.
 
-    uv run ferramentas/sessao.py memoria 1 "MUSICA HIGH" --por ia
+    uv run ferramentas/sessao.py memoria 1 "MUSICA HIGH" --por ia [--retrato SHA256]
         Registra que a memória N (1 a 3) do DSP foi salva com esse nome, por quem (ia ou denis)
         e quando. O painel lê isso de estado/memorias.json. Quem salva no aparelho é o Denis,
-        pelo app; aqui só fica o registro.
+        pelo app, ou a IA, pelo ferramentas/memoria.py (que chama este comando com --por ia e
+        --retrato, o SHA-256 do retrato salvo); aqui só fica o registro.
 
     uv run ferramentas/sessao.py preset "Rock" --por denis
         Registra um preset do celular (EQ de 15 bandas salvo no app). Mesmo nome substitui.
@@ -256,8 +257,11 @@ def _validar_registro(dados, origem: str) -> dict | None:
     if not isinstance(dados, dict) or not isinstance(dados.get("nome"), str):
         raise ProgressoIlegivel(f"{origem}: registro fora do formato")
     por = dados.get("por")
-    return {"nome": dados["nome"], "por": por if por in ORIGENS else None,
-            "hora": dados.get("hora") if isinstance(dados.get("hora"), str) else None}
+    registro = {"nome": dados["nome"], "por": por if por in ORIGENS else None,
+                "hora": dados.get("hora") if isinstance(dados.get("hora"), str) else None}
+    if isinstance(dados.get("retrato"), str):  # SHA-256 do retrato salvo (memoria.py)
+        registro["retrato"] = dados["retrato"]
+    return registro
 
 
 def validar_memorias(dados) -> dict:
@@ -310,13 +314,16 @@ def gravar_memorias(estado: Path, dados: dict, agora: dt.datetime) -> Path:
     return caminho
 
 
-def _registro(nome: str, por: str, agora: dt.datetime) -> dict:
-    return {"nome": nome, "por": por, "hora": agora.isoformat(timespec="seconds")}
+def _registro(nome: str, por: str, agora: dt.datetime, retrato: str | None = None) -> dict:
+    registro = {"nome": nome, "por": por, "hora": agora.isoformat(timespec="seconds")}
+    if retrato:
+        registro["retrato"] = retrato
+    return registro
 
 
 def cmd_memoria(args, estado: Path, agora: dt.datetime) -> int:
     nome = " ".join(args.nome).strip()
-    if args.limpar and (nome or args.por):
+    if args.limpar and (nome or args.por or args.retrato):
         print("--limpar vai sozinho: memoria N --limpar")
         return SAIDA_USO
     if not args.limpar and not nome:
@@ -342,10 +349,12 @@ def cmd_memoria(args, estado: Path, agora: dt.datetime) -> int:
                       [f"Antes: {anterior['nome']}"])
         print(f"Memória {slot} limpa (antes: {anterior['nome']}).")
         return SAIDA_OK
-    dados["dsp"][slot] = _registro(nome, args.por, agora)
+    dados["dsp"][slot] = _registro(nome, args.por, agora, args.retrato)
     gravar_memorias(estado, dados, agora)
     quem = "IA" if args.por == "ia" else "Denis"
     linhas = [f"Memória {slot} do DSP: {nome} (por {quem})"]
+    if args.retrato:
+        linhas.append(f"Retrato salvo (SHA-256): {args.retrato}")
     if anterior:
         linhas.append(f"Antes: {anterior['nome']}")
     anotar_diario(estado / "sessoes", agora, f"Memória {slot} salva", linhas)
@@ -628,6 +637,8 @@ def main(argv: list[str] | None = None, *, estado: Path | None = None,
     me.add_argument("nome", nargs="*", help='ex.: "MUSICA HIGH"')
     me.add_argument("--por", choices=ORIGENS, help="quem definiu: ia ou denis")
     me.add_argument("--limpar", action="store_true", help="esvazia o registro da memória N")
+    me.add_argument("--retrato", metavar="SHA256",
+                    help="SHA-256 do retrato salvo na memória (memoria.py)")
 
     pr = sub.add_parser("preset", help="registra um preset do celular (EQ de 15 bandas)")
     pr.add_argument("nome", nargs="+", help='ex.: "Rock"')

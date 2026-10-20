@@ -5,6 +5,13 @@ pelo valor do momento e nada mais. `M` é o número de passos da etapa. Os coman
 **IA roda** são executados por você, nunca pelo Denis. Os nomes de medida são os que vão no
 `sessao.py medida`; antes de pedir uma, confira no `progresso` se já existe.
 
+Multímetro: VC830L. Em toda tela de medida, mande com `SendUserFile` a foto marcada da posição
+(`references/multimetro/`: `vdc-20.jpg`, `vac-200.jpg`, `ohm-200.jpg`) e diga a posição no Faça.
+Guia em `references/multimetro/README.md`.
+
+Telas "Responda: ok para aplicar": desde 17/10 não são mostradas. Com `APROVADO`, aplique direto e
+diga uma linha (regra do Denis; ver SKILL.md).
+
 Referência do estado lido em 16/10 (`estado/leituras/2026-10-16_1747.json`): master 0,0; ganhos
 −11,0 / −11,0 / −10,0 / −10,0 dB; roteamento A+B / B / A+B / A+B; saída 2 mutada; JBL BT12 em
 150 Hz (saída 1) e 120 Hz (saída 2); sub BT24 em 28 Hz + LR24 em 140 Hz, fase 180°, EQ de saída

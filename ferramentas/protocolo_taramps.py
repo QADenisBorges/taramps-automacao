@@ -10,6 +10,9 @@ Fonte de tudo aqui: protocolo/MAPA.md (§2 formato, §3 autenticação, §4 par�
   escrita (`*CCC*...*`) é recusada antes de chegar ao BLE.
 - Montagem e validação de escrita (`*CCC*v*`, `*CCC*c*v*`, `020*b*v`), num caminho
   separado da trava acima. Quem decide se a escrita sai é o guardião (guardiao.py).
+- Comandos especiais (tom fixo 200–202, salvar memória 240 + 231–233 e remote out 252),
+  num terceiro caminho: `verificar_comando_especial` só aceita os textos exatos e só com a
+  aprovação especial do guardião.
 - Montador de respostas: aceita `#` ou `*`, junta fragmentos de notificação e casa
   a resposta com a consulta pelo código e pelo canal. O que não casa vira "órfão".
 - Log bruto com hex e ASCII de cada quadro, com a senha mascarada.
@@ -51,6 +54,7 @@ CANAIS = (0, 1, 2, 3)  # saída 1 = canal 0 (MAPA §2)
 ESCOPO_GLOBAL = "global"
 ESCOPO_CANAL = "canal"
 ESCOPO_BANDA = "banda"
+ESCOPO_NOME = "nome"  # nome de memória: a consulta é `231#`, sem '#' inicial (APK P:34-36)
 
 
 @dataclass(frozen=True)
@@ -140,6 +144,8 @@ class Consulta:
             return f"{p.codigo}#{self.canal}"  # sem '#' inicial (MAPA §4)
         if p.escopo == ESCOPO_CANAL:
             return f"#{p.codigo}#{self.canal}#"
+        if p.escopo == ESCOPO_NOME:
+            return f"{p.codigo}#"
         return f"#{p.codigo}#"
 
     def descricao(self) -> str:
@@ -182,7 +188,8 @@ _AUTENTICACAO_RE = re.compile(r"\*000\*[0-9A-Z]{4}\*")
 
 # Lista de permissão: só códigos conhecidos de leitura. Os do catálogo (o 020 tem forma
 # própria) mais voltímetro (005) e clip da entrada e das saídas (111, 150), todos globais.
-# Qualquer outro código, inclusive os que mexem no aparelho (MAPA §5), é recusado.
+# Qualquer outro código, inclusive os que mexem no aparelho (MAPA §5), é recusado. A leitura
+# do gerador e do nome das memórias tem um verificador próprio (verificar_consulta_especial).
 CODIGOS_GLOBAIS_PERMITIDOS = frozenset(
     {p.codigo for p in CATALOGO if p.escopo == ESCOPO_GLOBAL} | {"005", "111", "150"}
 )
@@ -377,6 +384,118 @@ def mesmo_valor(codigo: str, a, b) -> bool:
         return False
 
 
+# --------------------------------------------------------------------------- comandos especiais
+#
+# Tom fixo do gerador (200 ganho, 201 frequência, 202 liga/desliga) e salvar memória (240 +
+# nome 231/232/233), liberados pela spec-gerador-memoria.md. É um terceiro caminho, separado
+# da trava de leitura (`verificar_envio`) e do catálogo de escrita (`verificar_escrita`, que
+# continua recusando todos eles): `verificar_comando_especial` só aceita os textos exatos
+# abaixo e só com a aprovação do guardião (guardiao.avaliar_tom, avaliar_salvar_memoria ou
+# aprovar_desligar_gerador) e o remote out 252 (guardiao.avaliar_energia, liberado pelo Denis
+# em 18/10/2026). Sweep (210–213), carregar memória (241), reset e senha continuam fora de
+# todos os caminhos. Formatos: APK P:232-301; 252: APK SourceOnKt:190.
+
+TOM_HZ_MIN, TOM_HZ_MAX = 10, 20000
+TOM_DB_MIN, TOM_DB_MAX = -60.0, 0.0
+NOME_MEMORIA_MAX = 12
+SLOTS_MEMORIA = (1, 2, 3)  # memória N no app = índice N-1 no *240* e código 23N no nome
+
+_NOME_MEMORIA_RE = re.compile(r"[A-Z0-9_ ]{1,12}")
+_ESPECIAL_RE = re.compile(r"\*(\d{3})\*([^*#]*)\*")
+CODIGOS_ESPECIAIS = frozenset({"200", "201", "202", "240", "231", "232", "233", "252"})
+
+# Parâmetros só para ler o gerador e o nome das memórias (fora do CATALOGO do Marco 1).
+GERADOR_GANHO = Parametro("200", "gerador_ganho", "Ganho do tom fixo", ESCOPO_GLOBAL, "db", "dB",
+                          "Gerador", minimo=TOM_DB_MIN, maximo=TOM_DB_MAX, casas=1)
+GERADOR_FREQ = Parametro("201", "gerador_freq", "Frequência do tom fixo", ESCOPO_GLOBAL, "hz",
+                         "Hz", "Gerador", minimo=10, maximo=22000)
+GERADOR_LIGADO = Parametro("202", "gerador_ligado", "Gerador ligado", ESCOPO_GLOBAL, "bool", None,
+                           "Gerador")
+NOMES_MEMORIA = {n: Parametro(f"23{n}", f"nome_memoria_{n}", f"Nome da memória {n}", ESCOPO_NOME,
+                              "texto", None, "Memórias") for n in SLOTS_MEMORIA}
+
+
+def normalizar_nome_memoria(nome) -> str:
+    """O nome em maiúsculas (como o app), sem espaços nas pontas: até 12 caracteres A–Z, 0–9,
+    `_` e espaço (MAPA §5). Fora disso, EscritaInvalida."""
+    if not isinstance(nome, str):
+        raise EscritaInvalida("o nome da memória é texto")
+    v = nome.strip().upper()
+    if not v or len(v) > NOME_MEMORIA_MAX or not _NOME_MEMORIA_RE.fullmatch(v):
+        raise EscritaInvalida(f"o nome da memória tem de 1 a {NOME_MEMORIA_MAX} caracteres: "
+                              "letras A–Z sem acento, números, _ e espaço")
+    return v
+
+
+def montar_comando_especial(codigo: str, valor) -> str:
+    """`*200*v*` (dB, 1 casa), `*201*Hz*`, `*202*0|1*`, `*240*n*` (n = 0 a 2),
+    `*23x*NOME*` ou `*252*0|1*`, com o valor validado. Outro código ou valor: EscritaInvalida."""
+    if codigo == "200":
+        n = ler_numero(valor)
+        if abs(n * 10 - round(n * 10)) > 1e-6:
+            raise EscritaInvalida("o ganho do tom tem no máximo uma casa decimal")
+        v = round(n, 1) + 0.0  # + 0.0 tira o -0.0
+        if not TOM_DB_MIN <= v <= TOM_DB_MAX:
+            raise EscritaInvalida(f"o ganho do tom vai de {TOM_DB_MIN:g} a {TOM_DB_MAX:g} dB")
+        return f"*200*{v:.1f}*"
+    if codigo == "201":
+        n = ler_numero(valor)
+        if n != int(n) or not TOM_HZ_MIN <= n <= TOM_HZ_MAX:
+            raise EscritaInvalida(f"a frequência do tom é inteira, de {TOM_HZ_MIN} a {TOM_HZ_MAX} Hz")
+        return f"*201*{int(n)}*"
+    if codigo == "202":
+        if isinstance(valor, bool):
+            return f"*202*{1 if valor else 0}*"
+        if str(valor).strip() not in ("0", "1"):
+            raise EscritaInvalida("o gerador é 1 (liga) ou 0 (desliga)")
+        return f"*202*{str(valor).strip()}*"
+    if codigo == "240":
+        if isinstance(valor, bool) or str(valor).strip() not in ("0", "1", "2"):
+            raise EscritaInvalida("salvar memória usa o índice 0, 1 ou 2")
+        return f"*240*{str(valor).strip()}*"
+    if codigo in ("231", "232", "233"):
+        return f"*{codigo}*{normalizar_nome_memoria(valor)}*"
+    if codigo == "252":
+        if isinstance(valor, bool):
+            return f"*252*{1 if valor else 0}*"
+        if str(valor).strip() not in ("0", "1"):
+            raise EscritaInvalida("o remote out é 1 (liga) ou 0 (desliga)")
+        return f"*252*{str(valor).strip()}*"
+    raise EscritaInvalida(f"{codigo} não é um comando especial (só 200, 201, 202, 240, 231–233 "
+                          "e 252)")
+
+
+CONSULTAS_ESPECIAIS = frozenset({"#200#", "#201#", "#202#", "231#", "232#", "233#"})
+
+
+def verificar_consulta_especial(texto: str) -> bytes:
+    """Bytes de uma leitura do tom fixo (`#200#`, `#201#`, `#202#`) ou do nome de uma memória
+    (`231#` a `233#`, APK P:30-37), ou EnvioRecusado. Só esses seis textos: a trava de leitura
+    (`verificar_envio`) continua recusando todos eles."""
+    if not isinstance(texto, str) or texto not in CONSULTAS_ESPECIAIS:
+        raise EnvioRecusado(f"envio recusado: {texto!r} não é leitura do gerador nem nome de memória")
+    return texto.encode("ascii")
+
+
+def verificar_comando_especial(texto: str, aprovacao) -> bytes:
+    """Bytes de um comando especial, ou EscritaInvalida / EscritaNaoAprovada.
+
+    Passa só o texto exato que `montar_comando_especial` produz (`*200*v*`, `*201*v*`,
+    `*202*0|1*`, `*240*n*`, `*23x*NOME*`, `*252*0|1*`) e só se ele estiver na aprovação do guardião
+    (`aprovacao`, selada por guardiao.py), conferida antes de devolver qualquer byte."""
+    if not isinstance(texto, str) or not texto.isascii():
+        raise EscritaInvalida("comando especial recusado: só texto ASCII")
+    m = _ESPECIAL_RE.fullmatch(texto)
+    if not m or m.group(1) not in CODIGOS_ESPECIAIS:
+        raise EscritaInvalida(f"comando especial recusado: {mascarar_texto(texto)!r} fora da lista")
+    if montar_comando_especial(m.group(1), m.group(2)) != texto:
+        raise EscritaInvalida(f"comando especial recusado: {texto!r} fora do formato exato")
+    import guardiao  # noqa: PLC0415 - tardio: o guardião importa este módulo
+
+    guardiao.comando_especial_aprovado(aprovacao, texto)  # EscritaNaoAprovada sem a aprovação
+    return texto.encode("ascii")
+
+
 # --------------------------------------------------------------------------- máscara da senha
 
 TEXTO_SENHA_MASCARADA = "*000*****"
@@ -518,6 +637,10 @@ def _extrair(consulta: Consulta, q: Quadro, termina_sep: bool, fechado: bool):
         return None
     segs = q.segmentos
     p = consulta.parametro
+    if p.escopo == ESCOPO_NOME:  # `231#NOME` ou `#231#NOME#`: o nome é o resto do quadro
+        if not fechado and not termina_sep:
+            return _PARCIAL
+        return "#".join(segs), None
     if p.codigo == "000":
         carga = "#".join(segs)
         if carga.upper() == "ERRO" or fechado:

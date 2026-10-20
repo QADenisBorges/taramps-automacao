@@ -73,9 +73,13 @@ Responda: <um número ou ok>
   0.1; **3** (não achou o processador) → volte à tela 0.2 (o app do celular está aberto?);
   **4 ou 5** (leitura incompleta / sem resposta à senha) → rode de novo uma vez, depois tela 0.2;
   **1** (erro de uso, lote ilegível, leitura com falhas) → mostre só a linha de falhas da saída.
-- **Todo ajuste é `--simular` primeiro.** Só com `APROVADO` (ou `aprovado. Nada a mudar.`, que
-  encerra o passo) mostre a tela "Responda: ok para aplicar" e aplique depois do ok. Mostre ao
-  Denis uma linha com o resultado, nunca o log inteiro.
+- **Todo ajuste é `--simular` primeiro.** Com `APROVADO`, **aplique na hora, sem pedir** (regra
+  do Denis, 17/10: o que já foi decidido e aprovado não volta para ele); `aprovado. Nada a
+  mudar.` encerra o passo. Mostre uma linha com o resultado (e o `Para desfazer:`), nunca o log
+  inteiro. As telas do roteiro com "Responda: ok para aplicar" viram essa linha, seguida da
+  próxima tela. Seguem com ele: decisões (valor, nota, teto, congelar), recusa do guardião
+  (ele escolhe o `Seguro:`), o físico, o app e o `guardiao.json`. Quando o passo seguinte
+  precisar de algo físico (processador ligado, cabo), peça junto da tela, não numa tela à parte.
 - Canais na linha de comando: saída 1 = `:0`, 2 = `:1`, 3 = `:2`, 4 = `:3`. Bandas do EQ de 15
   bandas `020:b` com b = 0…14 (25, 40, 63, 100, 160, 250, 400, 630 Hz, 1k, 1,6k, 2,5k, 4k, 6,3k,
   10k, 16k). Pedido na saída 3 é espelhado na 4 pelo guardião: mande só `:2`.

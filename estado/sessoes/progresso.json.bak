@@ -1,6 +1,6 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-19T22:11:45",
+  "atualizado": "2026-10-20T13:21:46",
   "etapa": 5,
   "passo": 1,
   "travou": false,
@@ -569,6 +569,134 @@
       "etapa": 5,
       "passo": 1,
       "anteriores": []
+    },
+    "spl_ch1_bt400_vac": {
+      "valor": 15.7,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:30:34",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_ch2_bt400_vac": {
+      "valor": 15.6,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:30:34",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_ch1_bt400_mais2db_vac": {
+      "valor": 16.2,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:35:42",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_bt50_vac": {
+      "valor": 26.0,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:38:59",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_bt50_ganho24_vac": {
+      "valor": 26.2,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:49:00",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_bt80_vac": {
+      "valor": 26.2,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:49:59",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_vac": {
+      "valor": 29.0,
+      "unidade": "Vac",
+      "hora": "2026-10-20T12:59:20",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_lim9_max_vac": {
+      "valor": 27.0,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:02:15",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_menos6dbfs_vac": {
+      "valor": 18.0,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:03:32",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_rotaA_vac": {
+      "valor": 27.6,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:05:34",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_rotaA_0dbfs_vac": {
+      "valor": 27.6,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:12:24",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_rotaA_ganho-3.6_80hz_menos1dbfs_vac": {
+      "valor": 16.5,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:15:25",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_ganhomenos36_vac": {
+      "valor": 16.5,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:16:46",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_ganho02_vac": {
+      "valor": 21.7,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:19:09",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_sub_ponte_arquivo80_0dbfs_ganho26_vac": {
+      "valor": 27.5,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:20:35",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
+    },
+    "spl_ch1_arquivo400_0dbfs_vac": {
+      "valor": 17.7,
+      "unidade": "Vac",
+      "hora": "2026-10-20T13:21:46",
+      "etapa": 5,
+      "passo": 1,
+      "anteriores": []
     }
   },
   "ideias": [
@@ -623,6 +751,30 @@
     {
       "hora": "2026-10-19T22:11:45",
       "texto": "Fonte melhor que o BT do celular: TV box Android 14 + extrator HDMI->RCA (sem SBC, 5.1 com modo noturno); exige recalibrar o ganho (cabo ~13 dB mais forte)."
+    },
+    {
+      "hora": "2026-10-19T22:11:46",
+      "texto": "ACAO testado e descartado em 18/10 22h: compressão mais forte (lim -19/-22/-15, ataque 20 ms), sub +2 e voz +4 dB em 2 kHz pioraram; a FILME definitiva (sub +6, compressão suave) ficou melhor."
+    },
+    {
+      "hora": "2026-10-20T12:48:15",
+      "texto": "SPL: comparar de ouvido a fase do sub 0° x 180° (começou em 0° em 20/10) e aplicar os atrasos da FILME (R 100 cm, sub 80 cm) com o corte de 200 Hz"
+    },
+    {
+      "hora": "2026-10-20T13:05:34",
+      "texto": "Sub em rota A+B: tom de 0 dBFS nos dois canais faz a soma L+R estourar dentro do processador (2 a 27 V oscilando em 20/10); com rota A só, estável em 27,6 V. Rever a rota do sub nas memórias MUSICA ORIG e FILME."
+    },
+    {
+      "hora": "2026-10-20T13:10:43",
+      "texto": "Decisão do Denis (20/10): na memória SPL o sub fica na rota A (sem a soma L+R)."
+    },
+    {
+      "hora": "2026-10-20T13:13:21",
+      "texto": "SPL 20/10: tom de 0 dBFS pelo BT oscila (2 a 27 V) mesmo sem a soma A+B e com o ganho do sub 6 dB abaixo (limitador fora de ação); -6 dBFS fica estável (18 V). Suspeita: sobrecarga do Bluetooth (SBC) em 0 dBFS"
+    },
+    {
+      "hora": "2026-10-20T13:15:25",
+      "texto": "SPL 20/10: a oscilação no sub era a ponta do multímetro mal encaixada (confirmado pelo Denis); as leituras de 0 dBFS de 27 a 29 V não valem"
     }
   ]
 }

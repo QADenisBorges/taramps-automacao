@@ -19,7 +19,8 @@
       "f_min_hz": 100,
       "inclinacao_db_oit": 24,
       "teto_limiter_db": -11.0,
-      "teto_demo": null,
+      "teto_demo": {"teto_limiter_db": -7.0, "exige_passa_alta_hz": 200, "exige_inclinacao_db_oit": 24, "proibe_rota_ab": true},
+      "_teto_demo": "Memória SPL, 20/10/2026, decisão do Denis no chat (editado pela IA a pedido dele): -7,0 dB (~17,6 V pela escala medida em 20/10: -8 dB = 15,7 V) só com passa-alta Linkwitz-Riley >= 200 Hz a 24 dB/oit e sem rota A+B (o código passou a aceitar até -7,0 dB só com essa amarra; era -8,0 dB). Medido em 20/10 com -8 dB: 15,7 V no CH1, 15,6 V no CH2, e +2 dB de ganho deram 16,2 V (o limitador segura). Cálculo: _bmad-output/regulagem/memoria-spl.md, seção 12 (com LR4 em 200 Hz o cone fica abaixo de 0,8 x Xmax até 17,9 V). Fora dessa amarra vale o teto base de -11 dB.",
       "regra6": false,
       "_regra6": "Desligada em 18/10/2026 às 14h05 por decisão do Denis no chat (editado pela IA a pedido dele): o ganho das JBL sobe até o limitador, que continua em -11 dB e segura os picos (+2 dB deram 11,6 V em 17/10). Conferência obrigatória: tom de 400 Hz com o ganho novo deve ficar <= 12,6 V.",
       "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
@@ -30,7 +31,8 @@
       "f_min_hz": 100,
       "inclinacao_db_oit": 24,
       "teto_limiter_db": -11.0,
-      "teto_demo": null,
+      "teto_demo": {"teto_limiter_db": -7.0, "exige_passa_alta_hz": 200, "exige_inclinacao_db_oit": 24, "proibe_rota_ab": true},
+      "_teto_demo": "Memória SPL, 20/10/2026, decisão do Denis no chat (editado pela IA a pedido dele): -7,0 dB (~17,6 V pela escala medida em 20/10: -8 dB = 15,7 V) só com passa-alta Linkwitz-Riley >= 200 Hz a 24 dB/oit e sem rota A+B (o código passou a aceitar até -7,0 dB só com essa amarra; era -8,0 dB). Medido em 20/10 com -8 dB: 15,7 V no CH1, 15,6 V no CH2, e +2 dB de ganho deram 16,2 V (o limitador segura). Cálculo: _bmad-output/regulagem/memoria-spl.md, seção 12. Fora dessa amarra vale o teto base de -11 dB.",
       "regra6": false,
       "_regra6": "Desligada em 18/10/2026 às 14h05 por decisão do Denis no chat (editado pela IA a pedido dele): o ganho das JBL sobe até o limitador, que continua em -11 dB e segura os picos (+2 dB deram 11,6 V em 17/10). Conferência obrigatória: tom de 400 Hz com o ganho novo deve ficar <= 12,6 V.",
       "_origem": "Passa-alta mínimo da ficha do fabricante da JBL 4TRMS80: 100 Hz a 24 dB/oit. Teto do limiter: -11,0 dB (0,56 V)."
@@ -40,7 +42,8 @@
       "trava": "subsônico",
       "f_min_hz": 35,
       "inclinacao_db_oit": 24,
-      "teto_limiter_db": -9.0,
+      "teto_limiter_db": -8.0,
+      "_teto_20_10": "Passou de -9,0 para -8,0 dB em 20/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele): a referência é o Bluetooth do celular a 100 %, não o gerador. Com -9 dB o BT deu 26,2 V na ponte (50 e 80 Hz); o alvo calculado é 28,3 a 28,6 V (seguro de 200 W enquanto a potência do sub não tiver prova). O limiar fica no valor que faz o BT dar esse alvo.",
       "regra6": false,
       "_regra6": "Desligada em 18/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele), para dar impacto ao sub na FILME (ganho -6 dB e +3 dB em 50 Hz, ~58 W com o BT). O limitador em -6 dB (~23 V na ponte) e o subsônico de 40 Hz continuam valendo.",
       
@@ -51,7 +54,8 @@
       "trava": "subsônico",
       "f_min_hz": 35,
       "inclinacao_db_oit": 24,
-      "teto_limiter_db": -9.0,
+      "teto_limiter_db": -8.0,
+      "_teto_20_10": "Passou de -9,0 para -8,0 dB em 20/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele): a referência é o Bluetooth do celular a 100 %, não o gerador. Com -9 dB o BT deu 26,2 V na ponte (50 e 80 Hz); o alvo calculado é 28,3 a 28,6 V (seguro de 200 W enquanto a potência do sub não tiver prova). O limiar fica no valor que faz o BT dar esse alvo.",
       "regra6": false,
       "_regra6": "Desligada em 18/10/2026 por decisão do Denis no chat (editado pela IA a pedido dele), para dar impacto ao sub na FILME (ganho -6 dB e +3 dB em 50 Hz, ~58 W com o BT). O limitador em -6 dB (~23 V na ponte) e o subsônico de 40 Hz continuam valendo.",
       

@@ -150,6 +150,46 @@ async def procurar_e_conectar(transporte, log: pt.LogBruto) -> tuple[int | None,
     return None, nome, endereco
 
 
+async def conectar_e_autenticar(cliente: cb.ClienteTaramps, transporte, log: pt.LogBruto,
+                                senha: str) -> tuple[int | None, dict]:
+    """Scan, conexão e senha, com as mensagens do leitor. Devolve (código de saída do erro ou
+    None, contexto {nome, endereco, auth}). Usado por tom.py e memoria.py."""
+    erro, nome, endereco = await procurar_e_conectar(transporte, log)
+    contexto = {"nome": nome, "endereco": endereco, "auth": None}
+    if erro is not None:
+        return erro, contexto
+    print("Conectado. Enviando a senha…")
+    auth = await cliente.autenticar(senha)
+    contexto["auth"] = auth
+    if auth.motivo == "recusada":
+        print("Senha recusada.")
+        return SAIDA_SENHA, contexto
+    if not auth.ok:
+        print("O processador não respondeu à senha.")
+        return SAIDA_SEM_RESPOSTA, contexto
+    firmware_seguro(auth, senha)
+    return None, contexto
+
+
+async def leitura_completa(cliente: cb.ClienteTaramps, transporte, contexto: dict, senha: str,
+                           caminho_log: Path) -> dict:
+    """As 84 leituras do Marco 1 num retrato (formato 1), com o progresso na tela."""
+    inicio = dt.datetime.now()
+
+    def progresso(feitos: int, total: int) -> None:
+        print(f"\r  {feitos} de {total}", end="" if feitos < total else "\n", flush=True)
+
+    leituras, completo = await cliente.ler_tudo(pt.consultas_marco1(), progresso)
+    return montar_retrato(
+        leituras=leituras, completo=completo, inicio=inicio, nome=contexto["nome"],
+        endereco=contexto["endereco"], transporte=transporte, auth=contexto["auth"], senha=senha,
+        orfaos=list(cliente.orfaos), caminho_log=caminho_log)
+
+
+def retrato_completo(retrato: dict) -> bool:
+    return retrato.get("status") == "completo" and not retrato.get("falhas")
+
+
 def firmware_seguro(auth: cb.Autenticacao, senha: str) -> None:
     """Nunca mostrar nem gravar um firmware igual à senha."""
     if auth.firmware and senha.upper() in auth.firmware.upper():

@@ -462,6 +462,29 @@ class TetoAmarradoTest(unittest.TestCase):
             dados["saidas"]["1"]["teto_demo"].update(teto_limiter_db=-8.0, exige_passa_alta_hz=160,
                                                      exige_inclinacao_db_oit=48)
         self.assertEqual(config_com(no_limite).saidas[0].teto_demo, gd.TetoDemo(-8.0, 160, 48, True))
+
+        # Memória SPL: −7,0 dB só com corte exigido ≥ 200 Hz; com 160 Hz, recusa.
+        def spl(passa_alta, teto=-7.0):
+            def mudar(dados):
+                _demo_nas_jbl(dados)
+                dados["saidas"]["1"]["teto_demo"].update(teto_limiter_db=teto,
+                                                         exige_passa_alta_hz=passa_alta)
+            return mudar
+        cfg_spl = config_com(spl(200))
+        self.assertEqual(cfg_spl.saidas[0].teto_demo, gd.TetoDemo(-7.0, 200, 24, True))
+        with self.assertRaises(gd.ConfigInvalida) as erro:
+            config_com(spl(160))
+        self.assertIn("até -7 dB só com exige_passa_alta_hz ≥ 200", str(erro.exception))
+        self.assertRaises(gd.ConfigInvalida, config_com, spl(200, -6.9))
+
+        # Acima de −8,0 dB o teto só vale com Linkwitz-Riley: BT24 em 200 Hz não vale.
+        s = cfg_spl.saidas[0]
+        lr = DEMO | {("040", 0): 200}
+        self.assertTrue(gd.demo_valendo(s, lr))
+        self.assertEqual(gd.teto_efetivo(s, lr), -7.0)
+        bt = lr | {("042", 0): 11}
+        self.assertFalse(gd.demo_valendo(s, bt))
+        self.assertEqual(gd.teto_efetivo(s, bt), s.teto_limiter)
         self.assertRaises(gd.ConfigInvalida, config_com,
                           lambda dados: dados["saidas"]["1"].update(teto_demo=-9.8))
         self.assertRaises(gd.ConfigInvalida, config_com,

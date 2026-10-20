@@ -3,6 +3,7 @@ title: 'Gerador de tom e salvar memória pela IA, atrás do guardião'
 type: 'feature'
 created: '2026-10-17'
 status: 'in-progress'
+baseline_commit: 'fc693bd2ff43615df5778693bbf632c8ca47202b'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

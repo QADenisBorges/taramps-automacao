@@ -1,0 +1,46 @@
+{
+  "formato": 1,
+  "tipo": "memoria",
+  "inicio": "2026-10-20T13:22:33",
+  "fim": "2026-10-20T13:22:45",
+  "simular": false,
+  "lote": [
+    "salvar memória 1 \"SPL\""
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882"
+  },
+  "status": "salvo",
+  "backup": "estado/backups/2026-10-20_1322.json",
+  "log": "estado/log-ble/2026-10-20_1322-memoria.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "*240*0*",
+      "*231*SPL*"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "comandos": [
+    {
+      "texto": "*240*0*",
+      "status": "enviado"
+    },
+    {
+      "texto": "*231*SPL*",
+      "status": "enviado"
+    }
+  ],
+  "escritas": [],
+  "aplicados": [
+    "salvar memória 1 \"SPL\""
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "nome_relido": "SPL",
+  "retrato_sha256": "12c3096d970506e449e1875900366145210110f607c3467365f5a479764146fc"
+}

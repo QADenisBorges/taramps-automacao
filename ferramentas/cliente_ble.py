@@ -10,12 +10,15 @@ ferramentas/ajustar_processador.py (escrita atrás do guardião).
 - `ClienteTaramps`: autenticação, consulta com espera de resposta (uma pendente por
   vez, ~30 ms entre envios, 5 s de timeout) e log bruto de cada quadro.
 
-Há só dois caminhos até o BLE:
+Há só três caminhos até o BLE:
 - `enviar`: passa por `protocolo_taramps.verificar_envio`. O que não é consulta nem
   autenticação é recusado antes de chegar ao BLE.
 - `escrever`: exige a aprovação selada do guardião (guardiao.py), item por item e na
   ordem aprovada. Sem ela, a chamada é recusada antes de qualquer I/O. Cada escrita
   espera a janela de ack (respostas viram órfãos no log) e é relida em seguida.
+- `enviar_especial`: tom fixo do gerador e salvar memória, só com a aprovação especial do
+  guardião e só os textos exatos dela (`protocolo_taramps.verificar_comando_especial`).
+  `desligar_gerador_garantido` manda `*202*0*`, relê e, se a conexão caiu, reconecta.
 
 O bleak só é importado ao conectar, então o cliente é testável com um transporte falso.
 """
@@ -154,6 +157,10 @@ class ClienteTaramps:
         self.ocioso = ocioso
         self.janela_ack = janela_ack
         self._aprovacoes: dict[str, int] = {}  # selo -> próximo item; -1 = interrompida
+        self._especiais_usados: set[tuple[str, str]] = set()  # (selo, texto) já enviados
+        # True do envio de `*202*1*` (ou de uma leitura com o gerador ligado) até uma releitura
+        # confirmar 202 = 0. Quem toca o tom desliga enquanto isto for True.
+        self.gerador_talvez_ligado = False
         self.caiu = False
         self._encerrando = False
         self.orfaos: list[str] = []
@@ -254,6 +261,102 @@ class ClienteTaramps:
         self.log.anotar(f"releitura de {texto}: {status}")
         return {"codigo": escrita.codigo, "canal": escrita.canal, "escrito": texto,
                 "pedido": escrita.valor, "relido": relido, "cru": item.get("cru"), "status": status}
+
+    # -- comandos especiais (spec-gerador-memoria.md)
+
+    async def enviar_especial(self, aprovacao, texto: str) -> None:
+        """Tom fixo (200, 201, 202) e salvar memória (240, 231–233), só com a aprovação
+        especial do guardião (gd.avaliar_tom, gd.avaliar_salvar_memoria ou
+        gd.aprovar_desligar_gerador). O texto passa por pt.verificar_comando_especial antes de
+        qualquer I/O. Cada comando de uma aprovação sai uma vez só; o `*202*0*` (desligar),
+        quantas vezes for preciso. Espera a janela de ack (o que chegar vira órfão no log)."""
+        dados = pt.verificar_comando_especial(texto, aprovacao)  # recusa antes de qualquer I/O
+        chave = (aprovacao.selo, texto)
+        if texto != gd.DESLIGAR_GERADOR:
+            if chave in self._especiais_usados:
+                raise gd.EscritaNaoAprovada(f"comando especial recusado: {texto} já foi enviado "
+                                            "com esta aprovação")
+            self._especiais_usados.add(chave)
+        if texto == "*202*1*":
+            self.gerador_talvez_ligado = True  # antes do envio: a queda no meio também conta
+        self._registrar_orfaos(self._montador.descartar())
+        await self._transmitir(dados, preferir_resposta=True, nota="especial")
+        await self._janela_ack()
+
+    async def consultar_especial(self, parametro: pt.Parametro) -> dict:
+        """Leitura do tom fixo (200, 201, 202) ou do nome de uma memória (231–233), que a trava
+        de leitura não deixa passar: só os seis textos de pt.verificar_consulta_especial. Um
+        eco no formato de escrita (`*202*0*`) nunca conta como resposta."""
+        consulta = pt.Consulta(parametro)
+        dados = pt.verificar_consulta_especial(consulta.texto)  # recusa antes de qualquer I/O
+        self._registrar_orfaos(self._montador.descartar())
+        await self._transmitir(dados, preferir_resposta=False)
+        casamento = await self._esperar(consulta, sem_asterisco=True)
+        return pt.leitura(consulta, casamento, None if casamento else "timeout")
+
+    async def ler_gerador(self) -> dict:
+        """{"200": item, "201": item, "202": item} do tom fixo (leitura). Gerador lido ligado
+        marca `gerador_talvez_ligado`."""
+        itens = {}
+        for p in (pt.GERADOR_GANHO, pt.GERADOR_FREQ, pt.GERADOR_LIGADO):
+            itens[p.codigo] = await self.consultar_especial(p)
+        if itens["202"].get("valor") is True:
+            self.gerador_talvez_ligado = True
+        return itens
+
+    async def desligar_gerador(self, aprovacao) -> bool:
+        """`*202*0*` e releitura. True só com o 202 relido igual a 0."""
+        await self.enviar_especial(aprovacao, gd.DESLIGAR_GERADOR)
+        item = await self.consultar_especial(pt.GERADOR_LIGADO)
+        desligado = item.get("cru") is not None and item.get("valor") is False
+        if desligado:
+            self.gerador_talvez_ligado = False
+        self.log.anotar(f"releitura do gerador: {item.get('cru')!r} "
+                        f"({'desligado' if desligado else 'NÃO confirmado'})")
+        return desligado
+
+    async def reconectar(self, senha: str) -> bool:
+        """Procura, conecta e autentica de novo depois de uma queda. True se a senha passou."""
+        self.caiu = False
+        self._encerrando = False
+        self._registrar_orfaos(self._montador.descartar())
+        self.log.anotar("reconectando")
+        try:
+            dispositivo = await self.transporte.procurar()
+            if dispositivo is None:
+                self.log.anotar("reconexão: processador não encontrado")
+                ok = False
+            else:
+                await self.transporte.conectar(dispositivo)
+                auth = await self.autenticar(senha)
+                self.log.anotar(f"reconexão: {'senha aceita' if auth.ok else auth.motivo}")
+                ok = auth.ok
+        except BaseException:
+            self.caiu = True  # continua sem conexão: a próxima rodada tenta reconectar de novo
+            raise
+        if not ok:
+            self.caiu = True
+        return ok
+
+    async def desligar_gerador_garantido(self, aprovacao, senha: str | None,
+                                         tentativas: int = TENTATIVAS) -> bool:
+        """Desliga o gerador e confirma pela releitura, em até `tentativas` rodadas. Se a
+        conexão caiu, reconecta (com a senha) antes de cada rodada. True = 202 relido 0."""
+        for rodada in range(1, tentativas + 1):
+            try:
+                if self.caiu:
+                    if not senha or not await self.reconectar(senha):
+                        continue
+                if await self.desligar_gerador(aprovacao):
+                    return True
+            except gd.EscritaNaoAprovada:
+                raise
+            except Exception as erro:  # noqa: BLE001 - queda, timeout ou erro do BLE: tenta de novo
+                try:
+                    self.log.anotar(f"desligar o gerador, tentativa {rodada}: {erro!r}")
+                except ValueError:  # log já fechado
+                    pass
+        return False
 
     async def _janela_ack(self) -> None:
         """Espera o que o aparelho mandar depois da escrita. Tudo vira órfão no log."""
