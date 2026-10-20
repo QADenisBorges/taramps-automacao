@@ -123,7 +123,8 @@ public sealed class SessaoTestes
         await _sessao.ConectarAsync();
 
         Assert.Equal(EstadoSessao.PedindoSenha, _sessao.Estado);
-        Assert.True(_sessao.SegurandoConexao); // a conexão continua para tentar de novo
+        Assert.False(_sessao.SegurandoConexao); // o processador derruba a conexão depois do ERRO
+        Assert.Equal(1, _transporte.Desconexoes);
         Assert.StartsWith("Senha errada", _sessao.Mensagem);
         Assert.Null(_cofre.Senha);
         Assert.Empty(_cofre.Guardadas);
@@ -132,7 +133,8 @@ public sealed class SessaoTestes
         await _sessao.InformarSenhaAsync("ab12");
 
         Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
-        Assert.Equal(1, _transporte.Procuras); // não procurou de novo
+        Assert.Equal(2, _transporte.Procuras); // conexão nova para a 2ª tentativa
+        Assert.Equal(2, _transporte.TentativasDeConexao);
         Assert.Equal(["*000*ZZ99*", "*000*AB12*"], _transporte.Escritas);
         Assert.Equal("AB12", _cofre.Senha);
         LogSemSenha("ZZ99", "AB12");
@@ -152,7 +154,8 @@ public sealed class SessaoTestes
         Assert.StartsWith("Senha recusada 3 vezes", _sessao.Mensagem);
         Assert.Equal(3, _transporte.Escritas.Count);
         SoQuadrosDeSenha();
-        Assert.Equal(1, _transporte.Desconexoes);
+        Assert.Equal(3, _transporte.TentativasDeConexao); // as 3 contam juntas, uma conexão cada
+        Assert.Equal(3, _transporte.Desconexoes);
         Assert.Null(_cofre.Senha);
         LogSemSenha("ZZ99", "ZZ98", "ZZ97");
     }
@@ -473,16 +476,34 @@ public sealed class SessaoTestes
     }
 
     [Fact]
-    public async Task Queda_enquanto_pede_a_senha()
+    public async Task Queda_do_processador_depois_do_ERRO_nao_atrapalha()
     {
         _cofre.Senha = "ZZ99";
         await _sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.PedindoSenha, _sessao.Estado);
 
-        _transporte.Derrubar();
-        await Esperar(() => _sessao.Estado == EstadoSessao.Desconectado);
+        _transporte.Derrubar(); // o processador derruba ~29 s depois do ERRO
+        Assert.Equal(EstadoSessao.PedindoSenha, _sessao.Estado);
+        Assert.StartsWith("Senha errada", _sessao.Mensagem);
 
-        Assert.Equal(Sessao.MsgCaiu, _sessao.Mensagem);
+        await _sessao.InformarSenhaAsync("AB12");
+        Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
+    }
+
+    [Fact]
+    public async Task Tocar_em_Conectar_de_novo_zera_as_tentativas()
+    {
+        _cofre.Senha = "ZZ99";
+        await _sessao.ConectarAsync();
+        await _sessao.InformarSenhaAsync("ZZ98");
+        Assert.Contains("tentativa 3 de 3", _sessao.Mensagem);
+
+        await _sessao.DesconectarAsync(); // botão Cancelar
+        await _sessao.ConectarAsync();
+        await _sessao.InformarSenhaAsync("ZZ97");
+
+        Assert.Equal(EstadoSessao.PedindoSenha, _sessao.Estado);
+        Assert.Contains("tentativa 2 de 3", _sessao.Mensagem);
     }
 
     [Theory]
