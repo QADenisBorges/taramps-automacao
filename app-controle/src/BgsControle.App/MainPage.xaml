@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:BgsControle.App"
+             x:Class="BgsControle.App.MainPage"
+             x:DataType="local:ConexaoViewModel"
+             Title="BGS Controle">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,28" Spacing="16">
+
+            <Label Text="BGS Controle" FontSize="26" FontAttributes="Bold"
+                   TextColor="{StaticResource Primaria}" />
+
+            <!-- Estado -->
+            <Border Stroke="{StaticResource Primaria}" StrokeThickness="1" Padding="16"
+                    StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Estado" FontSize="13" Opacity="0.7" />
+                    <Label Text="{Binding Resumo}" FontSize="20" FontAttributes="Bold" />
+                    <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}"
+                                       HorizontalOptions="Start" HeightRequest="28" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Faixa do modo só leitura -->
+            <Border IsVisible="{Binding SoLeitura}" BackgroundColor="{StaticResource FundoAlerta}"
+                    Stroke="{StaticResource Alerta}" StrokeThickness="2" Padding="16"
+                    StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="MODO SÓ LEITURA" FontAttributes="Bold"
+                           TextColor="{StaticResource Alerta}" />
+                    <Label Text="{Binding Aviso}" TextColor="{StaticResource Alerta}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Mensagem -->
+            <Label Text="{Binding Mensagem}" IsVisible="{Binding TemMensagem}" FontSize="16" />
+
+            <!-- Senha: campo mascarado, sem botão de mostrar -->
+            <VerticalStackLayout IsVisible="{Binding PedindoSenha}" Spacing="10">
+                <Label Text="Senha do processador (4 letras ou números)" />
+                <Entry x:Name="CampoSenha"
+                       Text="{Binding SenhaDigitada}"
+                       IsPassword="True"
+                       IsSpellCheckEnabled="False"
+                       IsTextPredictionEnabled="False"
+                       MaxLength="12"
+                       ReturnType="Send"
+                       ReturnCommand="{Binding EnviarSenha}"
+                       Placeholder="••••" />
+                <Button Text="Enviar a senha" Command="{Binding EnviarSenha}" />
+            </VerticalStackLayout>
+
+            <!-- Ações -->
+            <Button Text="Conectar" Command="{Binding Conectar}" IsVisible="{Binding PodeConectar}"
+                    BackgroundColor="{StaticResource Primaria}" TextColor="White" FontSize="18"
+                    HeightRequest="56" />
+            <Button Text="{Binding TextoDesconectar}" Command="{Binding Desconectar}"
+                    IsVisible="{Binding PodeDesconectar}" />
+            <Button Text="Esquecer a senha" Command="{Binding EsquecerSenha}"
+                    BackgroundColor="Transparent" TextColor="{StaticResource Alerta}"
+                    BorderColor="{StaticResource Alerta}" BorderWidth="1" />
+
+            <!-- Registro do BLE (senha sempre mascarada) -->
+            <Button Text="{Binding TextoBotaoRegistro}" Command="{Binding AlternarRegistro}"
+                    BackgroundColor="Transparent" TextColor="{StaticResource Primaria}" />
+            <Label Text="{Binding Registro}" IsVisible="{Binding RegistroVisivel}"
+                   FontFamily="monospace" FontSize="11" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

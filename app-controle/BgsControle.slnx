@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BgsControle.App/BgsControle.App.csproj" />
+    <Project Path="src/BgsControle.Nucleo/BgsControle.Nucleo.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BgsControle.Nucleo.Testes/BgsControle.Nucleo.Testes.csproj" />
+  </Folder>
+</Solution>

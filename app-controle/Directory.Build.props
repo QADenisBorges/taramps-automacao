@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    Ferramentas fixas do app (história 1). O JDK 17 e o Android SDK ficam em
+    %LOCALAPPDATA%\BgsFerramentas. Os dois caminhos são fixados aqui para o build nunca
+    escolher outro JDK (há um JDK 11 na máquina) nem outro Android SDK.
+  -->
+  <PropertyGroup>
+    <BgsFerramentas>$(LOCALAPPDATA)\BgsFerramentas</BgsFerramentas>
+    <JavaSdkDirectory>$(BgsFerramentas)\jdk-17.0.20.1+1</JavaSdkDirectory>
+    <AndroidSdkDirectory>$(BgsFerramentas)\android-sdk</AndroidSdkDirectory>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
