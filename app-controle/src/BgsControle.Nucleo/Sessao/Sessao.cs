@@ -60,12 +60,12 @@ public sealed class Sessao
     public const string MsgFalhaEnvioSenha = "Não consegui enviar a senha.";
     public const string MsgErroInesperado = "Erro inesperado no Bluetooth. Toque em Conectar para tentar de novo.";
 
-    // Lista de permitidos da trava (MAPA §2, §4).
-    private static readonly Regex LeituraGlobal = new(@"^#\d{3}#$", RegexOptions.CultureInvariant);
-    private static readonly Regex LeituraComCanal = new(@"^#\d{3}#\d{1,2}#$", RegexOptions.CultureInvariant);
-    private static readonly Regex LeituraBanda = new(@"^020#(\d{1,2})$", RegexOptions.CultureInvariant);
+    public const string MotivoForaDoCatalogo = "leitura fora do catálogo";
+
+    // A trava deixa passar só as leituras do catálogo (Catalogo.EhLeitura) e a senha.
+    // Estes formatos só servem para explicar a recusa de uma leitura desconhecida.
+    private static readonly Regex FormaDeLeitura = new(@"^(#\d{3}#(\d{1,2}#)?|\d{3}#\d{1,2})$", RegexOptions.CultureInvariant);
     private static readonly Regex QuadroSenha = new(@"^\*000\*[0-9A-Z]{4}\*$", RegexOptions.CultureInvariant);
-    private const int Bandas = 15;
 
     private readonly ITransporte _transporte;
     private readonly ICofreSenha _cofre;
@@ -126,6 +126,13 @@ public sealed class Sessao
 
     /// <summary>Algo na sessão mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
+
+    /// <summary>
+    /// Um quadro recebido com a sessão conectada (fora da resposta da senha), já registrado
+    /// no log. Quem consulta (o leitor) casa com o pedido; o resto é órfão para ele.
+    /// Chega na thread das notificações, uma por vez.
+    /// </summary>
+    public event Action<string>? Recebeu;
 
     // ------------------------------------------------------------------ comandos da tela
 
@@ -247,9 +254,10 @@ public sealed class Sessao
     // ------------------------------------------------------------------ porta de escrita
 
     /// <summary>
-    /// A única porta para o BLE. Passa só o que a trava permite: as leituras
-    /// <c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c> com a sessão conectada, e o quadro da
-    /// senha no estado Autenticando. Todo o resto é recusado antes do BLE.
+    /// A única porta para o BLE. Passa só o que a trava permite: as leituras do catálogo
+    /// (<c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c>, cada código no seu escopo) com a sessão
+    /// conectada, e o quadro da senha no estado Autenticando. Todo o resto, inclusive uma
+    /// leitura de código fora do catálogo como <c>#004#</c>, é recusado antes do BLE.
     /// </summary>
     public async Task<ResultadoEnvio> EnviarAsync(string quadro)
     {
@@ -302,7 +310,7 @@ public sealed class Sessao
     /// <summary>Null = pode passar; senão, o motivo da recusa. Chamar com a trava.</summary>
     private string? Trava(string quadro)
     {
-        if (LeituraGlobal.IsMatch(quadro) || LeituraComCanal.IsMatch(quadro) || EhLeituraDeBanda(quadro))
+        if (Catalogo.EhLeitura(quadro))
         {
             return Estado == EstadoSessao.Conectado && SegurandoConexao
                 ? null
@@ -310,13 +318,9 @@ public sealed class Sessao
         }
         if (QuadroSenha.IsMatch(quadro))
             return Estado == EstadoSessao.Autenticando ? null : "a senha só sai na autenticação";
+        if (FormaDeLeitura.IsMatch(quadro))
+            return MotivoForaDoCatalogo;
         return SoLeitura ? "modo só leitura" : "escrita bloqueada nesta versão do app";
-    }
-
-    private static bool EhLeituraDeBanda(string quadro)
-    {
-        var m = LeituraBanda.Match(quadro);
-        return m.Success && int.Parse(m.Groups[1].Value) < Bandas;
     }
 
     // ------------------------------------------------------------------ conexão e senha
@@ -537,9 +541,11 @@ public sealed class Sessao
     {
         TaskCompletionSource<ResultadoAutenticacao?>? alvo = null;
         ResultadoAutenticacao? resolvido = null;
+        List<string>? entregar = null;
         lock (_trava)
         {
             _montador.Alimentar(dados);
+            var conectado = Estado == EstadoSessao.Conectado && SegurandoConexao;
             foreach (var texto in _montador.RetirarFechados())
             {
                 if (resolvido is null && _resposta is not null)
@@ -554,7 +560,22 @@ public sealed class Sessao
                     _log.Recebido(texto, nota);
                     continue;
                 }
+                if (conectado)
+                {
+                    _log.Recebido(texto);
+                    (entregar ??= []).Add(texto);
+                    continue;
+                }
                 _log.Recebido(texto, "órfão");
+            }
+
+            if (conectado && _resposta is null && Catalogo.RespostaInteira(_montador.Aberto))
+            {
+                // Uma resposta sem \r\n no fim, mas já inteira (020#3#-1.0, #080#+0.0#).
+                var aberto = _montador.Aberto;
+                _montador.DescartarAberto();
+                _log.Recebido(aberto);
+                (entregar ??= []).Add(aberto);
             }
 
             if (resolvido is null && _resposta is not null)
@@ -580,6 +601,11 @@ public sealed class Sessao
             }
         }
         alvo?.TrySetResult(resolvido);
+        if (entregar is not null)
+        {
+            foreach (var texto in entregar)
+                Recebeu?.Invoke(texto.TrimEnd('\r', '\n'));
+        }
     }
 
     /// <summary>Lê um quadro como possível resposta da senha. Chamar com a trava.</summary>

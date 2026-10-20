@@ -2,7 +2,7 @@
 title: 'História 1: esqueleto do app Android e conexão com o processador'
 type: 'feature'
 created: '2026-10-19'
-status: 'review'
+status: 'done'
 baseline_commit: 'ea539943d446206e35aecf0202c266eb832c352d'
 route: 'dispatch'
 review_loop_iteration: 0

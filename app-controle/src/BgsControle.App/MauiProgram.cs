@@ -1,6 +1,7 @@
 using BgsControle.App.Plataforma;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Enlace;
+using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,9 @@ public static class MauiProgram
         builder.Services.AddSingleton(sp => new Sessao(
             sp.GetRequiredService<ITransporte>(),
             sp.GetRequiredService<ICofreSenha>(),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new LeitorCompleto(
+            sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton<ConexaoViewModel>();
         builder.Services.AddSingleton<MainPage>();

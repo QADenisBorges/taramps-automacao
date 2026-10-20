@@ -63,6 +63,23 @@
                     BackgroundColor="Transparent" TextColor="{StaticResource Alerta}"
                     BorderColor="{StaticResource Alerta}" BorderWidth="1" />
 
+            <!-- Leitura completa: roda sozinha depois da senha aceita -->
+            <Border IsVisible="{Binding MostrarLeitura}" Stroke="{StaticResource Primaria}" StrokeThickness="1"
+                    Padding="16" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Leitura do aparelho · Marco 1" FontSize="13" Opacity="0.7" />
+                    <Label Text="{Binding PlacarMarco1}" FontSize="32" FontAttributes="Bold"
+                           TextColor="{StaticResource Primaria}" />
+                    <Label Text="{Binding PlacarExtras}" FontSize="15" />
+                    <Label Text="{Binding ResumoLeitura}" FontSize="15" />
+                    <ActivityIndicator IsRunning="{Binding LendoAgora}" IsVisible="{Binding LendoAgora}"
+                                       HorizontalOptions="Start" HeightRequest="28" />
+                    <Button Text="Ler de novo" Command="{Binding LerDeNovo}" IsVisible="{Binding PodeLerDeNovo}" />
+                </VerticalStackLayout>
+            </Border>
+            <Label Text="{Binding ListaLeitura}" IsVisible="{Binding MostrarLeitura}"
+                   FontFamily="monospace" FontSize="12" />
+
             <!-- Registro do BLE (senha sempre mascarada) -->
             <Button Text="{Binding TextoBotaoRegistro}" Command="{Binding AlternarRegistro}"
                     BackgroundColor="Transparent" TextColor="{StaticResource Primaria}" />
