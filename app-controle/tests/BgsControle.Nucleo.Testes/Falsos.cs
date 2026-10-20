@@ -23,6 +23,16 @@ internal sealed class TransporteFalso : ITransporte
     public string[] AntesDaResposta { get; set; } = [];
     public bool Mudo { get; set; }
 
+    /// <summary>Consulta de leitura → fragmentos da resposta. Consulta fora daqui fica sem resposta.</summary>
+    public Dictionary<string, string[]> Respostas { get; } = [];
+    /// <summary>Consulta → fragmentos enviados antes da resposta (eco, órfãos).</summary>
+    public Dictionary<string, string[]> AntesDaConsulta { get; } = [];
+    /// <summary>Consultas que ficam mudas na primeira vez (respondem na nova tentativa).</summary>
+    public HashSet<string> MudasNaPrimeira { get; } = [];
+    /// <summary>Derruba a conexão na escrita da consulta de número N (1 = a primeira depois da senha).</summary>
+    public int? DerrubarNaConsulta { get; set; }
+    public int ConsultasRecebidas { get; private set; }
+
     public List<string> Escritas { get; } = [];
     public int Procuras { get; private set; }
     public int TentativasDeConexao { get; private set; }
@@ -58,7 +68,12 @@ internal sealed class TransporteFalso : ITransporte
             EscreveuSemNotificacao = true;
         var texto = Encoding.ASCII.GetString(dados);
         Escritas.Add(texto);
-        if (Mudo || !texto.StartsWith("*000*"))
+        if (!texto.StartsWith("*000*"))
+        {
+            Consultar(texto);
+            return Task.CompletedTask;
+        }
+        if (Mudo)
             return Task.CompletedTask;
         foreach (var f in AntesDaResposta)
             Emitir(f);
@@ -66,6 +81,24 @@ internal sealed class TransporteFalso : ITransporte
         foreach (var f in resposta)
             Emitir(f);
         return Task.CompletedTask;
+    }
+
+    private void Consultar(string texto)
+    {
+        ConsultasRecebidas++;
+        if (ConsultasRecebidas == DerrubarNaConsulta)
+        {
+            Derrubar();
+            return;
+        }
+        if (AntesDaConsulta.TryGetValue(texto, out var antes))
+            foreach (var f in antes)
+                Emitir(f);
+        if (MudasNaPrimeira.Remove(texto))
+            return;
+        if (Respostas.TryGetValue(texto, out var resposta))
+            foreach (var f in resposta)
+                Emitir(f);
     }
 
     public Task DesconectarAsync()

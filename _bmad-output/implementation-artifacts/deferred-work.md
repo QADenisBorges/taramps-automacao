@@ -13,3 +13,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-vitrine-bgs.md`
   summary: O comportamento da página (Vitrine mostrando o Modo, AudioContext fechado depois da abertura, sequência de fases, seletor) só é verificado por texto da fonte e pela checagem manual; falta um harness de testes de JS (ex.: Playwright).
   evidence: Não verificado (medium). Uma mutação em `modoAtual()` ou a remoção de `som.fechar()` passaria nos testes atuais.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/2-catalogo-parametros-leitura-completa.md`
+  summary: A leitura automática depois da senha, o "Ler de novo" e o JSON salvo (ConexaoViewModel) não têm teste automático.
+  evidence: Não existe projeto de teste para o BgsControle.App (MAUI); tirar a linha `_ = LerAsync()` passaria em todos os testes. Mover a regra "ler uma vez ao entrar em Conectado" para o núcleo permitiria testá-la com o TransporteFalso.
