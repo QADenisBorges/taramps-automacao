@@ -36,7 +36,7 @@ A memória SPL **não pode ser copiada** da diária: sem o Bluetooth a folga de 
 | Passa-alta | **170 Hz, 24 dB/oitava**, igual nos dois canais | Protege o cone de 4" contra excursão; fica na ressonância da caixa de 3,5 L ou acima. É a proteção principal |
 | Passa-baixa | Desligado ou ≥ 18 kHz | O triaxial divide médio e tweeter internamente |
 | Ganho / nível de saída | Até o multímetro marcar **17,9 V AC** em 400 Hz | 80 W em 4 Ω = limite térmico do falante. Módulo trabalha em 40% do canal |
-| Limiter | Threshold no nível que gerou 17,9 V · ataque 1-5 ms · release 100-300 ms | Rede de segurança caso a fonte ou a música passe do previsto |
+| Limiter | Threshold no nível que gerou 17,9 V · ataque 1-5 ms · release 100-300 ms | Rede de segurança caso a fonte ou a música passe do previsto. O app mostra o threshold em dB, não em volts: com o tom em 400 Hz e 17,9 V no multímetro, baixar o threshold até a tensão começar a cair e voltar até 17,9 V; anotar o valor em dB |
 | EQ | Só cortes. Nenhum realce | Realce muda o teto medido. Se for inevitável, remedir na frequência realçada |
 | Fase e delay | Iguais à memória diária até alinhar com o sub | Não afetam segurança |
 | Chave do módulo | F (full) | Qualquer outra posição somaria filtro ao do processador |
@@ -50,11 +50,35 @@ A memória SPL **não pode ser copiada** da diária: sem o Bluetooth a folga de 
 | Pico acústico a 1 m, ambiente fechado | ~109 dB | ~111-112 dB |
 | Média acústica a 1 m, ambiente fechado | ~100 dB | ~102-104 dB |
 
-### Por que 80 W e não mais
+### Pico e média: os dois acontecem ao mesmo tempo
 
-- Limite térmico: 80 W é o RMS. Demonstração curta não acumula calor, mas o limite mecânico (curso do cone) não depende de tempo e é alcançado perto desse nível mesmo com passa-alta em 170 Hz.
-- Passar para 160 W (25,3 V) renderia +3 dB com cone fora do curso. Não compensa.
+Com o ganho em 17,9 V, o JBL recebe **80 W nos picos** (transientes, ataques, trechos fortes) e **10 a 20 W de média** ao longo da música. Nenhuma música entrega média igual ao pico; isso seria um tom contínuo. O pico move o cone e define o volume ouvido. A média aquece a bobina.
+
+| Música | Média por JBL | Média nos dois |
+|---|---|---|
+| Masterização normal, dinâmica | 5 a 8 W | 10 a 16 W |
+| Masterização alta, -7 a -8 LUFS (planejada) | 8 a 13 W | 16 a 26 W |
+| Trechos mais densos dessas músicas | até 20 W | até 40 W |
+
+Nuance da norma: os 80 W RMS são medidos com ruído rosa de 6 dB de fator de crista, ou seja, 80 W de média com picos de 320 W. Termicamente o JBL tolera 80 W de média. Em 17,9 V com música, a bobina trabalha a cerca de um quarto disso.
+
+### Por que 80 W de pico e não mais
+
+- O que limita um 4" não é calor, é curso do cone. Ganho no RMS (17,9 V) é o padrão para música porque entrega os picos no RMS e deixa a média folgada.
+- Passar para 160 W (25,3 V) renderia +3 dB com cone provavelmente fora do curso. Não compensa.
 - A sensação de potência vem da masterização alta (+2 a +3 dB de média) e do sub, não de watts acima do RMS.
+
+### Ajuste fino opcional após a validação
+
+Subir além de 17,9 V é opção técnica, não erro, desde que validada por escuta. Só depois da seção 6 passar limpa e com folga:
+
+| Ganho | Pico por JBL | Média | Condição |
+|---|---|---|---|
+| 17,9 V | 80 W | 10 a 20 W | Padrão. Ponto de partida obrigatório |
+| 18 a 22 V | 80 a 120 W | 12 a 25 W | +0 a 1,8 dB. Só se o teste de escuta não acusar ruído mecânico nem clip, com passa-alta ≥ 170 Hz |
+| 25,3 V | 160 W | 20 a 40 W | Teto de programa da norma. Não recomendado para 4" |
+
+Método: subir em passos de **1 V**, tocando a música mais pesada da playlist no volume travado a cada passo, até o primeiro ruído mecânico no cone ou piscada do LED de clip. Voltar 1 V. Esse é o máximo real do JBL nessa caixa; o esperado é entre 18 e 22 V. Reajustar o threshold do limiter para o novo valor e anotar no registro (seção 9). Acima de 22 V não subir, independentemente do teste.
 
 ## 4. Parâmetros da memória SPL: canais 3+4 (sub) — PENDENTE
 
@@ -110,6 +134,7 @@ A regulagem só é válida enquanto todas estas condições valerem. Qualquer qu
 | Chave do módulo em F nos 4 canais | Outra posição → filtro duplicado |
 | Passa-alta ≥ 170 Hz nos canais 1 e 2 | Abaixo → risco mecânico mesmo em 17,9 V |
 | Nenhum realce de EQ | Realce → teto medido deixa de valer |
+| Ganho entre 17,9 V e no máximo 22 V, e só acima de 17,9 V após validação por escuta | Acima de 22 V → cone fora do curso |
 | Limiter ativo no nível medido | Desligado → sem rede de segurança |
 | Caixas seladas | Duto → excursão abaixo da afinação, mudar passa-alta |
 | Duração ≤ 10 min por demonstração | Uso contínuo → limite térmico volta a importar |
@@ -120,8 +145,8 @@ Ações que a IA **nunca** libera nesta memória: baixar passa-alta abaixo de 17
 
 | Data | Memória | Canal | Frequência | Tensão alvo | Tensão medida | Posição de saída | Limiter | Passa-alta | Quem |
 |---|---|---|---|---|---|---|---|---|---|
-| | SPL | 1 | 400 Hz | 17,9 V | | | | 170 Hz / 24 dB | |
-| | SPL | 2 | 400 Hz | 17,9 V | | | | 170 Hz / 24 dB | |
+| | SPL | 1 | 400 Hz | 17,9 V (ajuste fino: até 22 V) | | | (dB) | 170 Hz / 24 dB | |
+| | SPL | 2 | 400 Hz | 17,9 V (ajuste fino: até 22 V) | | | (dB) | 170 Hz / 24 dB | |
 | | SPL | 3+4 | 50 Hz | pendente | | | | | |
 
 ## 10. Pendências
