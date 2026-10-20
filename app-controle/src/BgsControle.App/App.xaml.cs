@@ -2,14 +2,15 @@ namespace BgsControle.App;
 
 public partial class App : Application
 {
-    private readonly MainPage _pagina;
+    private readonly IServiceProvider _servicos;
 
-    public App(MainPage pagina)
+    public App(IServiceProvider servicos)
     {
         InitializeComponent();
-        _pagina = pagina;
+        _servicos = servicos;
     }
 
+    // A página é criada aqui, depois do InitializeComponent: as cores do App.xaml já existem.
     protected override Window CreateWindow(IActivationState? activationState) =>
-        new(_pagina) { Title = "BGS Controle" };
+        new(_servicos.GetRequiredService<MainPage>()) { Title = "BGS Controle" };
 }
