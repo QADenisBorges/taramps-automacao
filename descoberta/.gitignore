@@ -1,0 +1,4 @@
+# APK é software da Taramps: não redistribuir pelo repositório.
+apk/
+# Relatórios de bugs e capturas brutas podem ter dados pessoais do celular.
+capturas/
