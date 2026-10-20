@@ -1,0 +1,11 @@
+# Saídas do build e do Visual Studio.
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+
+# APK gerado (também coberto pelo .gitignore da raiz).
+*.apk
+*.aab
