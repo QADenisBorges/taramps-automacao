@@ -2,7 +2,7 @@
 title: 'História 2: catálogo de parâmetros e leitura completa do aparelho'
 type: 'feature'
 created: '2026-10-20'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '853673aecb815b2a8f2c0f52111ca47398df627f'
 review_loop_iteration: 0
@@ -105,6 +105,8 @@ O catálogo é a fonte única: a trava pergunta a ele se um quadro é uma leitur
 - Casamento: Marco 1 exige o código e o número exato de segmentos do escopo, com o canal ou a banda iguais; o eco do envio (`#081#0#`, `#080#`, `020#0`) não tem valor e vira órfão. A sessão entrega também uma resposta que chegou sem `\r\n` quando já está inteira (`020#3#-1.0`, `#080#+0.0#`).
 - Valor ilegível (texto que não é número num tipo numérico) conta como falha da tentativa, com o cru guardado, e ganha a nova tentativa como uma consulta sem resposta.
 - Revisão (20/10): 8 consultas do Marco 1 seguidas sem resposta (já com a nova tentativa) param a leitura como incompleta, "O aparelho parou de responder." (como o protótipo). Os extras não contam, porque o aparelho pode nunca responder a eles. O retrato guarda o firmware do início (a queda apaga o da sessão); um extra com várias partes espera o `\r\n`; `#231##` registra um nome vazio; booleano diferente de 0 e 1 fica "fora da faixa"; rótulos das bandas em "1,6 kHz".
+- **Leitura no aparelho real (20/10, 15:24, Galaxy A52, firmware R003):** Marco 1 **84 de 84 em 12,6 s**, sem nova tentativa e sem valor fora da faixa; leitura toda em 19,8 s; extras 14 de 15. O aparelho estava com a memória **SPL** (não a FILME): carregar a FILME é escrita, fora desta história, então a conferência valor a valor com a FILME fica para a história 4. Os valores lidos batem com a SPL (saídas 1 e 2: HPF 200 Hz LR24, ganho +6,0, limiter −7,0; saídas 3 e 4: 40–200 Hz BT24/LR24, ganho +2,6, limiter −9,0; atrasos 0; fase 0°).
+- **Achados da leitura real (para o MAPA, na próxima vez que ele for atualizado):** os nomes das memórias respondem `231#NOME`, **sem `#` no início nem no fim** (`231#SPL`, `232#MUSICA ORIG`, `233#FILME`); clip `#111#0#` e `#150#0#`; gerador `#200#-25.0#`, `#201#51#`, `#202#0#`; sweep `#210#10#`, `#211#22000#`, `#212#-45.0#`, `#213#0#`; `#251#1#` (Audio Classic ligado) e `#252#1#` (remote out ligado). O voltímetro `#005#` não respondeu no formato de leitura; chegou um órfão `ERRO 0`, provavelmente a resposta do aparelho a essa consulta.
 
 ## Spec Change Log
 
