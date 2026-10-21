@@ -250,8 +250,9 @@ public sealed class SessaoTestes
     [InlineData("#081#0")]
     [InlineData("020#15")]
     [InlineData("")]
-    public async Task Com_R003_nenhuma_escrita_e_liberada_nesta_historia(string quadro)
+    public async Task Com_R003_e_sem_chaves_nenhuma_escrita_passa(string quadro)
     {
+        // Sem IChaves, toda chave conta como desligada: nem os ajustes de áudio passam.
         _cofre.Senha = "AB12";
         await _sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
@@ -260,8 +261,25 @@ public sealed class SessaoTestes
         var r = await _sessao.EnviarAsync(quadro);
 
         Assert.False(r.Enviado);
+        Assert.NotNull(r.Motivo);
         Assert.Equal(["*000*AB12*"], _transporte.Escritas);
         LogSemSenha("AB12", "CD34");
+    }
+
+    [Theory]
+    [InlineData("*081*0*-12.0*")]
+    [InlineData("*080*-10.0*")]
+    [InlineData("020*3*2.5")]
+    public async Task Ajuste_de_audio_sem_chaves_e_recusado_por_chave_desligada(string quadro)
+    {
+        _cofre.Senha = "AB12";
+        await _sessao.ConectarAsync();
+
+        var r = await _sessao.EnviarAsync(quadro);
+
+        Assert.False(r.Enviado);
+        Assert.Equal(Sessao.MotivoChaveDesligada, r.Motivo);
+        Assert.Equal(["*000*AB12*"], _transporte.Escritas);
     }
 
     [Theory]

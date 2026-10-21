@@ -61,8 +61,19 @@ public sealed class Sessao
     public const string MsgErroInesperado = "Erro inesperado no Bluetooth. Toque em Conectar para tentar de novo.";
 
     public const string MotivoForaDoCatalogo = "leitura fora do catálogo";
+    public const string MotivoSemConexao = "sem conexão autenticada";
+    public const string MotivoSoLeitura = "modo só leitura";
+    public const string MotivoChaveDesligada = "chave desligada";
+    public const string MotivoNaoLiberado = "comando não liberado nesta versão do app";
+    public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
 
-    // A trava deixa passar só as leituras do catálogo (Catalogo.EhLeitura) e a senha.
+    // Comandos conhecidos fora dos ajustes de áudio (MAPA §4 e §5): memórias, gerador, nomes,
+    // 251, 252, 002, 004, 242 e 001. São das histórias 6 e 7; aqui só explicam a recusa.
+    private static readonly HashSet<string> ComandosNaoLiberados =
+        [.. Catalogo.Extras.Select(p => p.Codigo), "001", "002", "004", "240", "241", "242"];
+
+    // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha e as escritas
+    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada.
     // Estes formatos só servem para explicar a recusa de uma leitura desconhecida.
     private static readonly Regex FormaDeLeitura = new(@"^(#\d{3}#(\d{1,2}#)?|\d{3}#\d{1,2})$", RegexOptions.CultureInvariant);
     private static readonly Regex QuadroSenha = new(@"^\*000\*[0-9A-Z]{4}\*$", RegexOptions.CultureInvariant);
@@ -71,6 +82,7 @@ public sealed class Sessao
     private readonly ICofreSenha _cofre;
     private readonly LogBle _log;
     private readonly TemposSessao _tempos;
+    private readonly IChaves? _chaves;
 
     private readonly object _trava = new();
     private readonly MontadorQuadros _montador = new();
@@ -83,17 +95,26 @@ public sealed class Sessao
     private string? _senhaEnviada;
     private int _tentativasSenha;
 
-    public Sessao(ITransporte transporte, ICofreSenha cofre, LogBle log, TemposSessao? tempos = null)
+    /// <param name="chaves">As chaves de acesso. Sem elas, nenhuma escrita passa (toda chave conta como desligada).</param>
+    public Sessao(ITransporte transporte, ICofreSenha cofre, LogBle log, TemposSessao? tempos = null, IChaves? chaves = null)
     {
         _transporte = transporte;
         _cofre = cofre;
         _log = log;
         _tempos = tempos ?? TemposSessao.Padrao;
+        _chaves = chaves;
         _transporte.Notificacao += AoReceber;
         _transporte.Caiu += AoCair;
     }
 
     public EstadoSessao Estado { get; private set; }
+
+    /// <summary>
+    /// A leitura completa (<see cref="Leitura.LeitorCompleto"/>) e cada escrita com a sua
+    /// confirmação (<see cref="Escrita.Escritor"/>) não se misturam: uma de cada vez, para a
+    /// resposta de uma nunca ser tomada pela outra.
+    /// </summary>
+    internal SemaphoreSlim ExclusaoLeituraEscrita { get; } = new(1, 1);
 
     /// <summary>A conexão BLE está aberta (de Autenticando em diante).</summary>
     public bool SegurandoConexao { get; private set; }
@@ -254,10 +275,17 @@ public sealed class Sessao
     // ------------------------------------------------------------------ porta de escrita
 
     /// <summary>
-    /// A única porta para o BLE. Passa só o que a trava permite: as leituras do catálogo
-    /// (<c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c>, cada código no seu escopo) com a sessão
-    /// conectada, e o quadro da senha no estado Autenticando. Todo o resto, inclusive uma
-    /// leitura de código fora do catálogo como <c>#004#</c>, é recusado antes do BLE.
+    /// A única porta para o BLE. Passa só o que a trava permite:
+    /// <list type="bullet">
+    /// <item>as leituras do catálogo (<c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c>, cada código no
+    /// seu escopo) com a sessão conectada;</item>
+    /// <item>o quadro da senha no estado Autenticando;</item>
+    /// <item>uma escrita de ajuste de áudio do Marco 1, exatamente como o catálogo a codifica, com
+    /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada.</item>
+    /// </list>
+    /// Todo o resto (memórias, gerador, 252, 251, 002, 004, 242, 001, uma leitura fora do
+    /// catálogo como <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o
+    /// motivo no log.
     /// </summary>
     public async Task<ResultadoEnvio> EnviarAsync(string quadro)
     {
@@ -310,17 +338,27 @@ public sealed class Sessao
     /// <summary>Null = pode passar; senão, o motivo da recusa. Chamar com a trava.</summary>
     private string? Trava(string quadro)
     {
+        var conectado = Estado == EstadoSessao.Conectado && SegurandoConexao;
         if (Catalogo.EhLeitura(quadro))
-        {
-            return Estado == EstadoSessao.Conectado && SegurandoConexao
-                ? null
-                : "sem conexão autenticada";
-        }
+            return conectado ? null : MotivoSemConexao;
         if (QuadroSenha.IsMatch(quadro))
             return Estado == EstadoSessao.Autenticando ? null : "a senha só sai na autenticação";
         if (FormaDeLeitura.IsMatch(quadro))
             return MotivoForaDoCatalogo;
-        return SoLeitura ? "modo só leitura" : "escrita bloqueada nesta versão do app";
+        if (SoLeitura)
+            return MotivoSoLeitura;
+        if (Catalogo.EscritaDeAudio(quadro) is null)
+        {
+            var codigo = Quadros.Analisar(quadro)?.Codigo;
+            if (codigo is not null && ComandosNaoLiberados.Contains(codigo))
+                return MotivoNaoLiberado;
+            return MotivoEscritaForaDoCatalogo;
+        }
+        if (!conectado)
+            return MotivoSemConexao;
+        if (_chaves?.Ligada(Chave.AjustesAudio) != true)
+            return MotivoChaveDesligada;
+        return null;
     }
 
     // ------------------------------------------------------------------ conexão e senha

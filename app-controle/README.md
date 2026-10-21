@@ -4,10 +4,17 @@ App Android próprio para controlar o PRO 2.4BT + AUDIO pelo Bluetooth do celula
 Feito em .NET MAUI (C#), alvo só Android. Contrato: `_bmad-output/specs/spec-app-controle-taramps/SPEC.md`.
 Protocolo: `protocolo/MAPA.md`.
 
-Nesta versão (histórias 1 e 2) o app **procura, conecta, autentica, mostra o firmware e lê o
+Nesta versão (até a história 5) o app **procura, conecta, autentica, mostra o firmware e lê o
 aparelho inteiro**: logo depois da senha aceita, faz a leitura completa (84 consultas do Marco 1
-e 15 extras) e mostra o placar ("84 de 84") e a lista de valores. Nenhuma escrita sai do
-celular, nem com o R003.
+e 15 extras) e mostra o placar ("84 de 84") e a lista de valores. A história 4 trouxe as telas
+testáveis sem MAUI e o processador simulado dos testes.
+
+Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
+`Escritor` (eco, releitura, ritmo de 300 ms por parâmetro) e sempre pela trava da sessão: com o
+R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Memórias,
+gerador, remote out, Bluetooth de áudio, nome, senha e resets continuam recusados antes do BLE.
+As chaves de acesso (`IChaves`) ficam em JSON nos arquivos privados. Os ViewModels do controle
+de parâmetro e da tela de chaves existem em `BgsControle.Telas`; o XAML é das histórias 10 e 11.
 
 ## Projetos
 

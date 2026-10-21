@@ -2,8 +2,9 @@
 title: 'História 5: escrita de ajustes e chaves de acesso'
 type: 'feature'
 created: '2026-10-21'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
+baseline_commit: 'bf6259a2888b879fc3cf4a0cc77796f2bc09d2dd'
 review_loop_iteration: 0
 context:
   - '{project-root}/_bmad-output/specs/spec-app-controle-taramps/chaves-de-acesso.md'
@@ -99,12 +100,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app-controle/src/BgsControle.Nucleo/Seguranca/`: `IChaves`, os padrões e o repositório.
-- [ ] `app-controle/src/BgsControle.Nucleo/Escrita/`: o escritor e o `EstadoAparelho`.
-- [ ] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs`: a trava nova.
-- [ ] `app-controle/src/BgsControle.Telas/`: `ControleParametroViewModel` e `ChavesViewModel`.
-- [ ] `app-controle/src/BgsControle.App/MauiProgram.cs`: o registro no DI, sem tela nova.
-- [ ] Os testes: cada linha da matriz e os antigos atualizados.
+- [x] `app-controle/src/BgsControle.Nucleo/Seguranca/`: `IChaves`, os padrões e o repositório.
+- [x] `app-controle/src/BgsControle.Nucleo/Escrita/`: o escritor e o `EstadoAparelho`.
+- [x] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs`: a trava nova.
+- [x] `app-controle/src/BgsControle.Telas/`: `ControleParametroViewModel` e `ChavesViewModel`.
+- [x] `app-controle/src/BgsControle.App/MauiProgram.cs`: o registro no DI, sem tela nova.
+- [x] Os testes: cada linha da matriz e os antigos atualizados.
 
 **Acceptance Criteria:**
 - Given o simulador e a chave ligada, when um ganho é arrastado e solto, then o simulador termina com o último valor e o espelho bate com ele.
@@ -118,6 +119,42 @@ context:
 
 ## Implementation Notes
 
+- **Ritmo do arrasto:** os 300 ms por parâmetro contam do **fim** da escrita anterior (eco ou releitura), não do envio. A primeira escrita sai na hora; as seguintes levam só o último valor pedido. Com o eco real (~85 ms), 20 valores em 1 s dão 4 escritas (0, ~385, ~770, ~1155 ms), e a última leva o último valor. Contado do envio, daria 5 (0, 300, 600, 900 e o último).
+- **Releitura:** sem eco em 2 s, relê com prazo de 5 s (o prazo de consulta da leitura completa, MAPA §2).
+- **Espelho:** só vale nesta conexão. Esvazia ao desconectar. Até a primeira leitura completa, e durante uma leitura, o `Escritor` não escreve ("O app ainda não leu o aparelho." / "O app está lendo o aparelho."). A leitura completa e cada escrita com a sua confirmação passam pela mesma exclusão interna da sessão (`Sessao.ExclusaoLeituraEscrita`). Um "Ler de novo" pedido durante um eco pendente espera a escrita terminar. Uma escrita pedida durante uma leitura é recusada.
+- **Trava:** a ordem dos motivos é leitura e senha como antes; depois "modo só leitura", "comando não liberado nesta versão do app" (memórias, gerador, 23N, 251, 252, 001, 002, 004, 242), "escrita fora do catálogo" (fora do formato exato do codificador), "sem conexão autenticada" e "chave desligada". Sem `IChaves` na sessão, toda chave conta como desligada.
+- **Chaves:** até o JSON guardado ser lido, toda chave conta como desligada. Um JSON estragado volta aos padrões. Se a gravação falhar, ligar não vale, mas desligar vale (o lado seguro).
+- **Controle recolhido (pedido do Denis em 21/10, depois da spec):** `Expandido` começa em false. Tocar no valor recolhido abre o controle; com o controle aberto, tocar no valor abre o campo. `GrupoControles` mantém um aberto por grupo.
+- O `ControleParametroViewModel` cobre os 22 parâmetros do Marco 1. Mute, limiter auto e preset de EQ também viram escolhas diretas.
+
+- Revisão (21/10): 14 correções aplicadas, entre elas o portão comum que separa a leitura completa das escritas. Verificação final: Nucleo.Testes 350/350, Telas.Testes 120/120, build Android 0 erros e 0 avisos. Pendente: conferir no celular (abrir, conectar, mexer um ganho), junto com o pendente da história 4.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Achado | Veredito | Evidência | Rota |
+|---|---|---|---|---|
+| 1 | Assinante de `Escreveu` que lança mata o laço da fila | medium | `Rodando` fica true; tarefas penduradas | patch |
+| 2 | "Ler de novo" durante escrita sem eco mistura respostas | medium | A guarda `Lendo` só no começo da escrita | patch |
+| 3 | Eco atrasado de escrita antiga confirma a nova | low | Só com eco > 2 s; janela rara | rejeitado |
+| 4 | Eco no formato de escrita seria aceito | false | O aparelho real ecoa no formato de leitura (MAPA §9) | rejeitado |
+| 5 | Escrita na fila depois da queda dá motivo errado | low | Correção direta | patch |
+| 6 | Leitura da conexão anterior semeia depois de reconectar | low | A leitura para na queda; janela de milissegundos | rejeitado |
+| 7 | Chave ligada em memória antes de gravar | low | Janela de milissegundos | rejeitado |
+| 8 | Desligar com gravação falha volta ligada ao reabrir | medium | Segurança: a chave protege risco | patch (mensagem + nova tentativa) |
+| 9 | Assinante de `Mudou` que lança no carregamento | low | Só assinantes internos | rejeitado |
+| 10 | `formato` gravado e não conferido | low | Correção direta | patch |
+| 11 | "Lendo o aparelho" quando a leitura falhou; `_lendo` não zera na queda | medium | Controle travado com motivo errado | patch |
+| 12 | Valor local não confirmado fica na tela depois de travar | medium | Mostra valor que não veio do aparelho | patch |
+| 13 | `ChavesViewModel` transient e descartável vaza | low | Correção direta | patch |
+| 14 | Campo aceita valor fora do passo; `Casas ≥ 2` | low | O aparelho aceita 1 casa; nenhum parâmetro tem 2 | rejeitado |
+| 15 | Attack em auto e valor fora da faixa mal exibidos | medium | Mostra "0,0 ms" no lugar de auto | patch |
+| 16 | Repetição extra ao segurar de novo rápido | low | Um passo a mais, raro | rejeitado |
+| 17 | Ligar chave já ligada abre a folha | low | Correção direta | patch |
+| 18 | README contraditório | low | Correção direta | patch |
+| 19 | Mudança de escopo fora do Spec Change Log | — | A correção é editar esta spec | rejeitado (registrado nas notas) |
+| 20 | Testes da serialização, do bloqueio na leitura, da queda no eco e da leitura das chaves | medium | Mutação passa verde | patch |
+| 21 | Escolhas diretas (booleano, preset) sem teste | low | Teste direto | patch |
+| 22 | Espaçamento de 300 ms não medido | low | O teste aceita 2 a 4 | rejeitado |
+| 23 | Montagem do DI no MauiProgram sem teste | medium | Só o build cobre | defer (conferir no celular) |

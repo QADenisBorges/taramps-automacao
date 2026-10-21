@@ -2,6 +2,9 @@ using BgsControle.Nucleo.Protocolo;
 
 namespace BgsControle.Nucleo;
 
+/// <summary>Uma escrita de ajuste de áudio reconhecida pelo catálogo: o parâmetro, o canal ou a banda e o valor no fio.</summary>
+public sealed record EscritaAudio(Parametro Parametro, int? Indice, string NoFio);
+
 /// <summary>
 /// A fonte única dos parâmetros do PRO 2.4BT + AUDIO (MAPA §4): a trava pergunta a ele se um
 /// quadro é uma leitura conhecida, o leitor monta a fila a partir dele, e as escritas futuras
@@ -126,6 +129,53 @@ public static class Catalogo
     public static bool EhLeitura(string quadro) => PorTexto.ContainsKey(quadro);
 
     public static Consulta? ConsultaDe(string quadro) => PorTexto.GetValueOrDefault(quadro);
+
+    private static readonly Dictionary<string, Parametro> Marco1PorCodigo = Marco1.ToDictionary(p => p.Codigo);
+
+    /// <summary>
+    /// Se o quadro é exatamente o texto que <see cref="Parametro.CodificarEscrita(int?, decimal)"/>
+    /// (ou a versão de texto, para o roteamento) produz para um parâmetro do Marco 1, devolve o
+    /// parâmetro, o índice e o valor no fio; senão null. É a regra da trava para os ajustes de
+    /// áudio (MAPA §4): <c>*081*0*-3.0*</c> sim; <c>*081*0*-3*</c>, <c>*240*0*</c>, <c>*202*1*</c> não.
+    /// </summary>
+    public static EscritaAudio? EscritaDeAudio(string quadro)
+    {
+        var q = Quadros.Analisar(quadro);
+        if (q is null || !Marco1PorCodigo.TryGetValue(q.Codigo, out var p))
+            return null;
+        var segmentos = p.Escopo == Escopo.Global ? 1 : 2;
+        if (q.Segmentos.Count != segmentos)
+            return null;
+        int? indice = null;
+        if (segmentos == 2)
+        {
+            if (!int.TryParse(q.Segmentos[0], System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var i))
+                return null;
+            indice = i;
+        }
+        var valor = q.Segmentos[^1];
+        try
+        {
+            string codificado;
+            if (p.Tipo == TipoValor.Roteamento)
+            {
+                codificado = p.CodificarEscrita(indice, valor);
+            }
+            else
+            {
+                if (!decimal.TryParse(valor, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint,
+                        System.Globalization.CultureInfo.InvariantCulture, out var numero))
+                    return null;
+                codificado = p.CodificarEscrita(indice, numero);
+            }
+            return codificado == quadro ? new EscritaAudio(p, indice, valor) : null;
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     public static string RotuloBanda(int banda)
     {

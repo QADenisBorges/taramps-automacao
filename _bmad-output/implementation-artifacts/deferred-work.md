@@ -21,3 +21,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/4-infraestrutura-testes-processador-simulado.md`
   summary: O guarda do contador de leitura no ConexaoViewModel (salvamento antigo terminando durante uma leitura nova) não tem teste.
   evidence: ArquivosFalso grava na hora; cobrir pede um ArquivosFalso com porta. Vale quando a tela de leitura for refeita (histórias 10–11).
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/5-escrita-ajustes-chaves-acesso.md`
+  summary: A montagem do DI no MauiProgram (Sessao com IChaves, EstadoAparelho e Escritor criados cedo) não tem teste; um erro ali deixaria o app sem escrever.
+  evidence: O projeto do App é Android e nenhum teste o referencia. Fechar movendo os registros para um método de extensão testável, ou conferir no celular (abrir, conectar, mexer um ganho).
