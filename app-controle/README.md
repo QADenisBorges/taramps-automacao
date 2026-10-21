@@ -14,8 +14,11 @@ celular, nem com o R003.
 | Projeto | O que é |
 |---|---|
 | `src/BgsControle.Nucleo` | `net10.0`, sem Android: quadros do protocolo, autenticação, sessão (máquina de estados e trava de escrita), catálogo de parâmetros (consulta, decodificação, codificação de escrita), leitura completa e retrato, log com a senha mascarada. |
-| `src/BgsControle.App` | MAUI `net10.0-android`: BLE pela API do Android, senha no SecureStorage, tela. |
+| `src/BgsControle.Telas` | `net10.0`, sem MAUI: os ViewModels (hoje o `ConexaoViewModel`) e as abstrações do celular: `IDespachante` (thread da tela), `Comando`, `IArquivosApp` (arquivos privados), `IPreparoBluetooth` (permissão e Bluetooth ligado) e `TimeProvider` (prazos). |
+| `src/BgsControle.App` | MAUI `net10.0-android`: só o XAML e os adaptadores (`DespachanteMaui`, `ArquivosMaui`, `PreparoBluetoothAndroid`), o BLE pela API do Android e a senha no SecureStorage. |
 | `tests/BgsControle.Nucleo.Testes` | xUnit com transporte e cofre falsos. Roda no notebook, sem celular. |
+| `tests/BgsControle.Simulador` | Biblioteca só de testes: o `ProcessadorSimulado` (um `ITransporte` que responde no formato real do PRO 2.4BT, semeado com a leitura real de 18/10) e o `RelogioFalso`. **Nunca entra no APK**: nenhum projeto de `src/` o referencia (há um teste de arquitetura). O que não foi medido está em `tests/BgsControle.Simulador/SUPOSICOES.md`. |
+| `tests/BgsControle.Telas.Testes` | xUnit: o `ConexaoViewModel` e o simulador testados juntos, sem MAUI, e os testes de arquitetura. |
 
 ## Ferramentas
 
@@ -35,7 +38,10 @@ dotnet build src/BgsControle.App -t:InstallAndroidDependencies -f net10.0-androi
 
 ```
 dotnet test tests/BgsControle.Nucleo.Testes
+dotnet test tests/BgsControle.Telas.Testes
 ```
+
+Os dois rodam no notebook, sem celular e sem o processador. O segundo usa o processador simulado.
 
 ## Compilar
 
@@ -82,6 +88,9 @@ O botão "Mostrar o registro" mostra o log do BLE na tela, com a senha como `*00
 - A trava de escrita (`Sessao.EnviarAsync`) é a única porta para o BLE e só deixa passar as
   leituras do catálogo, cada código no seu escopo (com a sessão conectada), e o quadro da senha.
   Uma leitura fora do catálogo (`#004#`, `#081#4#`) e toda escrita são recusadas antes do BLE.
+- A leitura automática é do núcleo (`LeituraAutomatica`): uma leitura a cada entrada em
+  Conectado, nunca de novo enquanto continua conectado nem enquanto outra leitura roda. A tela
+  só acompanha e salva o retrato.
 - A leitura completa faz uma consulta por vez, ~30 ms entre envios, 5 s de prazo e uma nova
   tentativa para a consulta do Marco 1 que falhou (os extras são perguntados uma vez). Se a
   conexão cair, para e o retrato fica "incompleto".

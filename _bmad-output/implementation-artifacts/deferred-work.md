@@ -17,3 +17,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/2-catalogo-parametros-leitura-completa.md`
   summary: A leitura automática depois da senha, o "Ler de novo" e o JSON salvo (ConexaoViewModel) não têm teste automático.
   evidence: Não existe projeto de teste para o BgsControle.App (MAUI); tirar a linha `_ = LerAsync()` passaria em todos os testes. Mover a regra "ler uma vez ao entrar em Conectado" para o núcleo permitiria testá-la com o TransporteFalso.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/4-infraestrutura-testes-processador-simulado.md`
+  summary: O guarda do contador de leitura no ConexaoViewModel (salvamento antigo terminando durante uma leitura nova) não tem teste.
+  evidence: ArquivosFalso grava na hora; cobrir pede um ArquivosFalso com porta. Vale quando a tela de leitura for refeita (histórias 10–11).

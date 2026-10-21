@@ -2,8 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/BgsControle.App/BgsControle.App.csproj" />
     <Project Path="src/BgsControle.Nucleo/BgsControle.Nucleo.csproj" />
+    <Project Path="src/BgsControle.Telas/BgsControle.Telas.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BgsControle.Nucleo.Testes/BgsControle.Nucleo.Testes.csproj" />
+    <Project Path="tests/BgsControle.Simulador/BgsControle.Simulador.csproj" />
+    <Project Path="tests/BgsControle.Telas.Testes/BgsControle.Telas.Testes.csproj" />
   </Folder>
 </Solution>

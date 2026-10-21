@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    As telas sem MAUI (história 4): os ViewModels e as abstrações do que é do celular
+    (thread da tela, arquivos privados, permissões e Bluetooth ligado). O App só tem o XAML e
+    os adaptadores. Testado no notebook contra o processador simulado.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>BgsControle.Telas</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
+  </ItemGroup>
+
+</Project>

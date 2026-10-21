@@ -1,17 +1,17 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
-using BgsControle.App.Plataforma;
 using System.Globalization;
 using System.Text;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
 
-namespace BgsControle.App;
+namespace BgsControle.Telas;
 
-/// <summary>A tela de conexão: estado, firmware, senha, leitura completa e os pedidos ao Android.</summary>
-public sealed class ConexaoViewModel : INotifyPropertyChanged
+/// <summary>
+/// A tela de conexão: estado, firmware, senha, leitura completa e os pedidos ao celular. A
+/// leitura automática ao entrar em Conectado é do núcleo (<see cref="LeituraAutomatica"/>);
+/// aqui só se observa o resultado e se salva o retrato.
+/// </summary>
+public sealed class ConexaoViewModel : TelaBase
 {
     private const int LinhasDoRegistro = 60;
 
@@ -20,60 +20,87 @@ public sealed class ConexaoViewModel : INotifyPropertyChanged
 
     private readonly Sessao _sessao;
     private readonly LogBle _log;
-    private readonly LeitorCompleto _leitor;
+    private readonly LeituraAutomatica _leitura;
+    private readonly IArquivosApp _arquivos;
+    private readonly IPreparoBluetooth _preparo;
     private string? _mensagemDaTela;
     private string _senhaDigitada = "";
     private bool _registroVisivel;
     private bool _preparando;
-    private bool _conectadoAntes;
     private bool _lendo;
+    private int _leituraAtual; // muda a cada leitura: o fim de um salvamento antigo não encerra a nova
     private Retrato? _retrato;
     private string? _avisoLeitura;
 
-    public ConexaoViewModel(Sessao sessao, LogBle log, LeitorCompleto leitor)
+    public ConexaoViewModel(
+        Sessao sessao,
+        LogBle log,
+        LeituraAutomatica leitura,
+        IDespachante despachante,
+        IArquivosApp arquivos,
+        IPreparoBluetooth preparo,
+        TimeProvider relogio)
+        : base(despachante, relogio)
     {
         _sessao = sessao;
         _log = log;
-        _leitor = leitor;
-        _sessao.Mudou += () => MainThread.BeginInvokeOnMainThread(() =>
+        _leitura = leitura;
+        _arquivos = arquivos;
+        _preparo = preparo;
+        _sessao.Mudou += () => NaTela(() =>
         {
             _mensagemDaTela = null; // a mensagem nova da sessão vale mais
             Atualizar();
-            // A leitura completa roda sozinha logo depois de a senha ser aceita.
-            var conectado = _sessao.Estado == EstadoSessao.Conectado;
-            if (conectado && !_conectadoAntes)
-                _ = LerAsync();
-            _conectadoAntes = conectado;
         });
-        _log.Registrou += _ => MainThread.BeginInvokeOnMainThread(() => Avisar(nameof(Registro)));
-        _leitor.Avancou += r => MainThread.BeginInvokeOnMainThread(() =>
+        _log.Registrou += _ => NaTela(() => Avisar(nameof(Registro)));
+
+        // A leitura (automática ou "Ler de novo") é do núcleo; a tela só acompanha e salva.
+        _leitura.Comecou += () => NaTela(() =>
+        {
+            _leituraAtual++;
+            _lendo = true;
+            _retrato = null;
+            _avisoLeitura = null;
+            AtualizarLeitura();
+        });
+        _leitura.Avancou += r => NaTela(() =>
         {
             if (!_lendo)
                 return;
             _retrato = r;
             AtualizarLeitura();
         });
+        _leitura.Terminou += r => NaTela(() =>
+        {
+            _retrato = r;
+            AtualizarLeitura();
+            _ = SalvarAsync(r, _leituraAtual);
+        });
+        _leitura.Falhou += e => NaTela(() =>
+        {
+            _avisoLeitura = $"A leitura falhou ({e.GetType().Name}).";
+            _lendo = false;
+            AtualizarLeitura();
+        });
 
-        LerDeNovo = new Command(async () => await LerAsync());
-        Conectar = new Command(async () => await ConectarAsync());
-        EnviarSenha = new Command(async () => await EnviarSenhaAsync());
-        Desconectar = new Command(async () => await _sessao.DesconectarAsync());
-        EsquecerSenha = new Command(async () => await EsquecerAsync());
-        AlternarRegistro = new Command(() =>
+        LerDeNovo = new Comando(LerAsync);
+        Conectar = new Comando(ConectarAsync);
+        EnviarSenha = new Comando(EnviarSenhaAsync);
+        Desconectar = new Comando(_sessao.DesconectarAsync);
+        EsquecerSenha = new Comando(EsquecerAsync);
+        AlternarRegistro = new Comando(() =>
         {
             RegistroVisivel = !RegistroVisivel;
             Avisar(nameof(TextoBotaoRegistro));
         });
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public ICommand Conectar { get; }
-    public ICommand EnviarSenha { get; }
-    public ICommand Desconectar { get; }
-    public ICommand EsquecerSenha { get; }
-    public ICommand AlternarRegistro { get; }
-    public ICommand LerDeNovo { get; }
+    public Comando Conectar { get; }
+    public Comando EnviarSenha { get; }
+    public Comando Desconectar { get; }
+    public Comando EsquecerSenha { get; }
+    public Comando AlternarRegistro { get; }
+    public Comando LerDeNovo { get; }
 
     public string Resumo => _preparando ? "Preparando o Bluetooth…" : _sessao.Resumo;
     public string? Firmware => _sessao.Firmware;
@@ -183,38 +210,35 @@ public sealed class ConexaoViewModel : INotifyPropertyChanged
     private static string Segundos(TimeSpan? t) =>
         t is { } d ? $"{d.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',')} s" : "—";
 
-    /// <summary>Lê o aparelho inteiro e guarda o retrato em JSON.</summary>
+    /// <summary>"Ler de novo": pede a leitura ao núcleo, que avisa pelos eventos.</summary>
     private async Task LerAsync()
     {
-        if (_lendo || _leitor.Lendo || _sessao.Estado != EstadoSessao.Conectado)
+        if (_lendo)
             return;
-        _lendo = true;
-        _retrato = null;
-        _avisoLeitura = null;
-        AtualizarLeitura();
+        await _leitura.LerAsync();
+    }
+
+    /// <summary>Guarda o retrato em JSON. A leitura só acaba para a tela depois de salvar.</summary>
+    private async Task SalvarAsync(Retrato retrato, int leitura)
+    {
+        string? aviso = null;
         try
         {
-            // Fora da thread da tela: as respostas chegam pelas notificações.
-            var retrato = await Task.Run(() => _leitor.LerAsync());
-            _retrato = retrato;
-            try
-            {
-                await File.WriteAllTextAsync(Path.Combine(FileSystem.AppDataDirectory, ArquivoRetrato), retrato.ParaJson());
-            }
-            catch (Exception e)
-            {
-                _avisoLeitura = $"Não consegui salvar o retrato ({e.GetType().Name}).";
-            }
+            await _arquivos.GravarTextoAsync(ArquivoRetrato, retrato.ParaJson());
         }
         catch (Exception e)
         {
-            _avisoLeitura = $"A leitura falhou ({e.GetType().Name}).";
+            aviso = $"Não consegui salvar o retrato ({e.GetType().Name}).";
         }
-        finally
+        NaTela(() =>
         {
+            if (leitura != _leituraAtual)
+                return; // outra leitura já começou
+            if (aviso is not null)
+                _avisoLeitura = aviso;
             _lendo = false;
             AtualizarLeitura();
-        }
+        });
     }
 
     private void AtualizarLeitura()
@@ -235,8 +259,13 @@ public sealed class ConexaoViewModel : INotifyPropertyChanged
         Atualizar();
         try
         {
-            if (!await PrepararBluetoothAsync())
+            // Pede a permissão e o Bluetooth ligado ao celular, e explica o que falta.
+            var falta = await _preparo.PrepararAsync();
+            if (falta is not null)
+            {
+                _mensagemDaTela = falta;
                 return;
+            }
         }
         finally
         {
@@ -244,27 +273,6 @@ public sealed class ConexaoViewModel : INotifyPropertyChanged
             Atualizar();
         }
         await _sessao.ConectarAsync();
-    }
-
-    /// <summary>Pede a permissão e o Bluetooth ligado ao Android. Explica o que falta.</summary>
-    private async Task<bool> PrepararBluetoothAsync()
-    {
-        var status = await Permissions.CheckStatusAsync<PermissaoBluetooth>();
-        if (status != PermissionStatus.Granted)
-            status = await Permissions.RequestAsync<PermissaoBluetooth>();
-        if (status != PermissionStatus.Granted)
-        {
-            _mensagemDaTela = Sessao.MsgSemPermissao;
-            return false;
-        }
-
-        var contexto = Android.App.Application.Context;
-        if (!PedidoLigarBluetooth.Ligado(contexto) && !await PedidoLigarBluetooth.PedirAsync())
-        {
-            _mensagemDaTela = Sessao.MsgBluetoothDesligado;
-            return false;
-        }
-        return true;
     }
 
     private async Task EnviarSenhaAsync()
@@ -297,7 +305,4 @@ public sealed class ConexaoViewModel : INotifyPropertyChanged
         Avisar(nameof(Ocupado));
         Avisar(nameof(PodeLerDeNovo));
     }
-
-    private void Avisar([CallerMemberName] string? nome = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nome));
 }
