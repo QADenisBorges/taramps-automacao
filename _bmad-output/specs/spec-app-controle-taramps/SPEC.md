@@ -61,6 +61,9 @@ Uma visão a realizar, que nasceu de uma dor. Para regular o 2.1, o Denis depend
 - **CAP-13**
   - **intent:** A tela e a IA veem o mesmo estado ao vivo, e todo comando fica num histórico.
   - **success:** Uma mudança feita pela IA aparece na tela em até 1 s, e a IA lê na hora uma mudança feita na tela. O histórico mostra a origem (tela ou IA), a hora e o valor de cada comando. O uso ao mesmo tempo segue `porta-de-comandos.md`: um toque na tela pausa a tarefa da IA, e cada mudança da IA aparece como aviso.
+- **CAP-15**
+  - **intent:** O usuário monta uma playlist para cada memória com arquivos de áudio do celular e toca pelo app, com o som indo pelo Bluetooth ao processador (paridade com o Player do app da Taramps).
+  - **success:** Ao carregar uma memória, o Player mostra a playlist dela; tocar, pausar e pular funcionam; uma faixa cujo arquivo sumiu aparece como indisponível. Decisão do Denis em 21/10/2026.
 - **CAP-14**
   - **intent:** O app traz avisos customizados e interações que o app da Taramps não tem.
   - **success:** Há pelo menos um aviso customizado funcionando no teste 1 do sinal de sucesso, por exemplo ao sobrescrever uma memória.

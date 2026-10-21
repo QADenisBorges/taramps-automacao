@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Híbrido 2 · Console calmo</title>
+<style>
+/*
+  HÍBRIDO 2 · CONSOLE CALMO (puxa para D · Console Tátil)
+  Base inteira do Console Tátil: mesa grafite, tipo pesado, faders com capa e botão giratório.
+  Do Estúdio Noturno entra a calma do Início: um nome de memória grande, muito vazio,
+  canais sem botões repetidos e sem moldura de cartão. O canal inteiro é o alvo de toque.
+
+  Cores
+  --mesa         #101317  fundo do app
+  --tampo        #1A1F26  canais e blocos
+  --tampo-2      #252B34  trilho, botão em repouso
+  --borda        #313844  contorno
+  --capa-a       #3A424E  capa do fader (topo)
+  --capa-b       #262C35  capa do fader (base)
+  --texto        #FFFFFF  números e nomes
+  --apoio        #9AA4B2  texto de apoio
+  --apagado      #5F6875  escala e rótulos
+  --l            #6EA8FF  canal JBL L
+  --r            #C08BFF  canal JBL R
+  --sub          #FFC37A  canal Sub
+  --sub-fundo    #2A2318  bloco selecionado do Sub
+  --ok           #34D399  conectado
+  --parar        #FF4D4F  Parar IA
+  --ia           #C08BFF  faixa da IA (mesmo lilás da família)
+  --ia-fundo     #221A33  fundo da faixa da IA
+  Página de apresentação: #0A0C0F (fundo), #DDE3EA (texto)
+
+  Tipo: Segoe UI Variable Display / Roboto / system-ui. Números em peso 800, 28–72 px.
+  Nomes de canal em 800 maiúsculo. Alvos de toque de 48–72 px.
+*/
+:root{
+  --mesa:#101317; --tampo:#1A1F26; --tampo-2:#252B34; --borda:#313844; --capa-a:#3A424E; --capa-b:#262C35;
+  --texto:#FFFFFF; --apoio:#9AA4B2; --apagado:#5F6875;
+  --l:#6EA8FF; --r:#C08BFF; --sub:#FFC37A; --sub-fundo:#2A2318;
+  --ok:#34D399; --parar:#FF4D4F; --ia:#C08BFF; --ia-fundo:#221A33;
+  --fonte:"Segoe UI Variable Display","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0C0F;color:#DDE3EA;font-family:var(--fonte);padding:40px 32px 64px}
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--sub);text-transform:uppercase}
+.intro h1{font-size:46px;font-weight:800;letter-spacing:-.02em;margin:6px 0 12px;color:#fff;text-transform:uppercase}
+.intro h1 span{font-weight:300;color:var(--apoio)}
+.intro p{max-width:780px;font-size:16px;line-height:1.55;color:#B4BDC9}
+.intro .mix{margin-top:10px;font-size:14px;color:var(--apoio)}
+.intro .mix b{color:#fff;font-weight:800}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--apoio);font-weight:600}
+.amostra i{width:20px;height:20px;border-radius:7px;border:1px solid #39414D;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;max-width:1300px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:13px;color:var(--apoio);font-weight:600}
+figcaption b{color:#fff}
+
+.cel{width:390px;height:844px;background:var(--mesa);border-radius:48px;border:10px solid #232830;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;color:var(--texto);font-variant-numeric:tabular-nums}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;font-weight:600;color:var(--apoio)}
+.tela{flex:1;min-height:0;padding:6px 16px 14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.tela > *{flex:none}
+
+.topo{display:flex;justify-content:space-between;align-items:center;padding:0 2px}
+.marca{font-size:18px;font-weight:800;letter-spacing:.02em}
+.marca span{font-weight:400;color:var(--apoio)}
+.con{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ok)}
+.con::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--ok)}
+.rot{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--apagado);text-transform:uppercase}
+
+/* Início: herói calmo */
+.heroi{padding:18px 4px 0}
+.heroi .nome{font-size:76px;font-weight:800;letter-spacing:-.03em;line-height:.95;margin:6px 0 8px}
+.heroi .linha{font-size:14px;font-weight:600;color:var(--apoio)}
+.heroi .linha b{color:var(--texto);font-weight:800}
+.mems{display:flex;gap:8px}
+.mems span{height:48px;padding:0 14px;border-radius:14px;border:2px solid var(--borda);display:flex;align-items:center;font-size:13px;font-weight:800;color:var(--apoio)}
+.mems span.on{background:var(--texto);border-color:var(--texto);color:var(--mesa)}
+.vazio{flex:1 1 auto}
+.cab-canais{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px}
+.cab-canais span:last-child{font-size:12px;font-weight:600;color:var(--apoio)}
+
+.canais{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;height:372px}
+.canal{background:var(--tampo);border-radius:22px;padding:12px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;border-top:4px solid var(--cor)}
+.canal .nm{font-size:15px;font-weight:800;letter-spacing:.04em;color:var(--cor)}
+.canal .sd{font-size:11px;font-weight:600;color:var(--apagado);margin-top:-6px}
+.canal .gv{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.canal .gv small{font-size:12px;font-weight:600;color:var(--apoio)}
+.fader{flex:1;width:56px;position:relative;display:flex;justify-content:center;margin:6px 0}
+.fader::before{content:"";position:absolute;top:0;bottom:0;width:8px;border-radius:4px;background:var(--tampo-2)}
+.fader .nivel{position:absolute;bottom:0;width:8px;border-radius:4px;background:var(--cor)}
+.fader .zero{position:absolute;left:4px;right:4px;height:2px;background:var(--apagado)}
+.fader .cap{position:absolute;width:56px;height:30px;margin-bottom:-15px;border-radius:9px;background:linear-gradient(var(--capa-a),var(--capa-b));border:1px solid #4A5361;box-shadow:0 6px 12px rgba(0,0,0,.5)}
+.fader .cap::after{content:"";position:absolute;left:10px;right:10px;top:50%;height:2px;margin-top:-1px;background:var(--cor)}
+.canal .res{font-size:11px;font-weight:600;color:var(--apoio);text-align:center;line-height:1.45}
+.canal .res b{color:var(--texto);font-weight:700}
+
+.teclas{flex:none;height:72px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 12px 14px;border-top:1px solid #1D2229}
+.teclas span{border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--apagado);text-transform:uppercase}
+.teclas span.on{background:var(--tampo);color:var(--texto);box-shadow:inset 0 -3px 0 var(--sub)}
+
+/* Ajuste do Sub */
+.cab{display:flex;align-items:center;gap:12px}
+.cab .vol{width:48px;height:48px;border-radius:16px;background:var(--tampo);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;flex:none}
+.cab h2{font-size:30px;font-weight:800;letter-spacing:-.01em;color:var(--sub);line-height:1}
+.cab h2 small{display:block;font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0;margin-top:4px}
+.giro-area{position:relative;width:260px;height:212px;align-self:center}
+.botao-giro{position:absolute;left:30px;top:0;width:200px;height:200px;border-radius:50%;
+  background:conic-gradient(from 225deg,var(--sub) 0deg 214deg,var(--tampo-2) 214deg 270deg,transparent 270deg 360deg)}
+.botao-giro::before{content:"";position:absolute;inset:14px;border-radius:50%;background:var(--mesa)}
+.botao-giro .disco{position:absolute;inset:26px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#3A424E,#1A1F26 70%);border:1px solid #4A5361;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.botao-giro .disco small{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--apoio)}
+.botao-giro .disco b{font-size:42px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.botao-giro .disco span{font-size:13px;font-weight:700;color:var(--apoio)}
+.botao-giro .marca-giro{position:absolute;left:50%;top:50%;width:4px;height:93px;margin-left:-2px;transform-origin:50% 0;transform:rotate(259deg)}
+.botao-giro .marca-giro::after{content:"";position:absolute;bottom:0;left:-4px;width:12px;height:12px;border-radius:50%;background:var(--texto);box-shadow:0 0 10px var(--sub)}
+.giro-area .esc{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:800;color:var(--apagado)}
+.passo{display:grid;grid-template-columns:72px 1fr 72px;gap:10px;align-items:center}
+.passo .b{height:72px;border-radius:22px;background:var(--tampo-2);border:2px solid var(--borda);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:500}
+.passo .meio{text-align:center;font-size:12px;font-weight:600;color:var(--apoio);line-height:1.45}
+.passo .meio b{color:var(--texto);font-weight:800}
+.grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grade > span{height:58px;border-radius:18px;background:var(--tampo);border:2px solid transparent;padding:7px 14px;display:flex;flex-direction:column;justify-content:center}
+.grade small{font-size:11px;font-weight:700;color:var(--apagado);letter-spacing:.04em;text-transform:uppercase}
+.grade b{font-size:18px;font-weight:800}
+.grade b i{font-style:normal;font-size:12px;font-weight:600;color:var(--apoio);margin-left:4px}
+.grade > span.on{border-color:var(--sub);background:var(--sub-fundo)}
+.grade > span.on small{color:var(--sub)}
+.grade > span.inteira{grid-column:1 / span 2;flex-direction:row;align-items:center;justify-content:space-between}
+.grade > span.fase{padding:6px}
+.grade .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;height:100%}
+.grade .seg i{font-style:normal;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:var(--apoio)}
+.grade .seg i small{font-size:9px}
+.grade .seg i.on{background:var(--texto);color:var(--mesa)}
+.grade .seg i.on small{color:#4A5260}
+.salvar{height:56px;border-radius:18px;background:var(--texto);color:var(--mesa);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;letter-spacing:.02em}
+
+/* Estado: IA ajustando */
+.ia{border-radius:22px;background:var(--ia-fundo);border:2px solid var(--ia);padding:14px;display:flex;flex-direction:column;gap:10px}
+.ia .linha{display:flex;align-items:center;gap:10px}
+.ia .pulso{width:14px;height:14px;border-radius:50%;background:var(--ia);box-shadow:0 0 0 6px rgba(192,139,255,.25);flex:none}
+.ia .linha b{font-size:18px;font-weight:800}
+.ia p{font-size:13px;font-weight:600;color:#CDBDF0;line-height:1.4}
+.ia .parar{height:64px;border-radius:18px;background:var(--parar);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;letter-spacing:.04em}
+.heroi.ia-mem{padding-top:6px}
+.heroi.ia-mem .nome{font-size:56px}
+.registro{list-style:none;background:var(--tampo);border-radius:18px;padding:4px 14px}
+.registro li{display:flex;gap:12px;font-size:13px;font-weight:600;color:var(--apoio);padding:9px 0;border-bottom:1px solid var(--tampo-2)}
+.registro li:last-child{border-bottom:0}
+.registro li time{width:44px;flex:none;color:var(--apagado);font-weight:800}
+.registro li.agora{color:var(--texto)}
+.registro li.agora time{color:var(--ia)}
+.travado .canal{opacity:.38}
+.cadeado{font-size:12px;font-weight:700;color:var(--apoio);text-align:center}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Híbrido 2 de 3 · BGS Controle</div>
+  <h1>Console <span>calmo</span></h1>
+  <p>O Console Tátil como base: mesa grafite, números pesados, faders com capa e o botão giratório na regulagem, tudo do tamanho do dedo. Do Estúdio Noturno vem a calma do Início: a memória em letras enormes, bastante vazio e os três canais sem botões repetidos, porque o canal inteiro é o toque para ajustar.</p>
+  <p class="mix"><b>De A:</b> herói da memória com vazio, um só aviso de toque, registro do que a IA fez. <b>De D:</b> paleta, peso 800, faders, botão giratório, − e + de 72 px, blocos, PARAR IA largo.</p>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#101317"></i>#101317 mesa</span>
+    <span class="amostra"><i style="background:#1A1F26"></i>#1A1F26 tampo</span>
+    <span class="amostra"><i style="background:#252B34"></i>#252B34 trilho</span>
+    <span class="amostra"><i style="background:#9AA4B2"></i>#9AA4B2 apoio</span>
+    <span class="amostra"><i style="background:#6EA8FF"></i>#6EA8FF JBL L</span>
+    <span class="amostra"><i style="background:#C08BFF"></i>#C08BFF JBL R · IA</span>
+    <span class="amostra"><i style="background:#FFC37A"></i>#FFC37A Sub</span>
+    <span class="amostra"><i style="background:#34D399"></i>#34D399 conectado</span>
+    <span class="amostra"><i style="background:#FF4D4F"></i>#FF4D4F parar</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- TELA PRINCIPAL · INÍCIO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:09</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca">BGS <span>Controle</span></div>
+      <div class="con">Conectado · firmware R003</div>
+    </div>
+
+    <section class="heroi">
+      <div class="rot">Memória 1</div>
+      <div class="nome">SPL</div>
+      <div class="linha">Master <b>0,0 dB</b> · Remote out <b>ligado</b></div>
+    </section>
+    <div class="mems"><span class="on">1 SPL</span><span>2 MUSICA ORIG</span><span>3 FILME</span></div>
+
+    <div class="vazio"></div>
+
+    <div class="cab-canais"><span class="rot">Saídas</span><span>Toque num canal para ajustar</span></div>
+    <div class="canais">
+      <div class="canal" style="--cor:#6EA8FF">
+        <div class="nm">JBL L</div><div class="sd">Saída 1 · rota B</div>
+        <div class="gv">+6,0<small> dB</small></div>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="zero" style="bottom:75%"></i><i class="cap" style="bottom:85%"></i></div>
+        <div class="res">PA <b>200 Hz</b> LR24<br>PB <b>OFF</b><br>Lim <b>−7,0 dB</b><br>0 cm · 0°</div>
+      </div>
+      <div class="canal" style="--cor:#C08BFF">
+        <div class="nm">JBL R</div><div class="sd">Saída 2 · rota A</div>
+        <div class="gv">+6,0<small> dB</small></div>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="zero" style="bottom:75%"></i><i class="cap" style="bottom:85%"></i></div>
+        <div class="res">PA <b>200 Hz</b> LR24<br>PB <b>OFF</b><br>Lim <b>−7,0 dB</b><br>0 cm · 0°</div>
+      </div>
+      <div class="canal" style="--cor:#FFC37A">
+        <div class="nm">SUB</div><div class="sd">3+4 ponte · A+B</div>
+        <div class="gv">+2,6<small> dB</small></div>
+        <div class="fader"><i class="nivel" style="height:79.3%"></i><i class="zero" style="bottom:75%"></i><i class="cap" style="bottom:79.3%"></i></div>
+        <div class="res">PA <b>40 Hz</b> BT24<br>PB <b>200 Hz</b> LR24<br>Lim <b>−9,0 dB</b><br>0 cm · 0°</div>
+      </div>
+    </div>
+  </div>
+  <nav class="teclas"><span class="on">Início</span><span>EQ</span><span>Memórias</span><span>IA</span></nav>
+</div>
+<figcaption><b>Início</b> · tela principal</figcaption>
+</figure>
+
+<!-- TELA SECUNDÁRIA · AJUSTE DO SUB -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:11</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="cab">
+      <span class="vol">‹</span>
+      <h2>SUB<small>Saídas 3+4 em ponte · rota A+B · memória 1</small></h2>
+    </div>
+
+    <div class="giro-area">
+      <div class="botao-giro">
+        <i class="marca-giro"></i>
+        <div class="disco"><small>GANHO</small><b>+2,6</b><span>dB</span></div>
+      </div>
+      <span class="esc" style="left:48px;top:182px">−45</span>
+      <span class="esc" style="left:237px;top:56px">0</span>
+      <span class="esc" style="left:212px;top:182px">+15</span>
+    </div>
+
+    <div class="passo">
+      <span class="b">−</span>
+      <span class="meio">Gire ou toque em − e +<br><b>passo 0,1 dB</b></span>
+      <span class="b">+</span>
+    </div>
+
+    <div class="grade">
+      <span class="on"><small>Ganho</small><b>+2,6<i>dB</i></b></span>
+      <span><small>Limitador</small><b>−9,0<i>dB</i></b></span>
+      <span><small>Passa-alta</small><b>40 Hz<i>BT24</i></b></span>
+      <span><small>Passa-baixa</small><b>200 Hz<i>LR24</i></b></span>
+      <span><small>Atraso</small><b>0<i>cm</i></b></span>
+      <span class="fase"><span class="seg"><i class="on"><small>FASE</small>0°</i><i><small>FASE</small>180°</i></span></span>
+      <span class="inteira"><span><small>EQ de saída</small><br><b>Plano</b></span><b><i>abrir ›</i></b></span>
+    </div>
+
+    <div class="salvar">SALVAR NA MEMÓRIA 1</div>
+  </div>
+</div>
+<figcaption><b>Ajuste do Sub</b> · regulagem</figcaption>
+</figure>
+
+<!-- ESTADO · IA AJUSTANDO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:40</span><span>BT · Wi-Fi · 64%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca">BGS <span>Controle</span></div>
+      <div class="con">Conectado · firmware R003</div>
+    </div>
+
+    <div class="ia">
+      <div class="linha"><i class="pulso"></i><b>IA ajustando o EQ da FILME</b></div>
+      <p>Comandos vindos do notebook. Cada mudança aparece aqui na hora.</p>
+      <div class="parar">PARAR IA</div>
+    </div>
+
+    <section class="heroi ia-mem">
+      <div class="rot">Memória 3</div>
+      <div class="nome">FILME</div>
+      <div class="linha">Só a IA mexe nela agora</div>
+    </section>
+
+    <ul class="registro">
+      <li class="agora"><time>agora</time>Mexendo no EQ gráfico, faixa da voz</li>
+      <li><time>21:39</time>Leu o EQ gráfico da memória 3</li>
+      <li><time>21:38</time>Abriu a memória 3 FILME</li>
+    </ul>
+
+    <div class="canais travado" style="height:auto;flex:1 1 auto;min-height:0">
+      <div class="canal" style="--cor:#6EA8FF"><div class="nm">JBL L</div>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="cap" style="bottom:85%"></i></div></div>
+      <div class="canal" style="--cor:#C08BFF"><div class="nm">JBL R</div>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="cap" style="bottom:85%"></i></div></div>
+      <div class="canal" style="--cor:#FFC37A"><div class="nm">SUB</div>
+        <div class="fader"><i class="nivel" style="height:79.3%"></i><i class="cap" style="bottom:79.3%"></i></div></div>
+    </div>
+    <div class="cadeado">Canais travados enquanto a IA trabalha</div>
+  </div>
+  <nav class="teclas"><span>Início</span><span>EQ</span><span>Memórias</span><span class="on">IA</span></nav>
+</div>
+<figcaption><b>Estado:</b> IA ajustando o EQ da FILME</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

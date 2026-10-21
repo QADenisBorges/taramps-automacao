@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Híbrido 1 · Noturno com controles</title>
+<style>
+/*
+  HÍBRIDO 1 · NOTURNO COM CONTROLES (puxa para A · Estúdio Noturno)
+  Base inteira do Estúdio Noturno: preto absoluto, números finos, a luz da BGS marcando cada saída.
+  Do Console Tátil entra só o essencial para regular: botões − e + de 56 px, pino do fader maior,
+  ajustes secundários em blocos tocáveis de 68 px e o botão Conectar do tamanho do polegar.
+
+  Cores
+  --palco        #000000  fundo do app
+  --sup-1        #1C1C1E  cartões e blocos
+  --sup-2        #2C2C2E  trilho, contorno, botão − e +
+  --sup-3        #232325  divisórias e grade do gráfico
+  --texto        #F5F5F7  texto principal
+  --apoio        #A1A1A6  texto de apoio (8,2:1 sobre o preto)
+  --apagado      #6E6E73  rótulos e escalas
+  --luz-fria     #8FB4FF  JBL L
+  --luz-lilas    #C59BFF  JBL R
+  --luz-quente   #FFD6A8  Sub
+  --quente-esc   #6E5A47  início do preenchimento do fader do Sub
+  --ok           #30D158  conectado
+  --queda        #FF453A  sem conexão
+  Página de apresentação: #111113 (fundo), #E5E5EA (texto)
+
+  Tipo: Segoe UI Variable Display / Roboto / system-ui. Valores grandes em peso 200,
+  rótulos em 500 maiúsculo com espaçamento 0,14em. Números sempre tabulares.
+  Alvos de toque: 56 px nos botões − e +, 68 px nos blocos, 56 px no Conectar.
+*/
+:root{
+  --palco:#000000; --sup-1:#1C1C1E; --sup-2:#2C2C2E; --sup-3:#232325;
+  --texto:#F5F5F7; --apoio:#A1A1A6; --apagado:#6E6E73;
+  --luz-fria:#8FB4FF; --luz-lilas:#C59BFF; --luz-quente:#FFD6A8; --quente-esc:#6E5A47;
+  --ok:#30D158; --queda:#FF453A;
+  --fonte:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111113;color:#E5E5EA;font-family:var(--fonte);padding:40px 32px 64px}
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--apoio)}
+.intro h1{font-weight:200;font-size:44px;letter-spacing:-.02em;margin:6px 0 12px}
+.intro h1 b{font-weight:600}
+.intro p{max-width:780px;font-size:16px;line-height:1.55;color:#C7C7CC}
+.intro .mix{margin-top:10px;font-size:14px;color:var(--apoio)}
+.intro .mix b{color:#F5F5F7;font-weight:600}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--apoio);font-variant-numeric:tabular-nums}
+.amostra i{width:18px;height:18px;border-radius:5px;border:1px solid #3A3A3C;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;max-width:1300px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:13px;color:var(--apoio);letter-spacing:.04em}
+figcaption b{color:#F5F5F7;font-weight:600}
+
+/* Moldura */
+.cel{width:390px;height:844px;background:var(--palco);border-radius:46px;border:10px solid #2A2A2D;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;
+  font-variant-numeric:tabular-nums;color:var(--texto)}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:13px;color:var(--apoio)}
+.tela{flex:1;min-height:0;padding:6px 18px 12px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.tela > *{flex:none}
+
+.topo{display:flex;justify-content:space-between;align-items:center}
+.marca{font-size:22px;font-weight:200;letter-spacing:-.01em}
+.marca b{font-weight:600;letter-spacing:.02em}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--apoio);background:var(--sup-1);
+  border:1px solid var(--sup-2);border-radius:999px;padding:6px 11px;white-space:nowrap}
+.ponto{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.ponto.caiu{background:var(--queda);box-shadow:0 0 8px var(--queda)}
+.rotulo{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--apagado)}
+
+/* Início */
+.memoria{background:var(--sup-1);border-radius:20px;padding:16px 18px 14px;position:relative;overflow:hidden}
+.memoria::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;
+  background:conic-gradient(from 200deg,var(--luz-fria),var(--luz-lilas),var(--luz-quente),var(--luz-fria));
+  -webkit-mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);
+  mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);opacity:.85}
+.memoria .nome{font-size:52px;font-weight:200;letter-spacing:-.02em;line-height:1;margin:6px 0 2px}
+.memoria .sub{font-size:13px;color:var(--apoio)}
+.mems{display:flex;gap:6px;margin-top:14px}
+.mems span{flex:1;text-align:center;font-size:12px;padding:10px 4px;border-radius:10px;border:1px solid var(--sup-2);color:var(--apoio)}
+.mems span.on{background:var(--texto);color:#000;border-color:var(--texto);font-weight:600}
+
+.cabeca{display:flex;justify-content:space-between;align-items:baseline}
+.cabeca .ex{font-size:12px;color:var(--apoio)}
+.saidas{display:flex;flex-direction:column;gap:10px}
+.saida{background:var(--sup-1);border-radius:18px;padding:13px 14px 13px 16px;display:grid;
+  grid-template-columns:1fr 76px;gap:1px 10px;position:relative}
+.saida::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--cor)}
+.saida .n{font-size:16px;font-weight:600}
+.saida .n small{font-size:12px;font-weight:400;color:var(--apoio);margin-left:6px}
+.saida .g{font-size:30px;font-weight:200;letter-spacing:-.02em;line-height:1.1}
+.saida .g small{font-size:13px;color:var(--apoio);margin-left:2px}
+.saida .r{font-size:12px;color:var(--apoio);line-height:1.5}
+.saida svg{grid-row:1 / span 2;grid-column:2;align-self:center}
+.saida .aj{grid-column:2;grid-row:3;justify-self:end;align-self:end;font-size:12px;color:var(--cor);font-weight:600}
+.rodape-info{font-size:12px;color:var(--apagado);display:flex;gap:14px}
+.rodape-info b{color:var(--apoio);font-weight:500}
+
+.nav{flex:none;height:74px;border-top:1px solid var(--sup-3);display:flex;justify-content:space-around;align-items:center;padding-bottom:8px;background:var(--palco)}
+.nav span{font-size:11px;color:var(--apagado);display:flex;flex-direction:column;align-items:center;gap:5px}
+.nav span::before{content:"";width:22px;height:4px;border-radius:2px;background:var(--sup-2)}
+.nav span.on{color:var(--texto)}
+.nav span.on::before{background:linear-gradient(90deg,var(--luz-fria),var(--luz-lilas),var(--luz-quente))}
+
+/* Ajuste do Sub */
+.cab-aj{display:flex;align-items:center;gap:12px}
+.voltar{width:44px;height:44px;border-radius:50%;background:var(--sup-1);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--apoio);flex:none}
+.cab-aj h2{font-size:38px;font-weight:200;letter-spacing:-.02em;line-height:1.15;flex:1}
+.cab-aj p{font-size:12px;color:var(--apoio);text-align:right;line-height:1.4}
+.bloco{background:var(--sup-1);border-radius:18px;padding:13px 16px}
+.ganho{display:flex;justify-content:space-between;align-items:baseline}
+.ganho .v{font-size:44px;font-weight:200;letter-spacing:-.02em;color:var(--luz-quente);line-height:1}
+.ganho .v small{font-size:16px;color:var(--apoio)}
+.controle{display:grid;grid-template-columns:56px 1fr 56px;gap:18px;align-items:center;margin:10px 0 2px}
+.controle .b{height:56px;border-radius:16px;background:var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:200}
+.trilho{height:6px;border-radius:3px;background:var(--sup-2);position:relative}
+.trilho .cheio{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:linear-gradient(90deg,var(--quente-esc),var(--luz-quente))}
+.trilho .zero{position:absolute;top:-6px;bottom:-6px;width:1px;background:var(--apagado)}
+.trilho .pino{position:absolute;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;border-radius:50%;background:var(--texto);box-shadow:0 0 0 7px rgba(255,214,168,.18)}
+.faixa{position:relative}
+.escala{position:absolute;left:0;right:0;top:26px;height:12px;font-size:11px;color:var(--apagado)}
+.escala span{position:absolute;top:0;transform:translateX(-50%)}
+.cross-cab{display:flex;justify-content:space-between;align-items:baseline}
+.cross-cab span:last-child{font-size:11px;color:var(--apagado)}
+.cross-leg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.cross-leg span{height:44px;border-radius:12px;border:1px solid var(--sup-2);display:flex;flex-direction:column;justify-content:center;padding:0 12px;font-size:11px;color:var(--apagado)}
+.cross-leg span b{font-size:15px;font-weight:400;color:var(--texto)}
+.cross-leg span b i{font-style:normal;font-size:12px;color:var(--apoio);margin-left:4px}
+.blocos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.blocos > span{height:68px;border-radius:16px;background:var(--sup-1);padding:9px 14px;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.blocos small{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--apagado)}
+.blocos b{font-size:22px;font-weight:200;letter-spacing:-.01em;line-height:1.1}
+.blocos b i{font-style:normal;font-size:12px;color:var(--apoio);margin-left:3px}
+.blocos em{font-style:normal;font-size:10px;color:var(--apagado)}
+.fase{display:flex;gap:6px;margin-top:3px}
+.fase i{font-style:normal;flex:1;text-align:center;height:28px;line-height:28px;border-radius:9px;border:1px solid var(--sup-2);font-size:14px;color:var(--apoio)}
+.fase i.on{background:var(--texto);color:#000;border-color:var(--texto);font-weight:600}
+.botao{display:flex;align-items:center;justify-content:center;height:52px;border-radius:14px;font-size:15px;font-weight:600}
+.botao.claro{background:var(--texto);color:#000}
+.dica{font-size:12px;color:var(--apagado);text-align:center}
+
+/* Estado: a conexão caiu */
+.queda{background:var(--sup-1);border-radius:20px;padding:18px 18px 16px;position:relative;overflow:hidden}
+.queda h3{font-size:34px;font-weight:200;letter-spacing:-.02em;line-height:1.05;margin:6px 0 8px}
+.queda p{font-size:14px;line-height:1.5;color:var(--apoio);max-width:290px}
+.queda ol{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.queda li{display:flex;gap:10px;font-size:14px;color:var(--texto);align-items:center}
+.queda li span{width:22px;height:22px;border-radius:50%;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--apoio);flex:none}
+.conectar{height:56px;border-radius:16px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;margin-top:16px}
+.apagado .saida{opacity:.42}
+.apagado .saida::before{background:var(--apagado)}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Híbrido 1 de 3 · BGS Controle</div>
+  <h1><b>Noturno</b> com controles</h1>
+  <p>O Estúdio Noturno quase inteiro: preto absoluto, números finos e a luz da BGS em cada saída, com o Início calmo de sempre. Do Console Tátil entra só o que faz a regulagem caber no dedo: − e + grandes ao lado do fader, um pino maior para arrastar e os ajustes menores em blocos de toque, ainda no traço fino do Noturno.</p>
+  <p class="mix"><b>De A:</b> tudo do Início, a paleta, o peso 200, o gráfico do crossover. <b>De D:</b> botões − e +, pino de 32 px, blocos de 68 px, fase em dois botões, Conectar largo.</p>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#000000"></i>#000000 palco</span>
+    <span class="amostra"><i style="background:#1C1C1E"></i>#1C1C1E cartão</span>
+    <span class="amostra"><i style="background:#2C2C2E"></i>#2C2C2E trilho</span>
+    <span class="amostra"><i style="background:#F5F5F7"></i>#F5F5F7 texto</span>
+    <span class="amostra"><i style="background:#A1A1A6"></i>#A1A1A6 apoio</span>
+    <span class="amostra"><i style="background:#8FB4FF"></i>#8FB4FF JBL L</span>
+    <span class="amostra"><i style="background:#C59BFF"></i>#C59BFF JBL R</span>
+    <span class="amostra"><i style="background:#FFD6A8"></i>#FFD6A8 Sub</span>
+    <span class="amostra"><i style="background:#30D158"></i>#30D158 conectado</span>
+    <span class="amostra"><i style="background:#FF453A"></i>#FF453A sem conexão</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- TELA PRINCIPAL · INÍCIO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:09</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto"></span>Conectado · firmware R003</span>
+    </div>
+
+    <section class="memoria">
+      <div class="rotulo">Memória em uso</div>
+      <div class="nome">SPL</div>
+      <div class="sub">Memória 1 · Master 0,0 dB</div>
+      <div class="mems"><span class="on">1 SPL</span><span>2 MUSICA ORIG</span><span>3 FILME</span></div>
+    </section>
+
+    <div class="cabeca"><span class="rotulo">Saídas</span><span class="ex">Toque para ajustar</span></div>
+    <div class="saidas">
+      <article class="saida" style="--cor:#8FB4FF">
+        <div class="n">JBL L<small>Saída 1 · rota B</small></div>
+        <div class="g">+6,0<small>dB</small></div>
+        <div class="r">PA 200 Hz LR24 · PB OFF<br>Limitador −7,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 18 36, 22 10, 30 7 L 74 7" fill="none" stroke="#8FB4FF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#C59BFF">
+        <div class="n">JBL R<small>Saída 2 · rota A</small></div>
+        <div class="g">+6,0<small>dB</small></div>
+        <div class="r">PA 200 Hz LR24 · PB OFF<br>Limitador −7,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 18 36, 22 10, 30 7 L 74 7" fill="none" stroke="#C59BFF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#FFD6A8">
+        <div class="n">Sub<small>Saídas 3+4 em ponte · A+B</small></div>
+        <div class="g">+2,6<small>dB</small></div>
+        <div class="r">PA 40 Hz BT24 · PB 200 Hz LR24<br>Limitador −9,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 34 C 5 18, 7 9, 12 8 L 22 8 C 27 8, 29 27, 36 36" fill="none" stroke="#FFD6A8" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+    </div>
+    <div class="rodape-info"><span>Remote out <b>ligado</b></span><span>PA passa-alta · PB passa-baixa</span></div>
+  </div>
+  <nav class="nav"><span class="on">Início</span><span>EQ</span><span>Memórias</span><span>IA</span></nav>
+</div>
+<figcaption><b>Início</b> · tela principal</figcaption>
+</figure>
+
+<!-- TELA SECUNDÁRIA · AJUSTE DO SUB -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:11</span><span>BT · 82%</span></div>
+  <div class="tela" style="gap:10px">
+    <div class="cab-aj">
+      <span class="voltar">‹</span>
+      <h2>Sub</h2>
+      <p>Saídas 3+4 em ponte<br>rota A+B · memória 1 SPL</p>
+    </div>
+
+    <section class="bloco">
+      <div class="ganho"><span class="rotulo">Ganho</span><span class="v">+2,6<small> dB</small></span></div>
+      <div class="controle">
+        <span class="b">−</span>
+        <div class="faixa"><div class="trilho"><div class="cheio" style="width:79.3%"></div><i class="zero" style="left:75%"></i><div class="pino" style="left:79.3%"></div></div>
+          <div class="escala"><span style="left:0">−45</span><span style="left:75%">0</span><span style="left:100%">+15</span></div></div>
+        <span class="b">+</span>
+      </div>
+    </section>
+
+    <section class="bloco">
+      <div class="cross-cab"><span class="rotulo">Crossover</span><span>arraste os pontos</span></div>
+      <svg width="100%" height="96" viewBox="0 0 300 96" preserveAspectRatio="none" style="display:block;margin-top:6px">
+        <defs><linearGradient id="gq" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#FFD6A8" stop-opacity=".28"/><stop offset="1" stop-color="#FFD6A8" stop-opacity="0"/></linearGradient></defs>
+        <g stroke="#232325"><line x1="0" y1="20" x2="300" y2="20"/><line x1="0" y1="50" x2="300" y2="50"/><line x1="0" y1="80" x2="300" y2="80"/>
+        <line x1="90" y1="0" x2="90" y2="84"/><line x1="179" y1="0" x2="179" y2="84"/><line x1="269" y1="0" x2="269" y2="84"/></g>
+        <path d="M0 84 C 20 64, 34 24, 58 20 L 106 20 C 118 20, 128 56, 148 84 Z" fill="url(#gq)"/>
+        <path d="M0 84 C 20 64, 34 24, 58 20 L 106 20 C 118 20, 128 56, 148 84" fill="none" stroke="#FFD6A8" stroke-width="2.5"/>
+        <circle cx="54" cy="23" r="13" fill="#FFD6A8" fill-opacity=".16"/><circle cx="54" cy="23" r="7" fill="#000" stroke="#F5F5F7" stroke-width="2"/>
+        <circle cx="117" cy="32" r="13" fill="#FFD6A8" fill-opacity=".16"/><circle cx="117" cy="32" r="7" fill="#000" stroke="#F5F5F7" stroke-width="2"/>
+        <g fill="#6E6E73" font-size="10" font-family="Segoe UI, Roboto, sans-serif"><text x="2" y="95">10</text><text x="82" y="95">100</text><text x="172" y="95">1 k</text><text x="258" y="95">10 k</text></g>
+      </svg>
+      <div class="cross-leg">
+        <span>Passa-alta<b>40 Hz<i>BT24</i></b></span>
+        <span>Passa-baixa<b>200 Hz<i>LR24</i></b></span>
+      </div>
+    </section>
+
+    <div class="blocos">
+      <span><small>Limitador</small><b>−9,0<i>dB</i></b><em>−48,0 a 0,0 · OFF</em></span>
+      <span><small>Atraso</small><b>0<i>cm</i></b><em>0 a 275 cm</em></span>
+      <span><small>Fase</small><div class="fase"><i class="on">0°</i><i>180°</i></div></span>
+      <span><small>EQ de saída</small><b>Plano</b><em>tocar para abrir</em></span>
+    </div>
+
+    <span class="botao claro">Salvar na memória 1</span>
+    <div class="dica">Cada mudança já toca no aparelho. Salvar grava na memória.</div>
+  </div>
+  <nav class="nav"><span class="on">Início</span><span>EQ</span><span>Memórias</span><span>IA</span></nav>
+</div>
+<figcaption><b>Ajuste do Sub</b> · regulagem</figcaption>
+</figure>
+
+<!-- ESTADO · A CONEXÃO CAIU -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:15</span><span>82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto caiu"></span>Sem conexão</span>
+    </div>
+
+    <section class="queda">
+      <div class="rotulo">Bluetooth</div>
+      <h3>A conexão caiu</h3>
+      <p>O processador parou de responder. Nada mudou no som que está tocando.</p>
+      <ol>
+        <li><span>1</span>Confira se o processador está ligado.</li>
+        <li><span>2</span>Chegue o celular mais perto dele.</li>
+      </ol>
+      <div class="conectar">Conectar</div>
+    </section>
+
+    <div class="cabeca"><span class="rotulo">Última leitura · 10:12</span><span class="ex">Memória 1 SPL</span></div>
+    <div class="saidas apagado">
+      <article class="saida" style="--cor:#8FB4FF;grid-template-columns:1fr">
+        <div class="n">JBL L<small>Saída 1 · rota B</small></div>
+        <div class="r">+6,0 dB · PA 200 Hz LR24 · Limitador −7,0 dB</div>
+      </article>
+      <article class="saida" style="--cor:#C59BFF;grid-template-columns:1fr">
+        <div class="n">JBL R<small>Saída 2 · rota A</small></div>
+        <div class="r">+6,0 dB · PA 200 Hz LR24 · Limitador −7,0 dB</div>
+      </article>
+      <article class="saida" style="--cor:#FFD6A8;grid-template-columns:1fr">
+        <div class="n">Sub<small>Saídas 3+4 em ponte · A+B</small></div>
+        <div class="r">+2,6 dB · 40 a 200 Hz · Limitador −9,0 dB</div>
+      </article>
+    </div>
+  </div>
+  <nav class="nav"><span class="on">Início</span><span>EQ</span><span>Memórias</span><span>IA</span></nav>
+</div>
+<figcaption><b>Estado:</b> a conexão caiu</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

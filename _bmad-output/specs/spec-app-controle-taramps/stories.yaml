@@ -67,6 +67,15 @@
   description: >-
     Presets próprios no celular (salvar, aplicar, renomear, apagar) e o
     conhecimento herdado embutido na primeira abertura (CAP-5, CAP-6).
+- id: "8b"
+  title: Player com uma playlist por memória
+  description: >-
+    Uma playlist por memória, montada com arquivos de áudio do celular;
+    tocar, pausar, pular e ordenar; o som vai pelo Bluetooth ao processador
+    (CAP-15).
+  invoke_dev_with: >-
+    Decisão do Denis no UX de 21/10. Telas pela história 11; aqui ficam o
+    núcleo (playlists por memória, persistência) e o ViewModel testado.
 - id: "9a"
   title: Histórico, estado ao vivo e uso simultâneo
   description: >-
@@ -94,7 +103,7 @@
   title: Telas, parte 2 — gerador, monitoração, aparelho, chaves, presets, IA e histórico
   description: >-
     XAML e navegação das demais telas, seguindo o DESIGN.md e o EXPERIENCE.md
-    (CAP-5, CAP-7 a CAP-13).
+    (CAP-5, CAP-7 a CAP-13, CAP-15).
 - id: "12"
   title: Integração e testes no aparelho real
   description: >-
