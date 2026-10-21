@@ -1,4 +1,8 @@
-# Pedaço 1 da ordem de entrega (conectar e ler). Os pedaços 2 a 4 entram depois.
+# Ordem de entrega do POC 1 (replanejada em 21/10/2026 com o Denis).
+# 1 e 2 já foram feitas no aparelho. De 3 a 11, tudo é desenvolvido sem o processador:
+# o mock (processador simulado) vive só nos testes, nunca no APK. A 12 liga tudo no
+# aparelho real. As antigas histórias 3 (telas de leitura) e 4 (paridade) foram
+# absorvidas pelas novas 10–11 e 12.
 - id: "1"
   title: Esqueleto do app Android e conexão com o processador
   description: >-
@@ -6,33 +10,99 @@
     e lê o firmware, entrando em modo só leitura se não for R003 (CAP-1).
   spec_checkpoint: true
   done_checkpoint: true
-  invoke_dev_with: >-
-    A tecnologia ainda não foi decidida: proponha no plano, para o Denis
-    revisar (recomendação: Kotlin nativo, a mesma base do app da Taramps).
-    Tudo é escrito do zero; o código em ferramentas/ é só consulta. A senha
-    nunca aparece em log nem na tela. O teste no aparelho exige o app da
-    Taramps fechado (uma conexão BLE por vez).
 - id: "2"
   title: Catálogo de parâmetros e leitura completa do aparelho
   description: >-
     Codifica e decodifica cada parâmetro do MAPA §4, mais o gerador, a
     monitoração e os nomes das memórias, e faz a leitura completa (CAP-2).
-  invoke_dev_with: >-
-    Testes automáticos sem o aparelho para cada parâmetro. Na leitura real, a
-    meta é 84 de 84, como no protótipo (MAPA §9). As lacunas do MAPA §8 ainda
-    estão abertas: registre o que a leitura real revelar.
 - id: "3"
-  title: Telas de leitura do estado
+  title: UX design do app
   description: >-
-    Mostra todos os valores lidos, por canal e globais, mais os nomes das
-    memórias e o firmware; sem nenhuma escrita (CAP-2).
+    DESIGN.md (como o app parece) e EXPERIENCE.md (como ele se comporta) para
+    todas as telas do POC: leitura, ajustes, link, memórias, presets, gerador,
+    monitoração, aparelho, chaves de acesso, porta da IA e histórico.
+  invoke_dev_with: >-
+    Use a skill bmad-ux, de forma interativa com o Denis. As telas das
+    histórias 10 e 11 seguem estes dois documentos.
 - id: "4"
-  title: Teste de paridade nas 3 memórias
+  title: Infraestrutura de testes com o processador simulado
   description: >-
-    Para cada memória, carrega no app da Taramps, fecha esse app, lê pelo app
-    novo e compara valor a valor; é o teste 3 do sinal de sucesso.
+    Projeto BgsControle.Telas (net10.0, sem MAUI) com os ViewModels, o
+    ConexaoViewModel movido para lá e testado, a leitura automática ao entrar
+    em Conectado descida para o núcleo, e o ProcessadorSimulado só nos testes.
+  invoke_dev_with: >-
+    O simulador imita o formato real do MAPA §2 e §9 e marca cada suposição
+    não medida numa lista que a história 12 confere. Um teste garante que o
+    App não referencia o Simulador. Fecha o item do deferred-work sobre a
+    leitura automática sem teste.
+- id: "5"
+  title: Escrita de ajustes e chaves de acesso
+  description: >-
+    A trava passa a aceitar a escrita do catálogo com a chave ligada e fora do
+    modo só leitura, sempre pela porta única da sessão; escritor com eco e
+    releitura, ritmo de 30 ms e 300 ms por parâmetro; espelho do estado;
+    chaves de acesso persistidas com aviso do risco (CAP-3, CAP-11).
+  invoke_dev_with: >-
+    Padrões e avisos das chaves em chaves-de-acesso.md. Tudo testado contra o
+    ProcessadorSimulado.
+- id: "6"
+  title: Memórias, link de canais e cópia antes de mexer
+  description: >-
+    Salvar, carregar (com releitura) e nomear as 3 memórias; link 1–2 e 3–4;
+    cópia antes de aplicar e "aplicado pela metade"; aviso ao sobrescrever
+    uma memória (CAP-3, CAP-4, CAP-14).
+  invoke_dev_with: >-
+    Regra 3 de failure-modes.md. O link é só do app (MAPA §6).
+- id: "7"
+  title: Gerador, monitoração e comandos de aparelho inteiro
+  description: >-
+    Gerador com prazo de 30 s e as regras de falha 1 e 2; voltímetro e clip;
+    remote out e Bluetooth de áudio; reset de fábrica, reset de áudio, troca
+    de senha e nome do produto (CAP-7, CAP-8, CAP-9, CAP-10).
+  invoke_dev_with: >-
+    Se a spec passar muito do tamanho, dividir em gerador e regras de falha,
+    e o resto.
+- id: "8"
+  title: Presets no celular e conhecimento herdado
+  description: >-
+    Presets próprios no celular (salvar, aplicar, renomear, apagar) e o
+    conhecimento herdado embutido na primeira abertura (CAP-5, CAP-6).
+- id: "9a"
+  title: Histórico, estado ao vivo e uso simultâneo
+  description: >-
+    Histórico com origem, hora e valor; estado ao vivo compartilhado entre a
+    tela e a IA; pausa da IA no toque e janela de 10 s (CAP-13).
+  invoke_dev_with: >-
+    Regras de uso ao mesmo tempo em porta-de-comandos.md. Tudo no núcleo,
+    sem rede.
+- id: "9b"
+  title: Porta de comandos da IA
+  description: >-
+    Porta HTTP na rede local, pareamento por código de 6 dígitos, recusa de
+    fora da rede, confirmação na tela das operações de risco e "Parar IA"
+    (CAP-12).
+  invoke_dev_with: >-
+    As cinco travas de porta-de-comandos.md. A senha do processador nunca
+    trafega pela porta.
+- id: "10"
+  title: Telas, parte 1 — leitura, ajustes, link e memórias
+  description: >-
+    XAML e navegação das telas de leitura e de ajuste por canal e globais,
+    link e memórias, seguindo o DESIGN.md e o EXPERIENCE.md (CAP-2, CAP-3,
+    CAP-4, CAP-14).
+- id: "11"
+  title: Telas, parte 2 — gerador, monitoração, aparelho, chaves, presets, IA e histórico
+  description: >-
+    XAML e navegação das demais telas, seguindo o DESIGN.md e o EXPERIENCE.md
+    (CAP-5, CAP-7 a CAP-13).
+- id: "12"
+  title: Integração e testes no aparelho real
+  description: >-
+    Liga tudo no PRO 2.4BT: confere a lista de suposições do simulador, a
+    paridade nas 3 memórias e os testes 1, 2 e 3 do sinal de sucesso.
   done_checkpoint: true
   invoke_dev_with: >-
-    Ver os cuidados em conhecimento-herdado.md: deslizar uma memória na tela
-    Salvar do app da Taramps a carrega; não abrir a tela Limiter com o Auto
-    ligado. Registre o resultado de cada memória e explique cada diferença.
+    Precisa do celular e do processador. Voltímetro contra o multímetro;
+    gerador só com o RCA dos módulos desconectado; Wi-Fi real; reset de
+    fábrica testado só na recusa, a menos que o Denis decida outra coisa.
+    Cuidados de conhecimento-herdado.md para o app da Taramps.
