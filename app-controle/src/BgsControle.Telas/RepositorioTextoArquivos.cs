@@ -2,7 +2,7 @@ using BgsControle.Nucleo.Escrita;
 
 namespace BgsControle.Telas;
 
-/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, as playlists) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
+/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, as playlists, o histórico, o modo do toque) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
 public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arquivo) : IRepositorioTexto
 {
     /// <summary>A cópia antes de mexer e a marca da operação em andamento.</summary>
@@ -16,6 +16,12 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
 
     /// <summary>As 3 playlists do Player, uma por posição de memória (só as URIs; a música fica onde está).</summary>
     public const string ArquivoPlaylists = "playlists.json";
+
+    /// <summary>O histórico dos comandos (as últimas 1000 entradas, sem senhas).</summary>
+    public const string ArquivoHistorico = "historico.json";
+
+    /// <summary>O modo do toque durante a IA ("Controles travados até PARAR IA" ou "O toque pausa a IA").</summary>
+    public const string ArquivoUsoIa = "uso-ia.json";
 
     public string Arquivo { get; } = arquivo;
 

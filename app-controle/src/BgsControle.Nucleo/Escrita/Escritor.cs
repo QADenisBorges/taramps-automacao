@@ -1,5 +1,7 @@
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo.Escrita;
 
@@ -177,19 +179,43 @@ public sealed class Escritor
         var esperado = parametro.Decodificar(escrita.NoFio).Valor;
         if (!daCopia && MotivoBloqueio() is { } bloqueio)
             return Recusar(quadro, bloqueio);
-        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia);
+        // A origem ambiente de quem pediu (tela, IA ou app) vai junto até o envio: a fila roda em
+        // outra tarefa, e um pedido mais novo de outra origem pode tomar o lugar deste.
+        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, Origem.Atual);
         var endereco = new Endereco(parametro.Codigo, indice);
         var tcs = new TaskCompletionSource<ResultadoEscrita>(TaskCreationOptions.RunContinuationsAsynchronously);
         bool iniciar;
+        bool mexendo;
         Fila fila;
+        List<Espera>? trocados = null;
         lock (_trava)
         {
             if (!_filas.TryGetValue(endereco, out fila!))
                 _filas[endereco] = fila = new Fila(endereco);
-            fila.Pendente = pedido;
-            fila.Esperando.Add(tcs);
-            iniciar = !fila.Rodando;
-            fila.Rodando = true;
+            // A tela e a IA não se juntam no mesmo endereço: um pedido da tela que ainda não saiu
+            // ganha do da IA (o usuário está mexendo nisso), e cada um termina com o seu resultado.
+            var pendente = fila.Pendente?.Origem;
+            mexendo = pendente == OrigemComando.Tela && pedido.Origem == OrigemComando.Ia;
+            iniciar = false;
+            if (!mexendo)
+            {
+                if (pendente == OrigemComando.Ia && pedido.Origem == OrigemComando.Tela)
+                {
+                    trocados = fila.Esperando.FindAll(e => e.Origem == OrigemComando.Ia);
+                    fila.Esperando.RemoveAll(e => e.Origem == OrigemComando.Ia);
+                }
+                fila.Pendente = pedido;
+                fila.Esperando.Add(new Espera(tcs, pedido.Origem));
+                iniciar = !fila.Rodando;
+                fila.Rodando = true;
+            }
+        }
+        if (mexendo)
+            return Recusar(quadro, UsoCompartilhado.MsgMexendo);
+        if (trocados is not null)
+        {
+            foreach (var e in trocados)
+                e.Tcs.TrySetResult(ResultadoEscrita.Falha(UsoCompartilhado.MsgMexendo));
         }
         if (iniciar)
             _ = Task.Run(() => RodarAsync(fila));
@@ -219,7 +245,7 @@ public sealed class Escritor
                     await Task.Delay(espera, _relogio);
 
                 Pedido pedido;
-                List<TaskCompletionSource<ResultadoEscrita>> esperando;
+                List<Espera> esperando;
                 lock (_trava)
                 {
                     pedido = fila.Pendente!;
@@ -229,22 +255,27 @@ public sealed class Escritor
                 }
 
                 ResultadoEscrita r;
-                try
+                // O quadro sai com a origem do pedido que foi enviado (o mais novo), e a cópia do
+                // link também.
+                using (Origem.Como(pedido.Origem))
                 {
-                    r = await EnviarEConfirmarAsync(pedido);
-                }
-                catch (Exception e)
-                {
-                    _log.Evento($"falha na escrita ({e.GetType().Name})");
-                    r = ResultadoEscrita.Falha($"Erro inesperado ({e.GetType().Name}).");
-                }
-                lock (_trava)
-                    fila.LiberaEm = _relogio.GetUtcNow() + _tempos.Arrasto;
+                    try
+                    {
+                        r = await EnviarEConfirmarAsync(pedido);
+                    }
+                    catch (Exception e)
+                    {
+                        _log.Evento($"falha na escrita ({e.GetType().Name})");
+                        r = ResultadoEscrita.Falha($"Erro inesperado ({e.GetType().Name}).");
+                    }
+                    lock (_trava)
+                        fila.LiberaEm = _relogio.GetUtcNow() + _tempos.Arrasto;
 
-                r = await EspelharAsync(pedido, r);
+                    r = await EspelharAsync(pedido, r);
+                }
 
                 foreach (var t in esperando)
-                    t.TrySetResult(r);
+                    t.Tcs.TrySetResult(r);
                 try
                 {
                     Escreveu?.Invoke(fila.Endereco, r);
@@ -261,7 +292,7 @@ public sealed class Escritor
             if (!acabou)
             {
                 // Saída inesperada: a fila volta a aceitar pedidos e ninguém fica esperando.
-                List<TaskCompletionSource<ResultadoEscrita>> sobra;
+                List<Espera> sobra;
                 lock (_trava)
                 {
                     fila.Rodando = false;
@@ -270,7 +301,7 @@ public sealed class Escritor
                     fila.Esperando = [];
                 }
                 foreach (var t in sobra)
-                    t.TrySetResult(ResultadoEscrita.Falha("Erro inesperado na fila de escrita."));
+                    t.Tcs.TrySetResult(ResultadoEscrita.Falha("Erro inesperado na fila de escrita."));
             }
         }
     }
@@ -443,13 +474,16 @@ public sealed class Escritor
         alvo?.Resposta.TrySetResult(null);
     }
 
-    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia);
+    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia, OrigemComando Origem);
+
+    /// <summary>Quem espera uma escrita, com a origem de quem pediu.</summary>
+    private sealed record Espera(TaskCompletionSource<ResultadoEscrita> Tcs, OrigemComando Origem);
 
     private sealed class Fila(Endereco endereco)
     {
         public Endereco Endereco { get; } = endereco;
         public Pedido? Pendente { get; set; }
-        public List<TaskCompletionSource<ResultadoEscrita>> Esperando { get; set; } = [];
+        public List<Espera> Esperando { get; set; } = [];
         public bool Rodando { get; set; }
         public DateTimeOffset? LiberaEm { get; set; }
     }

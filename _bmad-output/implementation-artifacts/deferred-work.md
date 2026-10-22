@@ -65,3 +65,11 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
   summary: A limpeza da entrada no GerentePlaylists.AdicionarAsync (URI em branco descartada, duração negativa vira zero, nada válido não grava) não tem teste.
   evidence: Sem o filtro, uma faixa de URI em branco aparece na sessão e some ao reabrir (o DeJson a descarta). Só importa quando o seletor real do Android existir (história 11); um fato curto em PlaylistsTestes fecha.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
+  summary: A origem ambiente (AsyncLocal) pode vazar para trabalho em segundo plano iniciado num fluxo da IA (timers, Task.Run, handlers de EstadoAparelho.Mudou e de Sessao), fazendo uma escrita posterior sair como IA (recusada na pausa ou depois do PARAR IA) ou como App (passando sem o uso compartilhado).
+  evidence: Não verificado (maybe-false, seria medium). Hoje só o gerador e o Escritor escrevem nesses fluxos, e os dois põem a origem certa. Resolve: na 9b, auditar cada handler que escreve e as entradas da porta HTTP, e pôr `ExecutionContext.SuppressFlow` ou `Origem.Como(...)` onde o trabalho em segundo plano nasce; um teste com um handler que escreve.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
+  summary: O MauiProgram ainda não cria o Historico (historico.json) nem o UsoCompartilhado (uso-ia.json), não os passa à Sessao, e ninguém chama Historico.GravarAgoraAsync ao sair do app.
+  evidence: A spec da 9a deixa o MauiProgram para a história 11 (Never). Até lá, o app real não tem histórico nem trava, e uma entrada dos últimos 2 s se perde ao fechar o app.

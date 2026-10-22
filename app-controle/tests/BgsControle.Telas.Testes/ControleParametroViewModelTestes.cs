@@ -8,6 +8,7 @@ using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Uso;
 using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
@@ -28,14 +29,23 @@ internal sealed class Bancada
     private static readonly TemposLeitura LeituraRapida = new(TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
     private static readonly Regex Senha = new(@"^\*000\*[0-9A-Z]{4}\*$");
 
-    public Bancada(ArquivosFalso? arquivos = null)
+    /// <param name="usoCompartilhado">
+    /// História 9a: o histórico e o uso compartilhado na porta, guardados em <see cref="ArquivosUso"/>
+    /// (à parte, para não mexer nas contagens de gravação dos outros testes).
+    /// </param>
+    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false)
     {
         // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
         // a senha e as leituras respondem na hora; os ecos e os acks seguem no relógio falso.
         Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         Arquivos = arquivos ?? new ArquivosFalso();
         Chaves = new Chaves(new RepositorioChavesArquivos(Arquivos));
-        Sessao = new Sessao(Simulador, Cofre, Log, Tempos, Chaves);
+        if (usoCompartilhado)
+        {
+            Historico = new Historico(new RepositorioTextoArquivos(ArquivosUso, RepositorioTextoArquivos.ArquivoHistorico), Relogio, Log);
+            Uso = new UsoCompartilhado(new RepositorioTextoArquivos(ArquivosUso, RepositorioTextoArquivos.ArquivoUsoIa), Relogio, Log);
+        }
+        Sessao = new Sessao(Simulador, Cofre, Log, Tempos, Chaves, Historico, Uso);
         Leitor = new LeitorCompleto(Sessao, Log, LeituraRapida);
         Leitura = new LeituraAutomatica(Sessao, Leitor);
         Estado = new EstadoAparelho(Sessao, Leitura);
@@ -58,6 +68,16 @@ internal sealed class Bancada
     }
 
     public CofreMemoria Cofre { get; } = new() { Senha = "AB12" };
+
+    /// <summary>Os arquivos do histórico e do modo do toque (só com o uso compartilhado).</summary>
+    public ArquivosFalso ArquivosUso { get; } = new();
+
+    public Historico? Historico { get; }
+    public UsoCompartilhado? Uso { get; }
+
+    public HistoricoViewModel CriarHistoricoViewModel() => new(Historico!, Tela, Relogio);
+
+    public IaAtivaViewModel CriarIaAtivaViewModel() => new(Uso!, Historico!, Tela, Relogio);
     public MonitorAparelho Monitor { get; }
     public ComandosAparelho Comandos { get; }
 
