@@ -45,3 +45,23 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/7b-monitoracao-aparelho-inteiro.md`
   summary: O LogBle esconde cada senha conhecida em qualquer lugar da linha, e uma senha como 1000 ou 1234 apaga do log frequências e valores iguais (`*201*1000*`).
   evidence: `LogBle.Mascarar` troca toda ocorrência, sem olhar o quadro; já valia para a senha da conexão e agora vale também para as senhas da troca. Mascarar só dentro dos quadros 000 e 001, ou só o texto digitado, resolve.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
+  summary: O reprodutor e o seletor de áudio do Android (`ReprodutorAndroid` com MediaPlayer, `SeletorAudioAndroid` com ACTION_OPEN_DOCUMENT e TakePersistableUriPermission, duração pelo MediaMetadataRetriever) e o DI do Player no MauiProgram.
+  evidence: Separado da 8b pelo tamanho da spec (~2.900 tokens); o stories.yaml deixa na 8b só o núcleo e o ViewModel. Entra com as telas na história 11. Não usar o FilePicker do MAUI, que copia o arquivo para o cache.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
+  summary: Música com o app em segundo plano, com tocar/pausar e próxima na notificação do Android (serviço de mídia, FOREGROUND_SERVICE_MEDIA_PLAYBACK, POST_NOTIFICATIONS).
+  evidence: Decisão do Denis em 22/10 no plano da 8b: fica para a história 11 ou 12; na 8b a música toca só com o app aberto.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
+  summary: O contrato do IReprodutor não diz o que fazer quando o tocar lança exceção nem quando o som cai no meio da faixa (arquivo apagado, perda do foco de áudio, queda do Bluetooth); o Player ficaria Tocando sem som e sem frase na tela.
+  evidence: Não verificado (maybe-false; seria medium). Hoje o TocarAsync que lança é engolido pelo Executar do Player (só log), e o IReprodutor só tem o evento Terminou. Quem resolve é o ReprodutorAndroid da história 11: nunca lançar (devolver false) e ganhar um evento de erro ou interrupção, com teste no Player.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
+  summary: O título "Playlist da Memória N" (memória em uso sem nome lido) não tem teste.
+  evidence: Player.NomeMemoria cai em "Memória N" quando GerenteMemorias.Nome(n) vem nulo ou vazio; todos os testes usam memória com nome. Montar o caso pede preparo no simulador (o carregar relê os nomes); cabe na história 11, com a tela.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
+  summary: A limpeza da entrada no GerentePlaylists.AdicionarAsync (URI em branco descartada, duração negativa vira zero, nada válido não grava) não tem teste.
+  evidence: Sem o filtro, uma faixa de URI em branco aparece na sessão e some ao reabrir (o DeJson a descarta). Só importa quando o seletor real do Android existir (história 11); um fato curto em PlaylistsTestes fecha.

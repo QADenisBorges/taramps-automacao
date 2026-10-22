@@ -2,7 +2,7 @@ using BgsControle.Nucleo.Escrita;
 
 namespace BgsControle.Telas;
 
-/// <summary>Um texto do núcleo (a cópia antes, o link, os presets) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
+/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, as playlists) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
 public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arquivo) : IRepositorioTexto
 {
     /// <summary>A cópia antes de mexer e a marca da operação em andamento.</summary>
@@ -13,6 +13,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
 
     /// <summary>Os presets próprios do celular (os herdados vêm do código).</summary>
     public const string ArquivoPresets = "presets.json";
+
+    /// <summary>As 3 playlists do Player, uma por posição de memória (só as URIs; a música fica onde está).</summary>
+    public const string ArquivoPlaylists = "playlists.json";
 
     public string Arquivo { get; } = arquivo;
 
