@@ -53,15 +53,27 @@
     uma memória (CAP-3, CAP-4, CAP-14).
   invoke_dev_with: >-
     Regra 3 de failure-modes.md. O link é só do app (MAPA §6).
-- id: "7"
-  title: Gerador, monitoração e comandos de aparelho inteiro
+# A antiga história 7 (gerador, monitoração e comandos de aparelho inteiro) foi
+# dividida em 22/10/2026, como o plano previa: a spec passava muito do tamanho.
+- id: "7a"
+  title: Gerador de sinal e as regras de falha 1 e 2
   description: >-
-    Gerador com prazo de 30 s e as regras de falha 1 e 2; voltímetro e clip;
-    remote out e Bluetooth de áudio; reset de fábrica, reset de áudio, troca
-    de senha e nome do produto (CAP-7, CAP-8, CAP-9, CAP-10).
+    Tom fixo e sweep com prazo de 30 s; desligar ao fim do prazo, no Parar, ao
+    fechar o app, ao desconectar, ao perder a conexão ou num erro; tentar
+    reconectar até 3 vezes e então "DESLIGUE O MÓDULO AGORA"; ao reconectar,
+    reler e desligar o gerador antes de qualquer outra ação (CAP-8).
   invoke_dev_with: >-
-    Se a spec passar muito do tamanho, dividir em gerador e regras de falha,
-    e o resto.
+    Regras 1 e 2 de failure-modes.md. Núcleo e GeradorViewModel testados
+    contra o ProcessadorSimulado; a tela é da história 11.
+- id: "7b"
+  title: Monitoração, remote out, Bluetooth de áudio e comandos de aparelho inteiro
+  description: >-
+    Voltímetro e clip ao vivo; remote out e Bluetooth de áudio; reset de
+    fábrica, reset de áudio, troca de senha e nome do produto, cada um com a
+    sua chave e com a releitura depois (CAP-7, CAP-9, CAP-10).
+  invoke_dev_with: >-
+    Chaves e riscos de chaves-de-acesso.md. Núcleo e ViewModels testados
+    contra o ProcessadorSimulado; as telas são da história 11.
 - id: "8"
   title: Presets no celular e conhecimento herdado
   description: >-
