@@ -2,6 +2,8 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo.Gerador;
 
@@ -328,8 +330,8 @@ public sealed class GeradorSinal
         Avisar(r.Mensagem);
         if (desligar)
         {
-            // Erro ao ligar (regra 1): desliga e confirma; sem confirmação, reconecta.
-            var (confirmado, _) = await DesligarAsync();
+            // Erro ao ligar (regra 1): o app desliga sozinho e confirma; sem confirmação, reconecta.
+            var (confirmado, _) = await DesligarSozinhoAsync();
             if (confirmado is null)
                 IniciarReconexaoSePreciso();
         }
@@ -497,7 +499,8 @@ public sealed class GeradorSinal
         if (!PodeEstarLigado())
             return;
         _log.Evento("gerador: o app vai sair; desligando");
-        await PararAsync();
+        using (Origem.Como(OrigemComando.App)) // o desligar automático vai como App no histórico
+            await PararAsync();
     }
 
     /// <summary>O gancho da sessão: antes de a tela soltar a conexão, desliga.</summary>
@@ -511,7 +514,7 @@ public sealed class GeradorSinal
         if (!PodeEstarLigado())
             return;
         _log.Evento("gerador: desligando antes de soltar a conexão");
-        var (confirmado, _) = await DesligarAsync();
+        var (confirmado, _) = await DesligarSozinhoAsync();
         // Sem confirmação, a conexão sai mesmo assim; a queda com o gerador talvez ligado
         // faz reconectar (regra 1).
         if (confirmado is not null)
@@ -542,7 +545,7 @@ public sealed class GeradorSinal
         {
             _log.Evento("gerador: o prazo acabou; desligando");
             // Sem esperar nada: o *202*0* sai já, mesmo com uma leitura completa em andamento.
-            var (confirmado, _) = await DesligarAsync(MsgPrazo);
+            var (confirmado, _) = await DesligarSozinhoAsync(MsgPrazo);
             if (confirmado is not null)
             {
                 Avisar(MsgPrazo);
@@ -606,6 +609,16 @@ public sealed class GeradorSinal
             Notificar();
         tcs.TrySetResult(r);
         return r;
+    }
+
+    /// <summary>
+    /// O desligar automático (prazo, erro ao ligar, antes de soltar, ao sair, regra 2 ao reconectar):
+    /// o mesmo <see cref="DesligarAsync"/>, com a origem App no histórico.
+    /// </summary>
+    private async Task<(Valor? Confirmado, string? Motivo)> DesligarSozinhoAsync(string? frase = null)
+    {
+        using (Origem.Como(OrigemComando.App))
+            return await DesligarAsync(frase);
     }
 
     private async Task<(Valor? Confirmado, string? Motivo)> DesligarNoFioAsync()
@@ -899,7 +912,7 @@ public sealed class GeradorSinal
             _log.Evento("gerador: 202 sem leitura; desligando por segurança");
         }
 
-        var (valor, _) = await DesligarAsync(ligado && !emCurso ? MsgEstavaLigado : null);
+        var (valor, _) = await DesligarSozinhoAsync(ligado && !emCurso ? MsgEstavaLigado : null);
         if (valor is null)
         {
             if (!reconectando && !IniciarReconexaoSePreciso() && ligado)

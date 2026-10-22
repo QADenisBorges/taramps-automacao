@@ -4,6 +4,7 @@ using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Protocolo;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo;
 
@@ -69,6 +70,8 @@ public sealed class Sessao
     public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
     public const string MotivoGeradorForaDoFormato = "comando do gerador fora do formato";
     public const string MotivoAparelhoForaDoFormato = "comando do aparelho fora do formato";
+    public const string MotivoConexaoTerminou = "a conexão terminou";
+    public const string MotivoFalhaEscrita = "falha na escrita";
 
     // Os códigos das memórias (240, 241 e os nomes 231 a 233): só a forma exata passa
     // (Catalogo.ComandoDeMemoria); o resto é recusado com este motivo.
@@ -95,6 +98,8 @@ public sealed class Sessao
     private readonly LogBle _log;
     private readonly TemposSessao _tempos;
     private readonly IChaves? _chaves;
+    private readonly Historico? _historico;
+    private readonly UsoCompartilhado? _uso;
 
     private readonly object _trava = new();
     private readonly MontadorQuadros _montador = new();
@@ -108,13 +113,24 @@ public sealed class Sessao
     private int _tentativasSenha;
 
     /// <param name="chaves">As chaves de acesso. Sem elas, nenhuma escrita passa (toda chave conta como desligada).</param>
-    public Sessao(ITransporte transporte, ICofreSenha cofre, LogBle log, TemposSessao? tempos = null, IChaves? chaves = null)
+    /// <param name="historico">O histórico dos comandos (CAP-13). Sem ele, nada é registrado.</param>
+    /// <param name="uso">O uso compartilhado com a IA (CAP-13). Sem ele, a origem não muda o que passa.</param>
+    public Sessao(
+        ITransporte transporte,
+        ICofreSenha cofre,
+        LogBle log,
+        TemposSessao? tempos = null,
+        IChaves? chaves = null,
+        Historico? historico = null,
+        UsoCompartilhado? uso = null)
     {
         _transporte = transporte;
         _cofre = cofre;
         _log = log;
         _tempos = tempos ?? TemposSessao.Padrao;
         _chaves = chaves;
+        _historico = historico;
+        _uso = uso;
         _transporte.Notificacao += AoReceber;
         _transporte.Caiu += AoCair;
     }
@@ -346,9 +362,18 @@ public sealed class Sessao
     /// </list>
     /// Todo o resto (um comando conhecido fora da forma exata, uma leitura fora do catálogo como
     /// <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o motivo no log.
+    /// <para>
+    /// Depois das chaves vem o uso compartilhado (<see cref="UsoCompartilhado"/>), pela origem
+    /// ambiente do comando (<see cref="Origem"/>): enquanto a IA trabalha, a tela pode ficar
+    /// travada e a IA pode ser recusada. O <c>*202*0*</c> fica isento. Cada escrita que chega aqui
+    /// (enviada ou recusada, com o motivo) entra no <see cref="Historico"/>; as leituras e o quadro
+    /// da senha nunca entram.
+    /// </para>
     /// </summary>
     public async Task<ResultadoEnvio> EnviarAsync(string quadro)
     {
+        var origem = Origem.Atual;
+        var comando = ComandoNaPorta.Ler(quadro); // null = leitura ou senha: fora do histórico e do uso
         string? motivo;
         CancellationToken ct;
         lock (_trava)
@@ -356,9 +381,14 @@ public sealed class Sessao
             motivo = Trava(quadro);
             ct = _operacao.Token;
         }
+        // Fora da trava da sessão, e sem efeitos: os efeitos (pausar, ativar, endereço tocado) só
+        // depois da fila do GATT, quando o quadro vai sair mesmo.
+        if (motivo is null && comando is not null && _uso is not null)
+            motivo = _uso.Consultar(comando, origem);
         if (motivo is not null)
         {
             _log.Recusado(quadro, motivo);
+            Registrar(comando, origem, false, motivo);
             return new ResultadoEnvio(false, motivo);
         }
 
@@ -368,31 +398,45 @@ public sealed class Sessao
         }
         catch (OperationCanceledException)
         {
-            return new ResultadoEnvio(false, "a conexão terminou");
+            Registrar(comando, origem, false, MotivoConexaoTerminou);
+            return new ResultadoEnvio(false, MotivoConexaoTerminou);
         }
 
         try
         {
             lock (_trava)
                 motivo = Trava(quadro); // o estado pode ter mudado na fila
+            // O uso também (um PARAR IA ou uma pausa na fila); agora com os efeitos.
+            if (motivo is null && comando is not null && _uso is not null)
+                motivo = _uso.Admitir(comando, origem);
             if (motivo is not null)
             {
                 _log.Recusado(quadro, motivo);
+                Registrar(comando, origem, false, motivo);
                 return new ResultadoEnvio(false, motivo);
             }
             _log.Enviado(quadro);
             await _transporte.EscreverAsync(Encoding.ASCII.GetBytes(quadro), ct);
+            Registrar(comando, origem, true, null);
             return new ResultadoEnvio(true, null);
         }
         catch (Exception e)
         {
             _log.Evento($"falha na escrita ({e.GetType().Name})");
-            return new ResultadoEnvio(false, "falha na escrita");
+            Registrar(comando, origem, false, MotivoFalhaEscrita);
+            return new ResultadoEnvio(false, MotivoFalhaEscrita);
         }
         finally
         {
             _gatt.Release();
         }
+    }
+
+    /// <summary>Uma escrita que chegou à porta vai para o histórico (as leituras e a senha não chegam aqui).</summary>
+    private void Registrar(ComandoNaPorta? comando, OrigemComando origem, bool enviado, string? motivo)
+    {
+        if (comando is not null)
+            _historico?.Registrar(comando, origem, enviado, motivo);
     }
 
     /// <summary>Null = pode passar; senão, o motivo da recusa. Chamar com a trava.</summary>
@@ -458,12 +502,17 @@ public sealed class Sessao
 
     /// <summary>
     /// O que a trava diria agora para este quadro, sem enviar nada nem registrar: null = passaria.
-    /// Quem prepara uma operação (a cópia antes, por exemplo) pergunta antes de começar.
+    /// Quem prepara uma operação (a cópia antes, por exemplo) pergunta antes de começar. Vale também
+    /// o uso compartilhado, pela origem ambiente, sem pausar nem ativar a IA.
     /// </summary>
     public string? Conferir(string quadro)
     {
+        string? motivo;
         lock (_trava)
-            return Trava(quadro);
+            motivo = Trava(quadro);
+        if (motivo is null && _uso is not null && ComandoNaPorta.Ler(quadro) is { } comando)
+            motivo = _uso.Consultar(comando, Origem.Atual);
+        return motivo;
     }
 
     // ------------------------------------------------------------------ conexão e senha

@@ -19,11 +19,16 @@ public enum Chave
     AjustesAudio,
 }
 
-/// <summary>Quem pede para ligar ou desligar uma chave.</summary>
+/// <summary>
+/// Quem pede um comando: a tela (o Denis), a IA (pela porta da 9b) ou o próprio app (o
+/// desligar automático do gerador). A origem de cada comando que chega à porta é a ambiente
+/// (<see cref="Uso.Origem"/>); só a tela liga ou desliga uma chave.
+/// </summary>
 public enum OrigemComando
 {
     Tela,
     Ia,
+    App,
 }
 
 /// <summary>Quando um pedido da IA exige confirmação na tela.</summary>
@@ -62,7 +67,7 @@ public interface IChaves
     /// <summary>Thread-safe e sem espera: a trava chama com o lock da sessão.</summary>
     bool Ligada(Chave chave);
 
-    /// <summary>Liga ou desliga e guarda. A origem IA é sempre recusada.</summary>
+    /// <summary>Liga ou desliga e guarda. Uma origem que não é a tela (no parâmetro ou a ambiente) é sempre recusada.</summary>
     Task<ResultadoChave> DefinirAsync(Chave chave, bool ligada, OrigemComando origem);
 
     /// <summary>Uma chave mudou. Pode chegar em qualquer thread.</summary>
@@ -152,7 +157,8 @@ public sealed class Chaves : IChaves
 
     public async Task<ResultadoChave> DefinirAsync(Chave chave, bool ligada, OrigemComando origem)
     {
-        if (origem != OrigemComando.Tela)
+        // A origem ambiente também conta: num escopo da IA, nem a tela "emprestada" muda uma chave.
+        if (origem != OrigemComando.Tela || Uso.Origem.Atual != OrigemComando.Tela)
             return new ResultadoChave(false, MsgIaNaoMuda);
         await Carregada;
 
