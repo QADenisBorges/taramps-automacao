@@ -6,6 +6,7 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Telas;
@@ -78,6 +79,17 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LogBle>()));
 
+        // História 8: os presets no celular (guardar, aplicar, renomear, apagar), com o aplicar pela
+        // cópia antes. O conhecimento herdado (CAP-6) vem embutido no núcleo: não há o que registrar.
+        builder.Services.AddSingleton(sp => new GerentePresets(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPresets),
+            sp.GetRequiredService<LogBle>()));
+
         // História 7a: o gerador de sinal, com as regras de falha 1 e 2 (desliga no prazo, no
         // Parar, antes de soltar a conexão, ao sair do app e no fim de cada leitura).
         builder.Services.AddSingleton(sp => new GeradorSinal(
@@ -105,13 +117,15 @@ public static class MauiProgram
             sp.GetRequiredService<GeradorSinal>()));
 
         builder.Services.AddSingleton<ConexaoViewModel>();
-        // Os ViewModels dos ajustes, das chaves, das memórias, do link, do gerador, da monitoração e
+        // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do conhecimento herdado, do gerador, da monitoração e
         // do aparelho (sem tela nova: o XAML é das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
         // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
         builder.Services.AddSingleton<ChavesViewModel>();
         builder.Services.AddSingleton<MemoriasViewModel>();
         builder.Services.AddSingleton<LinkViewModel>();
+        builder.Services.AddSingleton<PresetsViewModel>();
+        builder.Services.AddSingleton<HerdadoViewModel>();
         builder.Services.AddSingleton(sp => new GeradorViewModel(
             sp.GetRequiredService<GeradorSinal>(),
             sp.GetRequiredService<Sessao>(),
@@ -145,6 +159,8 @@ public static class MauiProgram
         app.Services.GetRequiredService<Escritor>();
         app.Services.GetRequiredService<LinkCanais>();
         app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
+        // Os presets cedo: o tipo "aplicar-preset" precisa estar registrado na CopiaAntes antes da primeira leitura.
+        app.Services.GetRequiredService<GerentePresets>();
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
         app.Services.GetRequiredService<GeradorSinal>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.

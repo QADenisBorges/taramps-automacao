@@ -59,6 +59,7 @@ item no aparelho real e marca o resultado.
 | NOME-PRODUTO | O 002 não muda o começo `PRO2.4MI` da resposta 000. Se mudar, a próxima conexão entra em modo só leitura, que é o lado seguro. | `Processar`, nome do produto; `ComandosAparelho.NomearProdutoAsync` | |
 | VOLTIMETRO-ESPONTANEO | O aparelho manda o voltímetro sozinho, como `#005#v#` (V × 10); a consulta `#005#` responde `ERRO 0` (medido). O período não foi medido. | `EmitirVoltimetro`; `MonitorAparelho` | |
 | CLIP-ENTRADA | O clip da entrada (`#111#v#`, ≠0 = clip) chega sozinho, no formato da leitura; o período e o gatilho não foram medidos. | `EmitirClipEntrada`; `MonitorAparelho` | |
+| PRESET-APLICA-TUDO | Escrever todos os ajustes de áudio diferentes em sequência e reler tudo confirma o preset no PRO 2.4BT; o aparelho não tem comando de preset. | `GerentePresets.AplicarInternoAsync` | |
 
 ## Falhas injetáveis
 

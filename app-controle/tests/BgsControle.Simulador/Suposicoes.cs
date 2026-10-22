@@ -38,6 +38,7 @@ public static class Suposicoes
     public const string NomeProduto = "NOME-PRODUTO";
     public const string VoltimetroEspontaneo = "VOLTIMETRO-ESPONTANEO";
     public const string ClipEntrada = "CLIP-ENTRADA";
+    public const string PresetAplicaTudo = "PRESET-APLICA-TUDO";
 
     /// <summary>Id → o que se supõe. A mesma lista, com o mesmo texto, está em <c>SUPOSICOES.md</c>.</summary>
     public static IReadOnlyDictionary<string, string> Todas { get; } = new Dictionary<string, string>
@@ -72,5 +73,6 @@ public static class Suposicoes
         [NomeProduto] = "O 002 não muda o começo `PRO2.4MI` da resposta 000. Se mudar, a próxima conexão entra em modo só leitura, que é o lado seguro.",
         [VoltimetroEspontaneo] = "O aparelho manda o voltímetro sozinho, como `#005#v#` (V × 10); a consulta `#005#` responde `ERRO 0` (medido). O período não foi medido.",
         [ClipEntrada] = "O clip da entrada (`#111#v#`, ≠0 = clip) chega sozinho, no formato da leitura; o período e o gatilho não foram medidos.",
+        [PresetAplicaTudo] = "Escrever todos os ajustes de áudio diferentes em sequência e reler tudo confirma o preset no PRO 2.4BT; o aparelho não tem comando de preset.",
     };
 }
