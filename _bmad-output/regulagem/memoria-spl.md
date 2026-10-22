@@ -348,3 +348,21 @@ Conferências feitas no caminho:
 - O guardião foi ajustado por decisão do Denis: teto das JBL até −7,0 dB só com passa-alta LR ≥ 200 Hz a 24 dB/oit (código e `guardiao.json`), teto do sub em −8,0 dB.
 - Escuta com os falantes religados (20/10): 30 % e 70 % sem chiado, estalo, raspado nas JBL ou sopro no duto; configuração relida igual depois de religar a fonte. Emenda e porta-fusível de 40 A **frios** depois do teste de 70 %.
 - Próximos: soldar a linha de 40 A → validação a 100 % (seção 6) → comparar a fase do sub 0° × 180° e aplicar os atrasos da FILME.
+
+### 12.9 Playlist da memória SPL (em montagem, 20/10/2026)
+
+Arquivos no celular em `Music/SPL SOUNDS` e no PC em `Desktop/SPL SOUNDS`, separados nas pastas `Sub 200W` e `Sub 400W`, em duas versões: **sub200W** (memória atual, seguro de 200 W) e **sub400W** (para quando a potência do sub for confirmada e a memória passar a 34 V). Scripts de análise e adaptação em `playlist/` (decodificar, analisar, estrutura, adaptar).
+
+| # | Faixa | Original | Adaptação | Resultado |
+|---|---|---|---|---|
+| 1 | ABERTURA ALEXA 2026 (Mega Bob Amostradinha, DJ Pablo MG), **inteira** (5:50) | 5:50, −9 LUFS, **+1,8 dBTP (clipado)**, grave com pico em 58 Hz, 1 % abaixo de 40 Hz; abertura sem grave até 0:43, pancadas em 0:44, 1:36 e 1:52 | ver regra comum abaixo | −10,7 LUFS, P90 −9,5 a −9,6, −1,0 dBTP |
+| 2 | Tô Bem Mal (Thiago Aquino), **inteira** (2:59) | 2:59, −7,8 LUFS constante, **+1,6 dBTP (clipado)**, grave com pico em **51 Hz** (= Fb), 30 % entre 40 e 60 Hz | ver regra comum | −10,2 LUFS, P90 −9,4, −1,0 dBTP |
+| 3 | Barulho do Foguete (Thiago Aquino, CD Sem Limites), **inteira** (2:26), **origem trocada para o MP3 320 kbps do Sua Música** | Mesmo master do Opus do YouTube (−7,8 LUFS, mesmo clipe de 0,7 %), mas sem a recompressão: pico +0,5 dBTP em vez de +1,5 | ver regra comum | −10,4 LUFS, P90 −9,6, −1,0 dBTP |
+| 4 | Quem é o Louco Entre Nóis (Thiago Aquino, CD Sem Limites, faixa 23), inteira (3:02), MP3 320 kbps do Sua Música | −7,9 LUFS, +0,6 dBTP, clipe de 0,7 % no master, grave com pico em 51 Hz (34 % entre 40 e 60 Hz) | ver regra comum | −10,4 LUFS, P90 −9,5, −1,0 dBTP |
+| 5 | Quatro da Manhã Cê Pega o Uber com a Cara de Choro (Heitor Costa, Estouradinho), inteira (2:21), Opus do YouTube | −9,1 LUFS, +1,3 dBTP, quase sem clipe, grave em 55 Hz, 62 % acima de 200 Hz (voz) | ver regra comum (alvo −9,1) | −11,4 LUFS, P90 −9,3, −1,0 dBTP |
+| 6 | É Que Eu Te Sarrei (MC Arizinho e Tavin, DJ THG, funk de BH), inteira (2:27), Opus do YouTube | −12,6 LUFS, o master mais limpo e dinâmico, grave em 62 Hz | ver regra comum; limitador chega a 7,6 dB | −12,4 LUFS, **P90 −11,0: fica ~1,5 dB mais baixa que as outras** (subir mais só esmagando os transientes) |
+| 7 | Falling (Trevor Daniel, Bacca Chew Remix, Bass Boosted), inteira (2:58), Opus do YouTube (não é brasileira) | −7,9 LUFS, +0,8 dBTP, grave com pico em **87 Hz** (44 % entre 60 e 100 Hz), só 17 % acima de 200 Hz | ver regra comum (alvo −9,4) | −10,7 LUFS, P90 −9,4, −1,0 dBTP. Faixa de demonstração do sub |
+
+Regra comum (`adaptar2.py`): trecho com entrada de 0,3 s e saída de 2 s; LR4 em 40 Hz no arquivo; **corte em 51 Hz (Q 2) de −2 dB na versão 200 W e −3 dB na 400 W**, para o duto não soprar (o grave das três está na Fb ou perto dela); na versão 200 W, também −1,5 dB abaixo de 100 Hz (prateleira), para o limitador do sub trabalhar menos; volume igualado pelo P90 de curto prazo (alvo −8,5, ficou entre −9,0 e −9,6 depois do limitador); limitador de pico verdadeiro em −1 dBTP (até 5 dB, acima de 1 dB em 16 a 19 % do tempo). Músicas inteiras (decisão do Denis em 20/10: o tempo da demonstração, até 10 min, é controlado por ele na hora). Total com as 7 faixas: ~20 min (o Denis escolhe na hora o que toca nos 10 min). Conta térmica com as músicas inteiras no máximo da SPL [≈]: média de 2 a 4 W nas JBL (pior trecho de 30 s: 5 W, contra 80 W) e de 7 a 9 W no sub (pior trecho: 16 W, contra 200 W); a fonte puxa ~2 a 3 A em média, picos de ~17 A.
+
+O LUFS do trecho fica abaixo de −8 por causa dos 44 s de abertura sem grave; as pancadas ficam em ~−7,5 LUFS de curto prazo. As próximas faixas (brasileiras) seguem o mesmo processo e são igualadas pelo volume das pancadas.
