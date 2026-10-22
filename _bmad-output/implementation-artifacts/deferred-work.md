@@ -69,6 +69,11 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
   summary: A origem ambiente (AsyncLocal) pode vazar para trabalho em segundo plano iniciado num fluxo da IA (timers, Task.Run, handlers de EstadoAparelho.Mudou e de Sessao), fazendo uma escrita posterior sair como IA (recusada na pausa ou depois do PARAR IA) ou como App (passando sem o uso compartilhado).
   evidence: Não verificado (maybe-false, seria medium). Hoje só o gerador e o Escritor escrevem nesses fluxos, e os dois põem a origem certa. Resolve: na 9b, auditar cada handler que escreve e as entradas da porta HTTP, e pôr `ExecutionContext.SuppressFlow` ou `Origem.Como(...)` onde o trabalho em segundo plano nasce; um teste com um handler que escreve.
+  status: feito na 9b (entradas da porta). O `ServidorHttp` aceita cada conexão com `ExecutionContext.SuppressFlow` (`ServidorHttp.SemFluxo`), o `PortaComandos` abre e fecha pela chave do mesmo jeito, e cada comando roda em `Origem.Como(OrigemComando.Ia)`. Testes em `PortaTestes`: um handler que escreve (a origem é IA e não volta para quem chamou) e o HTTP no loopback com a porta aberta dentro de um escopo App (a porta vê a origem padrão). Um handler de terceiros que faz `Task.Run` dentro de um fluxo da IA ainda herda a origem: é do AsyncLocal, e nenhum handler do app faz isso hoje.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9b-porta-de-comandos-da-ia.md`
+  summary: O MauiProgram ainda não registra a porta da IA: `Pareamento` (porta-ia.json, `RepositorioTextoArquivos.ArquivoPortaIa`), `PedidosConfirmacao`, `RedeLocal` como `IRedeLocal`, `PortaComandos` (porta 8787, criada cedo, depois das chaves, do uso e do histórico), `IaPelaRedeViewModel` e `ConfirmacaoIaViewModel` (a folha sobre qualquer tela).
+  evidence: A spec da 9b deixa XAML, navegação e MauiProgram para a história 11 (Never). Até lá, o app real não abre a porta mesmo com a chave "IA pela rede" ligada. O manifesto já tem INTERNET e ACCESS_NETWORK_STATE.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
   summary: O MauiProgram ainda não cria o Historico (historico.json) nem o UsoCompartilhado (uso-ia.json), não os passa à Sessao, e ninguém chama Historico.GravarAgoraAsync ao sair do app.

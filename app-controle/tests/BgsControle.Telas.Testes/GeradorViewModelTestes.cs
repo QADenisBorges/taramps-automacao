@@ -142,7 +142,9 @@ public sealed class GeradorViewModelTestes : IDisposable
 
         _b.Relogio.Avancar(TimeSpan.FromSeconds(24));
         await _b.Tela.EsvaziarAsync();
-        await AndarAte(() => !_vm.Tocando && _b.Gerador.Estado == EstadoGerador.Desligado);
+        // O estado vira Desligado um pouco antes da mensagem chegar à tela: espera as duas.
+        await AndarAte(() => !_vm.Tocando && _b.Gerador.Estado == EstadoGerador.Desligado
+                             && _vm.Mensagem == GeradorSinal.MsgPrazo);
 
         Assert.Equal(GeradorSinal.MsgPrazo, _vm.Mensagem);
         Assert.Null(_vm.Contagem);

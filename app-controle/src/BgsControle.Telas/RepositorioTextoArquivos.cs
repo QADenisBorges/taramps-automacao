@@ -2,7 +2,7 @@ using BgsControle.Nucleo.Escrita;
 
 namespace BgsControle.Telas;
 
-/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, as playlists, o histórico, o modo do toque) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
+/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, as playlists, o histórico, o modo do toque, o cliente da porta da IA) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
 public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arquivo) : IRepositorioTexto
 {
     /// <summary>A cópia antes de mexer e a marca da operação em andamento.</summary>
@@ -22,6 +22,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
 
     /// <summary>O modo do toque durante a IA ("Controles travados até PARAR IA" ou "O toque pausa a IA").</summary>
     public const string ArquivoUsoIa = "uso-ia.json";
+
+    /// <summary>O cliente pareado da porta da IA: o nome, a data e só o SHA-256 da chave.</summary>
+    public const string ArquivoPortaIa = "porta-ia.json";
 
     public string Arquivo { get; } = arquivo;
 
