@@ -54,7 +54,7 @@ public sealed record ResultadoCopia(bool Ok, string? Motivo)
 /// <item><see cref="VoltarAsync"/>: escreve pelo <see cref="Escritor"/> cada parâmetro de áudio da
 /// cópia que difere do estado atual (precisa da chave "Ajustes de áudio"; o link não repete).</item>
 /// </list>
-/// Genérica: as memórias usam agora, os presets do celular (história 8) depois.
+/// Genérica: as memórias (história 6) e os presets do celular (história 8) usam.
 /// </summary>
 public sealed class CopiaAntes
 {
@@ -412,7 +412,7 @@ public sealed class CopiaAntes
     /// Os parâmetros de áudio (Marco 1) da cópia diferentes do espelho, na ordem da leitura, e
     /// quantos valores da cópia não dá para decodificar ou escrever de volta.
     /// </summary>
-    private static (List<Escrita> Escritas, int Ilegiveis) Diferencas(Copia copia, IReadOnlyDictionary<Endereco, Valor> atual)
+    internal static (List<Escrita> Escritas, int Ilegiveis) Diferencas(Copia copia, IReadOnlyDictionary<Endereco, Valor> atual)
     {
         var guardados = new Dictionary<Endereco, string>();
         foreach (var v in copia.Valores)
@@ -671,5 +671,6 @@ public sealed class CopiaAntes
 
     private sealed record Registro(Func<OperacaoPendente, Task<Retomada>> AoReconectar, Func<OperacaoPendente, Task<ResultadoCopia>> Refazer);
 
-    private sealed record Escrita(Parametro Parametro, int? Indice, Valor Valor, string Quadro);
+    /// <summary>Um ajuste a escrever: o parâmetro, onde, o valor e o quadro já montado.</summary>
+    internal sealed record Escrita(Parametro Parametro, int? Indice, Valor Valor, string Quadro);
 }

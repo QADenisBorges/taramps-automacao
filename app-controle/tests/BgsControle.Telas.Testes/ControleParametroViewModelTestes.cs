@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Simulador;
@@ -46,6 +47,9 @@ internal sealed class Bancada
         Link = new LinkCanais(Sessao, Estado, Escritor,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoLink), Log);
         Memorias = new GerenteMemorias(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
+        // História 8: os presets no celular, guardados nos arquivos falsos.
+        Presets = new GerentePresets(Sessao, Estado, Escritor, Leitura, Copia,
+            new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPresets), Log, Relogio);
         // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
         Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
         // História 7b: a monitoração e os comandos de aparelho.
@@ -73,6 +77,10 @@ internal sealed class Bancada
 
     public LinkViewModel CriarLinkViewModel() => new(Link, Sessao, Chaves, Estado, Tela, Relogio);
 
+    public GerentePresets Presets { get; }
+
+    public PresetsViewModel CriarPresetsViewModel() => new(Presets, Copia, Sessao, Chaves, Estado, Tela, Relogio);
+
     public RelogioFalso Relogio { get; } = new();
     public ProcessadorSimulado Simulador { get; }
     public ArquivosFalso Arquivos { get; }
@@ -91,6 +99,7 @@ internal sealed class Bancada
         await Chaves.Carregada;
         await Copia.Carregada;
         await Link.Carregada;
+        await Presets.Carregada;
         await Sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, Sessao.Estado);
         await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento);

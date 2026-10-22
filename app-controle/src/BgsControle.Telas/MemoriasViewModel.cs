@@ -1,5 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 
@@ -10,6 +11,7 @@ public sealed class CartaoMemoriaViewModel : TelaBase
 {
     private string _nome = MemoriasViewModel.SemNome;
     private bool _emUso;
+    private bool _notaVisivel;
 
     internal CartaoMemoriaViewModel(int indice, MemoriasViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -18,6 +20,10 @@ public sealed class CartaoMemoriaViewModel : TelaBase
         Carregar = new Comando(() => tela.CarregarAsync(indice));
         SalvarAqui = new Comando(() => tela.AbrirSalvar(indice));
         Renomear = new Comando(() => tela.AbrirRenomear(indice));
+        AlternarNota = new Comando(() =>
+        {
+            NotaVisivel = !NotaVisivel;
+        });
     }
 
     /// <summary>A memória no fio (0 a 2).</summary>
@@ -62,6 +68,33 @@ public sealed class CartaoMemoriaViewModel : TelaBase
 
     /// <summary>Abre o campo do nome.</summary>
     public Comando Renomear { get; }
+
+    // ------------------------------------------------------------------ conhecimento herdado (CAP-6)
+
+    /// <summary>A nota herdada desta posição (o nome do protótipo e o que se sabe dela), sempre presente.</summary>
+    public NotaMemoriaHerdada? Herdada => ConhecimentoHerdado.NotaMemoria(Numero);
+
+    /// <summary>O selo HERDADO: a memória tem conhecimento herdado (pela posição, não pelo nome de hoje).</summary>
+    public string? Selo => Herdada is null ? null : HerdadoViewModel.TextoSelo;
+
+    /// <summary>"MUSICA ORIG: Versão antiga, precisa ser refeita…", ou null.</summary>
+    public string? NotaHerdada => Herdada is { } n ? $"{n.NomeNoPrototipo}: {n.Texto}" : null;
+
+    /// <summary>A nota está à mostra (tocar no selo).</summary>
+    public bool NotaVisivel
+    {
+        get => _notaVisivel;
+        private set
+        {
+            if (_notaVisivel == value)
+                return;
+            _notaVisivel = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>Tocar no selo mostra ou esconde a nota herdada. Não manda nada ao aparelho.</summary>
+    public Comando AlternarNota { get; }
 }
 
 /// <summary>
