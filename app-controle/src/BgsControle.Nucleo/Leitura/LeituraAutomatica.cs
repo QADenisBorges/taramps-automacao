@@ -102,9 +102,27 @@ public sealed class LeituraAutomatica
         return Iniciar();
     }
 
+    /// <summary>
+    /// Avisa o começo e dispara a leitura. Um assinante do <see cref="Comecou"/> que lança não
+    /// prende a leitura: ela acaba ali, como falha (<see cref="Falhou"/>), e a próxima pode começar.
+    /// </summary>
     private Task<Retrato?> Iniciar()
     {
-        Comecou?.Invoke();
+        try
+        {
+            Comecou?.Invoke();
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                return Task.FromResult(Falhar(e));
+            }
+            catch (Exception doFalhou)
+            {
+                return Task.FromException<Retrato?>(doFalhou); // um assinante do Falhou também lançou
+            }
+        }
         // Fora da thread de quem chamou: as respostas chegam pelas notificações.
         return Task.Run(ExecutarAsync);
     }
@@ -118,16 +136,7 @@ public sealed class LeituraAutomatica
         }
         catch (Exception e)
         {
-            // O fim é avisado antes de soltar: o Comecou de uma leitura nova vem sempre depois.
-            try
-            {
-                Falhou?.Invoke(e);
-            }
-            finally
-            {
-                Soltar();
-            }
-            return null;
+            return Falhar(e);
         }
         try
         {
@@ -135,9 +144,26 @@ public sealed class LeituraAutomatica
         }
         finally
         {
-            Soltar();
+            Soltar(); // mesmo que um assinante do Terminou lance
         }
         return retrato;
+    }
+
+    /// <summary>
+    /// Avisa a falha e solta, mesmo que um assinante do <see cref="Falhou"/> lance. O fim é
+    /// avisado antes de soltar: o <see cref="Comecou"/> de uma leitura nova vem sempre depois.
+    /// </summary>
+    private Retrato? Falhar(Exception e)
+    {
+        try
+        {
+            Falhou?.Invoke(e);
+        }
+        finally
+        {
+            Soltar();
+        }
+        return null;
     }
 
     /// <summary>Acaba a leitura e começa a pendente, se a sessão ainda está conectada.</summary>

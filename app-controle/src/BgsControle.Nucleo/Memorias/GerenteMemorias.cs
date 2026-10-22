@@ -20,8 +20,8 @@ public sealed record ResultadoMemoria(bool Ok, string? Motivo, string? Mensagem 
 /// <item><b>Salvar</b> (resultado "honesto", decisão do Denis em 21/10): guarda a cópia antes;
 /// anota a etapa; envia o <c>*240*n*</c> e depois o nome (<c>*23N*NOME*</c>). Com a resposta
 /// <c>#240#n#</c> (medida em 20/10, ~1,17 s), "Memória N salva"; sem ela, "Memória N enviada (o
-/// aparelho não confirma o salvar)". Reler o nome confirma só o nome. Se a conexão cair no meio,
-/// ao reconectar diz "A memória N pode não ter sido salva; carregue-a para conferir".</item>
+/// aparelho não confirma o salvar)" (Suposição ACK-240-SALVA). Reler o nome confirma só o
+/// nome. Se a conexão cair no meio, ao reconectar diz "A memória N pode não ter sido salva; carregue-a para conferir".</item>
 /// <item><b>Carregar:</b> guarda a cópia antes; envia o <c>*241*n*</c>; faz uma leitura completa
 /// nova; só no fim dela a memória fica "em uso". Se cair depois do 241, a próxima conexão mostra
 /// "aplicado pela metade" (<see cref="CopiaAntes"/>); se cair antes, nada mudou.</item>
@@ -40,7 +40,7 @@ public sealed class GerenteMemorias
 
     /// <summary>
     /// Quanto esperar a resposta ao 240 e ao 241. O 240 respondeu em ~1,17 s (medido em 20/10);
-    /// 3 s dão folga. [SUPOSIÇÃO] O 241 responde no mesmo prazo.
+    /// 3 s dão folga. Suposição ACK-241: o 241 responde no mesmo prazo.
     /// </summary>
     public static readonly TimeSpan PrazoAckMemoria = TimeSpan.FromSeconds(3);
 
@@ -382,7 +382,7 @@ public sealed class GerenteMemorias
         return texto => texto.TrimStart().StartsWith('*') ? null : LeitorCompleto.Casar(consulta, texto);
     }
 
-    /// <summary>O ack do 240 (medido: <c>#240#n#</c>) ou do 241 (SUPOSIÇÃO: <c>#241#n#</c>).</summary>
+    /// <summary>O ack do 240 (medido: <c>#240#n#</c>) ou do 241 (Suposição ACK-241: <c>#241#n#</c>).</summary>
     private static Func<string, string?> CasarAck(string codigo, int n)
     {
         var alvo = n.ToString(CultureInfo.InvariantCulture);

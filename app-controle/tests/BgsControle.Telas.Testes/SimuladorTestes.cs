@@ -60,11 +60,15 @@ public sealed class SimuladorTestes
     private async Task ConectarEAutenticar()
     {
         await _simulador.ConectarAsync(_simulador.Endereco!, default);
-        await Escrever("*000*AB12*");
-        Assert.Equal("#000#PRO2.4MIR003#\r\n", Recebido);
+        Assert.Equal("#000#PRO2.4MIR003#\r\n", await EnviarSenha("AB12"));
         Assert.True(_simulador.Autenticado);
-        Limpar();
     }
+
+    /// <summary>A senha: nada antes de ~23 ms, e então a resposta.</summary>
+    private Task<string> EnviarSenha(string senha) => EscreverEEsperar($"*000*{senha}*", ProcessadorSimulado.AtrasoSenhaReal);
+
+    /// <summary>Uma leitura: nada antes de ~25 ms, e então a resposta.</summary>
+    private Task<string> Perguntar(string consulta) => EscreverEEsperar(consulta, ProcessadorSimulado.AtrasoLeituraReal);
 
     /// <summary>Uma escrita direta: nada antes de ~85 ms, e então o eco.</summary>
     private Task<string> EscreverEEsperarEco(string quadro) => EscreverEEsperar(quadro, ProcessadorSimulado.AtrasoEcoReal);
@@ -85,8 +89,14 @@ public sealed class SimuladorTestes
         return eco;
     }
 
+    /// <summary>
+    /// A sessão e o leitor de verdade. Eles esperam em tempo real e o relógio falso não anda
+    /// enquanto leem: a senha e as leituras respondem na hora (o ritmo real tem o seu teste).
+    /// </summary>
     private (Sessao Sessao, LeitorCompleto Leitor) SessaoComLeitor()
     {
+        _simulador.AtrasoSenha = TimeSpan.Zero;
+        _simulador.AtrasoLeitura = TimeSpan.Zero;
         var log = new LogBle();
         var sessao = new Sessao(_simulador, new CofreMemoria { Senha = "AB12" }, log, Tempos);
         return (sessao, new LeitorCompleto(sessao, log, LeituraRapida));
@@ -140,10 +150,57 @@ public sealed class SimuladorTestes
     {
         await ConectarEAutenticar();
 
+        const string esperado = "#080#+0.0#\r\n#081#0#+10.0#\r\n020#6#-1.0\r\n231#SPL\r\n232#MUSICA ORIG\r\nERRO 0\r\n";
+
         foreach (var consulta in new[] { "#080#", "#081#0#", "020#6", "#231#", "#232#", "#005#" })
             await Escrever(consulta);
+        _relogio.Avancar(ProcessadorSimulado.AtrasoLeituraReal); // as 6 vencem no mesmo Avancar
+        await Apoio.Esperar(() => Recebido.Length >= esperado.Length);
 
-        Assert.Equal("#080#+0.0#\r\n#081#0#+10.0#\r\n020#6#-1.0\r\n231#SPL\r\n232#MUSICA ORIG\r\nERRO 0\r\n", Recebido);
+        Assert.Equal(esperado, Recebido);
+    }
+
+    [Fact]
+    public async Task A_senha_e_a_leitura_respondem_no_atraso_medido_pelo_relogio_do_simulador()
+    {
+        await _simulador.ConectarAsync(_simulador.Endereco!, default);
+
+        // EscreverEEsperar confere que nada chega 1 ms antes do atraso.
+        Assert.Equal("#000#PRO2.4MIR003#\r\n", await EscreverEEsperar("*000*AB12*", TimeSpan.FromMilliseconds(23)));
+        Assert.Equal("#080#+0.0#\r\n", await EscreverEEsperar("#080#", TimeSpan.FromMilliseconds(25)));
+        Assert.Equal("ERRO 0\r\n", await EscreverEEsperar("#005#", TimeSpan.FromMilliseconds(25)));
+    }
+
+    [Fact]
+    public async Task Uma_leitura_depois_de_uma_escrita_sai_na_fila_depois_do_eco()
+    {
+        await ConectarEAutenticar();
+
+        await Escrever("*081*0*-3.0*");
+        await Escrever("#080#");
+        _relogio.Avancar(ProcessadorSimulado.AtrasoLeituraReal);
+        await Task.Delay(30);
+        Assert.Equal("", Recebido); // a leitura venceu, mas espera o eco que está na frente
+        _relogio.Avancar(ProcessadorSimulado.AtrasoEcoReal - ProcessadorSimulado.AtrasoLeituraReal);
+        await Apoio.Esperar(() => Recebido.Length >= "#081#0#-3.0#\r\n#080#+0.0#\r\n".Length);
+
+        Assert.Equal("#081#0#-3.0#\r\n#080#+0.0#\r\n", Recebido);
+    }
+
+    [Fact]
+    public async Task A_queda_joga_fora_as_respostas_que_ainda_nao_sairam()
+    {
+        await ConectarEAutenticar();
+        await Escrever("#080#");
+        await Escrever("*081*0*-3.0*");
+
+        _simulador.Derrubar();
+        await _simulador.ConectarAsync(_simulador.Endereco!, default);
+        _relogio.Avancar(TimeSpan.FromSeconds(1));
+        await Task.Delay(30);
+
+        Assert.Equal("", Recebido);
+        Assert.Equal("-3.0", _simulador.Valor("081", 0)); // a escrita foi aplicada; só o eco se perdeu
     }
 
     [Fact]
@@ -169,11 +226,23 @@ public sealed class SimuladorTestes
         _simulador.Firmware = "R004";
         await _simulador.ConectarAsync(_simulador.Endereco!, default);
 
-        await Escrever("*000*AB12*");
-        Assert.Equal("#000#ERRO#\r\n", Recebido);
-        Limpar();
-        await Escrever("*000*Z9Z9*");
-        Assert.Equal("#000#PRO2.4MIR004#\r\n", Recebido);
+        Assert.Equal("#000#ERRO#\r\n", await EnviarSenha("AB12"));
+        Assert.Equal("#000#PRO2.4MIR004#\r\n", await EnviarSenha("Z9Z9"));
+    }
+
+    [Fact]
+    public async Task Senha_errada_depois_da_certa_tira_a_autenticacao()
+    {
+        await ConectarEAutenticar();
+
+        Assert.Equal("#000#ERRO#\r\n", await EnviarSenha("ZZZZ"));
+        Assert.False(_simulador.Autenticado);
+        await Escrever("#080#");
+        _relogio.Avancar(TimeSpan.FromSeconds(1));
+        await Task.Delay(30);
+
+        Assert.Equal("", Recebido);
+        Assert.Contains(_simulador.Recusadas, r => r.Quadro == "#080#");
     }
 
     [Fact]
@@ -183,8 +252,7 @@ public sealed class SimuladorTestes
         _simulador.Caiu += () => Interlocked.Increment(ref quedas);
         await _simulador.ConectarAsync(_simulador.Endereco!, default);
 
-        await Escrever("*000*ZZZZ*");
-        Assert.Equal("#000#ERRO#\r\n", Recebido);
+        Assert.Equal("#000#ERRO#\r\n", await EnviarSenha("ZZZZ")); // o prazo conta desde a escrita
 
         _relogio.Avancar(TimeSpan.FromSeconds(28.9));
         Assert.True(_simulador.Conectado);
@@ -241,8 +309,7 @@ public sealed class SimuladorTestes
         Assert.Equal("-3.0", _simulador.Valor("081", 0));
         Assert.DoesNotContain("OK", string.Concat(_simulador.Notificacoes));
 
-        await Escrever("#081#0#");
-        Assert.Equal("#081#0#-3.0#\r\n", Recebido);
+        Assert.Equal("#081#0#-3.0#\r\n", await Perguntar("#081#0#"));
     }
 
     [Fact]
@@ -349,8 +416,7 @@ public sealed class SimuladorTestes
         await Task.Delay(30);
         Assert.Equal("", Recebido);
         Assert.Equal("CINEMA", _simulador.Valor("231"));
-        await Escrever("#231#");
-        Assert.Equal("231#CINEMA\r\n", Recebido);
+        Assert.Equal("231#CINEMA\r\n", await Perguntar("#231#"));
     }
 
     [Fact]
@@ -400,6 +466,106 @@ public sealed class SimuladorTestes
 
         Assert.Equal("#150#5#\r\n", Recebido);
         Assert.Equal("5", _simulador.Valor("150"));
+    }
+
+    [Fact]
+    public async Task O_gerador_guarda_a_linha_do_tempo_do_202()
+    {
+        await ConectarEAutenticar();
+        var t0 = _relogio.GetUtcNow();
+
+        Assert.Equal("#202#1#\r\n", await EscreverEEsperarEco("*202*1*"));
+        Assert.True(_simulador.GeradorLigado);
+        _relogio.Avancar(TimeSpan.FromSeconds(25));
+        Assert.Equal("#202#0#\r\n", await EscreverEEsperarEco("*202*0*"));
+        Assert.False(_simulador.GeradorLigado);
+        await Escrever("*202*2*"); // recusada: não entra na linha do tempo
+        _simulador.Definir("202", null, "1"); // direto no estado, sem escrita: também não
+
+        Assert.Equal(
+            [new MarcaGerador(t0, true), new MarcaGerador(t0 + ProcessadorSimulado.AtrasoEcoReal + TimeSpan.FromSeconds(25), false)],
+            _simulador.LinhaDoTempoGerador);
+    }
+
+    // ----------------------------------------------------------------- notificações de até 20 bytes
+
+    /// <summary>O tamanho de cada notificação que chegou, na ordem.</summary>
+    private int[] Tamanhos()
+    {
+        lock (_recebido)
+            return _recebido.Select(f => f.Length).ToArray();
+    }
+
+    [Fact]
+    public async Task Por_padrao_cada_notificacao_leva_ate_20_bytes()
+    {
+        await _simulador.ConectarAsync(_simulador.Endereco!, default);
+        Limpar();
+        Assert.Equal("#000#PRO2.4MIR003#\r\n", await EnviarSenha("AB12"));
+        Assert.Equal(1, _fragmentos); // 20 bytes: uma notificação só, como no log de 20/10
+
+        _simulador.OrfaoAntesDeCadaResposta = "#111#1#";
+        await Escrever("#081#0#");
+        _relogio.Avancar(ProcessadorSimulado.AtrasoLeituraReal);
+        await Apoio.Esperar(() => Recebido.Length >= 24);
+
+        Assert.Equal("#111#1#\r\n#081#0#+10.0#\r\n", Recebido);
+        Assert.Equal([20, 4], Tamanhos()); // 24 bytes: 20 e o resto
+    }
+
+    [Fact]
+    public async Task O_tamanho_da_notificacao_e_o_sorteado_sao_opcionais_e_nunca_passam_de_20()
+    {
+        await ConectarEAutenticar();
+
+        _simulador.TamanhoNotificacao = 3;
+        await Escrever("#081#0#");
+        _relogio.Avancar(ProcessadorSimulado.AtrasoLeituraReal);
+        await Apoio.Esperar(() => Recebido.Length >= 15);
+        Assert.Equal("#081#0#+10.0#\r\n", Recebido);
+        Assert.Equal([3, 3, 3, 3, 3], Tamanhos());
+        Limpar();
+
+        _simulador.TamanhoMaximoFragmento = 5;
+        await Escrever("#081#1#");
+        _relogio.Avancar(ProcessadorSimulado.AtrasoLeituraReal);
+        await Apoio.Esperar(() => Recebido.Length >= 14);
+        Assert.Equal("#081#1#+7.0#\r\n", Recebido);
+        Assert.All(Tamanhos(), t => Assert.InRange(t, 1, 5));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => _simulador.TamanhoNotificacao = 21);
+        Assert.Throws<ArgumentOutOfRangeException>(() => _simulador.TamanhoNotificacao = 0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => _simulador.TamanhoMaximoFragmento = 21);
+        _simulador.TamanhoMaximoFragmento = null;
+    }
+
+    [Fact]
+    public async Task No_ritmo_real_a_leitura_completa_chega_a_84_de_84_em_notificacoes_de_ate_20_bytes()
+    {
+        // O relógio do sistema: a senha leva 23 ms e cada leitura 25 ms de verdade.
+        var simulador = new ProcessadorSimulado();
+        var tamanhos = new List<int>();
+        simulador.Notificacao += f =>
+        {
+            lock (tamanhos)
+                tamanhos.Add(f.Length);
+        };
+        var log = new LogBle();
+        var sessao = new Sessao(simulador, new CofreMemoria { Senha = "AB12" }, log, Tempos);
+        // O prazo de 500 ms folga os 25 ms e só encurta a espera do voltímetro (ERRO 0, órfão).
+        var leitor = new LeitorCompleto(sessao, log, new TemposLeitura(TimeSpan.Zero, TimeSpan.FromMilliseconds(500)));
+
+        await sessao.ConectarAsync();
+        Assert.Equal(EstadoSessao.Conectado, sessao.Estado);
+        var r = await leitor.LerAsync();
+
+        Assert.True(r.Completo);
+        Assert.Equal("84 de 84", r.PlacarMarco1.Texto);
+        Assert.Equal("14 de 15", r.PlacarExtras.Texto);
+        Assert.Equal(["ERRO 0"], r.Orfaos);
+        Assert.DoesNotContain(r.Lidos, l => l.Tentativas > 1);
+        lock (tamanhos)
+            Assert.All(tamanhos, t => Assert.InRange(t, 1, ProcessadorSimulado.MaximoPorNotificacao));
     }
 
     // ----------------------------------------------------------------- falhas injetáveis

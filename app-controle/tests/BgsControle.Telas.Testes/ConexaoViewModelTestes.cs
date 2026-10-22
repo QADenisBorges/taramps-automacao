@@ -36,7 +36,9 @@ public sealed class ConexaoViewModelTestes
 
     public ConexaoViewModelTestes()
     {
-        _simulador = new ProcessadorSimulado(_relogio);
+        // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
+        // a senha e as leituras respondem na hora (o ritmo real tem um teste no SimuladorTestes).
+        _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         _sessao = new Sessao(_simulador, _cofre, _log, Tempos);
         _leitor = new LeitorCompleto(_sessao, _log, LeituraRapida);
         _leitura = new LeituraAutomatica(_sessao, _leitor);

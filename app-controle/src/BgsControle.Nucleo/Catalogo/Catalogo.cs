@@ -200,7 +200,7 @@ public static class Catalogo
     public const string CodigoSalvarMemoria = "240";
     public const string CodigoCarregarMemoria = "241";
 
-    // SUPOSIÇÃO (história 12): o formato *23N*NOME* e "memória 1 = n 0 = nome 231".
+    // Suposição MEMORIA-N-NOME (história 12): o formato *23N*NOME* e "memória 1 = n 0 = nome 231".
     private static readonly System.Text.RegularExpressions.Regex QuadroSalvarOuCarregar =
         new(@"^\*(240|241)\*([0-2])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
@@ -243,7 +243,7 @@ public static class Catalogo
     /// <summary>
     /// O nome de memória como vai no fio: sem espaços nas pontas e em maiúsculas, de 1 a 12
     /// caracteres entre A–Z, 0–9, espaço e <c>_</c>. Fora disso, null (nada sai).
-    /// [SUPOSIÇÃO] A regra de nomes da Taramps vale também para as memórias.
+    /// Suposição REGRA-NOMES: a regra de nomes da Taramps vale também para as memórias.
     /// </summary>
     public static string? NormalizarNomeMemoria(string? digitado)
     {

@@ -27,7 +27,9 @@ internal sealed class Bancada
 
     public Bancada(ArquivosFalso? arquivos = null)
     {
-        Simulador = new ProcessadorSimulado(Relogio);
+        // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
+        // a senha e as leituras respondem na hora; os ecos e os acks seguem no relógio falso.
+        Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         Arquivos = arquivos ?? new ArquivosFalso();
         Chaves = new Chaves(new RepositorioChavesArquivos(Arquivos));
         Sessao = new Sessao(Simulador, new CofreMemoria { Senha = "AB12" }, Log, Tempos, Chaves);

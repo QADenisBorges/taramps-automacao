@@ -8,16 +8,20 @@ using BgsControle.Nucleo.Protocolo;
 
 namespace BgsControle.Simulador;
 
+/// <summary>Uma escrita aceita do 202 (gerador liga/desliga), com a hora do relógio do simulador.</summary>
+public sealed record MarcaGerador(DateTimeOffset Quando, bool Ligado);
+
 /// <summary>
 /// O PRO 2.4BT + AUDIO simulado, para os testes (nunca no APK). Imita o formato real medido
 /// (MAPA §2 e §9): leituras <c>#CCC#[c#]v#\r\n</c>, banda <c>020#b#v</c>, nomes <c>23N#NOME</c>,
 /// voltímetro <c>ERRO 0</c>, senha <c>#000#PRO2.4MIR003#</c> ou <c>#000#ERRO#</c>, e a escrita
-/// respondida pelo eco no formato de leitura depois de ~85 ms, sem <c>OK</c>.
+/// respondida pelo eco no formato de leitura depois de ~85 ms, sem <c>OK</c>. A senha responde
+/// ~23 ms e cada leitura ~25 ms depois, pelo relógio recebido, em notificações de até 20 bytes.
 /// <para>
 /// O estado é um dicionário (código, índice) → valor no fio, semeado com as respostas cruas
 /// reais de <c>estado/leituras/2026-10-18_2145.json</c> e com os extras reais da história 2.
-/// O que não foi medido no aparelho está marcado com <c>SUPOSIÇÃO</c> e listado em
-/// <c>SUPOSICOES.md</c> (conferido na história 12).
+/// O que não foi medido no aparelho está marcado com um id de <see cref="Suposicoes"/> e listado
+/// em <c>SUPOSICOES.md</c> (conferido na história 12).
 /// </para>
 /// </summary>
 public sealed partial class ProcessadorSimulado : ITransporte
@@ -39,6 +43,24 @@ public sealed partial class ProcessadorSimulado : ITransporte
 
     /// <summary>O eco de uma escrita chega ~85 ms depois (medido em 16/10, MAPA §9).</summary>
     public static readonly TimeSpan AtrasoEcoReal = TimeSpan.FromMilliseconds(85);
+
+    /// <summary>
+    /// A resposta da senha chega ~23 ms depois (20/10, 13:22:35.160 → .183, em
+    /// <c>estado/log-ble/2026-10-20_1322-memoria.log</c>). Suposição ATRASO-RESPOSTAS: sempre o mesmo.
+    /// </summary>
+    public static readonly TimeSpan AtrasoSenhaReal = TimeSpan.FromMilliseconds(23);
+
+    /// <summary>
+    /// A resposta de uma leitura chega ~25 ms depois (o mesmo log: as primeiras leituras de 18 a
+    /// 35 ms; mais adiante até 135 ms). Suposição ATRASO-RESPOSTAS: sempre o mesmo.
+    /// </summary>
+    public static readonly TimeSpan AtrasoLeituraReal = TimeSpan.FromMilliseconds(25);
+
+    /// <summary>
+    /// Uma notificação leva no máximo 20 bytes (o MTU padrão; no log de 20/10 nenhuma passa disso,
+    /// e a resposta da senha, com 20, chega inteira).
+    /// </summary>
+    public const int MaximoPorNotificacao = 20;
 
     /// <summary>
     /// O ack <c>#240#n#</c> do salvar chega ~1,17 s depois do <c>*240*n*</c> (medido em 20/10:
@@ -71,6 +93,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     private readonly List<string> _escritas = [];
     private readonly List<(string Quadro, string Motivo)> _recusadas = [];
     private readonly List<string> _notificacoes = [];
+    private readonly List<MarcaGerador> _gerador = [];
     private readonly Random _sorteio = new(2026);
 
     private bool _conectado;
@@ -78,13 +101,15 @@ public sealed partial class ProcessadorSimulado : ITransporte
     private int _geracao;
     private ITimer? _quedaAposErro;
     private Task _ultimaAtrasada = Task.CompletedTask; // as respostas com atraso saem em fila
+    private int _tamanhoNotificacao = MaximoPorNotificacao;
+    private int? _tamanhoMaximoFragmento;
 
     /// <param name="relogio">O relógio dos atrasos e da queda depois do ERRO (o sistema, se null).</param>
     public ProcessadorSimulado(TimeProvider? relogio = null)
     {
         _relogio = relogio ?? TimeProvider.System;
         _estado = new Dictionary<(string, int?), string>(Semente);
-        // SUPOSIÇÃO: o conteúdo das 3 memórias não foi lido; começam iguais ao estado semeado.
+        // Suposição MEMORIAS-INICIAIS: o conteúdo das 3 memórias não foi lido; começam iguais ao estado semeado.
         for (var n = 0; n < Memorias; n++)
             _memorias[n] = CopiaMarco1(_estado);
     }
@@ -101,7 +126,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     public string Firmware { get; set; } = FirmwareReal;
 
     /// <summary>A senha depois do reset de fábrica <c>*004*</c>.</summary>
-    // SUPOSIÇÃO: a senha de fábrica não foi medida.
+    // Suposição RESET-004: a senha de fábrica não foi medida.
     public string SenhaDeFabrica { get; set; } = "1234";
 
     /// <summary>Depois de um <c>ERRO</c>, a conexão cai sozinha neste prazo (29 s medidos).</summary>
@@ -111,12 +136,21 @@ public sealed partial class ProcessadorSimulado : ITransporte
     public TimeSpan AtrasoEco { get; set; } = AtrasoEcoReal;
 
     /// <summary>
-    /// Atraso do ack de <c>*240*n*</c> (~1,17 s medidos) e de <c>*241*n*</c> (SUPOSIÇÃO: o mesmo).
+    /// Atraso do ack de <c>*240*n*</c> (~1,17 s medidos) e de <c>*241*n*</c> (Suposição ACK-241: o mesmo).
     /// </summary>
     public TimeSpan AtrasoAckMemoria { get; set; } = AtrasoAckSalvarReal;
 
-    /// <summary>Atraso da resposta a uma leitura e à senha. Zero = responde dentro da escrita.</summary>
-    public TimeSpan AtrasoLeitura { get; set; } = TimeSpan.Zero;
+    /// <summary>
+    /// Atraso da resposta à senha (~23 ms). Zero = responde dentro da própria escrita, para os
+    /// testes que não andam o relógio falso enquanto conectam.
+    /// </summary>
+    public TimeSpan AtrasoSenha { get; set; } = AtrasoSenhaReal;
+
+    /// <summary>
+    /// Atraso da resposta a uma leitura (~25 ms). Zero = responde dentro da própria escrita, para
+    /// os testes que não andam o relógio falso enquanto leem.
+    /// </summary>
+    public TimeSpan AtrasoLeitura { get; set; } = AtrasoLeituraReal;
 
     /// <summary>O endereço anunciado. Null = o aparelho não aparece no scan.</summary>
     public string? Endereco { get; set; } = EnderecoReal;
@@ -151,10 +185,45 @@ public sealed partial class ProcessadorSimulado : ITransporte
     public Dictionary<string, string> EcosDiferentes { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Quebra cada mensagem em notificações de 1 a N bytes (sorteio com semente fixa). Null =
-    /// uma notificação por mensagem, como no aparelho real.
+    /// Bytes por notificação, de 1 a <see cref="MaximoPorNotificacao"/>: cada mensagem sai em
+    /// pedaços deste tamanho (20 = como no aparelho; menos = mais fragmentos).
     /// </summary>
-    public int? TamanhoMaximoFragmento { get; set; }
+    public int TamanhoNotificacao
+    {
+        get
+        {
+            lock (_trava)
+                return _tamanhoNotificacao;
+        }
+        set
+        {
+            if (value is < 1 or > MaximoPorNotificacao)
+                throw new ArgumentOutOfRangeException(nameof(value), $"De 1 a {MaximoPorNotificacao} bytes.");
+            lock (_trava)
+                _tamanhoNotificacao = value;
+        }
+    }
+
+    /// <summary>
+    /// Opcional: quebra cada mensagem em notificações de tamanho sorteado, de 1 a N bytes (N de 1
+    /// a <see cref="MaximoPorNotificacao"/>, sorteio com semente fixa), no lugar dos pedaços de
+    /// <see cref="TamanhoNotificacao"/>. Null = pedaços de <see cref="TamanhoNotificacao"/>.
+    /// </summary>
+    public int? TamanhoMaximoFragmento
+    {
+        get
+        {
+            lock (_trava)
+                return _tamanhoMaximoFragmento;
+        }
+        set
+        {
+            if (value is < 1 or > MaximoPorNotificacao)
+                throw new ArgumentOutOfRangeException(nameof(value), $"De 1 a {MaximoPorNotificacao} bytes, ou null.");
+            lock (_trava)
+                _tamanhoMaximoFragmento = value;
+        }
+    }
 
     /// <summary>Um quadro órfão (sem <c>\r\n</c>) enviado antes de cada resposta.</summary>
     public string? OrfaoAntesDeCadaResposta { get; set; }
@@ -236,6 +305,19 @@ public sealed partial class ProcessadorSimulado : ITransporte
         lock (_trava)
             _memorias[n][(codigo, indice)] = noFio;
     }
+
+    /// <summary>Cada escrita aceita do 202 (gerador), com a hora do relógio do simulador, na ordem.</summary>
+    public IReadOnlyList<MarcaGerador> LinhaDoTempoGerador
+    {
+        get
+        {
+            lock (_trava)
+                return _gerador.ToArray();
+        }
+    }
+
+    /// <summary>O gerador está ligado (202 = 1).</summary>
+    public bool GeradorLigado => Valor("202") is "1";
 
     /// <summary>Os 84 valores do Marco 1 do estado atual, como uma memória os guardaria.</summary>
     public IReadOnlyDictionary<(string Codigo, int? Indice), string> EstadoMarco1()
@@ -351,7 +433,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     }
 
     /// <summary>O clip espontâneo das saídas (<c>#150#bits#</c>, um bit por saída), quando o teste quiser.</summary>
-    // SUPOSIÇÃO: o formato do clip espontâneo é o da leitura; o período e o gatilho não foram medidos.
+    // Suposição CLIP-ESPONTANEO: o formato do clip espontâneo é o da leitura; o período e o gatilho não foram medidos.
     public void EmitirClip(int bitsSaidas)
     {
         string mensagem;
@@ -383,26 +465,27 @@ public sealed partial class ProcessadorSimulado : ITransporte
             if (senha.Groups[1].Value == Senha)
             {
                 _autenticado = true;
-                // SUPOSIÇÃO: a senha certa dentro da janela cancela a queda depois do ERRO.
+                // Suposição QUEDA-APOS-ERRO: a senha certa dentro da janela cancela a queda depois do ERRO.
                 CancelarQuedaAposErro();
-                Responder($"#000#{Produto}{Firmware}#", AtrasoLeitura);
+                Responder($"#000#{Produto}{Firmware}#", AtrasoSenha);
             }
             else
             {
+                // Suposição SENHA-ERRADA-DESAUTENTICA: uma senha errada depois da certa tira a autenticação.
                 _autenticado = false;
-                // SUPOSIÇÃO: um segundo ERRO não reinicia o prazo da queda (conta desde o primeiro).
+                // Suposição QUEDA-APOS-ERRO: um segundo ERRO não reinicia o prazo da queda (conta desde o primeiro).
                 if (_quedaAposErro is null)
                 {
                     var geracao = _geracao;
                     _quedaAposErro = _relogio.CreateTimer(_ => CairAposErro(geracao), null,
                         PrazoQuedaAposErro, Timeout.InfiniteTimeSpan);
                 }
-                Responder("#000#ERRO#", AtrasoLeitura);
+                Responder("#000#ERRO#", AtrasoSenha);
             }
             return respostas;
         }
 
-        // SUPOSIÇÃO: antes da senha aceita, o aparelho ignora tudo, sem resposta.
+        // Suposição MUDO-SEM-SENHA: antes da senha aceita, o aparelho ignora tudo, sem resposta.
         if (!_autenticado)
         {
             Recusar(texto, "antes da senha");
@@ -413,7 +496,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
         if (Catalogo.ConsultaDe(texto) is { } consulta)
         {
             var leitura = consulta.Parametro.Codigo == CodigoVoltimetro
-                ? RespostaVoltimetro // SUPOSIÇÃO: o "ERRO 0" chega com \r\n, como as outras respostas.
+                ? RespostaVoltimetro // Suposição VOLTIMETRO-CRLF: o "ERRO 0" chega com \r\n, como as outras respostas.
                 : LeituraDe(consulta.Parametro, consulta.Indice);
             if (leitura is null)
                 Recusar(texto, "sem valor guardado");
@@ -428,36 +511,36 @@ public sealed partial class ProcessadorSimulado : ITransporte
             var n = int.Parse(memoria.Groups[2].Value, Fio);
             if (memoria.Groups[1].Value == "240")
             {
-                // SUPOSIÇÃO: a memória guarda os 84 valores do Marco 1 (sem gerador, nomes, 251, 252).
+                // Suposição CONTEUDO-MEMORIA: a memória guarda os 84 valores do Marco 1 (sem gerador, nomes, 251, 252).
                 _memorias[n] = CopiaMarco1(_estado);
             }
             else
             {
-                // SUPOSIÇÃO: carregar troca os 84 valores do Marco 1 e não mexe nos nomes 23N.
+                // Suposição CARREGAR-SEM-NOMES: carregar troca os 84 valores do Marco 1 e não mexe nos nomes 23N.
                 foreach (var (chave, valor) in _memorias[n])
                     _estado[chave] = valor;
             }
             // Medido (20/10, 2026-10-20_1322-memoria.log): o 240 responde #240#n#\r\n ~1,17 s depois.
-            // SUPOSIÇÃO: o 241 responde igual, #241#n#, no mesmo prazo (não medido).
+            // Suposição ACK-241: o 241 responde igual, #241#n#, no mesmo prazo (não medido).
             Responder($"#{memoria.Groups[1].Value}#{n}#", AtrasoAckMemoria);
             return respostas;
         }
 
         if (texto == "*242*")
         {
-            // SUPOSIÇÃO: o reset de áudio volta o Marco 1 ao estado de fábrica (Fabrica) e
-            // mantém as memórias, os nomes, o gerador, o 251 e o 252.
+            // Suposição RESET-242: o reset de áudio volta o Marco 1 ao estado de fábrica (Fabrica)
+            // e mantém as memórias, os nomes, o gerador, o 251 e o 252.
             foreach (var (chave, valor) in Fabrica)
                 _estado[chave] = valor;
-            // SUPOSIÇÃO: o ack é #242#.
+            // Suposição RESET-242: o ack é #242#.
             Responder("#242#", AtrasoEco);
             return respostas;
         }
 
         if (texto == "*004*")
         {
-            // SUPOSIÇÃO: o reset de fábrica volta o Marco 1 e as 3 memórias à fábrica, apaga os
-            // nomes e volta a senha à SenhaDeFabrica. A conexão continua.
+            // Suposição RESET-004: o reset de fábrica volta o Marco 1 e as 3 memórias à fábrica,
+            // apaga os nomes e volta a senha à SenhaDeFabrica. A conexão continua.
             foreach (var (chave, valor) in Fabrica)
                 _estado[chave] = valor;
             for (var m = 0; m < Memorias; m++)
@@ -466,7 +549,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
                 _estado[($"23{m + 1}", null)] = "";
             }
             Senha = SenhaDeFabrica;
-            // SUPOSIÇÃO: o ack é #004#.
+            // Suposição RESET-004: o ack é #004#.
             Responder("#004#", AtrasoEco);
             return respostas;
         }
@@ -478,7 +561,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
                 Senha = troca.Groups[2].Value;
             else
                 Recusar("*001*••••*••••*", "senha antiga errada ou nova fora do formato");
-            // SUPOSIÇÃO: o ack é #001#OK# ou #001#ERRO#, como a resposta da senha.
+            // Suposição ACK-001: o ack é #001#OK# ou #001#ERRO#, como a resposta da senha.
             Responder(aceita ? "#001#OK#" : "#001#ERRO#", AtrasoEco);
             return respostas;
         }
@@ -491,6 +574,8 @@ public sealed partial class ProcessadorSimulado : ITransporte
             return respostas;
         }
         _estado[(parametro!.Codigo, indice)] = noFio!;
+        if (parametro.Codigo == "202")
+            _gerador.Add(new MarcaGerador(_relogio.GetUtcNow(), noFio != "0"));
         if (EcosDiferentes.TryGetValue(texto, out var diferente))
         {
             Responder(diferente, AtrasoEco);
@@ -500,7 +585,8 @@ public sealed partial class ProcessadorSimulado : ITransporte
         // releitura responde (23N#NOME).
         if (parametro.Tipo == TipoValor.Nome)
             return respostas;
-        // SUPOSIÇÃO: o 251 e o 252 também respondem com o eco no formato de leitura; medido só no 081.
+        // Suposição ECO-251-252: o 251 e o 252 também respondem com o eco no formato de leitura;
+        // medido só no 081.
         Responder(LeituraDe(parametro, indice)!, AtrasoEco);
         return respostas;
     }
@@ -551,7 +637,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
             return (null, null, null, e.Message);
         }
 
-        // SUPOSIÇÃO: o simulador é estrito e só aceita o texto do codificador do app; o aparelho
+        // Suposição MODO-ESTRITO: o simulador só aceita o texto do codificador do app; o aparelho
         // pode aceitar variações (-3 no lugar de -3.0, espaços), o que não foi medido.
         if (codificado != texto)
             return (null, null, null, $"fora do formato do codificador ({codificado})");
@@ -564,7 +650,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// </summary>
     private static string Formatar(Parametro p, decimal v)
     {
-        // SUPOSIÇÃO: o valor escrito volta com a formatação das leituras reais (o +, a casa);
+        // Suposição FORMATO-ECO: o valor escrito volta com a formatação das leituras reais (o +, a casa);
         // medido só com -12.0 e -11.0 no 081. Os especiais (0.5, 0.01, 0.05) vão como foram.
         var especial = p.Especiais?.ContainsKey(v) == true;
         return p.Tipo switch
@@ -591,6 +677,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
         };
     }
 
+    // Suposição ESCRITA-INVALIDA: o que não é aceito não muda nada e não tem resposta.
     private void Recusar(string quadro, string motivo) => _recusadas.Add((quadro, motivo));
 
     // ------------------------------------------------------------------ conexão e envio
@@ -630,8 +717,8 @@ public sealed partial class ProcessadorSimulado : ITransporte
             EmitirAgora(geracao, texto);
             return;
         }
-        // Cada resposta espera o seu atraso e a anterior: saem na ordem dos envios, mesmo quando
-        // vencem no mesmo Avancar do relógio falso.
+        // Suposição FILA-UNICA: cada resposta espera o seu atraso e a anterior; saem na ordem dos
+        // envios, mesmo quando vencem no mesmo Avancar do relógio falso.
         lock (_trava)
         {
             var anterior = _ultimaAtrasada;
@@ -641,7 +728,11 @@ public sealed partial class ProcessadorSimulado : ITransporte
         }
     }
 
-    /// <summary>Envia pela notificação, se a conexão ainda é a mesma. Uma mensagem por vez.</summary>
+    /// <summary>
+    /// Envia pela notificação, se a conexão ainda é a mesma. Uma mensagem por vez, e a entrega
+    /// fora da trava do estado. Suposição QUEDA-DESCARTA-FILA: o que ia sair numa conexão que já
+    /// caiu é jogado fora.
+    /// </summary>
     private void EmitirAgora(int geracao, string texto)
     {
         lock (_emissao)
@@ -659,15 +750,18 @@ public sealed partial class ProcessadorSimulado : ITransporte
         }
     }
 
-    /// <summary>Chamar com a trava (o sorteio não é thread-safe).</summary>
+    /// <summary>
+    /// Quebra a mensagem em notificações de <see cref="TamanhoNotificacao"/> bytes (20, como no
+    /// aparelho) ou, com <see cref="TamanhoMaximoFragmento"/>, de tamanho sorteado. Chamar com a
+    /// trava (o sorteio não é thread-safe).
+    /// </summary>
     private List<string> Fragmentar(string texto)
     {
-        if (TamanhoMaximoFragmento is not { } maximo || maximo <= 0)
-            return [texto];
         var partes = new List<string>();
         for (var i = 0; i < texto.Length;)
         {
-            var n = Math.Min(_sorteio.Next(1, maximo + 1), texto.Length - i);
+            var tamanho = _tamanhoMaximoFragmento is { } maximo ? _sorteio.Next(1, maximo + 1) : _tamanhoNotificacao;
+            var n = Math.Min(tamanho, texto.Length - i);
             partes.Add(texto.Substring(i, n));
             i += n;
         }
@@ -709,7 +803,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// ganhos 0 dB, sem mute, roteamento a/b/a/b, fase 0°, filtros OFF em 10 Hz e 22 kHz,
     /// delay 0, limiter manual em OFF, EQs planos em 1 kHz com Q 1,0, preset Flat.
     /// </summary>
-    // SUPOSIÇÃO: o estado de fábrica não foi medido.
+    // Suposição FABRICA: o estado de fábrica não foi medido.
     public static IReadOnlyDictionary<(string Codigo, int? Indice), string> Fabrica { get; } =
         Catalogo.ConsultasMarco1.ToDictionary(c => (c.Parametro.Codigo, c.Indice), c => c.Parametro.Codigo switch
         {
@@ -730,7 +824,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     [GeneratedRegex(@"^\*000\*([^*#]*)\*$", RegexOptions.CultureInvariant)]
     private static partial Regex QuadroSenha();
 
-    // SUPOSIÇÃO: memória 1 = n 0 = nome 231 (a correspondência não foi medida).
+    // Suposição MEMORIA-N-NOME: memória 1 = n 0 = nome 231 (a correspondência não foi medida).
     [GeneratedRegex(@"^\*(240|241)\*([0-2])\*$", RegexOptions.CultureInvariant)]
     private static partial Regex QuadroMemoria();
 

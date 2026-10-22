@@ -27,7 +27,7 @@ public sealed record ResultadoLink(bool Ok, string? Motivo);
 /// </list>
 /// Os parâmetros do link são os que o app da Taramps copia (APK, <c>BVM:16189</c>): todos os de
 /// canal do Marco 1 menos o roteamento, para o par estéreo não virar mono.
-/// [SUPOSIÇÃO] O comportamento na tela ainda será conferido na história 10.
+/// Suposição LINK-PARAMETROS: o comportamento na tela ainda será conferido na história 10.
 /// </summary>
 public sealed class LinkCanais
 {

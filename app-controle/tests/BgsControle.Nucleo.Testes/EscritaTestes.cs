@@ -77,7 +77,9 @@ public sealed class EscritaTestes : IDisposable
 
     public EscritaTestes()
     {
-        _simulador = new ProcessadorSimulado(_relogio);
+        // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
+        // a senha e as leituras respondem na hora; os ecos seguem no relógio falso.
+        _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         _chaves = new Chaves(_repositorio);
         _sessao = new Sessao(_simulador, new CofreFalso { Senha = "AB12" }, _log, Tempos, _chaves);
         _leitor = new LeitorCompleto(_sessao, _log, LeituraRapida);
