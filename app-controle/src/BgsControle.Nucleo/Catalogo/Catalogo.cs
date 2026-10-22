@@ -20,6 +20,13 @@ public enum TipoComandoMemoria
 /// <summary>Um comando de memória reconhecido pela trava: o tipo, a memória (0 a 2) e o nome, no <c>23N</c>.</summary>
 public sealed record ComandoMemoria(TipoComandoMemoria Tipo, int Memoria, string? Nome);
 
+/// <summary>Um comando do gerador reconhecido pela trava: o parâmetro (200–202, 210–213) e o valor.</summary>
+public sealed record ComandoGerador(Parametro Parametro, decimal Valor)
+{
+    /// <summary><c>*202*0*</c>: desligar, o lado seguro (passa sem a chave).</summary>
+    public bool Desligar => Parametro.Codigo == Catalogo.CodigoGeradorLigado && Valor == 0;
+}
+
 /// <summary>
 /// A fonte única dos parâmetros do PRO 2.4BT + AUDIO (MAPA §4): a trava pergunta a ele se um
 /// quadro é uma leitura conhecida, o leitor monta a fila a partir dele, e as escritas futuras
@@ -273,6 +280,55 @@ public static class Catalogo
             return new ComandoMemoria(TipoComandoMemoria.Nomear, nome.Groups[1].Value[0] - '1', texto);
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------ gerador (MAPA §4 e §5)
+
+    public const string CodigoGeradorGanho = "200";
+    public const string CodigoGeradorFrequencia = "201";
+    public const string CodigoGeradorLigado = "202";
+    public const string CodigoSweepInicio = "210";
+    public const string CodigoSweepFim = "211";
+    public const string CodigoSweepGanho = "212";
+    public const string CodigoSweepVelocidade = "213";
+
+    /// <summary>Os códigos do gerador: 200–202 e 210–213.</summary>
+    public static IReadOnlyList<string> CodigosDoGerador { get; } =
+    [
+        CodigoGeradorGanho, CodigoGeradorFrequencia, CodigoGeradorLigado,
+        CodigoSweepInicio, CodigoSweepFim, CodigoSweepGanho, CodigoSweepVelocidade,
+    ];
+
+    /// <summary><c>*202*1*</c>.</summary>
+    public static string LigarGerador { get; } = ParametroDe(CodigoGeradorLigado)!.CodificarEscrita(null, true);
+
+    /// <summary><c>*202*0*</c>.</summary>
+    public static string DesligarGerador { get; } = ParametroDe(CodigoGeradorLigado)!.CodificarEscrita(null, false);
+
+    /// <summary>
+    /// Se o quadro é exatamente o texto que <see cref="Parametro.CodificarEscrita(int?, decimal)"/>
+    /// produz para um parâmetro do gerador (200–202, 210–213), na faixa do catálogo, devolve o
+    /// parâmetro e o valor; senão null. É a regra da trava para o gerador: <c>*200*-20.0*</c>,
+    /// <c>*213*2*</c> e <c>*202*0*</c> sim; <c>*200*-20*</c>, <c>*200*1.0*</c>, <c>*201*5*</c>,
+    /// <c>*202*2*</c> e <c>*213*4*</c> não.
+    /// </summary>
+    public static ComandoGerador? ComandoDeGerador(string quadro)
+    {
+        var q = Quadros.Analisar(quadro);
+        if (q is null || !CodigosDoGerador.Contains(q.Codigo) || q.Segmentos.Count != 1)
+            return null;
+        var p = ParametroDe(q.Codigo)!;
+        if (!decimal.TryParse(q.Segmentos[0], System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture, out var valor))
+            return null;
+        try
+        {
+            return p.CodificarEscrita(null, valor) == quadro ? new ComandoGerador(p, valor) : null;
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     private static void ValidarMemoria(int n)

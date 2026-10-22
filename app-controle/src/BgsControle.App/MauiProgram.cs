@@ -2,6 +2,7 @@ using BgsControle.App.Plataforma;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
@@ -76,24 +77,45 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LogBle>()));
 
+        // História 7a: o gerador de sinal, com as regras de falha 1 e 2 (desliga no prazo, no
+        // Parar, antes de soltar a conexão, ao sair do app e no fim de cada leitura).
+        builder.Services.AddSingleton(sp => new GeradorSinal(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<GerenteMemorias>()));
+
         builder.Services.AddSingleton<ConexaoViewModel>();
-        // Os ViewModels dos ajustes, das chaves, das memórias e do link (sem tela nova: o XAML é
-        // das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
+        // Os ViewModels dos ajustes, das chaves, das memórias, do link e do gerador (sem tela
+        // nova: o XAML é das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
         // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
         builder.Services.AddSingleton<ChavesViewModel>();
         builder.Services.AddSingleton<MemoriasViewModel>();
         builder.Services.AddSingleton<LinkViewModel>();
+        builder.Services.AddSingleton(sp => new GeradorViewModel(
+            sp.GetRequiredService<GeradorSinal>(),
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<GerenteMemorias>()));
         builder.Services.AddSingleton<MainPage>();
 
         var app = builder.Build();
-        // Criados já: o espelho e a cópia antes precisam ver a primeira leitura (a retomada do
-        // "aplicado pela metade"), o link se pendura no escritor, e as chaves, a cópia e o link
-        // começam a ler o guardado.
+        // Criados já: o espelho, a cópia antes e o gerador precisam ver a primeira leitura (a
+        // retomada do "aplicado pela metade", o 202), o link se pendura no escritor, e as chaves,
+        // a cópia e o link começam a ler o guardado.
         app.Services.GetRequiredService<EstadoAparelho>();
         app.Services.GetRequiredService<Escritor>();
         app.Services.GetRequiredService<LinkCanais>();
         app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
+        // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
+        app.Services.GetRequiredService<GeradorSinal>();
         return app;
     }
 }

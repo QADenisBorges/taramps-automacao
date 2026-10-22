@@ -568,7 +568,8 @@ public sealed class LeituraTestes
     [Theory]
     [InlineData("*081*0*-3.0*", Sessao.MotivoChaveDesligada)]
     [InlineData("020*3*2.5", Sessao.MotivoChaveDesligada)]
-    [InlineData("*202*1*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*202*1*", Sessao.MotivoChaveDesligada)] // gerador: chave "Gerador" (história 7a)
+    [InlineData("*202*2*", Sessao.MotivoGeradorForaDoFormato)]
     [InlineData("*252*1*", Sessao.MotivoNaoLiberado)]
     [InlineData("*240*0*", Sessao.MotivoChaveDesligada)]
     [InlineData("*241*0*", Sessao.MotivoChaveDesligada)]

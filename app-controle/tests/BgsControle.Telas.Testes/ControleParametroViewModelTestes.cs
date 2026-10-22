@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
@@ -44,7 +45,13 @@ internal sealed class Bancada
         Link = new LinkCanais(Sessao, Estado, Escritor,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoLink), Log);
         Memorias = new GerenteMemorias(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
+        // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
+        Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
     }
+
+    public GeradorSinal Gerador { get; }
+
+    public GeradorViewModel CriarGeradorViewModel() => new(Gerador, Sessao, Chaves, Estado, Copia, Tela, Relogio, Memorias);
 
     public CopiaAntes Copia { get; }
     public LinkCanais Link { get; }
@@ -106,11 +113,15 @@ internal sealed class Bancada
     public int EscritasDe(string prefixo) =>
         Simulador.Escritas.Count(e => e.StartsWith(prefixo, StringComparison.Ordinal));
 
-    /// <summary>Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo e os comandos 240, 241 e 23N permitidos.</summary>
+    /// <summary>
+    /// Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo, os
+    /// comandos 240, 241 e 23N permitidos e o <c>*202*0*</c> (o gerador desliga por segurança
+    /// quando uma leitura não traz o 202: história 7a, regra 2).
+    /// </summary>
     public void ConferirSoAudio() =>
         Assert.All(Simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null, e));
+                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador, e));
 }
 
 /// <summary>O controle de um parâmetro contra o processador simulado (história 5).</summary>
@@ -478,7 +489,14 @@ public sealed class ControleParametroViewModelTestes : IDisposable
         };
         await _b.Chaves.Carregada;
         await _b.Sessao.ConectarAsync();
-        await Apoio.Esperar(() => _b.Leitura.Iniciadas == 1 && !_b.Leitura.Lendo);
+        // A leitura que falha ainda passa pela regra 2 do gerador: o *202*0* de segurança espera
+        // o eco no relógio falso, que precisa andar.
+        for (var i = 0; i < 2000 && !(_b.Leitura.Iniciadas == 1 && !_b.Leitura.Lendo); i++)
+        {
+            _b.Relogio.Avancar(TimeSpan.FromMilliseconds(10));
+            await Task.Delay(1);
+        }
+        Assert.True(_b.Leitura.Iniciadas == 1 && !_b.Leitura.Lendo);
         await _b.Tela.EsvaziarAsync();
         var c = Controle("081");
 

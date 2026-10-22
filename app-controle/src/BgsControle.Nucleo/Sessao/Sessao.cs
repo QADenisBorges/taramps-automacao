@@ -67,16 +67,21 @@ public sealed class Sessao
     public const string MotivoNaoLiberado = "comando não liberado nesta versão do app";
     public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
     public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
+    public const string MotivoGeradorForaDoFormato = "comando do gerador fora do formato";
 
     // Os códigos das memórias (240, 241 e os nomes 231 a 233): só a forma exata passa
     // (Catalogo.ComandoDeMemoria); o resto é recusado com este motivo.
     private static readonly HashSet<string> CodigosDeMemoria =
         [Catalogo.CodigoSalvarMemoria, Catalogo.CodigoCarregarMemoria, .. Enumerable.Range(0, Catalogo.Memorias).Select(Catalogo.CodigoNomeMemoria)];
 
-    // Comandos conhecidos fora dos ajustes de áudio e das memórias (MAPA §4 e §5): gerador,
-    // 251, 252, 002, 004, 242 e 001. São da história 7; aqui só explicam a recusa.
+    // Os códigos do gerador (200–202, 210–213): só a forma exata passa (Catalogo.ComandoDeGerador).
+    private static readonly HashSet<string> CodigosDoGerador = [.. Catalogo.CodigosDoGerador];
+
+    // Comandos conhecidos fora dos ajustes de áudio, das memórias e do gerador (MAPA §4 e §5):
+    // 251, 252, 002, 004, 242 e 001 (e os só leitura 005, 111, 150). São da história 7b; aqui só
+    // explicam a recusa.
     private static readonly HashSet<string> ComandosNaoLiberados =
-        [.. Catalogo.Extras.Select(p => p.Codigo).Where(c => !CodigosDeMemoria.Contains(c)), "001", "002", "004", "242"];
+        [.. Catalogo.Extras.Select(p => p.Codigo).Where(c => !CodigosDeMemoria.Contains(c) && !CodigosDoGerador.Contains(c)), "001", "002", "004", "242"];
 
     // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha, as escritas
     // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada e os
@@ -248,9 +253,42 @@ public sealed class Sessao
             await ConectarEAutenticarAsync(senha, geracao, ct);
     }
 
-    /// <summary>Apaga a senha guardada. Se houver conexão, desconecta.</summary>
+    /// <summary>
+    /// Roda antes de a tela soltar a conexão (Desconectar, Esquecer a senha), com a conexão ainda
+    /// aberta: o gerador desliga aqui (failure-modes, regra 1). Uma falha só vai para o log.
+    /// </summary>
+    internal Func<Task>? AntesDeSoltar { get; set; }
+
+    /// <summary>Completa quando o último encerramento terminou de soltar o GATT.</summary>
+    internal Task Encerramento
+    {
+        get
+        {
+            lock (_trava)
+                return _encerramento;
+        }
+    }
+
+    private Task _encerramento = Task.CompletedTask;
+
+    private async Task RodarAntesDeSoltarAsync()
+    {
+        if (AntesDeSoltar is not { } gancho)
+            return;
+        try
+        {
+            await gancho();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha antes de desconectar ({e.GetType().Name})");
+        }
+    }
+
+    /// <summary>Apaga a senha guardada. Se houver conexão, desconecta (o gerador desliga antes).</summary>
     public async Task EsquecerSenhaAsync()
     {
+        await RodarAntesDeSoltarAsync();
         await ApagarSenhaAsync();
         int geracao;
         bool encerrar;
@@ -268,8 +306,15 @@ public sealed class Sessao
         _log.Evento("senha apagada do celular");
     }
 
+    /// <summary>Desconecta. Com a conexão aberta, o gerador desliga antes de soltar.</summary>
     public async Task DesconectarAsync()
     {
+        lock (_trava)
+        {
+            if (Estado == EstadoSessao.Desconectado)
+                return;
+        }
+        await RodarAntesDeSoltarAsync();
         int geracao;
         lock (_trava)
         {
@@ -291,9 +336,12 @@ public sealed class Sessao
     /// <item>uma escrita de ajuste de áudio do Marco 1, exatamente como o catálogo a codifica, com
     /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada;</item>
     /// <item><c>*240*n*</c> e <c>*23N*NOME*</c> com a chave "Salvar memória", e <c>*241*n*</c>
-    /// com a chave "Carregar memória", só na forma exata, conectada e fora do modo só leitura.</item>
+    /// com a chave "Carregar memória", só na forma exata, conectada e fora do modo só leitura;</item>
+    /// <item>os comandos do gerador (<c>*200*v*</c>, <c>*201*v*</c>, <c>*210*v*</c> a
+    /// <c>*212*v*</c>, <c>*213*i*</c> e <c>*202*1*</c>) com a chave "Gerador", só na forma exata,
+    /// conectada e fora do modo só leitura; <c>*202*0*</c> (desligar) passa sem a chave.</item>
     /// </list>
-    /// Todo o resto (gerador, 252, 251, 002, 004, 242, 001, uma leitura fora do
+    /// Todo o resto (252, 251, 002, 004, 242, 001, uma leitura fora do
     /// catálogo como <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o
     /// motivo no log.
     /// </summary>
@@ -367,11 +415,21 @@ public sealed class Sessao
         {
             chave = Chave.AjustesAudio;
         }
+        else if (Catalogo.ComandoDeGerador(quadro) is { } gerador)
+        {
+            // Desligar o gerador (*202*0*) é sempre o lado seguro: passa sem a chave, mesmo
+            // que o Denis a desligue com o tom tocando.
+            if (gerador.Desligar)
+                return conectado ? null : MotivoSemConexao;
+            chave = Chave.Gerador;
+        }
         else
         {
             var codigo = Quadros.Analisar(quadro)?.Codigo;
             if (codigo is not null && CodigosDeMemoria.Contains(codigo))
                 return MotivoMemoriaForaDoFormato;
+            if (codigo is not null && CodigosDoGerador.Contains(codigo))
+                return MotivoGeradorForaDoFormato;
             if (codigo is not null && ComandosNaoLiberados.Contains(codigo))
                 return MotivoNaoLiberado;
             return MotivoEscritaForaDoCatalogo;
@@ -719,10 +777,12 @@ public sealed class Sessao
         CancellationTokenSource? prazo;
         TaskCompletionSource<ResultadoAutenticacao?>? resposta;
         bool segurava;
+        var fim = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_trava)
         {
             if (geracao != _geracao)
                 return;
+            _encerramento = fim.Task;
             _geracao++;
             operacao = _operacao;
             _operacao = new CancellationTokenSource();
@@ -737,14 +797,21 @@ public sealed class Sessao
             Estado = EstadoSessao.Desconectado;
             Mensagem = mensagem;
         }
-        // Cancelar fora da trava: continuações podem rodar nesta thread.
-        operacao.Cancel();
-        prazo?.Cancel();
-        resposta?.TrySetResult(null);
-        Notificar();
-        if (segurava)
-            await DesconectarTransporteAsync(); // depois de uma queda, só libera o GATT
-        _log.Evento(mensagem is null ? "desconectado" : $"desconectado: {mensagem}");
+        try
+        {
+            // Cancelar fora da trava: continuações podem rodar nesta thread.
+            operacao.Cancel();
+            prazo?.Cancel();
+            resposta?.TrySetResult(null);
+            Notificar();
+            if (segurava)
+                await DesconectarTransporteAsync(); // depois de uma queda, só libera o GATT
+            _log.Evento(mensagem is null ? "desconectado" : $"desconectado: {mensagem}");
+        }
+        finally
+        {
+            fim.TrySetResult();
+        }
     }
 
     /// <summary>Chamar com a trava.</summary>

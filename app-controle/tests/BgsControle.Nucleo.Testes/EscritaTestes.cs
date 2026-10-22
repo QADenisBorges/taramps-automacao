@@ -90,12 +90,13 @@ public sealed class EscritaTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo, as escritas de áudio do catálogo e os comandos de memória permitidos.
+    /// catálogo, as escritas de áudio do catálogo, os comandos de memória permitidos e o
+    /// <c>*202*0*</c> (desligar o gerador, sempre permitido).
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null, e));
+                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador, e));
 
     private async Task Conectar()
     {
@@ -444,8 +445,13 @@ public sealed class EscritaTestes : IDisposable
     [InlineData("*231*filme*", Sessao.MotivoMemoriaForaDoFormato)]
     [InlineData("*231* FILME*", Sessao.MotivoMemoriaForaDoFormato)]
     [InlineData("*234*FILME*", Sessao.MotivoEscritaForaDoCatalogo)]
-    [InlineData("*202*1*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*200*-20.0*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*202*1*", Sessao.MotivoChaveDesligada)] // a chave "Gerador" vem desligada (história 7a)
+    [InlineData("*200*-20.0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*202*2*", Sessao.MotivoGeradorForaDoFormato)]
+    [InlineData("*200*-20*", Sessao.MotivoGeradorForaDoFormato)]
+    [InlineData("*200*1.0*", Sessao.MotivoGeradorForaDoFormato)] // fora da faixa
+    [InlineData("*201*5*", Sessao.MotivoGeradorForaDoFormato)]
+    [InlineData("*213*4*", Sessao.MotivoGeradorForaDoFormato)]
     [InlineData("*004*", Sessao.MotivoNaoLiberado)]
     [InlineData("*242*", Sessao.MotivoNaoLiberado)]
     [InlineData("*001*AB12*CD34*", Sessao.MotivoNaoLiberado)]
@@ -492,8 +498,9 @@ public sealed class EscritaTestes : IDisposable
 
             var r = await _sessao.EnviarAsync(quadro);
 
-            // Os nomes das memórias (23N) passam com a chave "Salvar memória" (história 6).
-            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null;
+            // Os nomes das memórias (23N) passam com a chave "Salvar memória" (história 6); o
+            // *202*0* (desligar o gerador) passa sem a chave (história 7a).
+            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null || quadro == Catalogo.DesligarGerador;
             Assert.True(r.Enviado == passa, $"{quadro}: {r.Motivo}");
             Assert.Equal(passa, _simulador.Escritas.Contains(quadro));
         }

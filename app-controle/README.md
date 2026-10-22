@@ -11,8 +11,8 @@ testáveis sem MAUI e o processador simulado dos testes.
 
 Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
 `Escritor` (eco, releitura, ritmo de 300 ms por parâmetro) e sempre pela trava da sessão: com o
-R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Gerador,
-remote out, Bluetooth de áudio, nome do produto, senha e resets continuam recusados antes do BLE.
+R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Remote
+out, Bluetooth de áudio, nome do produto, senha e resets continuam recusados antes do BLE.
 As chaves de acesso (`IChaves`) ficam em JSON nos arquivos privados. Os ViewModels do controle
 de parâmetro e da tela de chaves existem em `BgsControle.Telas`; o XAML é das histórias 10 e 11.
 
@@ -25,6 +25,15 @@ cópia do link são recusadas. A `CopiaAntes` guarda o estado e a marca da opera
 `copia-antes.json` e, se a operação cair no meio, mostra "aplicado pela metade" na conexão
 seguinte (Terminar ou Voltar à cópia); o `LinkCanais` (1–2 e 3–4, só do app) fica em
 `link-canais.json`. Os ViewModels são o `MemoriasViewModel` e o `LinkViewModel`.
+
+Desde a história 7a, a trava deixa passar os comandos do gerador (`*200*`, `*201*`, `*210*` a
+`*213*` e `*202*1*`) só na forma exata e com a chave "Gerador"; o `*202*0*` (desligar) passa sem
+a chave. O `GeradorSinal` toca o tom fixo e o sweep (cada parâmetro confirmado pelo eco ou pela
+releitura, e o `*202*1*` por último) e aplica as regras 1 e 2 de `failure-modes.md`: desliga no
+máximo 30 s depois do `*202*1*`, no Parar, antes de Desconectar ou Esquecer a senha e ao sair do
+app; se a conexão cai com o gerador talvez ligado, reconecta até 3 vezes e, sem volta, mostra
+"DESLIGUE O MÓDULO AGORA"; no fim de cada leitura, antes do espelho, confere o 202 e desliga.
+O `EnvioComResposta` é o envio com espera reusável. O ViewModel é o `GeradorViewModel`.
 
 ## Projetos
 

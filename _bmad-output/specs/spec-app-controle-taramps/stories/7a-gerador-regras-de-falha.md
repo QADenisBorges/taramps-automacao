@@ -2,7 +2,7 @@
 title: 'História 7a: gerador de sinal e as regras de falha 1 e 2'
 type: 'feature'
 created: '2026-10-22'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '23c44326de790efbab484c1de1c6840b5f00079f'
 review_loop_iteration: 0
@@ -102,18 +102,62 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app-controle/src/BgsControle.Nucleo/Catalogo/Catalogo.cs`: `ComandoDeGerador`.
-- [ ] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs`: a trava e o gancho de desconectar.
-- [ ] `app-controle/src/BgsControle.Nucleo/Leitura/LeituraAutomatica.cs`: o gancho antes do fim.
-- [ ] `app-controle/src/BgsControle.Nucleo/Escrita/EnvioComResposta.cs`: o envio com espera, reusável.
-- [ ] `app-controle/src/BgsControle.Nucleo/Gerador/GeradorSinal.cs`: o gerador, o prazo e as regras 1 e 2.
-- [ ] `app-controle/src/BgsControle.Telas/GeradorViewModel.cs`: a tela, sem XAML.
-- [ ] `app-controle/src/BgsControle.App/MauiProgram.cs` e `App.xaml.cs`: o DI, criar o gerador cedo e desligar ao sair ou fechar.
-- [ ] Os testes: as linhas da matriz, os testes antigos atualizados e as suposições GERADOR-MODO e ECO-GERADOR em `SUPOSICOES.md` e `Suposicoes.cs`.
+- [x] `app-controle/src/BgsControle.Nucleo/Catalogo/Catalogo.cs`: `ComandoDeGerador`.
+- [x] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs`: a trava e o gancho de desconectar.
+- [x] `app-controle/src/BgsControle.Nucleo/Leitura/LeituraAutomatica.cs`: o gancho antes do fim.
+- [x] `app-controle/src/BgsControle.Nucleo/Escrita/EnvioComResposta.cs`: o envio com espera, reusável.
+- [x] `app-controle/src/BgsControle.Nucleo/Gerador/GeradorSinal.cs`: o gerador, o prazo e as regras 1 e 2.
+- [x] `app-controle/src/BgsControle.Telas/GeradorViewModel.cs`: a tela, sem XAML.
+- [x] `app-controle/src/BgsControle.App/MauiProgram.cs` e `App.xaml.cs`: o DI, criar o gerador cedo e desligar ao sair ou fechar.
+- [x] Os testes: as linhas da matriz, os testes antigos atualizados e as suposições GERADOR-MODO e ECO-GERADOR em `SUPOSICOES.md` e `Suposicoes.cs`.
 
 **Acceptance Criteria:**
 - Given qualquer teste do gerador, when o simulador é inspecionado, then cada `*202*1*` tem um `*202*0*` aceito até 30 s depois, ou a queda e o alarme. Fora do gerador, só chegaram a senha e as leituras do catálogo.
 - Given uma conexão nova com o 202 em 1, when a leitura termina, then o `*202*0*` é a primeira escrita depois das leituras.
+
+## Implementation Notes
+
+- **O prazo conta do envio do `*202*1*`, não da confirmação.** O Always diz "a partir da confirmação", e o critério de aceite exige o `*202*0*` até 30 s depois do `*202*1*`. Como o eco leva cerca de 85 ms, as duas coisas não valem ao mesmo tempo. Ficou o lado seguro: o tom nunca passa de 30 s, e a contagem na tela começa na confirmação, com o que falta (cerca de 29,9 s).
+- Decisões que a spec não fecha:
+  - Se o 202 não vier na leitura, o app manda `*202*0*` por segurança, sem o aviso "estava ligado".
+  - Um parâmetro que volta com outro valor conta como falha, e o `*202*1*` não sai.
+  - Se o Desconectar não consegue confirmar o desligar, a reconexão da regra 1 começa mesmo assim.
+  - Depois do alarme, o app não abre outra reconexão sozinho; ela volta quando o Denis conecta.
+- **Desligar ao sair do app.** O app desliga no `Stopped` e no `Destroying` da janela. No Android, o `Stopped` vem também quando a tela bloqueia, e aí o tom para. O desligar no fechamento não espera terminar, e o Android pode matar o processo antes do `*202*0*`. Nesse caso, a regra 2 desliga na próxima conexão.
+- **Corrida na revisão (corrigida):** a frase do resultado ("O prazo de 30 s acabou…") chegava depois do estado "desligado", e um teste da tela falhava de vez em quando. Agora a frase entra junto com a confirmação.
+- **Novos:**
+  - `Gerador/GeradorSinal.cs`;
+  - `Escrita/EnvioComResposta.cs`, que a 7b reusa;
+  - `Telas/GeradorViewModel.cs`;
+  - os ganchos `Sessao.AntesDeSoltar` e `LeituraAutomatica.AntesDoFim`.
+
+- **Depois da revisão (22/10):** as correções 3, 4, 5, 6, 7, 9, 11, 16 e 18 da tabela abaixo entraram, com seis testes novos. Um efeito delas: uma leitura que lança agora também passa pela regra 2, e o `*202*0*` de segurança sai. Por isso, o teste antigo `Leitura_que_falhou_diz_que_o_app_ainda_nao_leu` anda o relógio falso, e o `ConferirSoAudio` da bancada aceita o `*202*0*`.
+- **Verificação final:** Nucleo.Testes 538 de 538 e Telas.Testes 172 de 172, rodados três vezes; build Android com 0 erros e 0 avisos.
+
+## Review Triage Log
+
+| # | Achado | Veredito | Evidência | Rota |
+|---|---|---|---|---|
+| 1 | O prazo conta do envio, e a spec diz "da confirmação" | low | Contradição da própria spec com o critério de aceite; o envio é o lado seguro | rejeitado (anotado acima) |
+| 2 | O `*202*0*` do prazo chega alguns ms depois de 30 s do envio | low | O timer vence em exatamente 30 s; falta só a latência da escrita BLE | rejeitado |
+| 3 | O espelho volta a 202 = 1 depois de um Parar rápido | low | `Atualizar` vinha antes da checagem de `_cancelarLigar` | patch |
+| 4 | Parar com o eco do 202 1 pendente: a releitura pega o `#202#0#` | low | A releitura com `Casar202(null)` não olhava o cancelamento | patch |
+| 5 | Leitura que lança: a regra 2 não roda e a reconexão espera para sempre | medium | `Falhar` não chama `AntesDoFim`; `await tentativa.Task` sem prazo | patch |
+| 6 | O ritmo de 30 ms quebra com dois envios ao mesmo tempo | low | Os dois leem o mesmo `_ultimoEnvio` | patch |
+| 7 | 202 sem leitura e desligar sem confirmação: estado desconhecido, sem alarme | low | `_talvezLigado` ficava falso | patch |
+| 8 | `Substituir202` monta um `cru` que o aparelho não mandou | low | Só no retrato salvo; o espelho está certo | rejeitado |
+| 9 | Parar com o alarme troca a frase do alarme | low | `Avisar` sem olhar `Alarme`; o `Alarme` continuava valendo | patch |
+| 10 | Sweep com a inicial ≥ a final | maybe-false | Não se sabe se o aparelho aceita sweep descendente | rejeitado (história 12) |
+| 11 | O ViewModel não trava com uma memória em andamento | low | O núcleo recusa; a tela deixava tocar | patch |
+| 12 | Os ganchos aceitam um só dono | false | Só existe um `GeradorSinal`; a 7b não usa os ganchos | rejeitado |
+| 13 | O desligar ao sair não espera terminar | medium | Esperar na thread da tela arrisca travar; a regra 2 cobre a próxima conexão | defer (conferir no celular) |
+| 14 | `DesconectarAsync` mudou quando já está Desconectado | false | O código antigo já voltava cedo nesse caso | rejeitado |
+| 15 | "Gerador em uso" com `TalvezLigado` e estado Desligado | low | Com o item 7, esse estado leva à reconexão ou ao alarme | rejeitado |
+| 16 | Faltam testes: erro ao ligar, sair do app, prazo no meio de uma leitura, 202 sem leitura, Parar entre o 202 1 e a confirmação | medium | Verification gap: as mutações passam verdes | patch |
+| 17 | `EnvioComResposta` sem testes próprios e sem `Dispose` | low | Coberto pelos testes do gerador; vive o app inteiro | rejeitado |
+| 18 | O log diz "3 reconexões" depois de parar antes | low | Texto fixo | patch |
+| 19 | O Desconectar parece travado enquanto desliga (até ~7 s) | low | Só tocando e sem eco | rejeitado |
+| 20 | A velocidade do sweep ignora um valor inválido; os campos não voltam ao espelho | low | Vem de uma lista na tela | rejeitado |
 
 ## Verification
 

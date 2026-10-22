@@ -53,6 +53,8 @@ item no aparelho real e marca o resultado.
 | FILA-UNICA | As respostas com atraso saem de uma fila única, na ordem em que foram geradas: cada uma espera o seu atraso e a anterior (um eco de 85 ms seguido de uma leitura de 25 ms chega antes dela). | `Enviar` | |
 | QUEDA-DESCARTA-FILA | Desconectar ou cair joga fora as respostas que ainda não saíram; elas não chegam numa conexão nova. | `EmitirAgora`, `Soltar` | |
 | ATRASO-RESPOSTAS | A senha responde ~23 ms e cada leitura ~25 ms depois do pedido, sempre com o mesmo atraso. No log de 20/10, 13:22 (`2026-10-20_1322-memoria.log`), a senha levou 23 ms e as leituras de 18 a 135 ms (as primeiras perto de 25 ms). | `AtrasoSenha`, `AtrasoLeitura` | |
+| GERADOR-MODO | O tom fixo é o 213 em 0 e o sweep é o 213 de 1 a 3; o 202 liga e desliga os dois. | `GeradorSinal.TocarTomAsync` | |
+| ECO-GERADOR | Os códigos 200–202 e 210–213 ecoam no formato de leitura (`#202#1#`), como o 081. | `Processar`, escrita; `GeradorSinal.EnviarParametroAsync` | |
 
 ## Falhas injetáveis
 

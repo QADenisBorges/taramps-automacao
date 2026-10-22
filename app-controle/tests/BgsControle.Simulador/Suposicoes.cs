@@ -32,6 +32,8 @@ public static class Suposicoes
     public const string FilaUnica = "FILA-UNICA";
     public const string QuedaDescartaFila = "QUEDA-DESCARTA-FILA";
     public const string AtrasoRespostas = "ATRASO-RESPOSTAS";
+    public const string GeradorModo = "GERADOR-MODO";
+    public const string EcoGerador = "ECO-GERADOR";
 
     /// <summary>Id → o que se supõe. A mesma lista, com o mesmo texto, está em <c>SUPOSICOES.md</c>.</summary>
     public static IReadOnlyDictionary<string, string> Todas { get; } = new Dictionary<string, string>
@@ -60,5 +62,7 @@ public static class Suposicoes
         [FilaUnica] = "As respostas com atraso saem de uma fila única, na ordem em que foram geradas: cada uma espera o seu atraso e a anterior (um eco de 85 ms seguido de uma leitura de 25 ms chega antes dela).",
         [QuedaDescartaFila] = "Desconectar ou cair joga fora as respostas que ainda não saíram; elas não chegam numa conexão nova.",
         [AtrasoRespostas] = "A senha responde ~23 ms e cada leitura ~25 ms depois do pedido, sempre com o mesmo atraso. No log de 20/10, 13:22 (`2026-10-20_1322-memoria.log`), a senha levou 23 ms e as leituras de 18 a 135 ms (as primeiras perto de 25 ms).",
+        [GeradorModo] = "O tom fixo é o 213 em 0 e o sweep é o 213 de 1 a 3; o 202 liga e desliga os dois.",
+        [EcoGerador] = "Os códigos 200–202 e 210–213 ecoam no formato de leitura (`#202#1#`), como o 081.",
     };
 }

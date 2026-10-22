@@ -127,6 +127,14 @@ public sealed class LeituraAutomatica
         return Task.Run(ExecutarAsync);
     }
 
+    /// <summary>
+    /// Roda no fim de cada leitura, antes do <see cref="Terminou"/> (e, portanto, antes do
+    /// espelho, da retomada da cópia e de qualquer escrita da tela): o gerador confere o 202 e
+    /// desliga (failure-modes, regra 2). Devolve o retrato que segue, com o 202 confirmado.
+    /// Uma exceção não prende a leitura: segue o retrato lido.
+    /// </summary>
+    internal Func<Retrato, Task<Retrato>>? AntesDoFim { get; set; }
+
     private async Task<Retrato?> ExecutarAsync()
     {
         Retrato retrato;
@@ -136,7 +144,32 @@ public sealed class LeituraAutomatica
         }
         catch (Exception e)
         {
+            // A leitura não veio, mas a conferência do fim roda mesmo assim, com um retrato vazio
+            // e incompleto: o gerador desliga por segurança (202 sem leitura) e quem espera o fim
+            // da leitura (a reconexão do gerador) não fica pendurado.
+            if (AntesDoFim is { } aoFalhar)
+            {
+                try
+                {
+                    await aoFalhar(new Retrato { Firmware = _sessao.Firmware, Completo = false, Motivo = e.Message });
+                }
+                catch (Exception)
+                {
+                    // Vale a falha da leitura.
+                }
+            }
             return Falhar(e);
+        }
+        if (AntesDoFim is { } gancho)
+        {
+            try
+            {
+                retrato = await gancho(retrato);
+            }
+            catch (Exception)
+            {
+                // Quem conferiu já registrou o que houve; o retrato lido segue.
+            }
         }
         try
         {

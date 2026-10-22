@@ -33,3 +33,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/4-infraestrutura-testes-processador-simulado.md`
   summary: Os atrasos realistas do simulador (senha ~23 ms, leitura ~25 ms) ficam zerados nos testes das histórias 5 e 6 (EscritaTestes, MemoriasTestes, ConexaoViewModelTestes e a Bancada de ControleParametroViewModelTestes); só o SimuladorTestes roda com eles.
   evidence: A sessão e o leitor esperam em tempo real, mas o relógio falso desses testes não anda durante a conexão e a leitura; com atraso no relógio falso a senha nunca responde. Ativar exige fazer o relógio andar nesses testes, o que deixa as suítes mais lentas e mexe em tempos que as histórias 5 e 6 conferem.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/7a-gerador-regras-de-falha.md`
+  summary: O desligar do gerador ao sair ou fechar o app (Window.Stopped e Destroying no App.xaml.cs) dispara o `*202*0*` sem esperar, e não tem teste no celular.
+  evidence: O Android pode matar o processo antes da escrita BLE; esperar na thread da tela arrisca travar. A regra 2 desliga na próxima conexão. Conferir no Galaxy A52 na história 12 (tom tocando, fechar o app, ver o 202 relido).

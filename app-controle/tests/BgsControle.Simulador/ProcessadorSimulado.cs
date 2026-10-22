@@ -587,6 +587,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
             return respostas;
         // Suposição ECO-251-252: o 251 e o 252 também respondem com o eco no formato de leitura;
         // medido só no 081.
+        // Suposição ECO-GERADOR: o gerador (200–202, 210–213) também responde com o eco no formato de leitura.
         Responder(LeituraDe(parametro, indice)!, AtrasoEco);
         return respostas;
     }
