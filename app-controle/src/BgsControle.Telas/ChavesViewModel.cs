@@ -22,7 +22,7 @@ public sealed class ItemChaveViewModel : TelaBase
     /// <summary>O risco mostrado ao ligar, ou null (liga sem aviso).</summary>
     public string? Risco => Definicao.Risco;
 
-    /// <summary>Uma nota fixa da linha (a chave da IA: a porta ainda não existe nesta versão).</summary>
+    /// <summary>Uma nota fixa da linha (a chave da IA: pareia por código de 6 dígitos).</summary>
     public string? Observacao => Chave == Chave.IaPelaRede ? ChavesViewModel.NotaIa : null;
 
     public bool Ligada
@@ -56,7 +56,7 @@ public sealed class ChavesViewModel : TelaBase, IDisposable
 {
     public const string TextoConfirmar = "Ligar a chave";
     public const string TextoDesistir = "Deixar desligada";
-    public const string NotaIa = "A porta da IA ainda não existe nesta versão do app.";
+    public const string NotaIa = "Pareia por código de 6 dígitos.";
 
     private readonly IChaves _chaves;
     private DefinicaoChave? _folha;

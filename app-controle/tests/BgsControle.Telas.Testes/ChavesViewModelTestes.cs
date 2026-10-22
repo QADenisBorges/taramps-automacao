@@ -49,7 +49,7 @@ public sealed class ChavesViewModelTestes : IDisposable
 
         Assert.Equal("IA pela rede", ia.Nome);
         Assert.False(ia.Ligada);
-        Assert.Equal(ChavesViewModel.NotaIa, ia.Observacao);
+        Assert.Equal("Pareia por código de 6 dígitos.", ia.Observacao);
         Assert.Null(_vm.Item(Chave.Gerador).Observacao);
     }
 
