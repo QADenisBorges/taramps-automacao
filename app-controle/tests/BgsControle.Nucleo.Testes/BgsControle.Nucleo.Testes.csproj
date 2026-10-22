@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
+    <!-- O processador simulado (história 4): a escrita da história 5 é testada contra ele. -->
+    <ProjectReference Include="..\BgsControle.Simulador\BgsControle.Simulador.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telas-chave · BGS Controle</title>
+<style>
+/*
+  TELAS-CHAVE · BGS CONTROLE (21/10)
+  Mesma família da síntese v2 (.working/direction-sintese-v2.html). Nada de cor, capa ou controle novo:
+  só as peças da v2 aplicadas às telas que ainda não tinham modelo.
+
+  Decisões do .memlog.md que governam estas telas
+  - Navegação final: barra inferior Início · Mesa · Áudio; engrenagem no topo; Ajustar/funções em tela cheia com ‹.
+  - Áudio = grade por função como a aba Áudio da Taramps (imports/referencia-taramps-audio.png).
+  - Principais à vista, o resto em "Avançado" (recolhido). Listas de opções recolhem; números e níveis não.
+  - Cada parâmetro: fader + campo + − e +; valor escrito vale no ✓; − e + das frequências em 1/12 de oitava.
+  - Mexer muda o som na hora; salvar na memória é um passo à parte.
+  - Chaves de acesso: spec-app-controle-taramps/chaves-de-acesso.md (padrões e riscos de 19/10).
+  - Senha: story 1 (4 caracteres A–Z ou 0–9, mascarada, sem "mostrar", até 3 tentativas por conexão).
+
+  Regras da v2 que unem tudo
+  1. Fino é para ler, negrito é para mexer.
+  2. Branco é escolha feita (aba, saída escolhida, Lig./Desl., memória em uso).
+  3. A cor da saída é o que está sendo mexido (nível, capa, sublinhado do campo).
+  4. Lilás é também a cor da IA. 5. Uma só capa de fader. 6. Campo = caixa escura com sublinhado.
+
+  Cores (as mesmas da v2)
+  --palco        #000000  fundo do app
+  --sup-1        #1C1C1E  cartões, blocos da grade, folha de confirmação
+  --sup-2        #2C2C2E  trilho, contorno, botões − e +, ícone da função
+  --sup-3        #232325  divisórias
+  --texto        #F5F5F7  texto principal e escolha feita
+  --apoio        #A1A1A6  texto de apoio
+  --apagado      #6E6E73  rótulos, escalas, ponto "desconectado"
+  --l            #7EAEFF  JBL L, azul
+  --r            #C495FF  JBL R, lilás (= IA)
+  --sub          #FFCD94  Sub, âmbar
+  --ok           #30D158  conectado
+  --parar        #FF453A  PARAR IA; aqui também erro de senha e aviso de risco
+  --capa-a       #3C3C41  capa do fader, topo
+  --capa-b       #26262A  capa do fader, base
+  --capa-borda   #4C4C52  contorno da capa
+  --campo        #0B0B0C  fundo do campo
+  --campo-borda  #3A3A3D  contorno do campo, dos − e + e do botão secundário
+  --lista-aberta #151517  fundo de lista/Avançado aberto
+  --tec-fundo    #1F1F22  teclado do Android, fundo
+  --tec-tecla    #36363B  tecla
+  --tec-funcao   #2A2A2E  tecla de função
+  --veu          rgba(0,0,0,.66)  escurece a tela atrás da folha de confirmação
+  --risco-fundo  #2A1414  fundo do ícone de risco (vermelho bem escuro)
+  Página de apresentação: #111113 (fundo), #E5E5EA (texto), #C7C7CC (lista), #3A3A3C (contorno das amostras)
+
+  Tipo: Segoe UI Variable Display / Roboto / system-ui. Números tabulares.
+  Alvos: 44 px (campos, Lig./Desl., Renomear), 48 px (− e +, botões de memória), 52 px (listas recolhidas,
+  linhas da engrenagem), 56 px (Salvar, Conectar, confirmar).
+*/
+:root{
+  --palco:#000000; --sup-1:#1C1C1E; --sup-2:#2C2C2E; --sup-3:#232325;
+  --texto:#F5F5F7; --apoio:#A1A1A6; --apagado:#6E6E73;
+  --l:#7EAEFF; --r:#C495FF; --sub:#FFCD94;
+  --ok:#30D158; --parar:#FF453A;
+  --capa-a:#3C3C41; --capa-b:#26262A; --capa-borda:#4C4C52;
+  --campo:#0B0B0C; --campo-borda:#3A3A3D; --lista-aberta:#151517;
+  --tec-fundo:#1F1F22; --tec-tecla:#36363B; --tec-funcao:#2A2A2E;
+  --veu:rgba(0,0,0,.66); --risco-fundo:#2A1414;
+  --fonte:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111113;color:#E5E5EA;font-family:var(--fonte);padding:40px 32px 64px}
+
+/* Apresentação */
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--apoio)}
+.intro h1{font-weight:200;font-size:46px;letter-spacing:-.02em;margin:6px 0 14px;color:var(--texto)}
+.intro h1 b{font-weight:800}
+.porque{max-width:1180px;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;color:#C7C7CC}
+.porque b{color:var(--texto);font-weight:600}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--apoio)}
+.amostra i{width:18px;height:18px;border-radius:6px;border:1px solid #3A3A3C;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start;max-width:2200px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:13px;color:var(--apoio);letter-spacing:.02em;text-align:center;max-width:390px;line-height:1.5}
+figcaption b{color:var(--texto);font-weight:600}
+.ilus{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--apagado);border:1px solid var(--sup-2);border-radius:6px;padding:1px 5px;vertical-align:middle;white-space:nowrap}
+
+/* Moldura do celular (igual à v2) */
+.cel{width:390px;height:844px;background:var(--palco);border-radius:46px;border:10px solid #2A2A2D;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;
+  font-variant-numeric:tabular-nums;color:var(--texto);position:relative}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;color:var(--apoio)}
+.tela{flex:1;min-height:0;padding:6px 16px 12px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.tela > *{flex:none}
+
+/* Peças comuns da v2 */
+.topo{display:flex;justify-content:space-between;align-items:center;height:44px;gap:8px}
+.marca{font-size:22px;font-weight:200;letter-spacing:-.01em;white-space:nowrap}
+.marca b{font-weight:600;letter-spacing:.02em}
+.topo-dir{display:flex;align-items:center;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--apoio);background:var(--sup-1);
+  border:1px solid var(--sup-2);border-radius:999px;padding:6px 11px;white-space:nowrap}
+.ponto{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.ponto.off{background:var(--apagado);box-shadow:none}
+.ponto.espera{background:var(--apoio);box-shadow:none}
+.engrenagem{width:44px;height:44px;border-radius:14px;background:var(--sup-1);display:flex;align-items:center;justify-content:center;color:var(--texto);flex:none}
+.rotulo{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--apagado)}
+.cabeca{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px}
+.cabeca .ex{font-size:12px;color:var(--apoio)}
+
+/* Barra de baixo: Início · Mesa · Áudio */
+.nav{flex:none;height:72px;padding:6px 16px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-top:1px solid var(--sup-3)}
+.nav span{border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;color:var(--apoio)}
+.nav span svg{flex:none}
+.nav span.on{background:var(--texto);color:#000}
+
+/* Cabeçalho de tela cheia com ‹ */
+.cab{display:flex;align-items:center;gap:12px;height:48px}
+.cab .voltar{width:48px;height:48px;border-radius:16px;background:var(--sup-1);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--texto);flex:none}
+.cab h2{font-size:28px;font-weight:800;letter-spacing:-.01em;color:var(--texto);line-height:1.2}
+.cab h2 small{display:block;font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0;margin-top:4px}
+.fixo-topo{flex:none;padding:6px 16px 10px;border-bottom:1px solid var(--sup-3);display:flex;flex-direction:column;gap:10px}
+.fixo-baixo{flex:none;padding:10px 16px 16px;border-top:1px solid var(--sup-3);background:var(--palco)}
+.salvar{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+
+/* Fader horizontal com capa (o mesmo da v2) */
+.h-fader{height:8px;border-radius:4px;background:var(--sup-2);position:relative}
+.h-fader .nivel{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--cor)}
+.capa{position:absolute;border-radius:9px;background:linear-gradient(var(--capa-a),var(--capa-b));border:1px solid var(--capa-borda);box-shadow:0 6px 12px rgba(0,0,0,.55)}
+.h-fader .capa{top:50%;width:30px;height:44px;margin:-22px 0 0 -15px;background:linear-gradient(90deg,var(--capa-a),var(--capa-b))}
+.capa::after{content:"";position:absolute;left:50%;top:8px;bottom:8px;width:2px;margin-left:-1px;background:var(--cor)}
+
+/* Campo numérico (v2) */
+.campo{height:44px;min-width:112px;padding:0 12px;border-radius:12px;background:var(--campo);border:1px solid var(--campo-borda);
+  border-bottom:2px solid var(--cor);display:flex;align-items:center;justify-content:flex-end;gap:5px;
+  font-size:22px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;color:var(--texto)}
+.campo small{font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0}
+
+/* Controle de parâmetro (v2) */
+.ctl{background:var(--sup-1);border-radius:18px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ctl-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.ctl-tit{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ctl-tit b{font-size:15px;font-weight:700;color:var(--texto)}
+.ctl-tit span{font-size:11px;color:var(--apagado);white-space:nowrap}
+.regua{display:grid;grid-template-columns:48px 1fr 48px;grid-template-rows:48px 14px;column-gap:20px;row-gap:2px;align-items:center}
+.regua .pm{grid-row:1;height:48px;border-radius:14px;background:var(--sup-2);border:1px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:500;color:var(--texto)}
+.regua .h-fader{grid-row:1;grid-column:2}
+.regua .esc{grid-row:2;grid-column:2;position:relative;height:14px}
+.regua .esc span{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:600;color:var(--apagado);white-space:nowrap}
+.regua .esc span.ini{transform:none}
+.regua .esc span.fim{transform:translateX(-100%)}
+
+/* Lista recolhida (v2): mostra só o escolhido; seta abre */
+.tipo-sel{min-height:52px;border-radius:14px;border:1px solid var(--sup-2);padding:6px 8px 6px 12px;display:grid;grid-template-columns:1fr auto 28px;gap:10px;align-items:center}
+.tipo-sel .tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tipo-sel .tx span{font-size:12px;color:var(--apoio);white-space:nowrap}
+.tipo-sel .pilula{height:38px;min-width:64px;padding:0 12px;border-radius:11px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.tipo-sel .seta{color:var(--apoio);display:flex;align-items:center;justify-content:center}
+.tipo-sel.aberto{border-color:var(--campo-borda);background:var(--lista-aberta)}
+.tipo-sel.so-texto{grid-template-columns:1fr 28px}
+
+/* Abas (padrão das abas de memória da Mesa) usadas para escolher a saída */
+.abas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.abas span{height:56px;border-radius:16px;background:var(--sup-1);border:1px solid var(--sup-2);border-top:4px solid var(--cor);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:800;font-size:15px;white-space:nowrap;color:var(--cor)}
+.abas span small{font-size:10px;font-weight:600;color:var(--apagado);letter-spacing:0}
+.abas span.on{background:var(--texto);color:#000;border-color:var(--texto);border-top-color:var(--cor)}
+.abas span.on small{color:#55555A}
+
+/* Lig./Desl.: o par de botões da Fase da v2, em tamanho de linha */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:112px;flex:none}
+.seg span{height:44px;border-radius:12px;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--apoio)}
+.seg span.on{background:var(--texto);color:#000;border-color:var(--texto)}
+.seg.travado span{opacity:.45}
+
+.lembrete{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--apoio);padding:0 4px}
+.lembrete i{width:8px;height:8px;border-radius:50%;background:var(--cor,var(--apoio));flex:none;margin-top:5px;box-shadow:0 0 8px var(--cor,transparent)}
+.lembrete b{color:var(--texto);font-weight:600}
+.cadeado-ic{flex:none}
+
+/* 1 · ÁUDIO: grade 2×5 por função */
+.grade{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);gap:8px;flex:1 1 auto !important;min-height:0}
+.func{background:var(--sup-1);border-radius:18px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:6px;min-height:0;position:relative}
+.func .ic{width:40px;height:40px;border-radius:12px;background:var(--sup-2);display:flex;align-items:center;justify-content:center;color:var(--texto);flex:none}
+.func .ic svg{display:block}
+.func b{font-size:15px;font-weight:700;white-space:nowrap;margin-top:2px}
+.func .res{font-size:12px;color:var(--apoio);white-space:nowrap}
+.func .res em{font-style:normal;font-weight:600}
+.func .seta-f{position:absolute;right:12px;top:20px;color:var(--apagado);font-size:18px;font-weight:600}
+.func.travada .ic{opacity:.5}
+.func.travada b{color:var(--apoio)}
+.func .trava{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--apoio)}
+
+/* 2 · CROSSOVER: Avançado com o link */
+.links{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.link{display:flex;flex-direction:column;gap:6px}
+.link .lt{font-size:12px;color:var(--apoio);white-space:nowrap}
+.link .lt b{color:var(--texto);font-weight:700;font-size:13px;margin-right:4px}
+.link .seg{width:100%}
+.off-nota{font-size:12px;color:var(--apoio);line-height:1.45;padding:0 2px}
+
+/* 3 · ENGRENAGEM: lista em grupos */
+.grupo{background:var(--sup-1);border-radius:18px;padding:0 12px}
+.linha{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--sup-3);padding:4px 0}
+.linha:first-child{border-top:0}
+.linha .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.linha .tx b{font-size:15px;font-weight:600;white-space:nowrap}
+.linha .tx span{font-size:12px;color:var(--apoio);white-space:nowrap}
+.linha .vai{color:var(--apagado);font-size:20px;font-weight:600;flex:none}
+.linha .campo{min-width:0;width:132px;font-size:17px;font-weight:700;justify-content:flex-start;--cor:var(--texto)}
+.linha .tx .mascara{font-size:20px;letter-spacing:.18em;font-weight:700;color:var(--texto);line-height:1.2}
+.botao-2{height:44px;padding:0 14px;border-radius:12px;background:var(--sup-2);border:1px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:800;color:var(--texto);white-space:nowrap;flex:none}
+.botao-2.travado{background:transparent;border-color:var(--sup-2);color:var(--apagado)}
+.grupo-rot{padding:0 4px;margin-bottom:-4px}
+.avanc{background:var(--lista-aberta);border:1px solid var(--campo-borda);border-radius:18px;padding:0 12px}
+.avanc .topo-av{min-height:48px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--sup-3)}
+.avanc .topo-av b{font-size:15px;font-weight:700}
+
+/* 4 · MEMÓRIAS */
+.mem{background:var(--sup-1);border-radius:20px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.mem .l1{display:flex;justify-content:space-between;align-items:center;min-height:28px}
+.mem .uso{height:26px;padding:0 10px;border-radius:999px;background:var(--texto);color:#000;font-size:11px;font-weight:800;letter-spacing:.04em;display:flex;align-items:center}
+.mem .l2{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mem .nome{font-size:36px;font-weight:200;letter-spacing:-.03em;line-height:1.2;white-space:nowrap}
+.mem .renomear{height:44px;padding:0 11px;flex:none;border-radius:12px;border:1px solid var(--sup-2);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--apoio);white-space:nowrap}
+.mem .acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mem .acoes span{height:48px;border-radius:14px;background:var(--sup-2);border:1px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--texto)}
+
+/* Folha de confirmação (sobre um véu) */
+.veu{position:absolute;inset:0;background:var(--veu);z-index:4}
+.folha{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--sup-1);border-radius:26px 26px 0 0;padding:10px 16px 18px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--sup-2)}
+.folha .pega{width:40px;height:4px;border-radius:2px;background:var(--campo-borda);align-self:center}
+.folha h3{font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.folha p{font-size:14px;color:var(--apoio);line-height:1.5}
+.folha p b{color:var(--texto);font-weight:600}
+.folha .principal{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.folha .secundario{height:52px;border-radius:18px;border:1px solid var(--campo-borda);color:var(--texto);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+.folha .campo-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--palco);border-radius:14px;padding:8px 8px 8px 12px}
+.folha .campo-linha span{font-size:12px;color:var(--apoio);line-height:1.35}
+.folha .campo-linha .campo{min-width:0;width:170px;font-size:17px;font-weight:700;justify-content:flex-start;--cor:var(--texto)}
+.risco{display:flex;gap:12px;align-items:flex-start;background:var(--risco-fundo);border:1px solid rgba(255,69,58,.45);border-radius:14px;padding:12px}
+.risco svg{flex:none;margin-top:1px}
+.risco span{font-size:15px;font-weight:700;color:var(--texto);line-height:1.4}
+
+/* 5 · CHAVES */
+.chave .tx b{font-size:14px}
+.chave .tx span{white-space:normal;line-height:1.35;font-size:11px}
+.chave .tx span.perigo{color:#FF8A82}
+
+/* 6 · CONECTAR / SENHA */
+.cartao{background:var(--sup-1);border-radius:20px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px}
+.cartao .grande{font-size:44px;font-weight:200;letter-spacing:-.03em;line-height:1.2}
+.cartao p{font-size:13px;color:var(--apoio);line-height:1.5}
+.cartao p b{color:var(--texto);font-weight:600}
+.conectar{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;margin-top:4px}
+.saida-vazia{background:var(--sup-1);border-radius:18px;padding:12px 14px 12px 18px;position:relative;display:flex;justify-content:space-between;align-items:center}
+.saida-vazia::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--cor);opacity:.4}
+.saida-vazia .n{font-size:16px;font-weight:600;color:var(--apoio)}
+.saida-vazia .n small{display:block;font-size:12px;font-weight:400;color:var(--apagado);margin-top:2px}
+.saida-vazia .g{font-size:30px;font-weight:200;color:var(--apagado)}
+.caixas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:2px}
+.caixas span{height:64px;border-radius:14px;background:var(--campo);border:1px solid var(--campo-borda);border-bottom:2px solid var(--apagado);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:var(--texto)}
+.caixas span.agora{border:2px solid var(--texto)}
+.caixas .cursor{width:2px;height:30px;background:var(--texto);border-radius:1px}
+.erro{display:flex;gap:9px;align-items:flex-start;font-size:14px;font-weight:600;color:#FF8A82;line-height:1.4}
+.erro i{width:8px;height:8px;border-radius:50%;background:var(--parar);flex:none;margin-top:6px}
+.duas{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.duas .sec{height:56px;border-radius:18px;border:1px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700}
+.duas .pri{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.teclado{flex:none;background:var(--tec-fundo);padding:8px 4px 6px;display:flex;flex-direction:column;gap:8px}
+.teclado .fila{display:flex;gap:5px;justify-content:center}
+.teclado .fila span{flex:0 0 31px;height:44px;border-radius:8px;background:var(--tec-tecla);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--texto)}
+.teclado .fila span.f{background:var(--tec-funcao);flex:0 0 46px;font-size:15px}
+.teclado .fila span.esp{flex:1 1 auto}
+.teclado .fila span.ok{background:var(--texto);color:#000;font-weight:800;flex:0 0 58px}
+.gesto{flex:none;height:22px;background:var(--tec-fundo);display:flex;align-items:center;justify-content:center}
+.gesto i{width:120px;height:4px;border-radius:2px;background:#6E6E73}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Telas-chave · BGS Controle · 21/10</div>
+  <h1><b>BGS</b> Controle · telas que faltavam</h1>
+  <ul class="porque">
+    <li><b>Mesma família da síntese v2:</b> fundo preto, cartões #1C1C1E, uma cor por saída (azul JBL L, lilás JBL R e IA, âmbar Sub) e branco só para o que está escolhido. Nenhuma cor nova além do vermelho da v2, agora também para erro e risco.</li>
+    <li><b>Fino para ler, pesado para mexer:</b> resumos e nomes em traço fino; botões, campos e Lig./Desl. em negrito. Os parâmetros usam o mesmo controle da v2: fader com a capa única, campo com sublinhado na cor da saída e − e + dos lados.</li>
+    <li><b>Navegação final:</b> barra Início · Mesa · Áudio; a engrenagem no topo leva a memórias, aparelho, chaves, IA e histórico. Função, memórias e chaves abrem em tela cheia com ‹.</li>
+    <li><b>Principais à vista, o resto em Avançado:</b> no Crossover o link dos canais fica recolhido; na engrenagem os dois resets ficam em Avançado. Listas de opções (tipo do filtro) seguem recolhidas mostrando só o escolhido.</li>
+    <li><b>Confirmação só quando o passo apaga ou arrisca algo:</b> salvar por cima de uma memória e ligar uma chave de risco abrem uma folha embaixo com o texto do risco; o botão branco faz, o contornado desiste.</li>
+  </ul>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#000000"></i>#000000 palco</span>
+    <span class="amostra"><i style="background:#1C1C1E"></i>#1C1C1E cartão</span>
+    <span class="amostra"><i style="background:#2C2C2E"></i>#2C2C2E trilho</span>
+    <span class="amostra"><i style="background:#F5F5F7"></i>#F5F5F7 escolhido</span>
+    <span class="amostra"><i style="background:#7EAEFF"></i>#7EAEFF JBL L</span>
+    <span class="amostra"><i style="background:#C495FF"></i>#C495FF JBL R · IA</span>
+    <span class="amostra"><i style="background:#FFCD94"></i>#FFCD94 Sub</span>
+    <span class="amostra"><i style="background:#30D158"></i>#30D158 conectado</span>
+    <span class="amostra"><i style="background:#FF453A"></i>#FF453A parar · erro · risco</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- 1 · ÁUDIO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:20</span><span>BT · 81%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <div class="topo-dir">
+        <span class="chip"><span class="ponto"></span>Conectado · R003</span>
+        <span class="engrenagem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8.2" stroke-width="3.4" stroke-dasharray="3.22 3.22"/><circle cx="12" cy="12" r="6.2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" stroke-width="1.8"/></svg></span>
+      </div>
+    </div>
+    <div class="cabeca"><span class="rotulo">Áudio por função</span><span class="ex">memória 1 SPL</span></div>
+    <div class="grade">
+      <div class="func">
+        <span class="ic"><svg width="26" height="20" viewBox="0 0 26 20"><text x="13" y="15" text-anchor="middle" font-size="12" font-weight="800" fill="currentColor" font-family="Segoe UI,Roboto,sans-serif">A+B</text></svg></span>
+        <b>Roteamento</b>
+        <span class="res"><em style="color:var(--l)">L</em> B · <em style="color:var(--r)">R</em> A · <em style="color:var(--sub)">Sub</em> A+B</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="3" x2="4" y2="19"/><line x1="9" y1="3" x2="9" y2="19"/><line x1="14" y1="3" x2="14" y2="19"/><line x1="19" y1="3" x2="19" y2="19"/><g fill="currentColor" stroke="none"><rect x="2" y="12" width="4" height="3" rx="1"/><rect x="7" y="6" width="4" height="3" rx="1"/><rect x="12" y="10" width="4" height="3" rx="1"/><rect x="17" y="5" width="4" height="3" rx="1"/></g></svg></span>
+        <b>EQ 15 bandas</b>
+        <span class="res">Plano nas 15 bandas</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18 C12 18 12 5 15 5 C18 5 18 18 22 18"/><line x1="8" y1="19" x2="22" y2="19"/><path d="M1 11h5M4 8.5 6.5 11 4 13.5"/></svg></span>
+        <b>EQ de entrada</b>
+        <span class="res">Entradas A e B</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 5 C9 5 11 17 20 17"/><path d="M2 17 C11 17 13 5 20 5"/><line x1="2" y1="20" x2="20" y2="20" stroke-width="1.2"/></svg></span>
+        <b>Crossover</b>
+        <span class="res">PA <em style="color:var(--l)">200</em> · <em style="color:var(--r)">200</em> · <em style="color:var(--sub)">40</em> Hz</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11 C3.5 4 5 4 6.5 11 S9.5 18 11 11"/><path d="M13 11h9M19 8l3 3-3 3"/></svg></span>
+        <b>Alinhamento</b>
+        <span class="res">Atraso 0 cm nas 3 saídas</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.5 A7.5 7.5 0 1 1 3.6 13"/><path d="M2 5.5 4.5 7.5 6.8 5.2"/><text x="11" y="14" text-anchor="middle" font-size="7" font-weight="800" fill="currentColor" stroke="none" font-family="Segoe UI,Roboto,sans-serif">180</text></svg></span>
+        <b>Fase</b>
+        <span class="res">0° nas 3 saídas</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v17h17"/><path d="M3 19 11 10.5 20 9"/><line x1="3" y1="8" x2="20" y2="8" stroke-width="1.2" stroke-dasharray="2 2"/></svg></span>
+        <b>Limitador</b>
+        <span class="res"><em style="color:var(--l)">−7,0</em> · <em style="color:var(--r)">−7,0</em> · <em style="color:var(--sub)">−9,0</em> dB</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h4l5-4v14l-5-4H2z"/><line x1="15" y1="8" x2="15" y2="14"/><line x1="18.5" y1="6" x2="18.5" y2="16"/><line x1="22" y1="4" x2="22" y2="18"/></svg></span>
+        <b>Nível das saídas</b>
+        <span class="res"><em style="color:var(--l)">+6,0</em> · <em style="color:var(--r)">+6,0</em> · <em style="color:var(--sub)">+2,6</em> dB</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func">
+        <span class="ic"><svg width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18 C6 18 6 5 9 5 C12 5 12 18 16 18"/><line x1="2" y1="19" x2="16" y2="19"/><path d="M17 11h6M20.5 8.5 23 11l-2.5 2.5"/></svg></span>
+        <b>EQ de saída</b>
+        <span class="res">1 banda em cada saída</span>
+        <span class="seta-f">›</span>
+      </div>
+      <div class="func travada">
+        <span class="ic"><svg width="24" height="22" viewBox="0 0 24 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 11 C2.5 4 4 4 5.5 11 S8.5 18 10 11 S13 4 14.5 11 S17.5 18 19 11 S22 4 23 8"/></svg></span>
+        <b>Gerador</b>
+        <span class="trava"><svg class="cadeado-ic" width="11" height="13" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#A1A1A6"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#A1A1A6" stroke-width="1.6"/></svg>Chave desligada</span>
+        <span class="seta-f">›</span>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 7.5 8 2.5l6 5V14H2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Início</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2" x2="3" y2="14"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="13" y1="2" x2="13" y2="14"/></g><g fill="currentColor"><rect x="1" y="5" width="4" height="3" rx="1"/><rect x="6" y="9" width="4" height="3" rx="1"/><rect x="11" y="4" width="4" height="3" rx="1"/></g></svg>Mesa</span>
+    <span class="on"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="1.5" y="9.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.5"/></svg>Áudio</span>
+  </nav>
+</div>
+<figcaption><b>1 · Áudio</b> · a grade da aba Áudio da Taramps (2 × 5, mesma ordem), no preto da família. Cada bloco mostra em fino o que vale agora, com os números na cor de cada saída. O Gerador aparece travado porque a chave dele está desligada.</figcaption>
+</figure>
+
+<!-- 2a · CROSSOVER, JBL L, AVANÇADO RECOLHIDO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:21</span><span>BT · 81%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Crossover<small>PA passa-alta · PB passa-baixa · memória 1</small></h2>
+    </div>
+    <div class="abas">
+      <span class="on" style="--cor:#7EAEFF">JBL L<small>PA 200 · PB OFF</small></span>
+      <span style="--cor:#C495FF">JBL R<small>PA 200 · PB OFF</small></span>
+      <span style="--cor:#FFCD94">SUB<small>PA 40 · PB 200</small></span>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:12px;--cor:#7EAEFF">
+    <section class="ctl">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-alta</b><span>10 Hz a 22 kHz · − e + de 1/12 de oitava</span></div>
+        <span class="campo">200<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:38.9%"></i><i class="capa" style="left:38.9%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Linkwitz-Riley · 24 dB por oitava</span></div><b class="pilula">LR24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+    <section class="ctl">
+      <div class="ctl-tit"><b>Passa-baixa</b><span>Desligada: o JBL L toca tudo acima de 200 Hz</span></div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Escolha um tipo para ligar</span></div><b class="pilula">OFF</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+      <div class="off-nota">Com o tipo em OFF, a frequência some da tela; ela volta junto com o tipo escolhido.</div>
+    </section>
+
+    <div class="tipo-sel so-texto"><div class="tx"><span class="rotulo">Avançado</span><span>Link dos canais 1–2 e 3–4</span></div><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+
+    <div class="lembrete"><i></i><span>Mexer muda o som <b>na hora</b>. Para guardar, toque em <b>Salvar na memória 1</b>; é um passo à parte.</span></div>
+  </div>
+  <div class="fixo-baixo"><div class="salvar">Salvar na memória 1</div></div>
+</div>
+<figcaption><b>2a · Crossover, JBL L</b> · aberto pela grade. As três saídas ficam nas abas de cima (a escolhida em branco, a cor da saída na borda) com o resumo de cada uma. Embaixo, só o que se mexe sempre: frequência e tipo. "Avançado" vem recolhido.</figcaption>
+</figure>
+
+<!-- 2b · CROSSOVER, SUB, AVANÇADO ABERTO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:22</span><span>BT · 81%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Crossover<small>PA passa-alta · PB passa-baixa · memória 1</small></h2>
+    </div>
+    <div class="abas">
+      <span style="--cor:#7EAEFF">JBL L<small>PA 200 · PB OFF</small></span>
+      <span style="--cor:#C495FF">JBL R<small>PA 200 · PB OFF</small></span>
+      <span class="on" style="--cor:#FFCD94">SUB<small>PA 40 · PB 200</small></span>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:8px;padding-bottom:8px;gap:10px;--cor:#FFCD94">
+    <section class="ctl">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-alta</b><span>10 Hz a 22 kHz · − e + de 1/12 de oitava</span></div>
+        <span class="campo">40<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:18%"></i><i class="capa" style="left:18%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Butterworth · 24 dB por oitava</span></div><b class="pilula">BT24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+    <section class="ctl">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-baixa</b><span>10 Hz a 22 kHz · − e + de 1/12 de oitava</span></div>
+        <span class="campo">200<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:38.9%"></i><i class="capa" style="left:38.9%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Linkwitz-Riley · 24 dB por oitava</span></div><b class="pilula">LR24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+    <section class="ctl">
+      <div class="tipo-sel so-texto aberto"><div class="tx"><span class="rotulo">Avançado</span><span>Ligado: mexer num canal muda o par</span></div><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 8.5 7 4.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+      <div class="links">
+        <div class="link"><span class="lt"><b>Link 1–2</b>JBL L e R</span><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+        <div class="link"><span class="lt"><b>Link 3–4</b>Sub em ponte</span><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      </div>
+    </section>
+  </div>
+  <div class="fixo-baixo"><div class="salvar">Salvar na memória 1</div></div>
+</div>
+<figcaption><b>2b · Crossover, Sub, Avançado aberto</b> · os dados reais do Sub (PA 40 Hz BT24, PB 200 Hz LR24). Avançado aberto mostra o link dos canais com Lig./Desl. no mesmo par de botões da Fase. <span class="ilus">estado dos links ilustrativo</span></figcaption>
+</figure>
+
+<!-- 3 · ENGRENAGEM -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:23</span><span>BT · 81%</span></div>
+  <div class="fixo-topo" style="border-bottom:0;padding-bottom:4px">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Configurações<small>Memórias, aparelho, chaves e IA</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="gap:10px;padding-top:6px">
+    <div class="grupo">
+      <div class="linha"><div class="tx"><b>Memórias</b><span>1 SPL · 2 MUSICA ORIG · 3 FILME</span></div><span class="vai">›</span></div>
+      <div class="linha"><div class="tx"><b>Presets no celular</b><span>Guardar, carregar e exportar</span></div><span class="vai">›</span></div>
+    </div>
+
+    <div class="rotulo grupo-rot">Aparelho</div>
+    <div class="grupo">
+      <div class="linha"><div class="tx"><b>Remote out</b><span>Liga o módulo de potência</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha"><div class="tx"><b>Bluetooth de áudio</b><span>Música do celular pelo som</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha"><div class="tx"><b>Nome do produto</b><span>Até 12 letras <span class="ilus">ilustrativo</span></span></div><span class="campo">PRO24BT</span></div>
+      <div class="linha"><div class="tx"><b>Senha</b><span class="mascara">••••</span></div><span class="botao-2 travado"><svg class="cadeado-ic" width="11" height="13" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#6E6E73"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#6E6E73" stroke-width="1.6"/></svg>Trocar</span></div>
+    </div>
+
+    <div class="rotulo grupo-rot">Acesso e IA</div>
+    <div class="grupo">
+      <div class="linha"><div class="tx"><b>Chaves de acesso</b><span>5 desligadas · 6 ligadas</span></div><span class="vai">›</span></div>
+      <div class="linha"><div class="tx"><b>IA pela rede</b><span>Desligada · pareia por código de 6 dígitos</span></div><span class="vai">›</span></div>
+      <div class="linha"><div class="tx"><b>Histórico</b><span>Cada comando da tela e da IA</span></div><span class="vai">›</span></div>
+    </div>
+
+    <div class="avanc">
+      <div class="topo-av"><b>Avançado</b><i class="seta" style="color:var(--apoio)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 8.5 7 4.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+      <div class="linha" style="border-top:0"><div class="tx"><b>Reset de áudio</b><span>Desligado pela chave</span></div><span class="botao-2 travado"><svg class="cadeado-ic" width="11" height="13" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#6E6E73"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#6E6E73" stroke-width="1.6"/></svg>Resetar</span></div>
+      <div class="linha"><div class="tx"><b>Reset de fábrica</b><span>Desligado pela chave</span></div><span class="botao-2 travado"><svg class="cadeado-ic" width="11" height="13" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#6E6E73"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#6E6E73" stroke-width="1.6"/></svg>Resetar</span></div>
+    </div>
+  </div>
+</div>
+<figcaption><b>3 · Engrenagem</b> · o ponto de entrada familiar para quem vem da Taramps. O que é de ligar e desligar fica na própria linha (Lig./Desl.); o resto abre com ›. Os dois resets moram em Avançado (aqui aberto) e ficam travados enquanto a chave deles estiver desligada; o mesmo vale para "Trocar" a senha.</figcaption>
+</figure>
+
+<!-- 4a · MEMÓRIAS -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:24</span><span>BT · 81%</span></div>
+  <div class="fixo-topo" style="border-bottom:0;padding-bottom:4px">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Memórias<small>3 memórias no processador · em uso: 1 SPL</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="gap:10px;padding-top:8px">
+    <section class="mem">
+      <div class="l1"><span class="rotulo">Memória 1</span><span class="uso">EM USO</span></div>
+      <div class="l2"><span class="nome">SPL</span><span class="renomear">Renomear</span></div>
+      <div class="acoes"><span>Carregar</span><span>Salvar aqui</span></div>
+    </section>
+    <section class="mem">
+      <div class="l1"><span class="rotulo">Memória 2</span></div>
+      <div class="l2"><span class="nome">MUSICA ORIG</span><span class="renomear">Renomear</span></div>
+      <div class="acoes"><span>Carregar</span><span>Salvar aqui</span></div>
+    </section>
+    <section class="mem">
+      <div class="l1"><span class="rotulo">Memória 3</span></div>
+      <div class="l2"><span class="nome">FILME</span><span class="renomear">Renomear</span></div>
+      <div class="acoes"><span>Carregar</span><span>Salvar aqui</span></div>
+    </section>
+    <div class="lembrete"><i></i><span><b>Carregar</b> troca todo o som de uma vez. <b>Salvar aqui</b> guarda o som que está tocando agora nessa memória.</span></div>
+  </div>
+</div>
+<figcaption><b>4a · Memórias</b> · as três memórias do processador, com o nome grande e fino. A que está tocando leva a etiqueta branca EM USO. Cada uma tem Carregar e Salvar aqui; Renomear abre o campo do nome.</figcaption>
+</figure>
+
+<!-- 4b · MEMÓRIAS, AVISO AO SOBRESCREVER -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:25</span><span>BT · 81%</span></div>
+  <div class="fixo-topo" style="border-bottom:0;padding-bottom:4px">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Memórias<small>3 memórias no processador · em uso: 1 SPL</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="gap:10px;padding-top:8px">
+    <section class="mem">
+      <div class="l1"><span class="rotulo">Memória 1</span><span class="uso">EM USO</span></div>
+      <div class="l2"><span class="nome">SPL</span><span class="renomear">Renomear</span></div>
+      <div class="acoes"><span>Carregar</span><span>Salvar aqui</span></div>
+    </section>
+    <section class="mem">
+      <div class="l1"><span class="rotulo">Memória 2</span></div>
+      <div class="l2"><span class="nome">MUSICA ORIG</span><span class="renomear">Renomear</span></div>
+      <div class="acoes"><span>Carregar</span><span>Salvar aqui</span></div>
+    </section>
+  </div>
+  <div class="veu"></div>
+  <div class="folha">
+    <i class="pega"></i>
+    <h3>Salvar sobre a MUSICA ORIG?</h3>
+    <p><b>A versão atual some.</b> A memória 2 passa a guardar o som que está tocando agora (o da memória 1 SPL, como está na tela).</p>
+    <div class="campo-linha"><span>Nome depois<br>de salvar</span><span class="campo">MUSICA ORIG</span></div>
+    <div class="principal">Salvar sobre a MUSICA ORIG</div>
+    <div class="secundario">Cancelar</div>
+  </div>
+</div>
+<figcaption><b>4b · Aviso ao sobrescrever</b> · tocar em "Salvar aqui" numa memória que já tem som abre esta folha. O texto diz o que some; o nome pode ser trocado antes de salvar. O botão branco salva; Cancelar fecha sem enviar nada.</figcaption>
+</figure>
+
+<!-- 5a · CHAVES DE ACESSO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:26</span><span>BT · 81%</span></div>
+  <div class="fixo-topo" style="border-bottom:0;padding-bottom:4px">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Chaves de acesso<small>Desligada: o app recusa antes de enviar</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="gap:8px;padding-top:4px">
+    <div class="grupo">
+      <div class="linha chave"><div class="tx"><b>Reset de fábrica</b><span class="perigo">Apaga a senha e as 3 memórias.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Porta de comandos da IA</b><span class="perigo">Deixa a IA comandar o som pela rede.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Reset de áudio</b><span class="perigo">O estado resultante é imprevisível.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Troca de senha</b><span class="perigo">Uma senha perdida tranca o aparelho.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Gerador: tom e sweep</b><span class="perigo">Um tom forte pode queimar o tweeter ou o sub.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Carregar memória</b><span>Troca todo o som de uma vez.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Salvar memória</b><span>Apaga a memória anterior.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Remote out</b><span>Liga ou corta o som de repente.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Bluetooth de áudio</b><span>Sem aviso de risco.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Nome do produto</b><span>Sem aviso de risco.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Ajustes de áudio</b><span>Sem aviso de risco.</span></div><div class="seg"><span>Desl.</span><span class="on">Lig.</span></div></div>
+    </div>
+    <div class="lembrete" style="--cor:#C495FF"><i></i><span>A IA nunca liga nem desliga uma chave. <b>Só você, por esta tela.</b></span></div>
+  </div>
+</div>
+<figcaption><b>5a · Chaves de acesso</b> · as 11 chaves na ordem e com os padrões de chaves-de-acesso.md. Cada linha diz o risco em fino; nas cinco que vêm desligadas, o risco aparece em vermelho claro. Lig./Desl. é o mesmo par de botões da engrenagem.</figcaption>
+</figure>
+
+<!-- 5b · CHAVES, AVISO DE RISCO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:27</span><span>BT · 81%</span></div>
+  <div class="fixo-topo" style="border-bottom:0;padding-bottom:4px">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>Chaves de acesso<small>Desligada: o app recusa antes de enviar</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="gap:8px;padding-top:4px">
+    <div class="grupo">
+      <div class="linha chave"><div class="tx"><b>Reset de fábrica</b><span class="perigo">Apaga a senha e as 3 memórias.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Porta de comandos da IA</b><span class="perigo">Deixa a IA comandar o som pela rede.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Reset de áudio</b><span class="perigo">O estado resultante é imprevisível.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Troca de senha</b><span class="perigo">Uma senha perdida tranca o aparelho.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+      <div class="linha chave"><div class="tx"><b>Gerador: tom e sweep</b><span class="perigo">Um tom forte pode queimar o tweeter ou o sub.</span></div><div class="seg"><span class="on">Desl.</span><span>Lig.</span></div></div>
+    </div>
+  </div>
+  <div class="veu"></div>
+  <div class="folha">
+    <i class="pega"></i>
+    <h3>Ligar a chave do Gerador?</h3>
+    <div class="risco"><svg width="22" height="20" viewBox="0 0 22 20"><path d="M11 1.5 21 18.5H1Z" fill="none" stroke="#FF453A" stroke-width="2" stroke-linejoin="round"/><line x1="11" y1="7.5" x2="11" y2="12.5" stroke="#FF453A" stroke-width="2" stroke-linecap="round"/><circle cx="11" cy="15.6" r="1.2" fill="#FF453A"/></svg><span>Um tom forte pode queimar o tweeter ou o sub.</span></div>
+    <p>Com a chave ligada, o app passa a aceitar o tom fixo e o sweep. Se o pedido vier da IA, <b>você ainda confirma na tela</b>.</p>
+    <div class="principal">Ligar a chave</div>
+    <div class="secundario">Deixar desligada</div>
+  </div>
+</div>
+<figcaption><b>5b · Aviso ao ligar uma chave</b> · tocar em "Lig." numa chave com risco não liga direto: abre esta folha com o risco escrito da spec. Só o botão branco liga. Desligar uma chave não pede confirmação.</figcaption>
+</figure>
+
+<!-- 6a · DESCONECTADO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:02</span><span>BT · 77%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <div class="topo-dir">
+        <span class="chip"><span class="ponto off"></span>Desconectado</span>
+        <span class="engrenagem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8.2" stroke-width="3.4" stroke-dasharray="3.22 3.22"/><circle cx="12" cy="12" r="6.2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" stroke-width="1.8"/></svg></span>
+      </div>
+    </div>
+    <section class="cartao">
+      <div class="rotulo">Processador</div>
+      <div class="grande">Desconectado</div>
+      <p>PRO 2.4BT + AUDIO. Ligue o som e fique perto dele. <b>A conexão caiu</b> às 20:58.</p>
+      <div class="conectar">Conectar</div>
+    </section>
+    <div class="cabeca"><span class="rotulo">Saídas</span><span class="ex">Conecte para ler o aparelho</span></div>
+    <div class="saida-vazia" style="--cor:#7EAEFF"><div class="n">JBL L<small>Saída 1</small></div><span class="g">—</span></div>
+    <div class="saida-vazia" style="--cor:#C495FF"><div class="n">JBL R<small>Saída 2</small></div><span class="g">—</span></div>
+    <div class="saida-vazia" style="--cor:#FFCD94"><div class="n">Sub<small>Saídas 3+4 em ponte</small></div><span class="g">—</span></div>
+  </div>
+  <nav class="nav">
+    <span class="on"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 7.5 8 2.5l6 5V14H2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Início</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2" x2="3" y2="14"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="13" y1="2" x2="13" y2="14"/></g><g fill="currentColor"><rect x="1" y="5" width="4" height="3" rx="1"/><rect x="6" y="9" width="4" height="3" rx="1"/><rect x="11" y="4" width="4" height="3" rx="1"/></g></svg>Mesa</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="1.5" y="9.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.5"/></svg>Áudio</span>
+  </nav>
+</div>
+<figcaption><b>6a · Desconectado</b> · o Início no lugar do cartão da memória mostra "Desconectado" grande e fino e o botão branco Conectar. As saídas ficam vazias (—) para não mostrar valor que não veio do aparelho. <span class="ilus">horário ilustrativo</span></figcaption>
+</figure>
+
+<!-- 6b · SENHA ERRADA -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:03</span><span>BT · 77%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto espera"></span>Conectando · senha</span>
+    </div>
+    <section class="cartao" style="gap:12px">
+      <div class="rotulo">Senha do processador</div>
+      <p>4 letras ou números. O app guarda a senha neste celular depois que ela for aceita.</p>
+      <div class="caixas"><span>•</span><span>•</span><span class="agora"><i class="cursor"></i></span><span></span></div>
+      <div class="erro"><i></i><span>Senha errada. Digite de novo <span style="white-space:nowrap">(tentativa 2 de 3)</span></span></div>
+      <div class="duas"><span class="sec">Cancelar</span><span class="pri">Enviar a senha</span></div>
+    </section>
+  </div>
+  <div class="teclado">
+    <div class="fila"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>0</span></div>
+    <div class="fila"><span>Q</span><span>W</span><span>E</span><span>R</span><span>T</span><span>Y</span><span>U</span><span>I</span><span>O</span><span>P</span></div>
+    <div class="fila"><span>A</span><span>S</span><span>D</span><span>F</span><span>G</span><span>H</span><span>J</span><span>K</span><span>L</span></div>
+    <div class="fila"><span class="f">⇧</span><span>Z</span><span>X</span><span>C</span><span>V</span><span>B</span><span>N</span><span>M</span><span class="f">⌫</span></div>
+    <div class="fila"><span class="f">?123</span><span class="esp"></span><span class="ok">✓</span></div>
+  </div>
+  <div class="gesto"><i></i></div>
+</div>
+<figcaption><b>6b · Senha errada</b> · depois de Conectar, se o aparelho recusa a senha, o app limpa as caixas e pede de novo. As letras viram pontos na hora e não há "mostrar". Na terceira recusa, o app desconecta e volta para o 6a.</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

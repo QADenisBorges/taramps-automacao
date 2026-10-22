@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direção B · Bancada Técnica</title>
+<style>
+/*
+  DIREÇÃO B · BANCADA TÉCNICA
+  Painel denso, tipo rack: tudo do aparelho numa grade, valores em fonte mono, nenhum enfeite.
+
+  Cores
+  --fundo        #0B0D10  fundo do app
+  --painel       #14181D  módulos
+  --painel-2     #1B2026  cabeçalho de coluna, campo de valor
+  --linha        #262D35  divisórias da grade
+  --texto        #E6EAF0  valores
+  --apoio        #8A96A3  rótulos
+  --apagado      #5A6470  unidades, escala
+  --acento       #4FD1C5  seleção, foco, botão principal
+  --l            #6CB6FF  JBL L
+  --r            #C59BFF  JBL R
+  --sub          #FFD6A8  Sub
+  --ok           #3FB950  conectado
+  --leitura      #E3B341  modo só leitura
+  --erro         #F85149  recusa
+  Página de apresentação: #07080A (fundo), #C9D1D9 (texto)
+
+  Tipo: valores em Cascadia Mono / Roboto Mono / Consolas, 13–15 px, peso 500.
+  Rótulos em system-ui 10–11 px, maiúsculas, espaçamento 0,08em. Alvos de toque de 40 px no mínimo.
+*/
+:root{
+  --fundo:#0B0D10; --painel:#14181D; --painel-2:#1B2026; --linha:#262D35;
+  --texto:#E6EAF0; --apoio:#8A96A3; --apagado:#5A6470;
+  --acento:#4FD1C5; --l:#6CB6FF; --r:#C59BFF; --sub:#FFD6A8;
+  --ok:#3FB950; --leitura:#E3B341; --erro:#F85149;
+  --mono:"Cascadia Mono","Roboto Mono",Consolas,"SF Mono",monospace;
+  --ui:"Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07080A;color:#C9D1D9;font-family:var(--ui);padding:40px 32px 64px}
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-family:var(--mono);font-size:12px;color:var(--acento)}
+.intro h1{font-family:var(--mono);font-weight:600;font-size:34px;letter-spacing:-.01em;margin:8px 0 12px;color:#fff}
+.intro p{max-width:760px;font-size:15px;line-height:1.55;color:#AEB7C2}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--apoio)}
+.amostra i{width:16px;height:16px;border-radius:3px;border:1px solid #2F3740;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;max-width:1300px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-family:var(--mono);font-size:12px;color:var(--apoio)}
+figcaption b{color:#fff}
+
+.cel{width:390px;height:844px;background:var(--fundo);border-radius:40px;border:10px solid #22272E;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;color:var(--texto);font-variant-numeric:tabular-nums}
+.barra{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-family:var(--mono);font-size:11.5px;color:var(--apoio)}
+.tela{flex:1;padding:4px 10px 0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+
+.topo{display:flex;justify-content:space-between;align-items:center;padding:4px 4px 2px}
+.marca{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.06em}
+.marca span{color:var(--apagado);font-weight:400}
+.estado{white-space:nowrap;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px;color:var(--ok)}
+.estado::before{content:"";width:8px;height:8px;border-radius:1px;background:currentColor}
+
+.mod{background:var(--painel);border:1px solid var(--linha);border-radius:8px}
+.mod-cab{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--linha);
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--apoio)}
+.mod-cab b{color:var(--texto);font-family:var(--mono);font-weight:500;letter-spacing:0;text-transform:none;font-size:11px}
+
+.mems{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:1px;background:var(--linha)}
+.mems span{background:var(--painel);font-family:var(--mono);font-size:12px;padding:10px 8px;color:var(--apoio);text-align:center}
+.mems span.on{background:#123331;color:var(--acento);box-shadow:inset 0 -2px 0 var(--acento)}
+.globais{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--linha);border-top:1px solid var(--linha)}
+.globais div{background:var(--painel);padding:6px 8px}
+.globais small{display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--apagado)}
+.globais b{font-family:var(--mono);font-size:12.5px;font-weight:500}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+th,td{padding:6.5px 8px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;font-family:var(--ui);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--apoio);font-weight:400}
+thead th{font-size:13px;font-weight:700;background:var(--painel-2);border-bottom:1px solid var(--linha)}
+thead th small{display:block;font-size:9.5px;font-weight:400;color:var(--apagado)}
+tr:last-child td{border-bottom:0}
+td.off{color:var(--apagado)}
+td u{text-decoration:none;color:var(--apagado);font-size:10.5px;margin-left:3px}
+.acoes td{padding:6px 6px}
+.btn-col{display:block;text-align:center;border:1px solid var(--linha);border-radius:5px;padding:7px 0;font-size:11px;color:var(--acento);font-family:var(--ui);text-transform:none;letter-spacing:0}
+
+.grafico{padding:6px 8px 4px}
+.leg{display:flex;gap:12px;font-family:var(--mono);font-size:10.5px;color:var(--apoio);padding:0 2px 4px}
+.leg i{display:inline-block;width:10px;height:2px;vertical-align:middle;margin-right:4px}
+
+.log{font-family:var(--mono);font-size:11px;color:var(--apoio);padding:6px 10px;line-height:1.6}
+.log b{color:var(--ok);font-weight:400}
+
+.nav{flex:none;height:62px;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--linha);background:var(--painel);padding-bottom:8px}
+.nav span{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10.5px;color:var(--apagado);letter-spacing:.04em}
+.nav span.on{color:var(--acento);box-shadow:inset 0 2px 0 var(--acento)}
+
+/* Ajuste */
+.cab-aj{display:flex;align-items:center;gap:10px;padding:4px}
+.cab-aj .v{font-family:var(--mono);font-size:12px;color:var(--apoio);border:1px solid var(--linha);border-radius:5px;padding:6px 9px}
+.cab-aj h2{font-family:var(--mono);font-size:18px;font-weight:700}
+.cab-aj h2 small{font-weight:400;font-size:11px;color:var(--apoio);margin-left:6px}
+.abas{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--linha);border-radius:6px;overflow:hidden}
+.abas span{background:var(--painel);text-align:center;font-family:var(--mono);font-size:11.5px;padding:8px 0;color:var(--apoio)}
+.abas span.on{background:var(--painel-2);color:var(--sub);box-shadow:inset 0 -2px 0 var(--sub)}
+.par{display:grid;grid-template-columns:1fr 40px 96px 40px;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--linha)}
+.par:last-child{border-bottom:0}
+.par .nm{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--apoio)}
+.par .nm small{display:block;font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--apagado);font-size:9.5px;margin-top:2px}
+.par .st{height:44px;border:1px solid var(--linha);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:16px;color:var(--texto);background:var(--painel-2)}
+.par .val{height:44px;border:1px solid #2F5F5B;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;background:#0E1A1A}
+.par .val.sel{border-color:var(--acento);box-shadow:0 0 0 2px rgba(79,209,197,.2)}
+.par .val.off{color:var(--apagado);border-color:var(--linha);background:var(--painel)}
+.rodape-aj{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rodape-aj span{text-align:center;border-radius:6px;padding:14px 0;font-family:var(--mono);font-size:12.5px;border:1px solid var(--linha);color:var(--apoio)}
+.rodape-aj span.pri{background:var(--acento);color:#04110F;border-color:var(--acento);font-weight:700}
+
+/* Estado: só leitura */
+.aviso{border:1px solid var(--leitura);background:#1E1A0E;border-radius:8px;padding:9px 10px;display:flex;gap:10px;align-items:flex-start}
+.aviso .sel{flex:none;font-family:var(--mono);font-size:10px;font-weight:700;color:#1E1A0E;background:var(--leitura);border-radius:3px;padding:3px 6px;margin-top:1px}
+.aviso p{font-size:12px;line-height:1.45;color:#E8DDBF}
+.aviso p b{color:#fff}
+.ro .btn-col{color:var(--apagado);border-style:dashed}
+.ro .mems span.on{background:#2A2414;color:var(--leitura);box-shadow:inset 0 -2px 0 var(--leitura)}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">// direção B · BGS Controle</div>
+  <h1>Bancada Técnica</h1>
+  <p>O aparelho inteiro em uma grade, como a frente de um rack: as três saídas lado a lado, cada parâmetro numa linha, valores em fonte mono para comparar L, R e Sub de relance. Nada se esconde atrás de toque; o Denis confere tudo sem abrir nada. No ajuste, cada valor tem − e + grandes ao lado, e uma tarja amarela trava a tela quando o firmware não é conhecido.</p>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#0B0D10"></i>#0B0D10</span>
+    <span class="amostra"><i style="background:#14181D"></i>#14181D</span>
+    <span class="amostra"><i style="background:#262D35"></i>#262D35</span>
+    <span class="amostra"><i style="background:#E6EAF0"></i>#E6EAF0</span>
+    <span class="amostra"><i style="background:#8A96A3"></i>#8A96A3</span>
+    <span class="amostra"><i style="background:#4FD1C5"></i>#4FD1C5 acento</span>
+    <span class="amostra"><i style="background:#6CB6FF"></i>#6CB6FF L</span>
+    <span class="amostra"><i style="background:#C59BFF"></i>#C59BFF R</span>
+    <span class="amostra"><i style="background:#FFD6A8"></i>#FFD6A8 Sub</span>
+    <span class="amostra"><i style="background:#3FB950"></i>#3FB950 ok</span>
+    <span class="amostra"><i style="background:#E3B341"></i>#E3B341 só leitura</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- TELA PRINCIPAL · INÍCIO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:09</span><span>BT ▪ 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca">BGS CONTROLE</div>
+      <div class="estado">Conectado · firmware R003</div>
+    </div>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Memória em uso</span><b>PRO 2.4BT + AUDIO</b></div>
+      <div class="mems"><span class="on">1 SPL</span><span>2 MUSICA ORIG</span><span>3 FILME</span></div>
+      <div class="globais">
+        <div><small>Master</small><b>0,0 dB</b></div>
+        <div><small>Remote out</small><b>ligado</b></div>
+        <div><small>EQ gráfico</small><b>plano</b></div>
+      </div>
+    </section>
+
+    <section class="mod">
+      <table>
+        <thead><tr><th>Saída</th><th style="color:#6CB6FF">JBL L<small>1 · rota B</small></th><th style="color:#C59BFF">JBL R<small>2 · rota A</small></th><th style="color:#FFD6A8">Sub<small>3+4 · A+B</small></th></tr></thead>
+        <tbody>
+          <tr><td>Ganho</td><td>+6,0<u>dB</u></td><td>+6,0<u>dB</u></td><td>+2,6<u>dB</u></td></tr>
+          <tr><td>Passa-alta</td><td>200<u>LR24</u></td><td>200<u>LR24</u></td><td>40<u>BT24</u></td></tr>
+          <tr><td>Passa-baixa</td><td class="off">OFF</td><td class="off">OFF</td><td>200<u>LR24</u></td></tr>
+          <tr><td>Limitador</td><td>−7,0<u>dB</u></td><td>−7,0<u>dB</u></td><td>−9,0<u>dB</u></td></tr>
+          <tr><td>Atraso</td><td>0<u>cm</u></td><td>0<u>cm</u></td><td>0<u>cm</u></td></tr>
+          <tr><td>Fase</td><td>0°</td><td>0°</td><td>0°</td></tr>
+          <tr class="acoes"><td></td><td><span class="btn-col">Ajustar</span></td><td><span class="btn-col">Ajustar</span></td><td><span class="btn-col">Ajustar</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Resposta das saídas</span><b>20 Hz – 20 kHz</b></div>
+      <div class="grafico">
+        <div class="leg"><span><i style="background:#6CB6FF"></i>L</span><span><i style="background:#C59BFF"></i>R</span><span><i style="background:#FFD6A8"></i>Sub</span></div>
+        <svg width="100%" height="120" viewBox="0 0 350 104" preserveAspectRatio="none">
+          <g stroke="#262D35" stroke-width="1"><line x1="0" y1="14" x2="350" y2="14"/><line x1="0" y1="50" x2="350" y2="50"/><line x1="0" y1="86" x2="350" y2="86"/>
+          <line x1="35" y1="0" x2="35" y2="90"/><line x1="117" y1="0" x2="117" y2="90"/><line x1="233" y1="0" x2="233" y2="90"/></g>
+          <path d="M0 90 C 8 56, 22 24, 38 20 L 98 20 C 108 22, 118 60, 132 90" fill="none" stroke="#FFD6A8" stroke-width="1.6"/>
+          <path d="M80 90 C 96 60, 106 16, 122 10 L 350 10" fill="none" stroke="#6CB6FF" stroke-width="1.6"/>
+          <path d="M80 91.5 C 96 61.5, 106 17.5, 122 11.5 L 350 11.5" fill="none" stroke="#C59BFF" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <g fill="#5A6470" font-size="9.5" font-family="Cascadia Mono, Roboto Mono, monospace"><text x="2" y="101">20</text><text x="29" y="101">40</text><text x="107" y="101">200</text><text x="225" y="101">2k</text><text x="322" y="101">20k</text></g>
+        </svg>
+      </div>
+    </section>
+
+    <div class="rodape-aj"><span>Ler tudo de novo</span><span class="pri">Salvar na mem. 1</span></div>
+    <section class="mod log">
+      <div><b>10:09:12</b> leitura completa do aparelho</div>
+      <div><b>10:09:10</b> conectado · PRO 2.4BT + AUDIO</div>
+    </section>
+  </div>
+  <nav class="nav"><span class="on">INÍCIO</span><span>SAÍDAS</span><span>EQ</span><span>MEM</span><span>IA</span></nav>
+</div>
+<figcaption><b>Início</b> · tela principal</figcaption>
+</figure>
+
+<!-- TELA SECUNDÁRIA · AJUSTE DO SUB -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:11</span><span>BT ▪ 82%</span></div>
+  <div class="tela">
+    <div class="cab-aj">
+      <span class="v">‹</span>
+      <h2 style="color:#FFD6A8">Sub<small>saídas 3+4 · ponte · rota A+B</small></h2>
+    </div>
+    <div class="abas"><span>JBL L</span><span>JBL R</span><span class="on">Sub</span></div>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Nível</span><b>memória 1 SPL</b></div>
+      <div class="par"><div class="nm">Ganho<small>dB</small></div><span class="st">−</span><span class="val sel">+2,6 dB</span><span class="st">+</span></div>
+      <div class="par"><div class="nm">Limitador<small>dB</small></div><span class="st">−</span><span class="val">−9,0 dB</span><span class="st">+</span></div>
+    </section>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Crossover</span><b>tipo · inclinação</b></div>
+      <div class="par"><div class="nm">Passa-alta<small>BT24</small></div><span class="st">−</span><span class="val">40 Hz</span><span class="st">+</span></div>
+      <div class="par"><div class="nm">Passa-baixa<small>LR24</small></div><span class="st">−</span><span class="val">200 Hz</span><span class="st">+</span></div>
+    </section>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Tempo</span><b>alinhamento</b></div>
+      <div class="par"><div class="nm">Atraso<small>cm</small></div><span class="st">−</span><span class="val">0 cm</span><span class="st">+</span></div>
+      <div class="par"><div class="nm">Fase<small>graus</small></div><span class="st">−</span><span class="val">0°</span><span class="st">+</span></div>
+    </section>
+
+    <section class="mod">
+      <div class="mod-cab"><span>EQ de saída</span><b>plano · tocar para abrir</b></div>
+      <svg width="100%" height="56" viewBox="0 0 368 46" preserveAspectRatio="none" style="display:block">
+        <g stroke="#262D35"><line x1="0" y1="23" x2="368" y2="23" stroke-dasharray="2 3"/></g>
+        <line x1="8" y1="23" x2="360" y2="23" stroke="#FFD6A8" stroke-width="1.6"/>
+        <g fill="#5A6470" font-size="9" font-family="Cascadia Mono, Roboto Mono, monospace"><text x="8" y="42">20</text><text x="170" y="42">1k</text><text x="336" y="42">20k</text><text x="340" y="18">0 dB</text></g>
+      </svg>
+    </section>
+
+    <div class="rodape-aj"><span>Desfazer</span><span class="pri">Salvar na mem. 1</span></div>
+  </div>
+  <nav class="nav"><span>INÍCIO</span><span class="on">SAÍDAS</span><span>EQ</span><span>MEM</span><span>IA</span></nav>
+</div>
+<figcaption><b>Ajuste do Sub</b> · tela secundária</figcaption>
+</figure>
+
+<!-- ESTADO · SÓ LEITURA -->
+<figure>
+<div class="cel ro">
+  <div class="barra"><span>10:09</span><span>BT ▪ 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca">BGS CONTROLE</div>
+      <div class="estado" style="color:#E3B341">Só leitura · firmware ?</div>
+    </div>
+
+    <div class="aviso">
+      <span class="sel">SÓ LEITURA</span>
+      <p><b>Firmware desconhecido.</b> Os valores aparecem, mas o app não envia nada ao aparelho. Confira a versão no app da Taramps.</p>
+    </div>
+
+    <section class="mod">
+      <div class="mod-cab"><span>Memória em uso</span><b>PRO 2.4BT + AUDIO</b></div>
+      <div class="mems"><span class="on">1 SPL</span><span>2 MUSICA ORIG</span><span>3 FILME</span></div>
+      <div class="globais">
+        <div><small>Master</small><b>0,0 dB</b></div>
+        <div><small>Remote out</small><b>ligado</b></div>
+        <div><small>EQ gráfico</small><b>plano</b></div>
+      </div>
+    </section>
+
+    <section class="mod">
+      <table>
+        <thead><tr><th>Saída</th><th style="color:#6CB6FF">JBL L<small>1 · rota B</small></th><th style="color:#C59BFF">JBL R<small>2 · rota A</small></th><th style="color:#FFD6A8">Sub<small>3+4 · A+B</small></th></tr></thead>
+        <tbody>
+          <tr><td>Ganho</td><td>+6,0<u>dB</u></td><td>+6,0<u>dB</u></td><td>+2,6<u>dB</u></td></tr>
+          <tr><td>Passa-alta</td><td>200<u>LR24</u></td><td>200<u>LR24</u></td><td>40<u>BT24</u></td></tr>
+          <tr><td>Passa-baixa</td><td class="off">OFF</td><td class="off">OFF</td><td>200<u>LR24</u></td></tr>
+          <tr><td>Limitador</td><td>−7,0<u>dB</u></td><td>−7,0<u>dB</u></td><td>−9,0<u>dB</u></td></tr>
+          <tr><td>Atraso</td><td>0<u>cm</u></td><td>0<u>cm</u></td><td>0<u>cm</u></td></tr>
+          <tr><td>Fase</td><td>0°</td><td>0°</td><td>0°</td></tr>
+          <tr class="acoes"><td></td><td><span class="btn-col">Ver</span></td><td><span class="btn-col">Ver</span></td><td><span class="btn-col">Ver</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="rodape-aj"><span>Ler tudo de novo</span><span style="border-style:dashed;color:#5A6470">Salvar bloqueado</span></div>
+    <section class="mod log">
+      <div><b style="color:#E3B341">10:09:12</b> firmware fora da lista · escrita bloqueada</div>
+      <div><b>10:09:10</b> conectado · PRO 2.4BT + AUDIO</div>
+    </section>
+  </div>
+  <nav class="nav"><span class="on">INÍCIO</span><span>SAÍDAS</span><span>EQ</span><span>MEM</span><span>IA</span></nav>
+</div>
+<figcaption><b>Estado:</b> modo só leitura (firmware desconhecido)</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

@@ -566,26 +566,31 @@ public sealed class LeituraTestes
     }
 
     [Theory]
-    [InlineData("*081*0*-3.0*")]
-    [InlineData("020*3*2.5")]
-    [InlineData("*202*1*")]
-    [InlineData("*252*1*")]
-    [InlineData("*240*0*")]
-    [InlineData("*241*0*")]
-    [InlineData("*231*FILME*")]
-    public async Task Escrita_codificada_pelo_catalogo_continua_bloqueada(string quadro)
+    [InlineData("*081*0*-3.0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("020*3*2.5", Sessao.MotivoChaveDesligada)]
+    [InlineData("*202*1*", Sessao.MotivoChaveDesligada)] // gerador: chave "Gerador" (história 7a)
+    [InlineData("*202*2*", Sessao.MotivoGeradorForaDoFormato)]
+    [InlineData("*252*1*", Sessao.MotivoChaveDesligada)] // remote out: chave "Remote out" (história 7b)
+    [InlineData("*252*2*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*240*0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*241*0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*231*FILME*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*240*5*", Sessao.MotivoMemoriaForaDoFormato)]
+    public async Task Escrita_codificada_pelo_catalogo_sem_chaves_e_recusada_com_o_motivo(string quadro, string motivo)
     {
+        // Esta sessão não tem IChaves: toda escrita conhecida cai na chave; fora da forma exata, no formato.
         await Conectar();
 
         var r = await _sessao.EnviarAsync(quadro);
 
         Assert.False(r.Enviado);
-        Assert.Equal("escrita bloqueada nesta versão do app", r.Motivo);
+        Assert.Equal(motivo, r.Motivo);
         Assert.Equal(["*000*AB12*"], _transporte.Escritas);
+        Assert.Contains(_log.Linhas, l => l.Contains($"✗ {quadro}") && l.Contains(motivo));
     }
 
     [Fact]
-    public async Task Toda_escrita_do_codificador_e_recusada_pela_trava()
+    public async Task Sem_chaves_toda_escrita_do_codificador_e_recusada_pela_trava()
     {
         await Conectar();
         var quadros = new List<string>();

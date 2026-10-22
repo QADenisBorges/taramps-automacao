@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direção C · Papel Calmo</title>
+<style>
+/*
+  DIREÇÃO C · PAPEL CALMO
+  Claro, tranquilo, uma tarefa por tela. Frases curtas no lugar de siglas; cada passo diz o que conferir.
+
+  Cores
+  --papel        #F5F3EE  fundo do app
+  --folha        #FFFFFF  cartões
+  --tinta        #1C1B19  texto principal (16,9:1 sobre o papel)
+  --apoio        #6B6760  texto de apoio (5,3:1 sobre o papel)
+  --linha        #E3DFD6  divisórias
+  --suave        #EDEAE3  campo, botão secundário
+  --verde        #1F6F5C  ação principal, conectado
+  --verde-claro  #DCEDE7  fundo do selo conectado
+  --l            #3E6FD8  marcador JBL L
+  --r            #8A5CD6  marcador JBL R
+  --sub          #C7782E  marcador Sub
+  --alerta       #B4331F  conexão caiu
+  --alerta-claro #F7E3DE  fundo do aviso
+  Página de apresentação: #E8E5DE (fundo), #1C1B19 (texto)
+
+  Tipo: Segoe UI Variable Text / Roboto / system-ui. Corpo 17 px peso 400, títulos 26–30 px peso 600.
+  Números tabulares. Botões com 56 px de altura.
+*/
+:root{
+  --papel:#F5F3EE; --folha:#FFFFFF; --tinta:#1C1B19; --apoio:#6B6760; --linha:#E3DFD6; --suave:#EDEAE3;
+  --verde:#1F6F5C; --verde-claro:#DCEDE7; --l:#3E6FD8; --r:#8A5CD6; --sub:#C7782E;
+  --alerta:#B4331F; --alerta-claro:#F7E3DE;
+  --fonte:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E8E5DE;color:var(--tinta);font-family:var(--fonte);padding:40px 32px 64px}
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:13px;color:var(--verde);font-weight:600}
+.intro h1{font-size:40px;font-weight:600;letter-spacing:-.015em;margin:6px 0 12px}
+.intro p{max-width:760px;font-size:17px;line-height:1.6;color:#45423D}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--apoio)}
+.amostra i{width:18px;height:18px;border-radius:50%;border:1px solid #CFCAC0;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;max-width:1300px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:14px;color:var(--apoio)}
+figcaption b{color:var(--tinta)}
+
+.cel{width:390px;height:844px;background:var(--papel);border-radius:46px;border:10px solid #FFFFFF;
+  box-shadow:0 0 0 1px #D6D1C7,0 24px 60px rgba(60,50,30,.18);overflow:hidden;display:flex;flex-direction:column;font-variant-numeric:tabular-nums}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;color:var(--apoio)}
+.tela{flex:1;padding:10px 22px 26px;display:flex;flex-direction:column;gap:15px;overflow:hidden}
+
+.selo{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--verde);background:var(--verde-claro);border-radius:999px;padding:6px 12px 6px 10px}
+.selo::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--verde)}
+h2{font-size:30px;font-weight:600;letter-spacing:-.015em;line-height:1.15}
+.lead{font-size:17px;line-height:1.5;color:var(--apoio);margin-top:-8px}
+.lead b{color:var(--tinta);font-weight:600}
+
+.cartao{background:var(--folha);border-radius:20px;border:1px solid var(--linha)}
+.mem{padding:16px 18px;display:flex;justify-content:space-between;align-items:center}
+.mem small{display:block;font-size:13px;color:var(--apoio)}
+.mem b{font-size:22px;font-weight:600}
+.link{font-size:15px;font-weight:600;color:var(--verde)}
+
+.saida{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid var(--linha)}
+.saida:last-child{border-bottom:0}
+.marca{width:12px;height:12px;border-radius:50%;background:var(--cor);flex:none}
+.saida .t{flex:1}
+.saida .t b{display:block;font-size:17px;font-weight:600}
+.saida .t span{font-size:14px;color:var(--apoio);line-height:1.4}
+.saida .g{font-size:17px;font-weight:600;text-align:right}
+.saida .g small{display:block;font-size:12px;font-weight:400;color:var(--apoio)}
+
+.extra{font-size:14px;color:var(--apoio);line-height:1.6}
+.espaco{flex:1}
+.botao{display:block;text-align:center;border-radius:16px;height:56px;line-height:56px;font-size:17px;font-weight:600}
+.botao.pri{background:var(--verde);color:#fff}
+.botao.sec{background:var(--suave);color:var(--tinta)}
+.par-botoes{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}
+
+/* Ajuste passo a passo */
+.topo-aj{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--apoio)}
+.topo-aj b{color:var(--tinta);font-weight:600}
+.progresso{display:flex;gap:6px}
+.progresso i{flex:1;height:5px;border-radius:3px;background:var(--linha)}
+.progresso i.feito{background:var(--verde)}
+.progresso i.agora{background:var(--sub)}
+.passo{font-size:14px;font-weight:600;color:var(--sub);text-transform:none}
+.valor-grande{padding:22px 18px 18px;text-align:center}
+.valor-grande small{font-size:14px;color:var(--apoio)}
+.valor-grande .v{font-size:60px;font-weight:600;letter-spacing:-.03em;line-height:1.1;margin:4px 0}
+.valor-grande .v span{font-size:22px;color:var(--apoio);font-weight:400}
+.valor-grande .tipo{font-size:15px;color:var(--apoio)}
+.controle{display:grid;grid-template-columns:64px 1fr 64px;gap:12px;align-items:center;margin-top:16px}
+.controle .b{height:64px;border-radius:18px;background:var(--suave);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:300}
+.controle .trilho{height:8px;border-radius:4px;background:var(--linha);position:relative}
+.controle .trilho i{position:absolute;left:0;top:0;bottom:0;width:48%;border-radius:4px;background:var(--sub)}
+.controle .trilho b{position:absolute;left:48%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#fff;border:2px solid var(--sub)}
+.conferir{background:var(--folha);border-left:4px solid var(--verde);border-radius:12px;padding:14px 16px}
+.conferir b{display:block;font-size:14px;color:var(--verde);margin-bottom:4px}
+.conferir p{font-size:16px;line-height:1.45}
+
+/* Estado: conexão caiu */
+.queda{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;padding-bottom:20px}
+.icone-queda{width:72px;height:72px;border-radius:22px;background:var(--alerta-claro);display:flex;align-items:center;justify-content:center}
+.icone-queda i{width:30px;height:30px;border-radius:50%;border:4px solid var(--alerta);border-right-color:transparent;transform:rotate(-45deg)}
+.lista{list-style:none;display:flex;flex-direction:column;gap:10px}
+.lista li{display:flex;gap:12px;font-size:16px;line-height:1.4}
+.lista li span{flex:none;width:26px;height:26px;border-radius:50%;background:var(--suave);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.nota{font-size:14px;color:var(--apoio);line-height:1.5;background:var(--folha);border:1px solid var(--linha);border-radius:14px;padding:12px 14px}
+.selo.caiu{color:var(--alerta);background:var(--alerta-claro)}
+.selo.caiu::before{background:var(--alerta)}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Direção C · BGS Controle</div>
+  <h1>Papel Calmo</h1>
+  <p>Claro e silencioso, como uma folha de anotações: uma tarefa por tela, frases curtas no lugar de siglas e um só botão principal. O Início conta como está o som em três linhas; o ajuste vira uma sequência de passos, cada um com um valor grande, − e + do tamanho do polegar e o que conferir antes de seguir. A queda de conexão ocupa a tela inteira e diz exatamente o que fazer.</p>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#F5F3EE"></i>#F5F3EE papel</span>
+    <span class="amostra"><i style="background:#FFFFFF"></i>#FFFFFF folha</span>
+    <span class="amostra"><i style="background:#1C1B19"></i>#1C1B19 tinta</span>
+    <span class="amostra"><i style="background:#6B6760"></i>#6B6760 apoio</span>
+    <span class="amostra"><i style="background:#1F6F5C"></i>#1F6F5C ação</span>
+    <span class="amostra"><i style="background:#3E6FD8"></i>#3E6FD8 L</span>
+    <span class="amostra"><i style="background:#8A5CD6"></i>#8A5CD6 R</span>
+    <span class="amostra"><i style="background:#C7782E"></i>#C7782E Sub</span>
+    <span class="amostra"><i style="background:#B4331F"></i>#B4331F alerta</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- TELA PRINCIPAL · INÍCIO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:09</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <span class="selo">Conectado · firmware R003</span>
+    <h2>O som está pronto.</h2>
+    <p class="lead">Tocando a memória <b>1 · SPL</b>, com master em <b>0,0 dB</b>.</p>
+
+    <div class="cartao mem">
+      <div><small>Memória em uso</small><b>1 · SPL</b></div>
+      <span class="link">Trocar</span>
+    </div>
+
+    <div class="cartao">
+      <div class="saida" style="--cor:#3E6FD8"><i class="marca"></i>
+        <div class="t"><b>JBL L</b><span>Saída 1<br>Toca acima de 200 Hz</span></div>
+        <div class="g">+6,0 dB<small>limite −7,0</small></div></div>
+      <div class="saida" style="--cor:#8A5CD6"><i class="marca"></i>
+        <div class="t"><b>JBL R</b><span>Saída 2<br>Toca acima de 200 Hz</span></div>
+        <div class="g">+6,0 dB<small>limite −7,0</small></div></div>
+      <div class="saida" style="--cor:#C7782E"><i class="marca"></i>
+        <div class="t"><b>Sub</b><span>Saídas 3+4 em ponte<br>Toca de 40 a 200 Hz</span></div>
+        <div class="g">+2,6 dB<small>limite −9,0</small></div></div>
+    </div>
+
+    <p class="extra">Remote out ligado · EQ gráfico plano · atraso e fase em zero nas três saídas.</p>
+
+    <div class="espaco"></div>
+    <span class="botao pri">Ajustar uma saída</span>
+    <span class="botao sec">Ver tudo do aparelho</span>
+  </div>
+</div>
+<figcaption><b>Início</b> · tela principal</figcaption>
+</figure>
+
+<!-- TELA SECUNDÁRIA · AJUSTE DO SUB (PASSO 3) -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:12</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="topo-aj"><span>‹ Sair</span><b>Ajustar o Sub</b><span>3 de 6</span></div>
+    <div class="progresso"><i class="feito"></i><i class="feito"></i><i class="agora"></i><i></i><i></i><i></i></div>
+
+    <div>
+      <div class="passo">Passo 3 · Passa-baixa</div>
+      <h2 style="margin-top:6px">Até onde o Sub toca</h2>
+    </div>
+
+    <div class="cartao valor-grande">
+      <small>Saídas 3+4 em ponte · rota A+B</small>
+      <div class="v">200<span> Hz</span></div>
+      <div class="tipo">Linkwitz-Riley 24 dB/oitava (LR24)</div>
+      <div class="controle"><span class="b">−</span><span class="trilho"><i></i><b></b></span><span class="b">+</span></div>
+    </div>
+
+    <div class="conferir">
+      <b>O que conferir</b>
+      <p>As JBL começam em 200 Hz. O Sub deve parar no mesmo ponto, sem buraco nem sobra.</p>
+    </div>
+
+    <div class="espaco"></div>
+    <div class="par-botoes"><span class="botao sec">Voltar</span><span class="botao pri">Próximo: limitador</span></div>
+  </div>
+</div>
+<figcaption><b>Ajuste do Sub</b> · tela secundária (passo 3 de 6)</figcaption>
+</figure>
+
+<!-- ESTADO · CONEXÃO CAIU -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:15</span><span>82%</span></div>
+  <div class="tela">
+    <span class="selo caiu">Sem conexão</span>
+    <div class="queda">
+      <div class="icone-queda"><i></i></div>
+      <h2>A conexão caiu.</h2>
+      <p class="lead" style="margin-top:0">O aparelho parou de responder pelo Bluetooth.</p>
+      <ul class="lista">
+        <li><span>1</span>Confira se o processador está ligado.</li>
+        <li><span>2</span>Chegue o celular mais perto dele.</li>
+        <li><span>3</span>Toque em Conectar.</li>
+      </ul>
+      <p class="nota">Última leitura às 10:12, na memória 1 · SPL. Os valores voltam a aparecer quando conectar.</p>
+    </div>
+    <span class="botao pri">Conectar</span>
+  </div>
+</div>
+<figcaption><b>Estado:</b> a conexão caiu</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

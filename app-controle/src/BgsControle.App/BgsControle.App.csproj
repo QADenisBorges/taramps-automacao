@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
+    <ProjectReference Include="..\BgsControle.Telas\BgsControle.Telas.csproj" />
   </ItemGroup>
 
 </Project>

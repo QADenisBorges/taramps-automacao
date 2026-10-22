@@ -107,8 +107,12 @@ public sealed class LeitorCompleto
             return r;
         }
 
+        var comPorta = false;
         try
         {
+            // Espera a escrita em andamento terminar (eco ou releitura) antes de perguntar.
+            await _sessao.ExclusaoLeituraEscrita.WaitAsync(ct);
+            comPorta = true;
             if (!SessaoAberta)
                 return Parar(_sessao.Mensagem ?? MsgSemConexao);
             _log.Evento($"leitura completa: {Catalogo.TotalMarco1} consultas do Marco 1 e {Catalogo.TotalExtras} extras");
@@ -170,6 +174,8 @@ public sealed class LeitorCompleto
         }
         finally
         {
+            if (comPorta)
+                _sessao.ExclusaoLeituraEscrita.Release();
             _sessao.Recebeu -= AoReceber;
             _sessao.Mudou -= AoMudar;
             lock (_trava)

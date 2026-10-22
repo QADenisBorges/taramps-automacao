@@ -136,8 +136,13 @@ internal sealed class CofreFalso : ICofreSenha
         return Task.FromResult(Senha);
     }
 
+    /// <summary>O Keystore falha ao guardar (a senha não muda).</summary>
+    public bool FalharAoGuardar { get; set; }
+
     public Task GuardarAsync(string senha)
     {
+        if (FalharAoGuardar)
+            throw new IOException("Keystore indisponível");
         Senha = senha;
         Guardadas.Add(senha);
         return Task.CompletedTask;

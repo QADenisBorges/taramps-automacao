@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Síntese v2 · BGS Controle</title>
+<style>
+/*
+  SÍNTESE v2 · BGS CONTROLE
+  Mesma família da v1: o preto e a calma do Estúdio Noturno, a luz por saída, as pílulas brancas
+  para o que está escolhido e uma capa de fader só.
+
+  O que mudou da v1
+  1. Ajuste do Sub sem blocos de tocar para editar: todos os parâmetros abertos na tela, com rolagem.
+  2. Cada ajuste tem as duas formas no mesmo controle: nível para arrastar (giratório, fader ou escala)
+     e campo para escrever o valor exato, mais − e + para o passo fino.
+     Listas de opções (tipo do filtro) vêm recolhidas, mostrando só o escolhido, e abrem ao tocar.
+  3. Mesa: o número grande de cada canal e o do MASTER viram campo ao tocar; MASTER −80,0 a 0,0 dB.
+  4. Quadro novo: escrevendo o ganho com o teclado numérico do Android aberto.
+  5. IA ativa vira painel ao vivo do que a IA mexe (15 bandas do EQ gráfico, ganhos e limitadores).
+
+  Regras que unem tudo
+  1. Fino é para ler, negrito é para mexer.
+  2. Branco é escolha feita (memória, aba, tipo de filtro, fase, OFF do limitador).
+  3. A cor da saída é o que está sendo mexido: nível, risco da capa, sublinhado do campo, arco do giratório.
+  4. Lilás é também a cor da IA.
+  5. Uma só capa de fader (grafite neutro) no vertical, no horizontal e no giratório.
+  6. Campo = caixa escura com sublinhado na cor da saída: "aqui dá para escrever".
+
+  Cores
+  --palco        #000000  fundo do app
+  --sup-1        #1C1C1E  cartões, canais, blocos
+  --sup-2        #2C2C2E  trilho, contorno, botões − e +
+  --sup-3        #232325  divisórias e linhas finas
+  --texto        #F5F5F7  texto principal e pílula selecionada
+  --apoio        #A1A1A6  texto de apoio
+  --apagado      #6E6E73  rótulos, escalas
+  --l            #7EAEFF  JBL L, azul
+  --r            #C495FF  JBL R, lilás
+  --sub          #FFCD94  Sub, âmbar
+  --sub-fundo    #241D13  fundo do campo do Sub enquanto se escreve
+  --ia           #C495FF  IA (= JBL R)
+  --ia-fundo     #1B1526  fundo da faixa da IA e da banda que a IA está mexendo
+  --ia-texto     #D6C6F5  texto da faixa da IA
+  --ok           #30D158  conectado
+  --parar        #FF453A  PARAR IA
+  --capa-a       #3C3C41  capa do fader, topo
+  --capa-b       #26262A  capa do fader, base
+  --capa-borda   #4C4C52  contorno da capa e do disco do giratório
+  --campo        #0B0B0C  fundo do campo numérico
+  --campo-borda  #3A3A3D  contorno do campo e dos botões − e +
+  --tec-fundo    #1F1F22  teclado numérico do Android, fundo
+  --tec-tecla    #36363B  tecla de número
+  --tec-funcao   #2A2A2E  tecla de função (−, vírgula, apagar)
+  --nota         #8E8E93  pílula da memória com a IA (cinza neutro)
+  Página de apresentação: #111113 (fundo), #E5E5EA (texto), #C7C7CC (lista), #3A3A3C (contorno das amostras)
+
+  Tipo: Segoe UI Variable Display / Roboto / system-ui. Números sempre tabulares.
+  Alvos de toque: 44 px (campos, memórias, OFF), 48 px (− e + dos parâmetros), 72 px (− e + do ganho),
+  60 px (PARAR IA), 52 px (lista recolhida), 42 × 38 px (tipos de filtro abertos: 16 opções em 2 linhas de 8).
+  --lista-aberta #151517  fundo da linha de uma lista aberta
+*/
+:root{
+  --palco:#000000; --sup-1:#1C1C1E; --sup-2:#2C2C2E; --sup-3:#232325;
+  --texto:#F5F5F7; --apoio:#A1A1A6; --apagado:#6E6E73;
+  --l:#7EAEFF; --r:#C495FF; --sub:#FFCD94; --sub-fundo:#241D13;
+  --ia:#C495FF; --ia-fundo:#1B1526; --ia-texto:#D6C6F5;
+  --ok:#30D158; --parar:#FF453A;
+  --capa-a:#3C3C41; --capa-b:#26262A; --capa-borda:#4C4C52;
+  --campo:#0B0B0C; --campo-borda:#3A3A3D;
+  --tec-fundo:#1F1F22; --tec-tecla:#36363B; --tec-funcao:#2A2A2E; --nota:#8E8E93;
+  --fonte:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111113;color:#E5E5EA;font-family:var(--fonte);padding:40px 32px 64px}
+
+/* Apresentação */
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--apoio)}
+.intro h1{font-weight:200;font-size:46px;letter-spacing:-.02em;margin:6px 0 14px;color:var(--texto)}
+.intro h1 b{font-weight:800}
+.porque{max-width:1180px;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;color:#C7C7CC}
+.porque b{color:var(--texto);font-weight:600}
+.amostras{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.amostra{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--apoio);font-variant-numeric:tabular-nums}
+.amostra i{width:18px;height:18px;border-radius:6px;border:1px solid #3A3A3C;display:block}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start;max-width:2200px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:13px;color:var(--apoio);letter-spacing:.02em;text-align:center;max-width:390px;line-height:1.5}
+figcaption b{color:var(--texto);font-weight:600}
+.ilus{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--apagado);border:1px solid var(--sup-2);border-radius:6px;padding:1px 5px;vertical-align:middle}
+
+/* Moldura do celular */
+.cel{width:390px;height:844px;background:var(--palco);border-radius:46px;border:10px solid #2A2A2D;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;
+  font-variant-numeric:tabular-nums;color:var(--texto);position:relative}
+.cel.longa{height:auto}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;color:var(--apoio)}
+.tela{flex:1;min-height:0;padding:6px 16px 12px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.tela > *{flex:none}
+.cel.longa .tela{overflow:visible}
+
+/* Peças comuns */
+.topo{display:flex;justify-content:space-between;align-items:center;height:32px}
+.marca{font-size:22px;font-weight:200;letter-spacing:-.01em}
+.marca b{font-weight:600;letter-spacing:.02em}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--apoio);background:var(--sup-1);
+  border:1px solid var(--sup-2);border-radius:999px;padding:6px 11px;white-space:nowrap}
+.ponto{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.rotulo{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--apagado)}
+.cabeca{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px}
+.cabeca .ex{font-size:12px;color:var(--apoio)}
+
+/* Barra de baixo: só Início e Mesa (igual à v1) */
+.nav{flex:none;height:72px;padding:6px 16px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--sup-3)}
+.nav span{border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;color:var(--apoio)}
+.nav span i{width:16px;height:16px;flex:none;display:block}
+.nav span.on{background:var(--texto);color:#000}
+
+/* Fader com capa (um só desenho) */
+.fader{flex:1;min-height:0;width:56px;position:relative;display:flex;justify-content:center}
+.fader::before{content:"";position:absolute;top:0;bottom:0;width:8px;border-radius:4px;background:var(--sup-2)}
+.fader .nivel{position:absolute;bottom:0;width:8px;border-radius:4px;background:var(--cor)}
+.fader .zero{position:absolute;left:8px;right:8px;height:2px;margin-bottom:-1px;background:var(--apagado)}
+.capa{position:absolute;border-radius:9px;background:linear-gradient(var(--capa-a),var(--capa-b));border:1px solid var(--capa-borda);box-shadow:0 6px 12px rgba(0,0,0,.55)}
+.fader .capa{width:56px;height:30px;margin-bottom:-15px}
+.capa::after{content:"";position:absolute;left:10px;right:10px;top:50%;height:2px;margin-top:-1px;background:var(--cor)}
+/* horizontal */
+.h-fader{height:8px;border-radius:4px;background:var(--sup-2);position:relative}
+.h-fader .nivel{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--cor)}
+.h-fader .zero{position:absolute;top:-8px;bottom:-8px;width:2px;margin-left:-1px;background:var(--apagado);border-radius:1px}
+.h-fader .capa{top:50%;width:30px;height:44px;margin:-22px 0 0 -15px;background:linear-gradient(90deg,var(--capa-a),var(--capa-b))}
+.h-fader .capa::after{left:50%;right:auto;top:8px;bottom:8px;height:auto;width:2px;margin:0 0 0 -1px}
+
+/* Campo numérico: tocar e escrever */
+.campo{height:44px;min-width:112px;padding:0 12px;border-radius:12px;background:var(--campo);border:1px solid var(--campo-borda);
+  border-bottom:2px solid var(--cor);display:flex;align-items:center;justify-content:flex-end;gap:5px;
+  font-size:22px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;color:var(--texto)}
+.campo small{font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0}
+.campo.ativo{border:2px solid var(--cor);background:var(--sub-fundo)}
+.cursor{display:inline-block;width:2px;height:28px;background:var(--cor);border-radius:1px;margin-left:-2px}
+
+/* 1 · INÍCIO (igual à v1) */
+.memoria{background:var(--sup-1);border-radius:20px;padding:16px 18px 14px;position:relative;overflow:hidden}
+.memoria::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;
+  background:conic-gradient(from 200deg,var(--l),var(--r),var(--sub),var(--l));
+  -webkit-mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);
+  mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);opacity:.85;pointer-events:none}
+.memoria .nome{font-size:60px;font-weight:200;letter-spacing:-.03em;line-height:1;margin:8px 0 4px}
+.memoria .sub{font-size:13px;color:var(--apoio)}
+.mems{display:grid;grid-template-columns:1fr 1.45fr 1fr;gap:6px;margin-top:14px;position:relative;z-index:1}
+.mems span{height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;border-radius:12px;border:1px solid var(--sup-2);color:var(--apoio);white-space:nowrap}
+.mems span.on{background:var(--texto);color:#000;border-color:var(--texto);font-weight:600}
+.saidas{display:flex;flex-direction:column;gap:10px}
+.saida{background:var(--sup-1);border-radius:18px;padding:13px 14px 12px 18px;display:grid;
+  grid-template-columns:1fr 76px;gap:1px 10px;position:relative}
+.saida::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--cor)}
+.saida .n{font-size:16px;font-weight:600;white-space:nowrap}
+.saida .n small{font-size:12px;font-weight:400;color:var(--apoio);margin-left:6px}
+.saida .g{font-size:32px;font-weight:200;letter-spacing:-.02em;line-height:1.1}
+.saida .g small{font-size:13px;color:var(--apoio);margin-left:2px}
+.saida .r{font-size:12px;color:var(--apoio);line-height:1.5}
+.saida svg{grid-row:1 / span 2;grid-column:2;align-self:center}
+.saida .aj{grid-column:2;grid-row:3;justify-self:end;align-self:end;font-size:13px;color:var(--cor);font-weight:600;white-space:nowrap}
+.rodape-info{font-size:12px;color:var(--apagado);display:flex;gap:14px;padding:0 2px}
+.rodape-info b{color:var(--apoio);font-weight:500}
+
+/* 2 · MESA */
+.abas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.abas span{height:60px;border-radius:18px;background:var(--sup-1);border:1px solid var(--sup-2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:14px;white-space:nowrap}
+.abas span small{font-size:10px;font-weight:700;color:var(--apagado);letter-spacing:.08em}
+.abas span.on{background:var(--texto);color:#000;border-color:var(--texto)}
+.abas span.on small{color:#55555A}
+.canais{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;flex:1 1 auto !important;min-height:0}
+.canal{background:var(--sup-1);border-radius:22px;padding:12px 8px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;border-top:4px solid var(--cor);min-height:0}
+.canal .nm{font-size:15px;font-weight:800;letter-spacing:.04em;color:var(--cor)}
+.canal .sd{font-size:11px;color:var(--apagado);margin-top:-6px;white-space:nowrap}
+.canal .campo{width:100%;min-width:0;height:42px;justify-content:center;font-size:24px;padding:0 6px;flex:none}
+.canal .fader{margin:8px 0 6px}
+.canal .res{font-size:11px;color:var(--apoio);text-align:center;line-height:1.45;white-space:nowrap}
+.canal .res b{color:var(--texto);font-weight:600}
+.canal .aj{width:100%;height:44px;border-radius:14px;background:var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--cor);flex:none}
+.master{background:var(--sup-1);border-radius:22px;padding:10px 14px;height:76px;display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;--cor:var(--texto)}
+.master .nm{font-size:13px;font-weight:800;letter-spacing:.06em}
+.master .nm small{display:block;font-size:11px;font-weight:400;color:var(--apagado);letter-spacing:0}
+.master .trilho-m{position:relative;padding-top:14px}
+.master .esc-m{display:flex;justify-content:space-between;font-size:10px;font-weight:600;color:var(--apagado);margin-top:16px}
+.master .campo{min-width:0;width:100px;font-size:22px;padding:0 10px}
+.chips{display:flex;gap:8px}
+.chips > span{flex:1;height:38px;border-radius:999px;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;color:var(--apoio);white-space:nowrap}
+.chips > span b{color:var(--texto);font-weight:600}
+
+/* 3 · AJUSTE DO SUB */
+.cab{display:flex;align-items:center;gap:12px;height:48px}
+.cab .voltar{width:48px;height:48px;border-radius:16px;background:var(--sup-1);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--texto);flex:none}
+.cab h2{font-size:30px;font-weight:800;letter-spacing:-.01em;color:var(--sub);line-height:1}
+.cab h2 small{display:block;font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0;margin-top:4px}
+.fixo-topo{flex:none;padding:6px 16px 10px;border-bottom:1px solid var(--sup-3)}
+.fixo-baixo{flex:none;padding:10px 16px 16px;border-top:1px solid var(--sup-3);background:var(--palco)}
+.salvar{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+
+/* Botão giratório do ganho (a peça da escolha 6, nas cores da família) */
+.botao-giro{align-self:center;width:226px;height:226px;border-radius:50%;position:relative;
+  background:conic-gradient(from 225deg,var(--sub) 0deg 214deg,var(--sup-2) 214deg 270deg,transparent 270deg 360deg)}
+.botao-giro::before{content:"";position:absolute;inset:16px;border-radius:50%;background:var(--palco)}
+.botao-giro .disco{position:absolute;inset:30px;border-radius:50%;background:radial-gradient(circle at 40% 30%,var(--capa-a),var(--sup-1) 70%);border:1px solid var(--capa-borda);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(0,0,0,.6)}
+.botao-giro .disco small{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--apoio)}
+.botao-giro .disco b{font-size:44px;font-weight:800;letter-spacing:-.02em;line-height:1.05;border-bottom:2px dashed rgba(255,205,148,.55);padding:0 4px}
+.botao-giro .disco span{font-size:14px;font-weight:700;color:var(--apoio);margin-top:2px}
+.botao-giro .disco .campo{height:54px;min-width:0;width:124px;justify-content:center;font-size:34px;padding:0 8px;margin:4px 0 2px;color:var(--texto);font-weight:800}
+.botao-giro .marca-giro{position:absolute;left:50%;top:50%;width:4px;height:110px;margin-left:-2px;transform-origin:50% 0;transform:rotate(259deg)}
+.botao-giro .marca-giro::after{content:"";position:absolute;bottom:0;left:-3px;width:10px;height:10px;border-radius:50%;background:var(--texto);box-shadow:0 0 10px var(--sub)}
+.passo{display:grid;grid-template-columns:72px 1fr 72px;gap:10px;align-items:center}
+.passo .b{height:72px;border-radius:22px;background:var(--sup-2);border:2px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:500}
+.passo .meio{text-align:center;font-size:12px;font-weight:600;color:var(--apoio);line-height:1.4}
+.passo .meio small{display:block;font-size:11px;font-weight:400;color:var(--apagado);margin-top:3px}
+
+/* Controle de parâmetro: rótulo + campo em cima, − fader + embaixo, escala */
+.ctl{background:var(--sup-1);border-radius:18px;padding:12px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.ctl-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.ctl-tit{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ctl-tit b{font-size:15px;font-weight:700;color:var(--texto)}
+.ctl-tit span{font-size:11px;color:var(--apagado);white-space:nowrap}
+.ctl-dir{display:flex;align-items:center;gap:6px}
+.regua{display:grid;grid-template-columns:48px 1fr 48px;grid-template-rows:48px 14px;column-gap:20px;row-gap:2px;align-items:center}
+.regua .pm{grid-row:1;height:48px;border-radius:14px;background:var(--sup-2);border:1px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:500;color:var(--texto)}
+.regua .h-fader{grid-row:1;grid-column:2}
+.regua .esc{grid-row:2;grid-column:2;position:relative;height:14px}
+.regua .esc span{position:absolute;top:0;transform:translateX(-50%);font-size:10px;font-weight:600;color:var(--apagado);white-space:nowrap}
+.regua .esc span.ini{transform:none}
+.regua .esc span.fim{transform:translateX(-100%)}
+.tipos-rot{display:flex;justify-content:space-between;align-items:baseline}
+.tipos-rot span{font-size:11px;color:var(--apagado)}
+.tipos{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.tipos i{height:42px;border-radius:10px;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:700;color:var(--apoio);white-space:nowrap}
+.tipos i.on{background:var(--texto);color:#000;border-color:var(--texto)}
+/* Lista de opções recolhida: mostra só o escolhido; ▾ abre a grade, ▴ recolhe */
+.tipo-sel{min-height:52px;border-radius:14px;border:1px solid var(--sup-2);padding:6px 8px 6px 12px;display:grid;grid-template-columns:1fr auto 28px;gap:10px;align-items:center}
+.tipo-sel .tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tipo-sel .tx span{font-size:12px;color:var(--apoio);white-space:nowrap}
+.tipo-sel .pilula{height:38px;min-width:64px;padding:0 12px;border-radius:11px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.tipo-sel .seta{font-style:normal;color:var(--apoio);display:flex;align-items:center;justify-content:center}
+.tipo-sel.aberto{border-color:var(--campo-borda);background:#151517}
+.desl{height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--apoio)}
+.desl.on{background:var(--texto);color:#000;border-color:var(--texto)}
+.fase2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fase2 span{height:52px;border-radius:14px;border:1px solid var(--sup-2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--apoio)}
+.fase2 span.on{background:var(--texto);color:#000;border-color:var(--texto)}
+.sub-ctl{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--sup-3)}
+.sub-ctl:first-of-type{border-top:0;padding-top:0}
+.eq-nota{font-size:12px;color:var(--apoio);line-height:1.45}
+.eq-nota b{color:var(--texto);font-weight:600}
+.lembrete{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--apoio);padding:0 4px}
+.lembrete i{width:8px;height:8px;border-radius:50%;background:var(--sub);flex:none;margin-top:5px;box-shadow:0 0 8px var(--sub)}
+.lembrete b{color:var(--texto);font-weight:600}
+/* marca da primeira tela: só nas margens de 16 px, sem cobrir nada */
+.dobra{position:absolute;left:0;right:0;top:741px;height:0;pointer-events:none;z-index:5}
+.dobra::before,.dobra::after{content:"";position:absolute;top:-1px;width:14px;border-top:3px solid #A1A1A6}
+.dobra::before{left:0}
+.dobra::after{right:0}
+
+/* 4 · DIGITANDO */
+.escrevendo{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--apoio);background:var(--sup-1);border-radius:14px;padding:10px 12px}
+.escrevendo i{width:8px;height:8px;border-radius:50%;background:var(--sub);flex:none;margin-top:6px}
+.escrevendo b{color:var(--sub);font-weight:700}
+.teclado{flex:none;background:var(--tec-fundo);padding:8px 6px 6px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.teclado span{height:50px;border-radius:10px;background:var(--tec-tecla);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--texto)}
+.teclado span.f{background:var(--tec-funcao);font-size:22px;color:var(--texto)}
+.teclado span.ok{background:var(--texto);color:#000;font-weight:800}
+.gesto{flex:none;height:22px;background:var(--tec-fundo);display:flex;align-items:center;justify-content:center}
+.gesto i{width:120px;height:4px;border-radius:2px;background:#6E6E73}
+
+/* 5 · IA ATIVA */
+.ia{border-radius:22px;background:var(--ia-fundo);border:2px solid var(--ia);padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.ia .linha{display:flex;align-items:center;gap:10px}
+.ia .pulso{width:14px;height:14px;border-radius:50%;background:var(--ia);box-shadow:0 0 0 6px rgba(196,149,255,.25);flex:none;margin-left:3px}
+.ia .linha b{font-size:17px;font-weight:800}
+.ia p{font-size:13px;color:var(--ia-texto);line-height:1.4}
+.ia .parar{height:60px;border-radius:18px;background:var(--parar);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;letter-spacing:.04em}
+.painel{background:var(--sup-1);border-radius:18px;padding:11px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.painel-cab{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.painel-cab .t{font-size:13px;font-weight:700;white-space:nowrap}
+.painel-cab .t small{font-size:12px;font-weight:400;color:var(--ia);margin-left:4px}
+.vivo{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--ia)}
+.vivo i{width:6px;height:6px;border-radius:50%;background:var(--ia);box-shadow:0 0 6px var(--ia)}
+.bandas{display:grid;grid-template-columns:repeat(15,1fr);height:108px;position:relative}
+.bandas::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--sup-2)}
+.banda{position:relative;display:flex;justify-content:center;opacity:.42}
+.banda::before{content:"";position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--sup-2)}
+.banda .desvio{position:absolute;width:4px;border-radius:2px;background:var(--apoio)}
+.banda .capa{width:16px;height:9px;border-radius:3px;margin-bottom:-4px;box-shadow:none;--cor:var(--apoio)}
+.banda .capa::after{left:3px;right:3px}
+.banda.agora{opacity:1;background:var(--ia-fundo);border-radius:8px}
+.banda.agora .desvio{background:var(--ia)}
+.banda.agora .capa{--cor:var(--ia);border-color:var(--ia)}
+.freqs{display:grid;grid-template-columns:repeat(15,1fr);font-size:9px;font-weight:600;color:var(--apagado);text-align:center;white-space:nowrap;letter-spacing:-.02em}
+.freqs span.agora{color:var(--ia);font-weight:800}
+.leitura{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--apoio)}
+.leitura b{color:var(--ia);font-weight:700}
+.linhas-saida{display:flex;flex-direction:column}
+.ls{display:grid;grid-template-columns:58px 1fr 1fr;gap:12px;align-items:center;padding:7px 0 7px 10px;border-top:1px solid var(--sup-3);position:relative}
+.ls:first-child{border-top:0}
+.ls::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--cor)}
+.ls .nm{font-size:13px;font-weight:800;color:var(--cor);white-space:nowrap}
+.ls .vl{display:flex;flex-direction:column;gap:6px}
+.ls .vl span{font-size:11px;color:var(--apagado);white-space:nowrap}
+.ls .vl span b{font-size:15px;font-weight:700;color:var(--texto);margin-left:4px}
+.ls .h-fader{height:5px;opacity:.42}
+.ls .h-fader .capa{width:12px;height:18px;margin:-9px 0 0 -6px;border-radius:4px;box-shadow:none}
+.ls .h-fader .capa::after{top:4px;bottom:4px}
+.registro{list-style:none;background:#0E0E10;border:1px solid var(--sup-3);border-radius:18px;padding:2px 14px}
+.registro li{display:flex;gap:12px;font-size:13px;padding:6px 0;color:var(--apoio);border-bottom:1px solid var(--sup-3);white-space:nowrap}
+.registro li:last-child{border-bottom:0}
+.registro li time{color:var(--apagado);width:42px;flex:none}
+.registro li.agora{color:var(--texto)}
+.registro li.agora time{color:var(--ia);font-weight:600}
+.cadeado{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;color:var(--apoio)}
+.cadeado svg{flex:none}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Síntese v2 · BGS Controle</div>
+  <h1><b>BGS</b> Controle · síntese v2</h1>
+  <ul class="porque">
+    <li><b>Ajuste do Sub sem tocar para abrir:</b> o ganho fica no botão giratório grande (escolha 6) e todos os outros parâmetros já ficam abertos e mexíveis na tela, com rolagem para baixo.</li>
+    <li><b>Duas formas em cada ajuste:</b> arrastar (giratório, fader ou escala) ou escrever o valor exato no campo, e − e + para o passo fino. OFF do limitador e fase são botões diretos.</li>
+    <li><b>Listas recolhidas:</b> o tipo do filtro mostra só o escolhido (BT24, LR24); tocar abre a grade OFF, LR12…LR48, BT6…BT48 e o escolhido fica em branco. Os números e níveis nunca recolhem.</li>
+    <li><b>Mesa:</b> o número grande de cada canal e o do MASTER viram campo ao tocar. O MASTER vai de −80,0 a 0,0 dB, com o 0,0 no fim da escala.</li>
+    <li><b>IA ativa:</b> painel ao vivo com as 15 bandas do EQ gráfico da FILME (a banda atual em lilás) e os ganhos e limitadores das saídas, tudo travado; PARAR IA e a lista curta continuam.</li>
+    <li><b>Quadros novos e sem mudança:</b> um com a lista do filtro aberta e outro com o teclado numérico do Android; o Início e a barra Início/Mesa são os da v1 (a navegação continua em aberto).</li>
+  </ul>
+  <div class="amostras">
+    <span class="amostra"><i style="background:#000000"></i>#000000 palco</span>
+    <span class="amostra"><i style="background:#1C1C1E"></i>#1C1C1E cartão</span>
+    <span class="amostra"><i style="background:#2C2C2E"></i>#2C2C2E trilho</span>
+    <span class="amostra"><i style="background:#0B0B0C"></i>#0B0B0C campo</span>
+    <span class="amostra"><i style="background:#F5F5F7"></i>#F5F5F7 selecionado</span>
+    <span class="amostra"><i style="background:#7EAEFF"></i>#7EAEFF JBL L</span>
+    <span class="amostra"><i style="background:#C495FF"></i>#C495FF JBL R · IA</span>
+    <span class="amostra"><i style="background:#FFCD94"></i>#FFCD94 Sub</span>
+    <span class="amostra"><i style="background:linear-gradient(#3C3C41,#26262A)"></i>#3C3C41 capa</span>
+    <span class="amostra"><i style="background:#30D158"></i>#30D158 conectado</span>
+    <span class="amostra"><i style="background:#FF453A"></i>#FF453A parar</span>
+  </div>
+</header>
+
+<main class="palco">
+
+<!-- 1 · INÍCIO (igual à v1) -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:09</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto"></span>Conectado · firmware R003</span>
+    </div>
+
+    <section class="memoria">
+      <div class="rotulo">Memória em uso</div>
+      <div class="nome">SPL</div>
+      <div class="sub">Memória 1 · Master 0,0 dB</div>
+      <div class="mems"><span class="on">1 SPL</span><span>2 MUSICA ORIG</span><span>3 FILME</span></div>
+    </section>
+
+    <div class="cabeca"><span class="rotulo">Saídas</span><span class="ex">Toque para ajustar</span></div>
+    <div class="saidas">
+      <article class="saida" style="--cor:#7EAEFF">
+        <div class="n">JBL L<small>Saída 1 · rota B</small></div>
+        <div class="g">+6,0<small>dB</small></div>
+        <div class="r">PA 200 Hz LR24 · PB OFF<br>Limitador −7,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 18 36, 22 10, 30 7 L 74 7" fill="none" stroke="#7EAEFF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#C495FF">
+        <div class="n">JBL R<small>Saída 2 · rota A</small></div>
+        <div class="g">+6,0<small>dB</small></div>
+        <div class="r">PA 200 Hz LR24 · PB OFF<br>Limitador −7,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 18 36, 22 10, 30 7 L 74 7" fill="none" stroke="#C495FF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#FFCD94">
+        <div class="n">Sub<small>Saídas 3+4 em ponte · A+B</small></div>
+        <div class="g">+2,6<small>dB</small></div>
+        <div class="r">PA 40 Hz BT24 · PB 200 Hz LR24<br>Limitador −9,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 34 C 5 18, 7 9, 12 8 L 22 8 C 27 8, 29 27, 36 36" fill="none" stroke="#FFCD94" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+    </div>
+    <div class="rodape-info"><span>Remote out <b>ligado</b></span><span>PA passa-alta · PB passa-baixa</span></div>
+  </div>
+  <nav class="nav">
+    <span class="on"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 7.5 8 2.5l6 5V14H2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Início</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2" x2="3" y2="14"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="13" y1="2" x2="13" y2="14"/></g><g fill="currentColor"><rect x="1" y="5" width="4" height="3" rx="1"/><rect x="6" y="9" width="4" height="3" rx="1"/><rect x="11" y="4" width="4" height="3" rx="1"/></g></svg>Mesa</span>
+  </nav>
+</div>
+<figcaption><b>1 · Início</b> · igual à v1. Ler de longe: a memória em uso e as três saídas. Toque no cartão ou em "Ajustar ›" para abrir o ajuste daquela saída.</figcaption>
+</figure>
+
+<!-- 2 · MESA -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:10</span><span>BT · 82%</span></div>
+  <div class="tela">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto"></span>Conectado · firmware R003</span>
+    </div>
+
+    <div class="abas">
+      <span class="on"><small>MEMÓRIA 1</small>SPL</span>
+      <span><small>MEMÓRIA 2</small>MUSICA ORIG</span>
+      <span><small>MEMÓRIA 3</small>FILME</span>
+    </div>
+
+    <div class="canais">
+      <div class="canal" style="--cor:#7EAEFF">
+        <div class="nm">JBL L</div><div class="sd">Saída 1 · B</div>
+        <span class="campo">+6,0<small>dB</small></span>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="zero" style="bottom:75%"></i><i class="capa" style="bottom:85%"></i></div>
+        <div class="res">PA <b>200 Hz</b><br>PB <b>OFF</b><br>Lim <b>−7,0</b></div>
+        <div class="aj">Ajustar</div>
+      </div>
+      <div class="canal" style="--cor:#C495FF">
+        <div class="nm">JBL R</div><div class="sd">Saída 2 · A</div>
+        <span class="campo">+6,0<small>dB</small></span>
+        <div class="fader"><i class="nivel" style="height:85%"></i><i class="zero" style="bottom:75%"></i><i class="capa" style="bottom:85%"></i></div>
+        <div class="res">PA <b>200 Hz</b><br>PB <b>OFF</b><br>Lim <b>−7,0</b></div>
+        <div class="aj">Ajustar</div>
+      </div>
+      <div class="canal" style="--cor:#FFCD94">
+        <div class="nm">SUB</div><div class="sd">3+4 · A+B</div>
+        <span class="campo">+2,6<small>dB</small></span>
+        <div class="fader"><i class="nivel" style="height:79.3%"></i><i class="zero" style="bottom:75%"></i><i class="capa" style="bottom:79.3%"></i></div>
+        <div class="res">PA <b>40 Hz</b><br>PB <b>200 Hz</b><br>Lim <b>−9,0</b></div>
+        <div class="aj">Ajustar</div>
+      </div>
+    </div>
+
+    <div class="master">
+      <div class="nm">MASTER<small>todas as saídas</small></div>
+      <div class="trilho-m">
+        <div class="h-fader"><i class="nivel" style="width:100%"></i><i class="capa" style="left:100%"></i></div>
+        <div class="esc-m"><span>−80</span><span>−40</span><span>0</span></div>
+      </div>
+      <span class="campo">0,0<small>dB</small></span>
+    </div>
+
+    <div class="chips">
+      <span><span class="ponto"></span>Remote out <b>ligado</b></span>
+      <span>EQ gráfico <b>plano</b></span>
+    </div>
+  </div>
+  <nav class="nav">
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 7.5 8 2.5l6 5V14H2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Início</span>
+    <span class="on"><svg viewBox="0 0 16 16" width="16" height="16"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2" x2="3" y2="14"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="13" y1="2" x2="13" y2="14"/></g><g fill="currentColor"><rect x="1" y="5" width="4" height="3" rx="1"/><rect x="6" y="9" width="4" height="3" rx="1"/><rect x="11" y="4" width="4" height="3" rx="1"/></g></svg>Mesa</span>
+  </nav>
+</div>
+<figcaption><b>2 · Mesa</b> · arraste o fader ou toque no número para escrever o valor (abre o mesmo teclado do quadro 4). O MASTER está no fim da escala: 0,0 dB é o máximo.</figcaption>
+</figure>
+
+<!-- 3 · AJUSTE DO SUB (tela inteira, rolagem aberta) -->
+<figure>
+<div class="cel longa">
+  <div class="barra"><span>10:11</span><span>BT · 82%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>SUB<small>Saídas 3+4 em ponte · rota A+B · memória 1</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:14px">
+
+    <div class="botao-giro">
+      <i class="marca-giro"></i>
+      <div class="disco"><small>GANHO</small><b>+2,6</b><span>dB</span></div>
+    </div>
+    <div class="passo">
+      <span class="b">−</span>
+      <span class="meio">Gire o botão<br>ou toque em − e +<small>Toque no número para escrever</small></span>
+      <span class="b">+</span>
+    </div>
+
+    <!-- Passa-alta -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-alta</b><span>10 Hz a 22 kHz · − e + de 1 Hz</span></div>
+        <span class="campo">40<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:18%"></i><i class="capa" style="left:18%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Butterworth · 24 dB por oitava</span></div><b class="pilula">BT24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+    <!-- Passa-baixa -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-baixa</b><span>10 Hz a 22 kHz · − e + de 1 Hz</span></div>
+        <span class="campo">200<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:38.9%"></i><i class="capa" style="left:38.9%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Linkwitz-Riley · 24 dB por oitava</span></div><b class="pilula">LR24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+    <!-- Limitador -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Limitador</b><span>−48,0 a 0,0 dB · passo 0,1</span></div>
+        <div class="ctl-dir"><span class="desl">OFF</span><span class="campo">−9,0<small>dB</small></span></div>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:81.25%"></i><i class="capa" style="left:81.25%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">−48</span><span style="left:50%">−24</span><span class="fim" style="left:100%">0</span></div>
+      </div>
+    </section>
+
+    <!-- Atraso -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Atraso</b><span>0 a 275 cm · passo 0,5</span></div>
+        <span class="campo">0,0<small>cm</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:0"></i><i class="capa" style="left:0"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">0</span><span style="left:36.4%">100</span><span style="left:72.7%">200</span><span class="fim" style="left:100%">275</span></div>
+      </div>
+    </section>
+
+    <!-- Fase -->
+    <section class="ctl">
+      <div class="ctl-tit"><b>Fase</b><span>Inverte a polaridade do Sub</span></div>
+      <div class="fase2"><span class="on">0°</span><span>180°</span></div>
+    </section>
+
+    <!-- EQ de saída -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-tit"><b>EQ de saída</b><span>Uma banda só nesta saída</span></div>
+      <div class="eq-nota"><b>Plano:</b> com ganho 0,0 dB, a frequência e o Q não mudam o som. <span class="ilus">frequência e Q ilustrativos</span></div>
+
+      <div class="sub-ctl">
+        <div class="ctl-topo">
+          <div class="ctl-tit"><b>Frequência</b><span>10 Hz a 22 kHz · − e + de 1 Hz</span></div>
+          <span class="campo">63<small>Hz</small></span>
+        </div>
+        <div class="regua">
+          <span class="pm">−</span>
+          <div class="h-fader"><i class="nivel" style="width:23.9%"></i><i class="capa" style="left:23.9%"></i></div>
+          <span class="pm">+</span>
+          <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+        </div>
+      </div>
+
+      <div class="sub-ctl">
+        <div class="ctl-topo">
+          <div class="ctl-tit"><b>Ganho</b><span>−12,0 a +12,0 dB · passo 0,1</span></div>
+          <span class="campo">0,0<small>dB</small></span>
+        </div>
+        <div class="regua">
+          <span class="pm">−</span>
+          <div class="h-fader"><i class="zero" style="left:50%"></i><i class="capa" style="left:50%"></i></div>
+          <span class="pm">+</span>
+          <div class="esc"><span class="ini" style="left:0">−12</span><span style="left:50%">0</span><span class="fim" style="left:100%">+12</span></div>
+        </div>
+      </div>
+
+      <div class="sub-ctl">
+        <div class="ctl-topo">
+          <div class="ctl-tit"><b>Q</b><span>0,1 a 10 · passo 0,1</span></div>
+          <span class="campo">1,0</span>
+        </div>
+        <div class="regua">
+          <span class="pm">−</span>
+          <div class="h-fader"><i class="nivel" style="width:50%"></i><i class="capa" style="left:50%"></i></div>
+          <span class="pm">+</span>
+          <div class="esc"><span class="ini" style="left:0">0,1</span><span style="left:50%">1</span><span class="fim" style="left:100%">10</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="lembrete"><i></i><span>Mexer muda o som <b>na hora</b>. Para guardar, toque em <b>Salvar na memória 1</b>; é um passo à parte.</span></div>
+  </div>
+  <div class="fixo-baixo"><div class="salvar">Salvar na memória 1</div></div>
+  <div class="dobra"></div>
+</div>
+<figcaption><b>3 · Ajuste do Sub</b> · tela inteira, com a rolagem aberta. O cabeçalho e "Salvar na memória 1" ficam fixos; o resto rola. Nada abre para editar: cada número e nível já está pronto para arrastar, escrever ou usar − e +. Só o tipo do filtro vem recolhido, mostrando o escolhido. Os dois riscos cinza nas bordas marcam onde termina a primeira tela (no meio do Passa-baixa).</figcaption>
+</figure>
+
+<!-- 3b · AJUSTE DO SUB, LISTA DO FILTRO ABERTA -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:11</span><span>BT · 82%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>SUB<small>Saídas 3+4 em ponte · rota A+B · memória 1</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:14px">
+    <!-- Passa-alta -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-alta</b><span>10 Hz a 22 kHz · − e + de 1 Hz</span></div>
+        <span class="campo">40<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:18%"></i><i class="capa" style="left:18%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel aberto"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Butterworth · 24 dB por oitava</span></div><b class="pilula">BT24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 8.5 7 4.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+      <div class="tipos-rot"><span></span><span>LR Linkwitz-Riley · BT Butterworth</span></div>
+      <div class="tipos">
+        <i>OFF</i><i>LR12</i><i>LR18</i><i>LR24</i><i>LR30</i><i>LR36</i><i>LR42</i><i>LR48</i>
+        <i>BT6</i><i>BT12</i><i>BT18</i><i class="on">BT24</i><i>BT30</i><i>BT36</i><i>BT42</i><i>BT48</i>
+      </div>
+    </section>
+
+    <!-- Passa-baixa -->
+    <section class="ctl" style="--cor:#FFCD94">
+      <div class="ctl-topo">
+        <div class="ctl-tit"><b>Passa-baixa</b><span>10 Hz a 22 kHz · − e + de 1 Hz</span></div>
+        <span class="campo">200<small>Hz</small></span>
+      </div>
+      <div class="regua">
+        <span class="pm">−</span>
+        <div class="h-fader"><i class="nivel" style="width:38.9%"></i><i class="capa" style="left:38.9%"></i></div>
+        <span class="pm">+</span>
+        <div class="esc"><span class="ini" style="left:0">10</span><span style="left:29.9%">100</span><span style="left:59.8%">1k</span><span class="fim" style="left:100%">22k</span></div>
+      </div>
+      <div class="tipo-sel"><div class="tx"><span class="rotulo">Tipo do filtro</span><span>Linkwitz-Riley · 24 dB por oitava</span></div><b class="pilula">LR24</b><i class="seta"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i></div>
+    </section>
+
+  </div>
+  <div class="fixo-baixo"><div class="salvar">Salvar na memória 1</div></div>
+</div>
+<figcaption><b>3b · Lista do filtro aberta</b> · a tela rolada até os filtros. No passa-alta, tocar na linha do tipo (seta para baixo) abriu a grade (escolhido em branco); tocar num tipo aplica e recolhe, e a seta para cima recolhe sem mudar. O passa-baixa ao lado continua recolhido em LR24.</figcaption>
+</figure>
+
+<!-- 4 · DIGITANDO O GANHO -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>10:12</span><span>BT · 82%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>SUB<small>Saídas 3+4 em ponte · rota A+B · memória 1</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:14px;--cor:#FFCD94">
+    <div class="botao-giro">
+      <i class="marca-giro"></i>
+      <div class="disco"><small>GANHO</small><span class="campo ativo">+3,5<i class="cursor"></i></span><span>dB</span></div>
+    </div>
+    <div class="passo">
+      <span class="b">−</span>
+      <span class="meio">Gire o botão<br>ou toque em − e +<small>−45,0 a +15,0 dB</small></span>
+      <span class="b">+</span>
+    </div>
+    <div class="escrevendo"><i></i><span><b>Escrevendo o ganho.</b> Toque em ✓ para aplicar; o botão gira junto. Até lá, o som continua em +2,6 dB.</span></div>
+  </div>
+  <div class="teclado">
+    <span>1</span><span>2</span><span>3</span><span class="f">−</span>
+    <span>4</span><span>5</span><span>6</span><span class="f">␣</span>
+    <span>7</span><span>8</span><span>9</span><span class="f">⌫</span>
+    <span class="f">,</span><span>0</span><span class="f">.</span><span class="ok">✓</span>
+  </div>
+  <div class="gesto"><i></i></div>
+</div>
+<figcaption><b>4 · Escrevendo o valor</b> · tocar no número do centro vira campo e abre o teclado numérico do Android. Vale igual para os campos dos outros parâmetros e da Mesa. O "Salvar" volta quando o teclado fecha.</figcaption>
+</figure>
+
+<!-- 5 · IA ATIVA -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:40</span><span>BT · Wi-Fi · 64%</span></div>
+  <div class="tela" style="gap:9px">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto"></span>Conectado · firmware R003</span>
+    </div>
+
+    <div class="ia">
+      <div class="linha"><i class="pulso"></i><b>IA ajustando o EQ da FILME</b></div>
+      <p>Comandos vindos do notebook. Cada mudança aparece aqui na hora.</p>
+      <div class="parar">PARAR IA</div>
+    </div>
+
+    <section class="painel">
+      <div class="painel-cab">
+        <span class="t">EQ gráfico · 3 FILME<small>a IA está mexendo nela</small></span>
+        <span class="vivo"><i></i>AO VIVO</span>
+      </div>
+      <div class="bandas">
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:50%;height:4.2%"></i><i class="capa" style="bottom:54.2%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:45.8%;height:4.2%"></i><i class="capa" style="bottom:45.8%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda"><i class="capa" style="bottom:50%"></i></div>
+        <div class="banda agora"><i class="desvio" style="bottom:50%;height:4.2%"></i><i class="capa" style="bottom:54.2%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:45.8%;height:4.2%"></i><i class="capa" style="bottom:45.8%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:41.7%;height:8.3%"></i><i class="capa" style="bottom:41.7%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:50%;height:8.3%"></i><i class="capa" style="bottom:58.3%"></i></div>
+        <div class="banda"><i class="desvio" style="bottom:50%;height:8.3%"></i><i class="capa" style="bottom:58.3%"></i></div>
+      </div>
+      <div class="freqs"><span>25</span><span>40</span><span>63</span><span>100</span><span>160</span><span>250</span><span>400</span><span>630</span><span>1k</span><span>1,6k</span><span class="agora">2,5k</span><span>4k</span><span>6,3k</span><span>10k</span><span>16k</span></div>
+      <div class="leitura"><span>Agora: banda <b>2,5 kHz</b> · 0,0 → <b>+1,0 dB</b></span><span class="ilus">ilustrativo</span></div>
+    </section>
+
+    <section class="painel">
+      <div class="painel-cab">
+        <span class="t">Saídas · ganho e limitador</span>
+        <span class="vivo"><i></i>AO VIVO</span>
+      </div>
+      <div class="linhas-saida">
+        <div class="ls" style="--cor:#7EAEFF">
+          <span class="nm">JBL L</span>
+          <div class="vl"><span>Ganho<b>+10,0</b></span><div class="h-fader"><i class="nivel" style="width:91.7%"></i><i class="capa" style="left:91.7%"></i></div></div>
+          <div class="vl"><span>Lim<b>−15,0</b></span><div class="h-fader"><i class="nivel" style="width:68.8%"></i><i class="capa" style="left:68.8%"></i></div></div>
+        </div>
+        <div class="ls" style="--cor:#C495FF">
+          <span class="nm">JBL R</span>
+          <div class="vl"><span>Ganho<b>+7,0</b></span><div class="h-fader"><i class="nivel" style="width:86.7%"></i><i class="capa" style="left:86.7%"></i></div></div>
+          <div class="vl"><span>Lim<b>−18,0</b></span><div class="h-fader"><i class="nivel" style="width:62.5%"></i><i class="capa" style="left:62.5%"></i></div></div>
+        </div>
+        <div class="ls" style="--cor:#FFCD94">
+          <span class="nm">SUB</span>
+          <div class="vl"><span>Ganho<b>+6,0</b></span><div class="h-fader"><i class="nivel" style="width:85%"></i><i class="capa" style="left:85%"></i></div></div>
+          <div class="vl"><span>Lim<b>−12,0</b></span><div class="h-fader"><i class="nivel" style="width:75%"></i><i class="capa" style="left:75%"></i></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cabeca"><span class="rotulo">O que a IA fez</span><span class="ex">histórico <span class="ilus">ilustrativo</span></span></div>
+    <ul class="registro">
+      <li class="agora"><time>agora</time>Subindo a banda 2,5 kHz, faixa da voz</li>
+      <li><time>21:39</time>Leu o EQ gráfico da memória 3</li>
+      <li><time>21:38</time>Abriu a memória 3 FILME</li>
+    </ul>
+    <div class="cadeado"><svg width="12" height="14" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#A1A1A6"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#A1A1A6" stroke-width="1.6"/></svg>Controles travados enquanto a IA trabalha</div>
+  </div>
+</div>
+<figcaption><b>5 · IA ativa</b> · o app para aqui e mostra ao vivo o que a IA está mexendo. Valores da FILME lidos em 18/10 (EQ gráfico, ganhos, limitadores); a banda atual, a mudança e o histórico são ilustrativos. Ao parar, volta para a tela de antes.</figcaption>
+</figure>
+
+</main>
+</body>
+</html>

@@ -4,18 +4,58 @@ App Android próprio para controlar o PRO 2.4BT + AUDIO pelo Bluetooth do celula
 Feito em .NET MAUI (C#), alvo só Android. Contrato: `_bmad-output/specs/spec-app-controle-taramps/SPEC.md`.
 Protocolo: `protocolo/MAPA.md`.
 
-Nesta versão (histórias 1 e 2) o app **procura, conecta, autentica, mostra o firmware e lê o
+Nesta versão (até a história 5) o app **procura, conecta, autentica, mostra o firmware e lê o
 aparelho inteiro**: logo depois da senha aceita, faz a leitura completa (84 consultas do Marco 1
-e 15 extras) e mostra o placar ("84 de 84") e a lista de valores. Nenhuma escrita sai do
-celular, nem com o R003.
+e 15 extras) e mostra o placar ("84 de 84") e a lista de valores. A história 4 trouxe as telas
+testáveis sem MAUI e o processador simulado dos testes.
+
+Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
+`Escritor` (eco, releitura, ritmo de 300 ms por parâmetro) e sempre pela trava da sessão: com o
+R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Remote
+out, Bluetooth de áudio, nome do produto, senha e resets ficaram para a história 7b (abaixo).
+As chaves de acesso (`IChaves`) ficam em JSON nos arquivos privados. Os ViewModels do controle
+de parâmetro e da tela de chaves existem em `BgsControle.Telas`; o XAML é das histórias 10 e 11.
+
+Desde a história 6, a trava deixa passar também `*240*n*` e `*23N*NOME*` (chave "Salvar
+memória") e `*241*n*` (chave "Carregar memória"), só na forma exata. O `GerenteMemorias` salva,
+carrega e nomeia as 3 memórias. O salvar envia o 240 e depois o nome: com a resposta `#240#n#`
+(medida em 20/10, ~1,17 s) diz "Memória N salva"; sem ela, "enviada (o aparelho não confirma o
+salvar)". Enquanto uma operação de memória anda ou ficou pela metade, as escritas de áudio e a
+cópia do link são recusadas. A `CopiaAntes` guarda o estado e a marca da operação em
+`copia-antes.json` e, se a operação cair no meio, mostra "aplicado pela metade" na conexão
+seguinte (Terminar ou Voltar à cópia); o `LinkCanais` (1–2 e 3–4, só do app) fica em
+`link-canais.json`. Os ViewModels são o `MemoriasViewModel` e o `LinkViewModel`.
+
+Desde a história 7a, a trava deixa passar os comandos do gerador (`*200*`, `*201*`, `*210*` a
+`*213*` e `*202*1*`) só na forma exata e com a chave "Gerador"; o `*202*0*` (desligar) passa sem
+a chave. O `GeradorSinal` toca o tom fixo e o sweep (cada parâmetro confirmado pelo eco ou pela
+releitura, e o `*202*1*` por último) e aplica as regras 1 e 2 de `failure-modes.md`: desliga no
+máximo 30 s depois do `*202*1*`, no Parar, antes de Desconectar ou Esquecer a senha e ao sair do
+app; se a conexão cai com o gerador talvez ligado, reconecta até 3 vezes e, sem volta, mostra
+"DESLIGUE O MÓDULO AGORA"; no fim de cada leitura, antes do espelho, confere o 202 e desliga.
+O `EnvioComResposta` é o envio com espera reusável. O ViewModel é o `GeradorViewModel`.
+
+Desde a história 7b, a trava deixa passar os comandos de aparelho, só na forma exata e com a
+chave de cada um: `*252*0/1*` (remote out), `*251*0/1*` (Bluetooth de áudio), `*002*NOME*`
+(nome do produto), `*004*` (reset de fábrica), `*242*` (reset de áudio) e `*001*ANTIGA*NOVA*`
+(troca de senha); fora da forma exata, "comando do aparelho fora do formato". Nenhum comando
+conhecido fica "não liberado". O `ComandosAparelho` confirma o remote out e o Bluetooth de
+áudio pelo eco ou pela releitura; nos comandos de aparelho inteiro, espera a resposta e relê
+tudo. Depois do reset de fábrica, esquece a senha guardada e desconecta; com `#001#OK#`, guarda
+a senha nova (as duas senhas entram na máscara do log). O `MonitorAparelho` só ouve o
+voltímetro (`#005#v#`) e o clip (`#150#bits#`, `#111#v#`); cada clip fica aceso 3 s. Os
+ViewModels são o `AparelhoViewModel` e o `MonitoracaoViewModel`.
 
 ## Projetos
 
 | Projeto | O que é |
 |---|---|
 | `src/BgsControle.Nucleo` | `net10.0`, sem Android: quadros do protocolo, autenticação, sessão (máquina de estados e trava de escrita), catálogo de parâmetros (consulta, decodificação, codificação de escrita), leitura completa e retrato, log com a senha mascarada. |
-| `src/BgsControle.App` | MAUI `net10.0-android`: BLE pela API do Android, senha no SecureStorage, tela. |
+| `src/BgsControle.Telas` | `net10.0`, sem MAUI: os ViewModels (hoje o `ConexaoViewModel`) e as abstrações do celular: `IDespachante` (thread da tela), `Comando`, `IArquivosApp` (arquivos privados), `IPreparoBluetooth` (permissão e Bluetooth ligado) e `TimeProvider` (prazos). |
+| `src/BgsControle.App` | MAUI `net10.0-android`: só o XAML e os adaptadores (`DespachanteMaui`, `ArquivosMaui`, `PreparoBluetoothAndroid`), o BLE pela API do Android e a senha no SecureStorage. |
 | `tests/BgsControle.Nucleo.Testes` | xUnit com transporte e cofre falsos. Roda no notebook, sem celular. |
+| `tests/BgsControle.Simulador` | Biblioteca só de testes: o `ProcessadorSimulado` (um `ITransporte` que responde no formato real do PRO 2.4BT, semeado com a leitura real de 18/10) e o `RelogioFalso`. **Nunca entra no APK**: nenhum projeto de `src/` o referencia (há um teste de arquitetura). O que não foi medido está em `tests/BgsControle.Simulador/SUPOSICOES.md`. |
+| `tests/BgsControle.Telas.Testes` | xUnit: o `ConexaoViewModel` e o simulador testados juntos, sem MAUI, e os testes de arquitetura. |
 
 ## Ferramentas
 
@@ -35,7 +75,10 @@ dotnet build src/BgsControle.App -t:InstallAndroidDependencies -f net10.0-androi
 
 ```
 dotnet test tests/BgsControle.Nucleo.Testes
+dotnet test tests/BgsControle.Telas.Testes
 ```
+
+Os dois rodam no notebook, sem celular e sem o processador. O segundo usa o processador simulado.
 
 ## Compilar
 
@@ -82,6 +125,9 @@ O botão "Mostrar o registro" mostra o log do BLE na tela, com a senha como `*00
 - A trava de escrita (`Sessao.EnviarAsync`) é a única porta para o BLE e só deixa passar as
   leituras do catálogo, cada código no seu escopo (com a sessão conectada), e o quadro da senha.
   Uma leitura fora do catálogo (`#004#`, `#081#4#`) e toda escrita são recusadas antes do BLE.
+- A leitura automática é do núcleo (`LeituraAutomatica`): uma leitura a cada entrada em
+  Conectado, nunca de novo enquanto continua conectado nem enquanto outra leitura roda. A tela
+  só acompanha e salva o retrato.
 - A leitura completa faz uma consulta por vez, ~30 ms entre envios, 5 s de prazo e uma nova
   tentativa para a consulta do Marco 1 que falhou (os extras são perguntados uma vez). Se a
   conexão cair, para e o retrato fica "incompleto".

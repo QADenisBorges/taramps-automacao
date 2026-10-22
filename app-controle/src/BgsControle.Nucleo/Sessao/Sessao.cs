@@ -61,9 +61,32 @@ public sealed class Sessao
     public const string MsgErroInesperado = "Erro inesperado no Bluetooth. Toque em Conectar para tentar de novo.";
 
     public const string MotivoForaDoCatalogo = "leitura fora do catálogo";
+    public const string MotivoSemConexao = "sem conexão autenticada";
+    public const string MotivoSoLeitura = "modo só leitura";
+    public const string MotivoChaveDesligada = "chave desligada";
+    public const string MotivoNaoLiberado = "comando não liberado nesta versão do app";
+    public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
+    public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
+    public const string MotivoGeradorForaDoFormato = "comando do gerador fora do formato";
+    public const string MotivoAparelhoForaDoFormato = "comando do aparelho fora do formato";
 
-    // A trava deixa passar só as leituras do catálogo (Catalogo.EhLeitura) e a senha.
-    // Estes formatos só servem para explicar a recusa de uma leitura desconhecida.
+    // Os códigos das memórias (240, 241 e os nomes 231 a 233): só a forma exata passa
+    // (Catalogo.ComandoDeMemoria); o resto é recusado com este motivo.
+    private static readonly HashSet<string> CodigosDeMemoria =
+        [Catalogo.CodigoSalvarMemoria, Catalogo.CodigoCarregarMemoria, .. Enumerable.Range(0, Catalogo.Memorias).Select(Catalogo.CodigoNomeMemoria)];
+
+    // Os códigos do gerador (200–202, 210–213): só a forma exata passa (Catalogo.ComandoDeGerador).
+    private static readonly HashSet<string> CodigosDoGerador = [.. Catalogo.CodigosDoGerador];
+
+    // Os comandos de aparelho (251, 252, 002, 004, 242 e 001, história 7b): só a forma exata
+    // passa (Catalogo.ComandoDeAparelho). Nenhum comando conhecido fica "não liberado".
+    private static readonly HashSet<string> CodigosDoAparelho = [.. Catalogo.CodigosDoAparelho];
+
+    // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha, as escritas
+    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada e os
+    // comandos de memória (Catalogo.ComandoDeMemoria) com a chave "Salvar memória" ou
+    // "Carregar memória" ligada. Estes formatos só servem para explicar a recusa de uma leitura
+    // desconhecida.
     private static readonly Regex FormaDeLeitura = new(@"^(#\d{3}#(\d{1,2}#)?|\d{3}#\d{1,2})$", RegexOptions.CultureInvariant);
     private static readonly Regex QuadroSenha = new(@"^\*000\*[0-9A-Z]{4}\*$", RegexOptions.CultureInvariant);
 
@@ -71,6 +94,7 @@ public sealed class Sessao
     private readonly ICofreSenha _cofre;
     private readonly LogBle _log;
     private readonly TemposSessao _tempos;
+    private readonly IChaves? _chaves;
 
     private readonly object _trava = new();
     private readonly MontadorQuadros _montador = new();
@@ -83,17 +107,26 @@ public sealed class Sessao
     private string? _senhaEnviada;
     private int _tentativasSenha;
 
-    public Sessao(ITransporte transporte, ICofreSenha cofre, LogBle log, TemposSessao? tempos = null)
+    /// <param name="chaves">As chaves de acesso. Sem elas, nenhuma escrita passa (toda chave conta como desligada).</param>
+    public Sessao(ITransporte transporte, ICofreSenha cofre, LogBle log, TemposSessao? tempos = null, IChaves? chaves = null)
     {
         _transporte = transporte;
         _cofre = cofre;
         _log = log;
         _tempos = tempos ?? TemposSessao.Padrao;
+        _chaves = chaves;
         _transporte.Notificacao += AoReceber;
         _transporte.Caiu += AoCair;
     }
 
     public EstadoSessao Estado { get; private set; }
+
+    /// <summary>
+    /// A leitura completa (<see cref="Leitura.LeitorCompleto"/>) e cada escrita com a sua
+    /// confirmação (<see cref="Escrita.Escritor"/>) não se misturam: uma de cada vez, para a
+    /// resposta de uma nunca ser tomada pela outra.
+    /// </summary>
+    internal SemaphoreSlim ExclusaoLeituraEscrita { get; } = new(1, 1);
 
     /// <summary>A conexão BLE está aberta (de Autenticando em diante).</summary>
     public bool SegurandoConexao { get; private set; }
@@ -219,9 +252,42 @@ public sealed class Sessao
             await ConectarEAutenticarAsync(senha, geracao, ct);
     }
 
-    /// <summary>Apaga a senha guardada. Se houver conexão, desconecta.</summary>
+    /// <summary>
+    /// Roda antes de a tela soltar a conexão (Desconectar, Esquecer a senha), com a conexão ainda
+    /// aberta: o gerador desliga aqui (failure-modes, regra 1). Uma falha só vai para o log.
+    /// </summary>
+    internal Func<Task>? AntesDeSoltar { get; set; }
+
+    /// <summary>Completa quando o último encerramento terminou de soltar o GATT.</summary>
+    internal Task Encerramento
+    {
+        get
+        {
+            lock (_trava)
+                return _encerramento;
+        }
+    }
+
+    private Task _encerramento = Task.CompletedTask;
+
+    private async Task RodarAntesDeSoltarAsync()
+    {
+        if (AntesDeSoltar is not { } gancho)
+            return;
+        try
+        {
+            await gancho();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha antes de desconectar ({e.GetType().Name})");
+        }
+    }
+
+    /// <summary>Apaga a senha guardada. Se houver conexão, desconecta (o gerador desliga antes).</summary>
     public async Task EsquecerSenhaAsync()
     {
+        await RodarAntesDeSoltarAsync();
         await ApagarSenhaAsync();
         int geracao;
         bool encerrar;
@@ -239,8 +305,15 @@ public sealed class Sessao
         _log.Evento("senha apagada do celular");
     }
 
+    /// <summary>Desconecta. Com a conexão aberta, o gerador desliga antes de soltar.</summary>
     public async Task DesconectarAsync()
     {
+        lock (_trava)
+        {
+            if (Estado == EstadoSessao.Desconectado)
+                return;
+        }
+        await RodarAntesDeSoltarAsync();
         int geracao;
         lock (_trava)
         {
@@ -254,10 +327,25 @@ public sealed class Sessao
     // ------------------------------------------------------------------ porta de escrita
 
     /// <summary>
-    /// A única porta para o BLE. Passa só o que a trava permite: as leituras do catálogo
-    /// (<c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c>, cada código no seu escopo) com a sessão
-    /// conectada, e o quadro da senha no estado Autenticando. Todo o resto, inclusive uma
-    /// leitura de código fora do catálogo como <c>#004#</c>, é recusado antes do BLE.
+    /// A única porta para o BLE. Passa só o que a trava permite:
+    /// <list type="bullet">
+    /// <item>as leituras do catálogo (<c>#CCC#</c>, <c>#CCC#c#</c> e <c>020#b</c>, cada código no
+    /// seu escopo) com a sessão conectada;</item>
+    /// <item>o quadro da senha no estado Autenticando;</item>
+    /// <item>uma escrita de ajuste de áudio do Marco 1, exatamente como o catálogo a codifica, com
+    /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada;</item>
+    /// <item><c>*240*n*</c> e <c>*23N*NOME*</c> com a chave "Salvar memória", e <c>*241*n*</c>
+    /// com a chave "Carregar memória", só na forma exata, conectada e fora do modo só leitura;</item>
+    /// <item>os comandos do gerador (<c>*200*v*</c>, <c>*201*v*</c>, <c>*210*v*</c> a
+    /// <c>*212*v*</c>, <c>*213*i*</c> e <c>*202*1*</c>) com a chave "Gerador", só na forma exata,
+    /// conectada e fora do modo só leitura; <c>*202*0*</c> (desligar) passa sem a chave.</item>
+    /// <item>os comandos de aparelho (história 7b), só na forma exata, conectada, fora do modo só
+    /// leitura e com a chave de cada um: <c>*252*0/1*</c> ("Remote out"), <c>*251*0/1*</c>
+    /// ("Bluetooth de áudio"), <c>*002*NOME*</c> ("Nome do produto"), <c>*004*</c> ("Reset de
+    /// fábrica"), <c>*242*</c> ("Reset de áudio") e <c>*001*ANTIGA*NOVA*</c> ("Troca de senha").</item>
+    /// </list>
+    /// Todo o resto (um comando conhecido fora da forma exata, uma leitura fora do catálogo como
+    /// <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o motivo no log.
     /// </summary>
     public async Task<ResultadoEnvio> EnviarAsync(string quadro)
     {
@@ -310,17 +398,72 @@ public sealed class Sessao
     /// <summary>Null = pode passar; senão, o motivo da recusa. Chamar com a trava.</summary>
     private string? Trava(string quadro)
     {
+        var conectado = Estado == EstadoSessao.Conectado && SegurandoConexao;
         if (Catalogo.EhLeitura(quadro))
-        {
-            return Estado == EstadoSessao.Conectado && SegurandoConexao
-                ? null
-                : "sem conexão autenticada";
-        }
+            return conectado ? null : MotivoSemConexao;
         if (QuadroSenha.IsMatch(quadro))
             return Estado == EstadoSessao.Autenticando ? null : "a senha só sai na autenticação";
         if (FormaDeLeitura.IsMatch(quadro))
             return MotivoForaDoCatalogo;
-        return SoLeitura ? "modo só leitura" : "escrita bloqueada nesta versão do app";
+        if (SoLeitura)
+            return MotivoSoLeitura;
+
+        Chave chave;
+        if (Catalogo.ComandoDeMemoria(quadro) is { } memoria)
+        {
+            chave = memoria.Tipo == TipoComandoMemoria.Carregar ? Chave.CarregarMemoria : Chave.SalvarMemoria;
+        }
+        else if (Catalogo.EscritaDeAudio(quadro) is not null)
+        {
+            chave = Chave.AjustesAudio;
+        }
+        else if (Catalogo.ComandoDeGerador(quadro) is { } gerador)
+        {
+            // Desligar o gerador (*202*0*) é sempre o lado seguro: passa sem a chave, mesmo
+            // que o Denis a desligue com o tom tocando.
+            if (gerador.Desligar)
+                return conectado ? null : MotivoSemConexao;
+            chave = Chave.Gerador;
+        }
+        else if (Catalogo.ComandoDeAparelho(quadro) is { } aparelho)
+        {
+            chave = aparelho.Tipo switch
+            {
+                TipoComandoAparelho.RemoteOut => Chave.RemoteOut,
+                TipoComandoAparelho.BluetoothAudio => Chave.BluetoothAudio,
+                TipoComandoAparelho.NomeProduto => Chave.NomeProduto,
+                TipoComandoAparelho.ResetFabrica => Chave.ResetFabrica,
+                TipoComandoAparelho.ResetAudio => Chave.ResetAudio,
+                TipoComandoAparelho.TrocaSenha => Chave.TrocaSenha,
+                _ => throw new System.Diagnostics.UnreachableException($"Comando de aparelho sem chave: {aparelho.Tipo}"),
+            };
+        }
+        else
+        {
+            var codigo = Quadros.Analisar(quadro)?.Codigo;
+            if (codigo is not null && CodigosDeMemoria.Contains(codigo))
+                return MotivoMemoriaForaDoFormato;
+            if (codigo is not null && CodigosDoGerador.Contains(codigo))
+                return MotivoGeradorForaDoFormato;
+            if (codigo is not null && CodigosDoAparelho.Contains(codigo))
+                return MotivoAparelhoForaDoFormato;
+            return MotivoEscritaForaDoCatalogo;
+        }
+        if (!conectado)
+            return MotivoSemConexao;
+        if (_chaves?.Ligada(chave) != true)
+            return MotivoChaveDesligada;
+        return null;
+    }
+
+    /// <summary>
+    /// O que a trava diria agora para este quadro, sem enviar nada nem registrar: null = passaria.
+    /// Quem prepara uma operação (a cópia antes, por exemplo) pergunta antes de começar.
+    /// </summary>
+    public string? Conferir(string quadro)
+    {
+        lock (_trava)
+            return Trava(quadro);
     }
 
     // ------------------------------------------------------------------ conexão e senha
@@ -649,10 +792,12 @@ public sealed class Sessao
         CancellationTokenSource? prazo;
         TaskCompletionSource<ResultadoAutenticacao?>? resposta;
         bool segurava;
+        var fim = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_trava)
         {
             if (geracao != _geracao)
                 return;
+            _encerramento = fim.Task;
             _geracao++;
             operacao = _operacao;
             _operacao = new CancellationTokenSource();
@@ -667,14 +812,21 @@ public sealed class Sessao
             Estado = EstadoSessao.Desconectado;
             Mensagem = mensagem;
         }
-        // Cancelar fora da trava: continuações podem rodar nesta thread.
-        operacao.Cancel();
-        prazo?.Cancel();
-        resposta?.TrySetResult(null);
-        Notificar();
-        if (segurava)
-            await DesconectarTransporteAsync(); // depois de uma queda, só libera o GATT
-        _log.Evento(mensagem is null ? "desconectado" : $"desconectado: {mensagem}");
+        try
+        {
+            // Cancelar fora da trava: continuações podem rodar nesta thread.
+            operacao.Cancel();
+            prazo?.Cancel();
+            resposta?.TrySetResult(null);
+            Notificar();
+            if (segurava)
+                await DesconectarTransporteAsync(); // depois de uma queda, só libera o GATT
+            _log.Evento(mensagem is null ? "desconectado" : $"desconectado: {mensagem}");
+        }
+        finally
+        {
+            fim.TrySetResult();
+        }
     }
 
     /// <summary>Chamar com a trava.</summary>

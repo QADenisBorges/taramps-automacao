@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using BgsControle.Telas;
 
 namespace BgsControle.App;
 

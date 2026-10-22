@@ -16,6 +16,8 @@ Também valem:
 
 ## Uso ao mesmo tempo (Denis e IA)
 
+**Decisão do Denis (21/10/2026, UX):** o que o toque do usuário faz enquanto a IA trabalha é uma **opção nas configurações da IA**. O **padrão** é "controles travados até PARAR IA": a tela mostra ao vivo os parâmetros que a IA está mexendo, e os controles só destravam com PARAR IA. A alternativa, que o usuário pode ligar, é a regra abaixo (o toque pausa a IA). Com o padrão, a regra 1 vale na forma "o usuário nunca fica sem saída": PARAR IA está sempre à mão.
+
 1. **O usuário nunca fica bloqueado.** Enquanto a IA está ativa, uma faixa na tela mostra o que ela está fazendo (por exemplo, "IA ajustando o EQ da FILME").
 2. **O toque do usuário pausa a tarefa da IA.** O app avisa a IA da pausa e manda cada mudança feita na tela.
 3. **A IA retoma só depois de 10 s sem toques**, e depois de avaliar o conjunto: ela continua, adapta a tarefa ou avisa o usuário de um conflito (por exemplo, "você subiu o sub enquanto eu mexia no atraso; quer que eu confira?"). Quem avalia é a IA, fora do app. O app só entrega a pausa, as mudanças e a janela de 10 s.

@@ -5,7 +5,7 @@ Cada operação de risco tem uma chave. Padrões confirmados pelo Denis em 19/10
 | Operação | Código | Padrão | Pedido da IA exige confirmação na tela | Risco mostrado ao ligar |
 |---|---|---|---|---|
 | Reset de fábrica | `*004*` | **desligada** | sim | Apaga a senha e as 3 memórias. |
-| Porta de comandos da IA | — | **desligada** | — | Deixa a IA comandar o som pela rede. |
+| IA pela rede (porta de comandos da IA) | — | **desligada** | — | Deixa a IA comandar o som pela rede. |
 | Reset de áudio | `*242*` | desligada | sim | O estado resultante é imprevisível. |
 | Troca de senha | `*001*antiga*nova*` | desligada | sim | Uma senha perdida tranca o aparelho. |
 | Gerador: tom fixo e sweep | `200–202`, `210–213` | desligada | sim | Um tom forte pode queimar o tweeter ou o sub. |
