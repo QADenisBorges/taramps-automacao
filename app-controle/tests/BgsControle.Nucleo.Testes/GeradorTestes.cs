@@ -794,20 +794,18 @@ public sealed class GeradorTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("*251*0*")]
-    [InlineData("*252*1*")]
-    [InlineData("*002*NOVO*")]
-    [InlineData("*004*")]
-    [InlineData("*242*")]
-    [InlineData("*001*AB12*CD34*")]
-    public async Task Os_comandos_da_7b_continuam_nao_liberados(string quadro)
+    [InlineData("*251*0*", null)] // chaves "Bluetooth de áudio", "Remote out" e "Nome do produto": ligadas por padrão
+    [InlineData("*252*1*", null)]
+    [InlineData("*002*NOVO*", null)]
+    [InlineData("*004*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*242*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*001*AB12*CD34*", Sessao.MotivoChaveDesligada)]
+    public async Task Os_comandos_da_7b_passam_pela_chave_de_cada_um_e_nenhum_fica_nao_liberado(string quadro, string? motivo)
     {
         await Conectar();
 
-        var r = await _sessao.EnviarAsync(quadro);
-
-        Assert.False(r.Enviado);
-        Assert.Equal(Sessao.MotivoNaoLiberado, r.Motivo);
+        // Só a trava: este teste não envia nada fora do gerador.
+        Assert.Equal(motivo, _sessao.Conferir(quadro));
     }
 
     [Theory]

@@ -1,5 +1,6 @@
 using BgsControle.App.Plataforma;
 using BgsControle.Nucleo;
+using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
@@ -87,9 +88,25 @@ public static class MauiProgram
             sp.GetRequiredService<LogBle>(),
             sp.GetRequiredService<GerenteMemorias>()));
 
+        // História 7b: a monitoração (voltímetro e clip, só ouve) e os comandos de aparelho (remote
+        // out, Bluetooth de áudio, resets, troca de senha e nome do produto).
+        builder.Services.AddSingleton(sp => new MonitorAparelho(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton(sp => new ComandosAparelho(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<ICofreSenha>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<GerenteMemorias>(),
+            sp.GetRequiredService<GeradorSinal>()));
+
         builder.Services.AddSingleton<ConexaoViewModel>();
-        // Os ViewModels dos ajustes, das chaves, das memórias, do link e do gerador (sem tela
-        // nova: o XAML é das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
+        // Os ViewModels dos ajustes, das chaves, das memórias, do link, do gerador, da monitoração e
+        // do aparelho (sem tela nova: o XAML é das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
         // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
         builder.Services.AddSingleton<ChavesViewModel>();
@@ -104,6 +121,20 @@ public static class MauiProgram
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<GerenteMemorias>()));
+        builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
+            sp.GetRequiredService<MonitorAparelho>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton(sp => new AparelhoViewModel(
+            sp.GetRequiredService<ComandosAparelho>(),
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<GerenteMemorias>(),
+            sp.GetRequiredService<GeradorSinal>()));
         builder.Services.AddSingleton<MainPage>();
 
         var app = builder.Build();
@@ -116,6 +147,8 @@ public static class MauiProgram
         app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
         app.Services.GetRequiredService<GeradorSinal>();
+        // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.
+        app.Services.GetRequiredService<MonitorAparelho>();
         return app;
     }
 }

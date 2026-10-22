@@ -27,6 +27,34 @@ public sealed record ComandoGerador(Parametro Parametro, decimal Valor)
     public bool Desligar => Parametro.Codigo == Catalogo.CodigoGeradorLigado && Valor == 0;
 }
 
+/// <summary>Os comandos de aparelho da história 7b (MAPA §4 e §5).</summary>
+public enum TipoComandoAparelho
+{
+    /// <summary><c>*252*0*</c> / <c>*252*1*</c>: o remote out (os módulos).</summary>
+    RemoteOut,
+
+    /// <summary><c>*251*0*</c> / <c>*251*1*</c>: o Bluetooth de áudio (Audio Classic).</summary>
+    BluetoothAudio,
+
+    /// <summary><c>*002*NOME*</c>.</summary>
+    NomeProduto,
+
+    /// <summary><c>*004*</c>.</summary>
+    ResetFabrica,
+
+    /// <summary><c>*242*</c>.</summary>
+    ResetAudio,
+
+    /// <summary><c>*001*ANTIGA*NOVA*</c>.</summary>
+    TrocaSenha,
+}
+
+/// <summary>
+/// Um comando de aparelho reconhecido pela trava: o tipo e, conforme o tipo, o liga/desliga, o
+/// nome do produto ou as duas senhas (nunca vão para o log).
+/// </summary>
+public sealed record ComandoAparelho(TipoComandoAparelho Tipo, bool? Ligar = null, string? Nome = null, string? SenhaAntiga = null, string? SenhaNova = null);
+
 /// <summary>
 /// A fonte única dos parâmetros do PRO 2.4BT + AUDIO (MAPA §4): a trava pergunta a ele se um
 /// quadro é uma leitura conhecida, o leitor monta a fila a partir dele, e as escritas futuras
@@ -329,6 +357,98 @@ public static class Catalogo
         {
             return null;
         }
+    }
+
+    // ------------------------------------------------------------------ aparelho (MAPA §4 e §5, história 7b)
+
+    public const string CodigoTrocaSenha = "001";
+    public const string CodigoNomeProduto = "002";
+    public const string CodigoResetFabrica = "004";
+    public const string CodigoResetAudio = "242";
+    public const string CodigoBluetoothAudio = "251";
+    public const string CodigoRemoteOut = "252";
+
+    /// <summary>Os códigos dos comandos de aparelho: 001, 002, 004, 242, 251 e 252.</summary>
+    public static IReadOnlyList<string> CodigosDoAparelho { get; } =
+    [
+        CodigoTrocaSenha, CodigoNomeProduto, CodigoResetFabrica, CodigoResetAudio, CodigoBluetoothAudio, CodigoRemoteOut,
+    ];
+
+    /// <summary><c>*004*</c>: o reset de fábrica.</summary>
+    public const string ResetFabrica = "*004*";
+
+    /// <summary><c>*242*</c>: o reset das configurações de áudio.</summary>
+    public const string ResetAudio = "*242*";
+
+    private static readonly System.Text.RegularExpressions.Regex QuadroLigaDesliga =
+        new(@"^\*(251|252)\*([01])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex QuadroNomeProduto =
+        new(@"^\*002\*([A-Z0-9 _]{1,12})\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex QuadroTrocaSenha =
+        new(@"^\*001\*([0-9A-Z]{4})\*([0-9A-Z]{4})\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary><c>*252*1*</c> ou <c>*252*0*</c>.</summary>
+    public static string RemoteOut(bool ligar) => ParametroDe(CodigoRemoteOut)!.CodificarEscrita(null, ligar);
+
+    /// <summary><c>*251*1*</c> ou <c>*251*0*</c>.</summary>
+    public static string BluetoothAudio(bool ligar) => ParametroDe(CodigoBluetoothAudio)!.CodificarEscrita(null, ligar);
+
+    /// <summary><c>*002*NOME*</c>, com o nome já normalizado (<see cref="NormalizarNomeProduto"/>).</summary>
+    public static string NomearProduto(string nome)
+    {
+        if (NormalizarNomeProduto(nome) is not { } normalizado || normalizado != nome)
+            throw new ArgumentException("O nome tem de 1 a 12 caracteres: A–Z, 0–9, espaço ou _.", nameof(nome));
+        return $"*{CodigoNomeProduto}*{nome}*";
+    }
+
+    /// <summary><c>*001*ANTIGA*NOVA*</c>: as duas no formato da senha (4 caracteres [0-9A-Z]) e diferentes.</summary>
+    public static string TrocarSenha(string antiga, string nova)
+    {
+        if (Quadros.NormalizarSenha(antiga) != antiga || Quadros.NormalizarSenha(nova) != nova)
+            throw new ArgumentException("A senha tem 4 letras ou números.");
+        if (antiga == nova)
+            throw new ArgumentException("A senha nova é igual à atual.", nameof(nova));
+        return $"*{CodigoTrocaSenha}*{antiga}*{nova}*";
+    }
+
+    /// <summary>
+    /// O nome do produto como vai no fio: a mesma regra do nome da memória (a regra do Demo): sem
+    /// espaços nas pontas, em maiúsculas, de 1 a 12 caracteres entre A–Z, 0–9, espaço e <c>_</c>.
+    /// Fora disso, null (nada sai).
+    /// </summary>
+    public static string? NormalizarNomeProduto(string? digitado) => NormalizarNomeMemoria(digitado);
+
+    /// <summary>
+    /// Se o quadro é exatamente um comando de aparelho, devolve o comando; senão null. É a regra da
+    /// trava para a história 7b: <c>*252*0*</c>, <c>*251*1*</c>, <c>*002*SALA 1*</c>, <c>*004*</c>,
+    /// <c>*242*</c> e <c>*001*AB12*CD34*</c> sim; <c>*252*2*</c>, <c>*002*sala*</c>,
+    /// <c>*002* SALA*</c>, <c>*004*1*</c>, <c>*001*ab12*CD34*</c> e <c>*001*AB12*AB12*</c> não.
+    /// </summary>
+    public static ComandoAparelho? ComandoDeAparelho(string quadro)
+    {
+        if (quadro == ResetFabrica)
+            return new ComandoAparelho(TipoComandoAparelho.ResetFabrica);
+        if (quadro == ResetAudio)
+            return new ComandoAparelho(TipoComandoAparelho.ResetAudio);
+        if (QuadroLigaDesliga.Match(quadro) is { Success: true } liga)
+        {
+            var tipo = liga.Groups[1].Value == CodigoRemoteOut ? TipoComandoAparelho.RemoteOut : TipoComandoAparelho.BluetoothAudio;
+            return new ComandoAparelho(tipo, Ligar: liga.Groups[2].Value == "1");
+        }
+        if (QuadroNomeProduto.Match(quadro) is { Success: true } nome)
+        {
+            var texto = nome.Groups[1].Value;
+            return NormalizarNomeProduto(texto) == texto ? new ComandoAparelho(TipoComandoAparelho.NomeProduto, Nome: texto) : null;
+        }
+        if (QuadroTrocaSenha.Match(quadro) is { Success: true } troca)
+        {
+            var antiga = troca.Groups[1].Value;
+            var nova = troca.Groups[2].Value;
+            return antiga != nova ? new ComandoAparelho(TipoComandoAparelho.TrocaSenha, SenhaAntiga: antiga, SenhaNova: nova) : null;
+        }
+        return null;
     }
 
     private static void ValidarMemoria(int n)

@@ -34,6 +34,10 @@ public static class Suposicoes
     public const string AtrasoRespostas = "ATRASO-RESPOSTAS";
     public const string GeradorModo = "GERADOR-MODO";
     public const string EcoGerador = "ECO-GERADOR";
+    public const string Ack002 = "ACK-002";
+    public const string NomeProduto = "NOME-PRODUTO";
+    public const string VoltimetroEspontaneo = "VOLTIMETRO-ESPONTANEO";
+    public const string ClipEntrada = "CLIP-ENTRADA";
 
     /// <summary>Id → o que se supõe. A mesma lista, com o mesmo texto, está em <c>SUPOSICOES.md</c>.</summary>
     public static IReadOnlyDictionary<string, string> Todas { get; } = new Dictionary<string, string>
@@ -64,5 +68,9 @@ public static class Suposicoes
         [AtrasoRespostas] = "A senha responde ~23 ms e cada leitura ~25 ms depois do pedido, sempre com o mesmo atraso. No log de 20/10, 13:22 (`2026-10-20_1322-memoria.log`), a senha levou 23 ms e as leituras de 18 a 135 ms (as primeiras perto de 25 ms).",
         [GeradorModo] = "O tom fixo é o 213 em 0 e o sweep é o 213 de 1 a 3; o 202 liga e desliga os dois.",
         [EcoGerador] = "Os códigos 200–202 e 210–213 ecoam no formato de leitura (`#202#1#`), como o 081.",
+        [Ack002] = "O ack de `*002*NOME*` (nome do produto) é `#002#NOME#`, com o nome aplicado; o app espera até 5 s, como nos outros comandos de aparelho inteiro.",
+        [NomeProduto] = "O 002 não muda o começo `PRO2.4MI` da resposta 000. Se mudar, a próxima conexão entra em modo só leitura, que é o lado seguro.",
+        [VoltimetroEspontaneo] = "O aparelho manda o voltímetro sozinho, como `#005#v#` (V × 10); a consulta `#005#` responde `ERRO 0` (medido). O período não foi medido.",
+        [ClipEntrada] = "O clip da entrada (`#111#v#`, ≠0 = clip) chega sozinho, no formato da leitura; o período e o gatilho não foram medidos.",
     };
 }

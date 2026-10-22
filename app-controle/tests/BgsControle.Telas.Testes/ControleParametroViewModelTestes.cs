@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using BgsControle.Nucleo;
+using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
@@ -33,7 +34,7 @@ internal sealed class Bancada
         Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         Arquivos = arquivos ?? new ArquivosFalso();
         Chaves = new Chaves(new RepositorioChavesArquivos(Arquivos));
-        Sessao = new Sessao(Simulador, new CofreMemoria { Senha = "AB12" }, Log, Tempos, Chaves);
+        Sessao = new Sessao(Simulador, Cofre, Log, Tempos, Chaves);
         Leitor = new LeitorCompleto(Sessao, Log, LeituraRapida);
         Leitura = new LeituraAutomatica(Sessao, Leitor);
         Estado = new EstadoAparelho(Sessao, Leitura);
@@ -47,7 +48,18 @@ internal sealed class Bancada
         Memorias = new GerenteMemorias(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
         // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
         Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
+        // História 7b: a monitoração e os comandos de aparelho.
+        Monitor = new MonitorAparelho(Sessao, Leitura, Relogio);
+        Comandos = new ComandosAparelho(Sessao, Estado, Leitura, Copia, Cofre, Log, Memorias, Gerador, relogio: Relogio);
     }
+
+    public CofreMemoria Cofre { get; } = new() { Senha = "AB12" };
+    public MonitorAparelho Monitor { get; }
+    public ComandosAparelho Comandos { get; }
+
+    public MonitoracaoViewModel CriarMonitoracaoViewModel() => new(Monitor, Tela, Relogio);
+
+    public AparelhoViewModel CriarAparelhoViewModel() => new(Comandos, Sessao, Chaves, Estado, Copia, Tela, Relogio, Memorias, Gerador);
 
     public GeradorSinal Gerador { get; }
 

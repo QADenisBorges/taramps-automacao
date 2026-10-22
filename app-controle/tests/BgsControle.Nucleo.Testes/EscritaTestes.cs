@@ -90,13 +90,15 @@ public sealed class EscritaTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo, as escritas de áudio do catálogo, os comandos de memória permitidos e o
-    /// <c>*202*0*</c> (desligar o gerador, sempre permitido).
+    /// catálogo, as escritas de áudio do catálogo, os comandos de memória permitidos, o
+    /// <c>*202*0*</c> (desligar o gerador, sempre permitido) e o 251 e o 252 (história 7b: o teste
+    /// que passa por toda escrita do codificador manda os dois).
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador, e));
+                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador
+                        || Catalogo.ComandoDeAparelho(e) is { Tipo: TipoComandoAparelho.RemoteOut or TipoComandoAparelho.BluetoothAudio }, e));
 
     private async Task Conectar()
     {
@@ -452,12 +454,16 @@ public sealed class EscritaTestes : IDisposable
     [InlineData("*200*1.0*", Sessao.MotivoGeradorForaDoFormato)] // fora da faixa
     [InlineData("*201*5*", Sessao.MotivoGeradorForaDoFormato)]
     [InlineData("*213*4*", Sessao.MotivoGeradorForaDoFormato)]
-    [InlineData("*004*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*242*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*001*AB12*CD34*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*002*NOVO*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*252*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*251*0*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*004*", Sessao.MotivoChaveDesligada)] // as chaves dos resets e da senha vêm desligadas (história 7b)
+    [InlineData("*242*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*001*AB12*CD34*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*004*1*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*242*0*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*001*AB12*AB12*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*002*novo*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*252*2*", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*251*1", Sessao.MotivoAparelhoForaDoFormato)]
+    [InlineData("*005*120*", Sessao.MotivoEscritaForaDoCatalogo)] // só leitura
     [InlineData("*999*1*", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("*081*0*-3*", Sessao.MotivoEscritaForaDoCatalogo)] // fora do formato do codificador
     [InlineData("*081*4*-3.0*", Sessao.MotivoEscritaForaDoCatalogo)] // canal 4
@@ -499,8 +505,10 @@ public sealed class EscritaTestes : IDisposable
             var r = await _sessao.EnviarAsync(quadro);
 
             // Os nomes das memórias (23N) passam com a chave "Salvar memória" (história 6); o
-            // *202*0* (desligar o gerador) passa sem a chave (história 7a).
-            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null || quadro == Catalogo.DesligarGerador;
+            // *202*0* (desligar o gerador) passa sem a chave (história 7a); o 251 e o 252 passam
+            // com as chaves "Bluetooth de áudio" e "Remote out", ligadas por padrão (história 7b).
+            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null || quadro == Catalogo.DesligarGerador
+                        || Catalogo.ComandoDeAparelho(quadro) is not null;
             Assert.True(r.Enviado == passa, $"{quadro}: {r.Motivo}");
             Assert.Equal(passa, _simulador.Escritas.Contains(quadro));
         }

@@ -12,7 +12,7 @@ testáveis sem MAUI e o processador simulado dos testes.
 Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
 `Escritor` (eco, releitura, ritmo de 300 ms por parâmetro) e sempre pela trava da sessão: com o
 R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Remote
-out, Bluetooth de áudio, nome do produto, senha e resets continuam recusados antes do BLE.
+out, Bluetooth de áudio, nome do produto, senha e resets ficaram para a história 7b (abaixo).
 As chaves de acesso (`IChaves`) ficam em JSON nos arquivos privados. Os ViewModels do controle
 de parâmetro e da tela de chaves existem em `BgsControle.Telas`; o XAML é das histórias 10 e 11.
 
@@ -34,6 +34,17 @@ máximo 30 s depois do `*202*1*`, no Parar, antes de Desconectar ou Esquecer a s
 app; se a conexão cai com o gerador talvez ligado, reconecta até 3 vezes e, sem volta, mostra
 "DESLIGUE O MÓDULO AGORA"; no fim de cada leitura, antes do espelho, confere o 202 e desliga.
 O `EnvioComResposta` é o envio com espera reusável. O ViewModel é o `GeradorViewModel`.
+
+Desde a história 7b, a trava deixa passar os comandos de aparelho, só na forma exata e com a
+chave de cada um: `*252*0/1*` (remote out), `*251*0/1*` (Bluetooth de áudio), `*002*NOME*`
+(nome do produto), `*004*` (reset de fábrica), `*242*` (reset de áudio) e `*001*ANTIGA*NOVA*`
+(troca de senha); fora da forma exata, "comando do aparelho fora do formato". Nenhum comando
+conhecido fica "não liberado". O `ComandosAparelho` confirma o remote out e o Bluetooth de
+áudio pelo eco ou pela releitura; nos comandos de aparelho inteiro, espera a resposta e relê
+tudo. Depois do reset de fábrica, esquece a senha guardada e desconecta; com `#001#OK#`, guarda
+a senha nova (as duas senhas entram na máscara do log). O `MonitorAparelho` só ouve o
+voltímetro (`#005#v#`) e o clip (`#150#bits#`, `#111#v#`); cada clip fica aceso 3 s. Os
+ViewModels são o `AparelhoViewModel` e o `MonitoracaoViewModel`.
 
 ## Projetos
 

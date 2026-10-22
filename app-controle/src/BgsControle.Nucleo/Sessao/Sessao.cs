@@ -68,6 +68,7 @@ public sealed class Sessao
     public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
     public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
     public const string MotivoGeradorForaDoFormato = "comando do gerador fora do formato";
+    public const string MotivoAparelhoForaDoFormato = "comando do aparelho fora do formato";
 
     // Os códigos das memórias (240, 241 e os nomes 231 a 233): só a forma exata passa
     // (Catalogo.ComandoDeMemoria); o resto é recusado com este motivo.
@@ -77,11 +78,9 @@ public sealed class Sessao
     // Os códigos do gerador (200–202, 210–213): só a forma exata passa (Catalogo.ComandoDeGerador).
     private static readonly HashSet<string> CodigosDoGerador = [.. Catalogo.CodigosDoGerador];
 
-    // Comandos conhecidos fora dos ajustes de áudio, das memórias e do gerador (MAPA §4 e §5):
-    // 251, 252, 002, 004, 242 e 001 (e os só leitura 005, 111, 150). São da história 7b; aqui só
-    // explicam a recusa.
-    private static readonly HashSet<string> ComandosNaoLiberados =
-        [.. Catalogo.Extras.Select(p => p.Codigo).Where(c => !CodigosDeMemoria.Contains(c) && !CodigosDoGerador.Contains(c)), "001", "002", "004", "242"];
+    // Os comandos de aparelho (251, 252, 002, 004, 242 e 001, história 7b): só a forma exata
+    // passa (Catalogo.ComandoDeAparelho). Nenhum comando conhecido fica "não liberado".
+    private static readonly HashSet<string> CodigosDoAparelho = [.. Catalogo.CodigosDoAparelho];
 
     // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha, as escritas
     // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada e os
@@ -340,10 +339,13 @@ public sealed class Sessao
     /// <item>os comandos do gerador (<c>*200*v*</c>, <c>*201*v*</c>, <c>*210*v*</c> a
     /// <c>*212*v*</c>, <c>*213*i*</c> e <c>*202*1*</c>) com a chave "Gerador", só na forma exata,
     /// conectada e fora do modo só leitura; <c>*202*0*</c> (desligar) passa sem a chave.</item>
+    /// <item>os comandos de aparelho (história 7b), só na forma exata, conectada, fora do modo só
+    /// leitura e com a chave de cada um: <c>*252*0/1*</c> ("Remote out"), <c>*251*0/1*</c>
+    /// ("Bluetooth de áudio"), <c>*002*NOME*</c> ("Nome do produto"), <c>*004*</c> ("Reset de
+    /// fábrica"), <c>*242*</c> ("Reset de áudio") e <c>*001*ANTIGA*NOVA*</c> ("Troca de senha").</item>
     /// </list>
-    /// Todo o resto (252, 251, 002, 004, 242, 001, uma leitura fora do
-    /// catálogo como <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o
-    /// motivo no log.
+    /// Todo o resto (um comando conhecido fora da forma exata, uma leitura fora do catálogo como
+    /// <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o motivo no log.
     /// </summary>
     public async Task<ResultadoEnvio> EnviarAsync(string quadro)
     {
@@ -423,6 +425,19 @@ public sealed class Sessao
                 return conectado ? null : MotivoSemConexao;
             chave = Chave.Gerador;
         }
+        else if (Catalogo.ComandoDeAparelho(quadro) is { } aparelho)
+        {
+            chave = aparelho.Tipo switch
+            {
+                TipoComandoAparelho.RemoteOut => Chave.RemoteOut,
+                TipoComandoAparelho.BluetoothAudio => Chave.BluetoothAudio,
+                TipoComandoAparelho.NomeProduto => Chave.NomeProduto,
+                TipoComandoAparelho.ResetFabrica => Chave.ResetFabrica,
+                TipoComandoAparelho.ResetAudio => Chave.ResetAudio,
+                TipoComandoAparelho.TrocaSenha => Chave.TrocaSenha,
+                _ => throw new System.Diagnostics.UnreachableException($"Comando de aparelho sem chave: {aparelho.Tipo}"),
+            };
+        }
         else
         {
             var codigo = Quadros.Analisar(quadro)?.Codigo;
@@ -430,8 +445,8 @@ public sealed class Sessao
                 return MotivoMemoriaForaDoFormato;
             if (codigo is not null && CodigosDoGerador.Contains(codigo))
                 return MotivoGeradorForaDoFormato;
-            if (codigo is not null && ComandosNaoLiberados.Contains(codigo))
-                return MotivoNaoLiberado;
+            if (codigo is not null && CodigosDoAparelho.Contains(codigo))
+                return MotivoAparelhoForaDoFormato;
             return MotivoEscritaForaDoCatalogo;
         }
         if (!conectado)

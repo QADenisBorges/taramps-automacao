@@ -2,7 +2,7 @@
 title: 'História 7b: monitoração, remote out, Bluetooth de áudio e comandos de aparelho inteiro'
 type: 'feature'
 created: '2026-10-22'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '641684ea3e591d2614cc6e617ef53ca61404188e'
 review_loop_iteration: 0
@@ -132,16 +132,71 @@ Em `BgsControle.Telas`, entram o `MonitoracaoViewModel` e o `AparelhoViewModel`,
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app-controle/src/BgsControle.Nucleo/Catalogo/Catalogo.cs` e `Sessao/Sessao.cs`: a trava.
-- [ ] `app-controle/src/BgsControle.Nucleo/Aparelho/ComandosAparelho.cs`: remote out, Bluetooth de áudio, resets, senha e nome.
-- [ ] `app-controle/src/BgsControle.Nucleo/Aparelho/MonitorAparelho.cs`: o voltímetro e o clip.
-- [ ] `app-controle/src/BgsControle.Telas/AparelhoViewModel.cs` e `MonitoracaoViewModel.cs`.
-- [ ] `app-controle/src/BgsControle.App/MauiProgram.cs`: o DI.
-- [ ] O simulador, as suposições e os testes: as linhas da matriz e os testes antigos atualizados.
+- [x] `app-controle/src/BgsControle.Nucleo/Catalogo/Catalogo.cs` e `Sessao/Sessao.cs`: a trava.
+- [x] `app-controle/src/BgsControle.Nucleo/Aparelho/ComandosAparelho.cs`: remote out, Bluetooth de áudio, resets, senha e nome.
+- [x] `app-controle/src/BgsControle.Nucleo/Aparelho/MonitorAparelho.cs`: o voltímetro e o clip.
+- [x] `app-controle/src/BgsControle.Telas/AparelhoViewModel.cs` e `MonitoracaoViewModel.cs`.
+- [x] `app-controle/src/BgsControle.App/MauiProgram.cs`: o DI.
+- [x] O simulador, as suposições e os testes: as linhas da matriz e os testes antigos atualizados.
 
 **Acceptance Criteria:**
 - Given qualquer teste da 7b, when o simulador é inspecionado, then só chegaram a senha, as leituras do catálogo e os comandos da tabela da trava pedidos pelo teste.
 - Given o log da sessão depois da troca de senha, when ele é lido, then nenhuma das duas senhas aparece.
+
+## Implementation Notes
+
+- **Suposições novas** (em `SUPOSICOES.md` e `Suposicoes.cs`): ACK-002, NOME-PRODUTO,
+  VOLTIMETRO-ESPONTANEO e CLIP-ENTRADA.
+- Decisões que a spec não fecha:
+  - Remote out e Bluetooth de áudio também ficam recusados sem leitura, lendo e com outro
+    comando de aparelho andando (como as escritas de áudio). Não esperam a memória nem o gerador.
+  - Um eco ou releitura com outro valor conta como falha; o espelho fica com o valor do aparelho.
+  - Sem a resposta de um reset ou do nome, o app relê mesmo assim e diz que o aparelho não
+    confirmou. Sem a resposta do reset de fábrica, a senha guardada fica: se não valer mais, a
+    próxima conexão recebe `ERRO`, apaga a senha e pede a nova.
+  - Com `#001#ERRO#` não há leitura nova (nada mudou).
+  - O prazo da resposta dos comandos de aparelho inteiro é 5 s (nenhum foi medido).
+  - Um `*005*v*`, `*111*v*` ou `*150*v*` (códigos só leitura) agora é "escrita fora do catálogo".
+    O motivo "não liberado" continua existindo só como reserva do `Escritor`.
+  - A leitura completa semeia o voltímetro só quando o 005 vem legível; com o `ERRO 0`, fica o
+    último valor espontâneo (ou "—").
+  - Os campos de senha limpam depois do envio, com sucesso ou não.
+- **Riscos que ficam:**
+  - Entre a resposta de um comando de aparelho inteiro e o começo da leitura nova, o gerador ou
+    uma escrita de áudio ainda podem entrar (eles não conhecem o `ComandosAparelho`).
+  - Depois de um reset, a "memória em uso" do `GerenteMemorias` não é limpa.
+- **Verificação:** Nucleo.Testes 597 de 597 e Telas.Testes 196 de 196, rodados três vezes; build
+  Android (`--no-incremental`) com 0 erros e 0 avisos.
+
+- **Depois da revisão (22/10):** as correções 1, 2, 3, 4, 8, 10, 14, 15, 16, 19 e 22 da tabela abaixo entraram, com 8 testes novos. Os itens 5 e 13 foram para o deferred-work.
+- **Verificação final:** Nucleo.Testes 605 de 605 e Telas.Testes 196 de 196, rodados três vezes; build Android com 0 erros e 0 avisos.
+
+## Review Triage Log
+
+| # | Achado | Veredito | Evidência | Rota |
+|---|---|---|---|---|
+| 1 | Troca de senha sem resposta: a senha nova se perde (a tela limpa os campos) | medium | O aparelho pode ter aceitado; o app guarda só a antiga | patch |
+| 2 | Resposta do 001 que não é OK nem ERRO conta como recusa | low | Só o ERRO é uma recusa clara | patch |
+| 3 | A resposta do 002 não é comparada com o nome enviado; a tela mostra o digitado | low | Qualquer `#002#…#` vale | patch |
+| 4 | As condições são conferidas só antes da porta; uma leitura ou uma memória entra no meio | medium | O `Escritor` confere de novo com a porta; aqui não | patch |
+| 5 | Entre a resposta e a leitura nova, uma escrita de áudio ou o gerador podem entrar | medium | Escritor, memórias e gerador não sabem do `ComandosAparelho` | defer |
+| 6 | Esquecer a senha falha no cofre e a tela diz que apagou | low | Raro; a sessão registra no log | rejeitado |
+| 7 | "A leitura parou" quando o leitor anda fora da leitura automática | low | No app, o leitor só roda pela `LeituraAutomatica` | rejeitado |
+| 8 | A releitura que não sai troca o primeiro envio e diz "sem conexão" | low | O comando pode ter sido aplicado | patch |
+| 9 | Remote out sem confirmação deixa o espelho com o valor velho | low | O resultado é falha, com a frase certa | rejeitado |
+| 10 | O último ramo do tipo → chave é implícito | low | Um tipo novo cairia na "Troca de senha" | patch |
+| 11 | Uma exceção na troca de senha limpa os campos sem erro | low | Só com bug no núcleo | rejeitado |
+| 12 | `Saida(n)` fora de 1 a 4 sem mensagem clara | low | O indexador lança de todo jeito | rejeitado |
+| 13 | A máscara do log esconde `1000`, `1234`… em outras linhas | medium | Comportamento anterior do `LogBle` (a senha da conexão já entrava) | defer |
+| 14 | O reset de fábrica ignora a leitura que parou | low | Os outros comandos avisam | patch |
+| 15 | `Recusa` devolve os motivos da sessão em minúsculas | low | O resto passa por `Frase()` | patch |
+| 16 | A tela repete as regras de bloqueio do núcleo com outras frases | low | A tela e o núcleo já dão textos diferentes | patch |
+| 17 | O campo do nome nunca mostra o nome atual | false | Não há consulta de leitura para o 002 (NOME-PRODUTO) | rejeitado |
+| 18 | O DI não passa o relógio ao `ComandosAparelho` | false | O padrão é o mesmo `TimeProvider.System` registrado | rejeitado |
+| 19 | ACK-002 diz "no prazo de um eco", e o código espera 5 s | low | Texto da suposição errado | patch |
+| 20 | `MonitorAparelho` sem limpeza e sem log no aviso | low | Vive o app inteiro | rejeitado |
+| 21 | O `Dispose` de `EscritaTestes` aceita 251/252 na classe toda | low | Só um teste precisa | rejeitado |
+| 22 | Faltam testes: reset e senha sem resposta, cofre falhando, 252 sem confirmação, reset de áudio sem resposta, recusa com memória pela metade | medium | Verification gap: as mutações passam verdes | patch |
 
 ## Verification
 

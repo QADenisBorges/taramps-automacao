@@ -55,6 +55,10 @@ item no aparelho real e marca o resultado.
 | ATRASO-RESPOSTAS | A senha responde ~23 ms e cada leitura ~25 ms depois do pedido, sempre com o mesmo atraso. No log de 20/10, 13:22 (`2026-10-20_1322-memoria.log`), a senha levou 23 ms e as leituras de 18 a 135 ms (as primeiras perto de 25 ms). | `AtrasoSenha`, `AtrasoLeitura` | |
 | GERADOR-MODO | O tom fixo é o 213 em 0 e o sweep é o 213 de 1 a 3; o 202 liga e desliga os dois. | `GeradorSinal.TocarTomAsync` | |
 | ECO-GERADOR | Os códigos 200–202 e 210–213 ecoam no formato de leitura (`#202#1#`), como o 081. | `Processar`, escrita; `GeradorSinal.EnviarParametroAsync` | |
+| ACK-002 | O ack de `*002*NOME*` (nome do produto) é `#002#NOME#`, com o nome aplicado; o app espera até 5 s, como nos outros comandos de aparelho inteiro. | `Processar`, nome do produto; `ComandosAparelho.NomearProdutoAsync` | |
+| NOME-PRODUTO | O 002 não muda o começo `PRO2.4MI` da resposta 000. Se mudar, a próxima conexão entra em modo só leitura, que é o lado seguro. | `Processar`, nome do produto; `ComandosAparelho.NomearProdutoAsync` | |
+| VOLTIMETRO-ESPONTANEO | O aparelho manda o voltímetro sozinho, como `#005#v#` (V × 10); a consulta `#005#` responde `ERRO 0` (medido). O período não foi medido. | `EmitirVoltimetro`; `MonitorAparelho` | |
+| CLIP-ENTRADA | O clip da entrada (`#111#v#`, ≠0 = clip) chega sozinho, no formato da leitura; o período e o gatilho não foram medidos. | `EmitirClipEntrada`; `MonitorAparelho` | |
 
 ## Falhas injetáveis
 
@@ -63,6 +67,8 @@ item no aparelho real e marca o resultado.
   resposta (o aparelho fez, mas o app não soube). Usada nas quedas no meio do salvar e do
   carregar (história 6).
 - `DefinirMemoria(n, código, índice, valor)`: muda uma memória para preparar um teste.
+- `EmitirClip(bits)`, `EmitirClipEntrada(clip)` e `EmitirVoltimetro(decivolts)`: o aparelho
+  manda o clip das saídas, o clip da entrada e o voltímetro sozinho, quando o teste quiser.
 - `TamanhoMaximoFragmento = N`: quebra cada mensagem em notificações de tamanho sorteado, de 1 a
   N bytes (N até 20), em vez dos pedaços de 20.
 - `AtrasoSenha` e `AtrasoLeitura` em zero: a resposta sai de dentro da própria escrita, para os

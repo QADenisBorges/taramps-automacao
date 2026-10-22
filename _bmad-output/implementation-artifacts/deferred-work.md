@@ -37,3 +37,11 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/7a-gerador-regras-de-falha.md`
   summary: O desligar do gerador ao sair ou fechar o app (Window.Stopped e Destroying no App.xaml.cs) dispara o `*202*0*` sem esperar, e não tem teste no celular.
   evidence: O Android pode matar o processo antes da escrita BLE; esperar na thread da tela arrisca travar. A regra 2 desliga na próxima conexão. Conferir no Galaxy A52 na história 12 (tom tocando, fechar o app, ver o 202 relido).
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/7b-monitoracao-aparelho-inteiro.md`
+  summary: Entre a resposta de um comando de aparelho inteiro (reset, senha, nome) e o começo da leitura nova, uma escrita de áudio, uma operação de memória ou o gerador ainda podem sair.
+  evidence: O Escritor, o GerenteMemorias e o GeradorSinal não olham o `ComandosAparelho.Ocupado`; a porta é solta entre o ack e o `LerNovaAsync`. A janela é de milissegundos e exige um toque nesse instante. Fechar com um bloqueio comum (por exemplo, o `ComandosAparelho` entrar no `Escritor.Bloqueio` e no `MotivoParaNaoTocar` do gerador) quando a história 9a juntar o uso compartilhado.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/7b-monitoracao-aparelho-inteiro.md`
+  summary: O LogBle esconde cada senha conhecida em qualquer lugar da linha, e uma senha como 1000 ou 1234 apaga do log frequências e valores iguais (`*201*1000*`).
+  evidence: `LogBle.Mascarar` troca toda ocorrência, sem olhar o quadro; já valia para a senha da conexão e agora vale também para as senhas da troca. Mascarar só dentro dos quadros 000 e 001, ou só o texto digitado, resolve.

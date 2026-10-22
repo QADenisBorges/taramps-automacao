@@ -469,6 +469,43 @@ public sealed class SimuladorTestes
     }
 
     [Fact]
+    public async Task Voltimetro_e_clip_da_entrada_espontaneos_e_a_consulta_do_005_continua_ERRO()
+    {
+        await ConectarEAutenticar();
+
+        _simulador.EmitirVoltimetro(124);
+        Assert.Equal("#005#124#\r\n", Recebido);
+        Limpar();
+
+        _simulador.EmitirClipEntrada(true);
+        Assert.Equal("#111#1#\r\n", Recebido);
+        Assert.Equal("1", _simulador.Valor("111"));
+        Limpar();
+
+        Assert.Equal(ProcessadorSimulado.RespostaVoltimetro + "\r\n", await Perguntar("#005#"));
+    }
+
+    [Fact]
+    public async Task Nome_do_produto_responde_com_o_ack_e_nao_muda_a_resposta_da_senha()
+    {
+        await ConectarEAutenticar();
+
+        Assert.Equal("#002#SALA 1#\r\n", await EscreverEEsperarEco("*002*SALA 1*"));
+        Assert.Equal("SALA 1", _simulador.NomeProduto);
+
+        await Escrever("*002*sala#1*"); // fora da regra: sem resposta, nada muda
+        await Escrever("*002*sala 1*");
+        _relogio.Avancar(TimeSpan.FromSeconds(1));
+        await Task.Delay(30);
+        Assert.Equal("", Recebido);
+        Assert.Equal("SALA 1", _simulador.NomeProduto);
+        Assert.Contains(_simulador.Recusadas, r => r.Quadro == "*002*sala 1*");
+
+        // Suposição NOME-PRODUTO: a resposta 000 continua começando com PRO2.4MI.
+        Assert.Equal("#000#PRO2.4MIR003#\r\n", await EnviarSenha("AB12"));
+    }
+
+    [Fact]
     public async Task O_gerador_guarda_a_linha_do_tempo_do_202()
     {
         await ConectarEAutenticar();

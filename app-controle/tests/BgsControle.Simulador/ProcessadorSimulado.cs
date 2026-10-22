@@ -125,6 +125,9 @@ public sealed partial class ProcessadorSimulado : ITransporte
     public string Produto { get; set; } = ProdutoReal;
     public string Firmware { get; set; } = FirmwareReal;
 
+    /// <summary>O nome do produto, trocado por <c>*002*NOME*</c> (null = nunca trocado nesta simulação).</summary>
+    public string? NomeProduto { get; set; }
+
     /// <summary>A senha depois do reset de fábrica <c>*004*</c>.</summary>
     // Suposição RESET-004: a senha de fábrica não foi medida.
     public string SenhaDeFabrica { get; set; } = "1234";
@@ -445,6 +448,24 @@ public sealed partial class ProcessadorSimulado : ITransporte
         Emitir(mensagem + FimDeLinha);
     }
 
+    /// <summary>
+    /// O voltímetro espontâneo (<c>#005#v#</c>, em V × 10), quando o teste quiser. A consulta
+    /// <c>#005#</c> continua respondendo <c>ERRO 0</c> (medido).
+    /// </summary>
+    // Suposição VOLTIMETRO-ESPONTANEO: o aparelho manda o 005 sozinho, neste formato; o período não foi medido.
+    public void EmitirVoltimetro(int decivolts) =>
+        Emitir($"#{CodigoVoltimetro}#{decivolts.ToString(Fio)}#{FimDeLinha}");
+
+    /// <summary>O clip espontâneo da entrada (<c>#111#v#</c>, ≠0 = clip), quando o teste quiser.</summary>
+    // Suposição CLIP-ENTRADA: o 111 chega sozinho, no formato da leitura; o período e o gatilho não foram medidos.
+    public void EmitirClipEntrada(bool clip)
+    {
+        var v = clip ? "1" : "0";
+        lock (_trava)
+            _estado[("111", null)] = v;
+        Emitir($"#111#{v}#{FimDeLinha}");
+    }
+
     // ------------------------------------------------------------------ o aparelho
 
     /// <summary>Interpreta um quadro e devolve as respostas. Chamar com a trava.</summary>
@@ -551,6 +572,22 @@ public sealed partial class ProcessadorSimulado : ITransporte
             Senha = SenhaDeFabrica;
             // Suposição RESET-004: o ack é #004#.
             Responder("#004#", AtrasoEco);
+            return respostas;
+        }
+
+        if (NomeProdutoQuadro().Match(texto) is { Success: true } nomeProduto)
+        {
+            // A regra do Demo: de 1 a 12 caracteres A–Z, 0–9, espaço e _, sem espaço nas pontas.
+            var nome = nomeProduto.Groups[1].Value;
+            if (Catalogo.NormalizarNomeProduto(nome) != nome)
+            {
+                Recusar(texto, "nome do produto fora do formato");
+                return respostas;
+            }
+            // Suposição NOME-PRODUTO: o 002 não muda o começo PRO2.4MI da resposta 000 (o Produto fica).
+            NomeProduto = nome;
+            // Suposição ACK-002: o ack é #002#NOME#.
+            Responder($"#002#{nome}#", AtrasoEco);
             return respostas;
         }
 
@@ -828,6 +865,9 @@ public sealed partial class ProcessadorSimulado : ITransporte
     // Suposição MEMORIA-N-NOME: memória 1 = n 0 = nome 231 (a correspondência não foi medida).
     [GeneratedRegex(@"^\*(240|241)\*([0-2])\*$", RegexOptions.CultureInvariant)]
     private static partial Regex QuadroMemoria();
+
+    [GeneratedRegex(@"^\*002\*([^*#]*)\*$", RegexOptions.CultureInvariant)]
+    private static partial Regex NomeProdutoQuadro();
 
     [GeneratedRegex(@"^\*001\*([^*#]*)\*([^*#]*)\*$", RegexOptions.CultureInvariant)]
     private static partial Regex TrocaSenha();
