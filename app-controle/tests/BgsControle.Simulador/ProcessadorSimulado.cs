@@ -40,6 +40,12 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// <summary>O eco de uma escrita chega ~85 ms depois (medido em 16/10, MAPA §9).</summary>
     public static readonly TimeSpan AtrasoEcoReal = TimeSpan.FromMilliseconds(85);
 
+    /// <summary>
+    /// O ack <c>#240#n#</c> do salvar chega ~1,17 s depois do <c>*240*n*</c> (medido em 20/10:
+    /// <c>estado/log-ble/2026-10-20_1322-memoria.log</c>, linhas 174–181).
+    /// </summary>
+    public static readonly TimeSpan AtrasoAckSalvarReal = TimeSpan.FromMilliseconds(1170);
+
     /// <summary>Os extras lidos no aparelho real na história 2 (20/10), como chegaram.</summary>
     public static IReadOnlyList<string> ExtrasReais { get; } =
     [
@@ -104,6 +110,11 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// <summary>Atraso do eco de uma escrita (~85 ms medidos).</summary>
     public TimeSpan AtrasoEco { get; set; } = AtrasoEcoReal;
 
+    /// <summary>
+    /// Atraso do ack de <c>*240*n*</c> (~1,17 s medidos) e de <c>*241*n*</c> (SUPOSIÇÃO: o mesmo).
+    /// </summary>
+    public TimeSpan AtrasoAckMemoria { get; set; } = AtrasoAckSalvarReal;
+
     /// <summary>Atraso da resposta a uma leitura e à senha. Zero = responde dentro da escrita.</summary>
     public TimeSpan AtrasoLeitura { get; set; } = TimeSpan.Zero;
 
@@ -120,6 +131,12 @@ public sealed partial class ProcessadorSimulado : ITransporte
 
     /// <summary>A conexão cai ao receber a N-ésima escrita (1 = a primeira de <see cref="Escritas"/>, a senha).</summary>
     public int? CairNaEscrita { get; set; }
+
+    /// <summary>
+    /// A conexão cai logo depois de aplicar a N-ésima escrita, sem responder a ela (o aparelho
+    /// fez, mas o app não soube).
+    /// </summary>
+    public int? CairDepoisDaEscrita { get; set; }
 
     /// <summary>Não responde a nada, nem à senha.</summary>
     public bool Mudo { get; set; }
@@ -213,6 +230,20 @@ public sealed partial class ProcessadorSimulado : ITransporte
             _estado[(codigo, indice)] = noFio;
     }
 
+    /// <summary>Muda um valor guardado na memória n (0 a 2), para preparar um teste.</summary>
+    public void DefinirMemoria(int n, string codigo, int? indice, string noFio)
+    {
+        lock (_trava)
+            _memorias[n][(codigo, indice)] = noFio;
+    }
+
+    /// <summary>Os 84 valores do Marco 1 do estado atual, como uma memória os guardaria.</summary>
+    public IReadOnlyDictionary<(string Codigo, int? Indice), string> EstadoMarco1()
+    {
+        lock (_trava)
+            return CopiaMarco1(_estado);
+    }
+
     /// <summary>Uma cópia do que está guardado na memória n (0 a 2).</summary>
     public IReadOnlyDictionary<(string Codigo, int? Indice), string> Memoria(int n)
     {
@@ -268,6 +299,11 @@ public sealed partial class ProcessadorSimulado : ITransporte
             geracao = _geracao;
             derrubar = CairNaEscrita == _escritas.Count;
             respostas = derrubar ? [] : Processar(texto);
+            if (CairDepoisDaEscrita == _escritas.Count)
+            {
+                derrubar = true;
+                respostas = [];
+            }
         }
 
         if (derrubar)
@@ -397,11 +433,13 @@ public sealed partial class ProcessadorSimulado : ITransporte
             }
             else
             {
+                // SUPOSIÇÃO: carregar troca os 84 valores do Marco 1 e não mexe nos nomes 23N.
                 foreach (var (chave, valor) in _memorias[n])
                     _estado[chave] = valor;
             }
-            // SUPOSIÇÃO: o ack de 240 e 241 é o eco no formato de leitura, #240#n# e #241#n#.
-            Responder($"#{memoria.Groups[1].Value}#{n}#", AtrasoEco);
+            // Medido (20/10, 2026-10-20_1322-memoria.log): o 240 responde #240#n#\r\n ~1,17 s depois.
+            // SUPOSIÇÃO: o 241 responde igual, #241#n#, no mesmo prazo (não medido).
+            Responder($"#{memoria.Groups[1].Value}#{n}#", AtrasoAckMemoria);
             return respostas;
         }
 
@@ -453,10 +491,17 @@ public sealed partial class ProcessadorSimulado : ITransporte
             return respostas;
         }
         _estado[(parametro!.Codigo, indice)] = noFio!;
-        // SUPOSIÇÃO: os nomes (23x), o 251 e o 252 também respondem com o eco no formato de
-        // leitura; medido só no 081.
-        var eco = EcosDiferentes.TryGetValue(texto, out var diferente) ? diferente : LeituraDe(parametro, indice)!;
-        Responder(eco, AtrasoEco);
+        if (EcosDiferentes.TryGetValue(texto, out var diferente))
+        {
+            Responder(diferente, AtrasoEco);
+            return respostas;
+        }
+        // Medido (20/10, 2026-10-20_1322-memoria.log): o nome *23N*NOME* é aceito sem eco; só a
+        // releitura responde (23N#NOME).
+        if (parametro.Tipo == TipoValor.Nome)
+            return respostas;
+        // SUPOSIÇÃO: o 251 e o 252 também respondem com o eco no formato de leitura; medido só no 081.
+        Responder(LeituraDe(parametro, indice)!, AtrasoEco);
         return respostas;
     }
 
@@ -685,6 +730,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     [GeneratedRegex(@"^\*000\*([^*#]*)\*$", RegexOptions.CultureInvariant)]
     private static partial Regex QuadroSenha();
 
+    // SUPOSIÇÃO: memória 1 = n 0 = nome 231 (a correspondência não foi medida).
     [GeneratedRegex(@"^\*(240|241)\*([0-2])\*$", RegexOptions.CultureInvariant)]
     private static partial Regex QuadroMemoria();
 

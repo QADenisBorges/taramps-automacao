@@ -12,15 +12,20 @@ aqui. A história 12 confere cada item no aparelho real e marca o resultado.
   história 2, voltímetro `#005#` respondido por um órfão `ERRO 0` (16/10 e 20/10).
 - Escrita `*081*0*-12.0*` → eco `#081#0#-12.0#` ~85 ms depois, sem `OK` (16/10).
 - Os valores da semente: `estado/leituras/2026-10-18_2145.json` (Marco 1) e os extras de 20/10.
+- Salvar memória (20/10, `estado/log-ble/2026-10-20_1322-memoria.log`, linhas 174–181, e
+  `estado/ajustes/2026-10-20_1322.json`): `*240*0*` → `#240#0#\r\n` **~1,17 s** depois
+  (13:22:44.254 → 13:22:45.427). O nome `*231*SPL*`, enviado depois do 240, foi aceito **sem
+  eco**; a releitura respondeu `231#SPL\r\n` (chegou duas vezes). No simulador:
+  `AtrasoAckSalvarReal`, e as escritas de nome não respondem.
 
 ## A conferir na história 12
 
 | # | Suposição | Onde no código | Resultado no aparelho |
 |---|---|---|---|
-| 1 | O ack de `*240*n*` (salvar) e `*241*n*` (carregar) é o eco `#240#n#` / `#241#n#`, ~85 ms depois. | `Processar`, memórias | |
+| 1 | O ack de `*241*n*` (carregar) é `#241#n#`, no mesmo prazo do 240 (~1,17 s). O do 240 foi medido (acima). | `Processar`, memórias; `AtrasoAckMemoria`; `GerenteMemorias.PrazoAckMemoria` | |
 | 2 | Uma memória guarda só os 84 valores do Marco 1 (não o gerador, os nomes, o 251 e o 252). | `Processar`, memórias | |
 | 3 | O conteúdo inicial das 3 memórias é igual ao estado semeado. | construtor | |
-| 4 | O ack de `*23N*nome*` é `23N#nome`; o 251 e o 252 respondem com o eco no formato de leitura (`#252#v#`). | `Processar`, escrita | |
+| 4 | O 251 e o 252 respondem com o eco no formato de leitura (`#252#v#`). (O nome `*23N*nome*` não ecoa: medido, acima.) | `Processar`, escrita | |
 | 5 | O ack de `*001*antiga*nova*` é `#001#OK#` (ou `#001#ERRO#` com a antiga errada). | `Processar`, troca de senha | |
 | 6 | O ack de `*004*` é `#004#`; o reset de fábrica volta o Marco 1 e as memórias ao estado de fábrica, apaga os nomes, volta a senha à de fábrica (`1234`) e a conexão continua. | `Processar`, `*004*`; `SenhaDeFabrica` | |
 | 7 | O ack de `*242*` é `#242#`; o reset de áudio volta o Marco 1 ao estado de fábrica e mantém memórias, nomes, gerador, 251 e 252. | `Processar`, `*242*` | |
@@ -32,3 +37,16 @@ aqui. A história 12 confere cada item no aparelho real e marca o resultado.
 | 13 | A senha certa dentro da janela cancela a queda de 29 s; um segundo `ERRO` não reinicia o prazo. | `Processar`, senha | |
 | 14 | O órfão `ERRO 0` do voltímetro chega com `\r\n`. | `Processar`, leitura | |
 | 15 | O clip espontâneo (`#150#bits#`) tem o formato da leitura; o período e o gatilho não foram medidos. | `EmitirClip` | |
+| 16 | O nome da memória vai como `*23N*NOME*`, e a memória 1 é o `n` 0 do 240/241 e o nome 231 (a 2 é `n` 1 e 232; a 3 é `n` 2 e 233). | `QuadroMemoria`; `Catalogo.ComandoDeMemoria` | |
+| 17 | A regra de nomes da Taramps vale para as memórias: de 1 a 12 caracteres, A–Z, 0–9, espaço e `_`, em maiúsculas. | `Catalogo.NormalizarNomeMemoria` | |
+| 18 | Carregar (`*241*n*`) troca os 84 valores do Marco 1 e não mexe nos nomes 23N; o nome é do aparelho, não da memória. | `Processar`, memórias | |
+| 19 | A resposta `#240#n#` quer dizer que a memória foi gravada (o app diz "Memória N salva"; sem ela, "enviada"). Não há como ler o conteúdo de uma memória sem carregá-la: numa queda no meio, o app só diz "pode não ter sido salva". | `GerenteMemorias` | |
+| 20 | O link copia e repete os parâmetros de canal do Marco 1 menos o roteamento, como o app da Taramps (`BVM:16189`); o comportamento na tela é conferido na história 10. | `LinkCanais.Parametros` | |
+
+## Falhas injetáveis
+
+- `CairNaEscrita = N`: a conexão cai ao receber a N-ésima escrita, sem aplicá-la.
+- `CairDepoisDaEscrita = N`: a N-ésima escrita é aplicada, e a conexão cai logo depois, sem
+  resposta (o aparelho fez, mas o app não soube). Usada nas quedas no meio do salvar e do
+  carregar (história 6).
+- `DefinirMemoria(n, código, índice, valor)`: muda uma memória para preparar um teste.

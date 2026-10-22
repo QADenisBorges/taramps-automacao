@@ -25,3 +25,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/5-escrita-ajustes-chaves-acesso.md`
   summary: A montagem do DI no MauiProgram (Sessao com IChaves, EstadoAparelho e Escritor criados cedo) não tem teste; um erro ali deixaria o app sem escrever.
   evidence: O projeto do App é Android e nenhum teste o referencia. Fechar movendo os registros para um método de extensão testável, ou conferir no celular (abrir, conectar, mexer um ganho).
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/6-memorias-link-copia-antes.md`
+  summary: A retomada "Adiada" do salvar (queda de novo durante a releitura depois de reconectar) não tem teste.
+  evidence: Exige uma queda cronometrada depois da leitura completa e antes da releitura; os ganchos do simulador contam escritas. Mais raro que os casos cobertos.

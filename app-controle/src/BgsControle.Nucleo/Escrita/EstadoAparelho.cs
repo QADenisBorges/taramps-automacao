@@ -73,6 +73,13 @@ public sealed class EstadoAparelho
             return _valores.GetValueOrDefault(endereco);
     }
 
+    /// <summary>Uma cópia de todos os valores do espelho agora (vazia antes da primeira leitura).</summary>
+    public IReadOnlyDictionary<Endereco, Valor> Copiar()
+    {
+        lock (_trava)
+            return new Dictionary<Endereco, Valor>(_valores);
+    }
+
     /// <summary>Troca o espelho pelos valores lidos no retrato. Ignorado sem a sessão conectada.</summary>
     public void Semear(Retrato retrato)
     {

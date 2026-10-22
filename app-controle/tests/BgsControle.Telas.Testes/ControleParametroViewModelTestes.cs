@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Leitura;
+using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Simulador;
@@ -35,7 +36,21 @@ internal sealed class Bancada
         Estado = new EstadoAparelho(Sessao, Leitura);
         Escritor = new Escritor(Sessao, Estado, Log, relogio: Relogio);
         Fabrica = new FabricaControles(Sessao, Chaves, Estado, Escritor, Tela, Relogio);
+        // História 6: a cópia antes, o link e as memórias, guardados pelos arquivos falsos.
+        Copia = new CopiaAntes(Sessao, Estado, Escritor, Leitura,
+            new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoCopia), Log, Relogio);
+        Link = new LinkCanais(Sessao, Estado, Escritor,
+            new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoLink), Log);
+        Memorias = new GerenteMemorias(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
     }
+
+    public CopiaAntes Copia { get; }
+    public LinkCanais Link { get; }
+    public GerenteMemorias Memorias { get; }
+
+    public MemoriasViewModel CriarMemoriasViewModel() => new(Memorias, Copia, Sessao, Chaves, Estado, Tela, Relogio);
+
+    public LinkViewModel CriarLinkViewModel() => new(Link, Sessao, Chaves, Estado, Tela, Relogio);
 
     public RelogioFalso Relogio { get; } = new();
     public ProcessadorSimulado Simulador { get; }
@@ -53,9 +68,11 @@ internal sealed class Bancada
     public async Task Conectar()
     {
         await Chaves.Carregada;
+        await Copia.Carregada;
+        await Link.Carregada;
         await Sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, Sessao.Estado);
-        await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo);
+        await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento);
         await Tela.EsvaziarAsync();
     }
 
@@ -87,10 +104,11 @@ internal sealed class Bancada
     public int EscritasDe(string prefixo) =>
         Simulador.Escritas.Count(e => e.StartsWith(prefixo, StringComparison.Ordinal));
 
-    /// <summary>Critério de aceite: só a senha, as leituras do catálogo e as escritas de áudio do catálogo.</summary>
+    /// <summary>Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo e os comandos 240, 241 e 23N permitidos.</summary>
     public void ConferirSoAudio() =>
         Assert.All(Simulador.Escritas, e =>
-            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null, e));
+            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
+                        || Catalogo.ComandoDeMemoria(e) is not null, e));
 }
 
 /// <summary>O controle de um parâmetro contra o processador simulado (história 5).</summary>

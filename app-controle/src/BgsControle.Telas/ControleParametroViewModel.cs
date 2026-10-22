@@ -609,7 +609,7 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
                 }
                 Aviso = !r.Ok
                     ? Frase(r.Motivo)
-                    : r.Diferente && r.Valor is { } v ? $"O aparelho ficou em {Exibir(v)}" : null;
+                    : r.Diferente && r.Valor is { } v ? $"O aparelho ficou em {Exibir(v)}" : r.Aviso;
                 Atualizar();
             }
             finally

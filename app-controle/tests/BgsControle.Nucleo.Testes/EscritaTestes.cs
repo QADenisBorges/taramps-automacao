@@ -88,11 +88,12 @@ public sealed class EscritaTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo e as escritas de áudio do catálogo.
+    /// catálogo, as escritas de áudio do catálogo e os comandos de memória permitidos.
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
-            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null, e));
+            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
+                        || Catalogo.ComandoDeMemoria(e) is not null, e));
 
     private async Task Conectar()
     {
@@ -435,8 +436,12 @@ public sealed class EscritaTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("*240*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*241*1*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*240*5*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*241*3*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*241*0", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*231*filme*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*231* FILME*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*234*FILME*", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("*202*1*", Sessao.MotivoNaoLiberado)]
     [InlineData("*200*-20.0*", Sessao.MotivoNaoLiberado)]
     [InlineData("*004*", Sessao.MotivoNaoLiberado)]
@@ -445,7 +450,6 @@ public sealed class EscritaTestes : IDisposable
     [InlineData("*002*NOVO*", Sessao.MotivoNaoLiberado)]
     [InlineData("*252*0*", Sessao.MotivoNaoLiberado)]
     [InlineData("*251*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*231*FILME*", Sessao.MotivoNaoLiberado)]
     [InlineData("*999*1*", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("*081*0*-3*", Sessao.MotivoEscritaForaDoCatalogo)] // fora do formato do codificador
     [InlineData("*081*4*-3.0*", Sessao.MotivoEscritaForaDoCatalogo)] // canal 4
@@ -454,7 +458,7 @@ public sealed class EscritaTestes : IDisposable
     [InlineData("*060*0*90*", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("*081*0*-3.0**", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("texto qualquer", Sessao.MotivoEscritaForaDoCatalogo)]
-    public async Task Com_a_chave_ligada_o_que_nao_e_ajuste_de_audio_e_recusado_antes_do_BLE(string quadro, string motivo)
+    public async Task Com_a_chave_ligada_o_que_nao_e_ajuste_de_audio_nem_memoria_e_recusado_antes_do_BLE(string quadro, string motivo)
     {
         await Conectar();
         Assert.True(_chaves.Ligada(Chave.AjustesAudio));
@@ -486,8 +490,10 @@ public sealed class EscritaTestes : IDisposable
 
             var r = await _sessao.EnviarAsync(quadro);
 
-            Assert.True(r.Enviado == !p.Extra, $"{quadro}: {r.Motivo}");
-            Assert.Equal(!p.Extra, _simulador.Escritas.Contains(quadro));
+            // Os nomes das memórias (23N) passam com a chave "Salvar memória" (história 6).
+            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null;
+            Assert.True(r.Enviado == passa, $"{quadro}: {r.Motivo}");
+            Assert.Equal(passa, _simulador.Escritas.Contains(quadro));
         }
         await Andar(TimeSpan.FromMilliseconds(200)); // os ecos
     }

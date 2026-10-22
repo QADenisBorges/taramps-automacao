@@ -66,15 +66,23 @@ public sealed class Sessao
     public const string MotivoChaveDesligada = "chave desligada";
     public const string MotivoNaoLiberado = "comando não liberado nesta versão do app";
     public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
+    public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
 
-    // Comandos conhecidos fora dos ajustes de áudio (MAPA §4 e §5): memórias, gerador, nomes,
-    // 251, 252, 002, 004, 242 e 001. São das histórias 6 e 7; aqui só explicam a recusa.
+    // Os códigos das memórias (240, 241 e os nomes 231 a 233): só a forma exata passa
+    // (Catalogo.ComandoDeMemoria); o resto é recusado com este motivo.
+    private static readonly HashSet<string> CodigosDeMemoria =
+        [Catalogo.CodigoSalvarMemoria, Catalogo.CodigoCarregarMemoria, .. Enumerable.Range(0, Catalogo.Memorias).Select(Catalogo.CodigoNomeMemoria)];
+
+    // Comandos conhecidos fora dos ajustes de áudio e das memórias (MAPA §4 e §5): gerador,
+    // 251, 252, 002, 004, 242 e 001. São da história 7; aqui só explicam a recusa.
     private static readonly HashSet<string> ComandosNaoLiberados =
-        [.. Catalogo.Extras.Select(p => p.Codigo), "001", "002", "004", "240", "241", "242"];
+        [.. Catalogo.Extras.Select(p => p.Codigo).Where(c => !CodigosDeMemoria.Contains(c)), "001", "002", "004", "242"];
 
-    // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha e as escritas
-    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada.
-    // Estes formatos só servem para explicar a recusa de uma leitura desconhecida.
+    // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha, as escritas
+    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada e os
+    // comandos de memória (Catalogo.ComandoDeMemoria) com a chave "Salvar memória" ou
+    // "Carregar memória" ligada. Estes formatos só servem para explicar a recusa de uma leitura
+    // desconhecida.
     private static readonly Regex FormaDeLeitura = new(@"^(#\d{3}#(\d{1,2}#)?|\d{3}#\d{1,2})$", RegexOptions.CultureInvariant);
     private static readonly Regex QuadroSenha = new(@"^\*000\*[0-9A-Z]{4}\*$", RegexOptions.CultureInvariant);
 
@@ -281,9 +289,11 @@ public sealed class Sessao
     /// seu escopo) com a sessão conectada;</item>
     /// <item>o quadro da senha no estado Autenticando;</item>
     /// <item>uma escrita de ajuste de áudio do Marco 1, exatamente como o catálogo a codifica, com
-    /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada.</item>
+    /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada;</item>
+    /// <item><c>*240*n*</c> e <c>*23N*NOME*</c> com a chave "Salvar memória", e <c>*241*n*</c>
+    /// com a chave "Carregar memória", só na forma exata, conectada e fora do modo só leitura.</item>
     /// </list>
-    /// Todo o resto (memórias, gerador, 252, 251, 002, 004, 242, 001, uma leitura fora do
+    /// Todo o resto (gerador, 252, 251, 002, 004, 242, 001, uma leitura fora do
     /// catálogo como <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o
     /// motivo no log.
     /// </summary>
@@ -347,18 +357,40 @@ public sealed class Sessao
             return MotivoForaDoCatalogo;
         if (SoLeitura)
             return MotivoSoLeitura;
-        if (Catalogo.EscritaDeAudio(quadro) is null)
+
+        Chave chave;
+        if (Catalogo.ComandoDeMemoria(quadro) is { } memoria)
+        {
+            chave = memoria.Tipo == TipoComandoMemoria.Carregar ? Chave.CarregarMemoria : Chave.SalvarMemoria;
+        }
+        else if (Catalogo.EscritaDeAudio(quadro) is not null)
+        {
+            chave = Chave.AjustesAudio;
+        }
+        else
         {
             var codigo = Quadros.Analisar(quadro)?.Codigo;
+            if (codigo is not null && CodigosDeMemoria.Contains(codigo))
+                return MotivoMemoriaForaDoFormato;
             if (codigo is not null && ComandosNaoLiberados.Contains(codigo))
                 return MotivoNaoLiberado;
             return MotivoEscritaForaDoCatalogo;
         }
         if (!conectado)
             return MotivoSemConexao;
-        if (_chaves?.Ligada(Chave.AjustesAudio) != true)
+        if (_chaves?.Ligada(chave) != true)
             return MotivoChaveDesligada;
         return null;
+    }
+
+    /// <summary>
+    /// O que a trava diria agora para este quadro, sem enviar nada nem registrar: null = passaria.
+    /// Quem prepara uma operação (a cópia antes, por exemplo) pergunta antes de começar.
+    /// </summary>
+    public string? Conferir(string quadro)
+    {
+        lock (_trava)
+            return Trava(quadro);
     }
 
     // ------------------------------------------------------------------ conexão e senha

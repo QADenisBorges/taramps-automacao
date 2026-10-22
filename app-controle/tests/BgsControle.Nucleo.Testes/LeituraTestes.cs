@@ -570,12 +570,13 @@ public sealed class LeituraTestes
     [InlineData("020*3*2.5", Sessao.MotivoChaveDesligada)]
     [InlineData("*202*1*", Sessao.MotivoNaoLiberado)]
     [InlineData("*252*1*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*240*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*241*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*231*FILME*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*240*0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*241*0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*231*FILME*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*240*5*", Sessao.MotivoMemoriaForaDoFormato)]
     public async Task Escrita_codificada_pelo_catalogo_sem_chaves_e_recusada_com_o_motivo(string quadro, string motivo)
     {
-        // Esta sessão não tem IChaves: os ajustes de áudio caem na chave; o resto não é liberado.
+        // Esta sessão não tem IChaves: os ajustes de áudio e as memórias caem na chave; o resto não é liberado.
         await Conectar();
 
         var r = await _sessao.EnviarAsync(quadro);

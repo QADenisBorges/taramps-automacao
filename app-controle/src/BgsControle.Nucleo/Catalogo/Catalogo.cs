@@ -5,6 +5,21 @@ namespace BgsControle.Nucleo;
 /// <summary>Uma escrita de ajuste de áudio reconhecida pelo catálogo: o parâmetro, o canal ou a banda e o valor no fio.</summary>
 public sealed record EscritaAudio(Parametro Parametro, int? Indice, string NoFio);
 
+public enum TipoComandoMemoria
+{
+    /// <summary><c>*240*n*</c>.</summary>
+    Salvar,
+
+    /// <summary><c>*241*n*</c>.</summary>
+    Carregar,
+
+    /// <summary><c>*23N*NOME*</c>.</summary>
+    Nomear,
+}
+
+/// <summary>Um comando de memória reconhecido pela trava: o tipo, a memória (0 a 2) e o nome, no <c>23N</c>.</summary>
+public sealed record ComandoMemoria(TipoComandoMemoria Tipo, int Memoria, string? Nome);
+
 /// <summary>
 /// A fonte única dos parâmetros do PRO 2.4BT + AUDIO (MAPA §4): a trava pergunta a ele se um
 /// quadro é uma leitura conhecida, o leitor monta a fila a partir dele, e as escritas futuras
@@ -175,6 +190,95 @@ public static class Catalogo
         {
             return null;
         }
+    }
+
+    // ------------------------------------------------------------------ memórias (MAPA §5)
+
+    /// <summary>As 3 memórias do DSP: <c>n</c> de 0 a 2 no fio; a memória 1 é o <c>n</c> 0 e o nome 231.</summary>
+    public const int Memorias = 3;
+
+    public const string CodigoSalvarMemoria = "240";
+    public const string CodigoCarregarMemoria = "241";
+
+    // SUPOSIÇÃO (história 12): o formato *23N*NOME* e "memória 1 = n 0 = nome 231".
+    private static readonly System.Text.RegularExpressions.Regex QuadroSalvarOuCarregar =
+        new(@"^\*(240|241)\*([0-2])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex QuadroNomeMemoria =
+        new(@"^\*23([1-3])\*([A-Z0-9 _]{1,12})\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex NomeMemoriaValido =
+        new(@"^[A-Z0-9 _]{1,12}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>O código do nome da memória <paramref name="n"/> (0 a 2): 231, 232 ou 233.</summary>
+    public static string CodigoNomeMemoria(int n)
+    {
+        ValidarMemoria(n);
+        return $"23{n + 1}";
+    }
+
+    /// <summary><c>*240*n*</c>: salva o estado atual na memória n (0 a 2).</summary>
+    public static string SalvarMemoria(int n)
+    {
+        ValidarMemoria(n);
+        return $"*{CodigoSalvarMemoria}*{n}*";
+    }
+
+    /// <summary><c>*241*n*</c>: carrega a memória n (0 a 2).</summary>
+    public static string CarregarMemoria(int n)
+    {
+        ValidarMemoria(n);
+        return $"*{CodigoCarregarMemoria}*{n}*";
+    }
+
+    /// <summary><c>*23N*NOME*</c>, com o nome já normalizado (<see cref="NormalizarNomeMemoria"/>).</summary>
+    public static string NomearMemoria(int n, string nome)
+    {
+        ValidarMemoria(n);
+        if (NormalizarNomeMemoria(nome) is not { } normalizado || normalizado != nome)
+            throw new ArgumentException("O nome tem de 1 a 12 caracteres: A–Z, 0–9, espaço ou _.", nameof(nome));
+        return $"*{CodigoNomeMemoria(n)}*{nome}*";
+    }
+
+    /// <summary>
+    /// O nome de memória como vai no fio: sem espaços nas pontas e em maiúsculas, de 1 a 12
+    /// caracteres entre A–Z, 0–9, espaço e <c>_</c>. Fora disso, null (nada sai).
+    /// [SUPOSIÇÃO] A regra de nomes da Taramps vale também para as memórias.
+    /// </summary>
+    public static string? NormalizarNomeMemoria(string? digitado)
+    {
+        if (digitado is null)
+            return null;
+        var nome = digitado.Trim().ToUpperInvariant();
+        return NomeMemoriaValido.IsMatch(nome) ? nome : null;
+    }
+
+    /// <summary>
+    /// Se o quadro é exatamente <c>*240*n*</c>, <c>*241*n*</c> (n = 0 a 2) ou <c>*23N*NOME*</c>
+    /// (N = 1 a 3, nome normalizado), devolve o comando; senão null. É a regra da trava para as
+    /// memórias: <c>*240*5*</c>, <c>*241*0</c>, <c>*231*filme*</c> e <c>*231* FILME*</c> não passam.
+    /// </summary>
+    public static ComandoMemoria? ComandoDeMemoria(string quadro)
+    {
+        if (QuadroSalvarOuCarregar.Match(quadro) is { Success: true } m)
+        {
+            var n = m.Groups[2].Value[0] - '0';
+            return new ComandoMemoria(m.Groups[1].Value == CodigoSalvarMemoria ? TipoComandoMemoria.Salvar : TipoComandoMemoria.Carregar, n, null);
+        }
+        if (QuadroNomeMemoria.Match(quadro) is { Success: true } nome)
+        {
+            var texto = nome.Groups[2].Value;
+            if (NormalizarNomeMemoria(texto) != texto)
+                return null; // espaço nas pontas ou só espaços
+            return new ComandoMemoria(TipoComandoMemoria.Nomear, nome.Groups[1].Value[0] - '1', texto);
+        }
+        return null;
+    }
+
+    private static void ValidarMemoria(int n)
+    {
+        if (n is < 0 or >= Memorias)
+            throw new ArgumentOutOfRangeException(nameof(n), "Memória de 0 a 2 no fio (1 a 3 na tela).");
     }
 
     public static string RotuloBanda(int banda)

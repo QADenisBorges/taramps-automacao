@@ -18,6 +18,7 @@ public sealed class LeituraAutomatica
     private bool _conectadoAntes;
     private bool _lendo;
     private bool _pendente; // uma entrada em Conectado chegou durante outra leitura
+    private TaskCompletionSource<Retrato?>? _nova; // quem pediu uma leitura que comece depois da atual
     private int _iniciadas;
 
     public LeituraAutomatica(Sessao sessao, LeitorCompleto leitor)
@@ -74,6 +75,35 @@ public sealed class LeituraAutomatica
             _lendo = true;
             _iniciadas++;
         }
+        return Iniciar();
+    }
+
+    /// <summary>
+    /// Uma leitura completa que começa agora ou, se uma já anda, a próxima, que começa quando
+    /// ela acabar: o retrato é sempre de depois desta chamada (o carregar de uma memória precisa
+    /// disso). Sem prazo fixo; null se a sessão cair antes.
+    /// </summary>
+    public Task<Retrato?> LerNovaAsync()
+    {
+        lock (_trava)
+        {
+            if (!SessaoAberta)
+                return Task.FromResult<Retrato?>(null);
+            if (_lendo || _leitor.Lendo)
+            {
+                if (!_lendo)
+                    return Task.FromResult<Retrato?>(null); // o leitor anda por fora desta classe
+                _nova ??= new TaskCompletionSource<Retrato?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                return _nova.Task;
+            }
+            _lendo = true;
+            _iniciadas++;
+        }
+        return Iniciar();
+    }
+
+    private Task<Retrato?> Iniciar()
+    {
         Comecou?.Invoke();
         // Fora da thread de quem chamou: as respostas chegam pelas notificações.
         return Task.Run(ExecutarAsync);
@@ -114,26 +144,45 @@ public sealed class LeituraAutomatica
     private void Soltar()
     {
         bool iniciar;
+        TaskCompletionSource<Retrato?>? nova;
         lock (_trava)
         {
             _lendo = false;
-            iniciar = _pendente && SessaoAberta;
+            iniciar = (_pendente || _nova is not null) && SessaoAberta;
             _pendente = false;
+            nova = _nova;
+            _nova = null;
+            if (iniciar)
+            {
+                _lendo = true;
+                _iniciadas++;
+            }
         }
-        if (iniciar)
-            _ = LerAsync();
+        if (!iniciar)
+        {
+            nova?.TrySetResult(null);
+            return;
+        }
+        var leitura = Iniciar();
+        if (nova is not null)
+            _ = leitura.ContinueWith(t => nova.TrySetResult(t.IsCompletedSuccessfully ? t.Result : null), TaskScheduler.Default);
     }
 
     private void AoMudar()
     {
         bool disparar;
+        TaskCompletionSource<Retrato?>? nova = null;
         lock (_trava)
         {
             var conectado = SessaoAberta;
             disparar = conectado && !_conectadoAntes;
             _conectadoAntes = conectado;
             if (!conectado)
+            {
                 _pendente = false;
+                nova = _nova;
+                _nova = null;
+            }
             else if (disparar && _lendo)
             {
                 // A leitura anterior ainda não acabou: esta entrada lê quando ela acabar.
@@ -141,6 +190,7 @@ public sealed class LeituraAutomatica
                 disparar = false;
             }
         }
+        nova?.TrySetResult(null); // a sessão caiu: a leitura pedida não vai acontecer
         if (disparar)
             _ = LerAsync();
     }

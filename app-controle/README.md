@@ -11,10 +11,20 @@ testáveis sem MAUI e o processador simulado dos testes.
 
 Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
 `Escritor` (eco, releitura, ritmo de 300 ms por parâmetro) e sempre pela trava da sessão: com o
-R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Memórias,
-gerador, remote out, Bluetooth de áudio, nome, senha e resets continuam recusados antes do BLE.
+R003, fora do modo só leitura e com a chave de acesso "Ajustes de áudio" ligada. Gerador,
+remote out, Bluetooth de áudio, nome do produto, senha e resets continuam recusados antes do BLE.
 As chaves de acesso (`IChaves`) ficam em JSON nos arquivos privados. Os ViewModels do controle
 de parâmetro e da tela de chaves existem em `BgsControle.Telas`; o XAML é das histórias 10 e 11.
+
+Desde a história 6, a trava deixa passar também `*240*n*` e `*23N*NOME*` (chave "Salvar
+memória") e `*241*n*` (chave "Carregar memória"), só na forma exata. O `GerenteMemorias` salva,
+carrega e nomeia as 3 memórias. O salvar envia o 240 e depois o nome: com a resposta `#240#n#`
+(medida em 20/10, ~1,17 s) diz "Memória N salva"; sem ela, "enviada (o aparelho não confirma o
+salvar)". Enquanto uma operação de memória anda ou ficou pela metade, as escritas de áudio e a
+cópia do link são recusadas. A `CopiaAntes` guarda o estado e a marca da operação em
+`copia-antes.json` e, se a operação cair no meio, mostra "aplicado pela metade" na conexão
+seguinte (Terminar ou Voltar à cópia); o `LinkCanais` (1–2 e 3–4, só do app) fica em
+`link-canais.json`. Os ViewModels são o `MemoriasViewModel` e o `LinkViewModel`.
 
 ## Projetos
 

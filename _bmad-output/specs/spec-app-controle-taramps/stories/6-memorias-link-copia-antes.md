@@ -2,8 +2,9 @@
 title: 'História 6: memórias, link de canais e cópia antes de mexer'
 type: 'feature'
 created: '2026-10-21'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
+baseline_commit: '719cb2c70b45feddfd9992ad56beb16e2a1075d3'
 review_loop_iteration: 0
 context:
   - '{project-root}/_bmad-output/specs/spec-app-controle-taramps/failure-modes.md'
@@ -43,11 +44,11 @@ Em `BgsControle.Telas`, os ViewModels de Memórias e de link, testados contra o 
 
   [SUPOSIÇÃO a conferir na história 12] O formato `*23N*NOME*` e a correspondência "memória 1 = `n` 0 = nome 231".
 - **Nome de memória:** de 1 a 12 caracteres, entre A–Z, 0–9, espaço e `_`. O app converte para maiúsculas. Isso segue a regra de nomes da Taramps; [SUPOSIÇÃO] ela vale também para as memórias.
-- **Salvar:**
+- **Salvar** (decisão do Denis em 21/10, na revisão: resultado "honesto"):
   1. Grava a cópia antes (o retrato atual).
-  2. Envia o nome (`*23N*…*`) e depois o `*240*n*`.
-  3. Confirma relendo o nome (`#23N#`), porque o ack não foi medido.
-  4. Se a conexão cair no meio, ao reconectar o app relê o nome e diz "A memória N foi salva" ou "A memória N não foi salva".
+  2. Envia o `*240*n*` e depois o nome (`*23N*…*`).
+  3. Se o aparelho responder ao 240, diz "Memória N salva". Se não responder, diz "Memória N enviada (o aparelho não confirma o salvar)". Reler o nome confirma só o nome. [SUPOSIÇÃO] A resposta ao 240 é medida na história 12.
+  4. Se a conexão cair no meio, ao reconectar o app diz "A memória N pode não ter sido salva; carregue-a para conferir".
 - **Carregar:**
   1. Grava a cópia antes.
   2. Envia o `*241*n*`.
@@ -81,12 +82,12 @@ Em `BgsControle.Telas`, os ViewModels de Memórias e de link, testados contra o 
 
 | Cenário | Entrada / estado | Esperado | Erro |
 |---|---|---|---|
-| Salvar | Salvar na memória 2 como "MUSICA ORIG 2" | Folha → Confirmar → `*232*MUSICA ORIG 2*`, `*240*1*`; o nome relido bate | — |
+| Salvar | Salvar na memória 2 como "MUSICA ORIG2" | Folha → Confirmar → `*240*1*`, `*232*MUSICA ORIG2*`; com a resposta ao 240, "Memória 2 salva"; sem ela, "Memória 2 enviada (o aparelho não confirma o salvar)" | — |
 | Cancelar a folha | "Salvar aqui" e Cancelar | Nada sai | — |
 | Carregar | Carregar a memória 3 | Cópia guardada, `*241*2*`, leitura completa nova; FILME em uso | — |
 | Chave desligada | "Carregar memória" desligada | Nada sai | "Chave desligada" |
 | Nome inválido | "música#1" | Recusado, nada sai | "Use até 12 letras, números, espaço ou _" |
-| Queda no salvar | Cai depois do `*232*…*` | Ao reconectar e ler: "A memória 2 não foi salva" | — |
+| Queda no salvar | Cai no meio do salvar | Ao reconectar e ler: "A memória 2 pode não ter sido salva; carregue-a para conferir" | — |
 | Queda no carregar | Cai depois do `*241*2*` | Ao reconectar: "aplicado pela metade" | Terminar ou Voltar à cópia |
 | Voltar à cópia | Escolha do usuário | Só os parâmetros diferentes são escritos; o estado bate com a cópia | — |
 | Vincular 1–2 | Ligar e confirmar | Os parâmetros da saída 1 vão para a saída 2; o link fica guardado | — |
@@ -107,12 +108,12 @@ Em `BgsControle.Telas`, os ViewModels de Memórias e de link, testados contra o 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `app-controle/src/BgsControle.Nucleo/Memorias/`: o gerente de memórias.
-- [ ] `app-controle/src/BgsControle.Nucleo/Escrita/`: `CopiaAntes` e `LinkCanais`.
-- [ ] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs` e `Catalogo`: a trava.
-- [ ] `app-controle/src/BgsControle.Telas/`: `MemoriasViewModel` e `LinkViewModel`.
-- [ ] `app-controle/src/BgsControle.App/MauiProgram.cs`: o DI, sem tela nova.
-- [ ] Os testes: as linhas da matriz e `SUPOSICOES.md` atualizado.
+- [x] `app-controle/src/BgsControle.Nucleo/Memorias/`: o gerente de memórias.
+- [x] `app-controle/src/BgsControle.Nucleo/Escrita/`: `CopiaAntes` e `LinkCanais`.
+- [x] `app-controle/src/BgsControle.Nucleo/Sessao/Sessao.cs` e `Catalogo`: a trava.
+- [x] `app-controle/src/BgsControle.Telas/`: `MemoriasViewModel` e `LinkViewModel`.
+- [x] `app-controle/src/BgsControle.App/MauiProgram.cs`: o DI, sem tela nova.
+- [x] Os testes: as linhas da matriz e `SUPOSICOES.md` atualizado.
 
 **Acceptance Criteria:**
 - Given o simulador com as 3 memórias, when o Denis salva na memória 2 e carrega a 3, then o simulador termina com a memória 2 igual ao estado salvo e o estado atual igual à memória 3, e o app mostra os nomes relidos.
@@ -126,6 +127,30 @@ Em `BgsControle.Telas`, os ViewModels de Memórias e de link, testados contra o 
 
 ## Implementation Notes
 
+- Revisão (21/10): correções aplicadas (salvar honesto com o 240 primeiro, portão contra escritas durante operação de memória e "pela metade", aviso do espelho do link, aviso de saídas diferentes, cópia antes mais robusta) e os dados medidos no aparelho em 20/10 (`estado/log-ble/2026-10-20_1322-memoria.log`): o 240 responde `#240#n#` em ~1,17 s, o `*23N*NOME*` não ecoa e a releitura devolve `23N#NOME`. A consulta `#231#` também funciona (leitura real da história 2). Verificação final: Nucleo.Testes 450/450, Telas.Testes 148/148, build Android 0 erros e 0 avisos.
+
 ## Spec Change Log
 
+- 21/10, revisão: os revisores mostraram que reler o nome não prova o `*240*` (o nome ia antes e o aparelho não deixa ler o conteúdo de uma memória sem carregá-la). O Denis decidiu o resultado "honesto" (240 primeiro, "salva" só com a resposta ao 240, "enviada" sem ela, "pode não ter sido salva" na queda) e manteve o limite de 12 caracteres; o exemplo da matriz passou de "MUSICA ORIG 2" (13) para "MUSICA ORIG2". KEEP: trava, cópia antes, link e as telas como estão.
+
 ## Review Triage Log
+
+| # | Achado | Veredito | Evidência | Rota |
+|---|---|---|---|---|
+| 1 | Reler o nome não prova o 240; nome novo com conteúdo velho numa queda | high | O nome ia antes do 240; não há como ler o conteúdo sem carregar | intent_gap → decidido pelo Denis (resultado honesto) e corrigido |
+| 2 | Eco de escrita do nome aceito como releitura | low | `Analisar` troca `*` por `#`; correção direta | patch |
+| 3 | `EmUso` some numa carga recusada antes do BLE | low | Correção direta | patch |
+| 4 | Brecha no portão entre o 241 e a leitura completa; link durante carga | medium | Escrita de áudio pode entrar na carga | patch |
+| 5 | `LerTudoAsync` desiste em ~2 s reais e marca "pela metade" | medium | Carga bem-sucedida dada como pela metade | patch |
+| 6 | Terminar com 241 recusado conclui; queda antes do 241 vira "pela metade" | medium | Marca perdida / aviso falso | patch |
+| 7 | `MemoriaDe` -1 | low | Correção direta | patch |
+| 8 | Falha ou exceção no espelho do link fica invisível / pendura | medium | O mestre devolve Ok | patch |
+| 9 | Link "Lig." com as saídas diferentes depois de carregar | medium | Nada confere | patch (aviso, sem escrita automática) |
+| 10 | Corrida em `RetomarAsync`; JSON fora de ordem; `Diferencas` pula valores; `Iguais` | medium | Marca apagada / Voltar falso | patch |
+| 11 | `formato` não numérico no link; mestre sem valor no espelho | low | Correção direta | patch |
+| 12 | Texto digitado perdido na falha; folha do link sem ação durante cópia | low | Correção direta | patch |
+| 13 | Estado guardado sem identidade do aparelho | low | POC com um aparelho só | rejeitado |
+| 14 | Mestre escrito durante a cópia do link | low | Janela curta; o item 4 reduz | rejeitado |
+| 15 | Testes do link (roteamento, 3–4, gravação, queda), Voltar com queda, carga com leitura parada | medium | Mutações passam verde | patch |
+| 16 | Retomada `Adiada` sem teste | medium | Exige queda dupla com tempo exato | defer |
+| 17 | Composição do DI no MauiProgram sem teste | medium | Só o build cobre | defer (conferir no celular) |

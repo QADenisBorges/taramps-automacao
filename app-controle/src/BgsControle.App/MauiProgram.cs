@@ -3,6 +3,7 @@ using BgsControle.Nucleo;
 using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Leitura;
+using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Telas;
@@ -52,17 +53,47 @@ public static class MauiProgram
         builder.Services.AddSingleton<IDespachante, DespachanteMaui>();
         builder.Services.AddSingleton<IArquivosApp, ArquivosMaui>();
         builder.Services.AddSingleton<IPreparoBluetooth, PreparoBluetoothAndroid>();
+
+        // História 6: a cópia antes de mexer, o link de canais e as memórias, com o estado em
+        // JSON nos arquivos privados.
+        builder.Services.AddSingleton(sp => new CopiaAntes(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoCopia),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new LinkCanais(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoLink),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new GerenteMemorias(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<LogBle>()));
+
         builder.Services.AddSingleton<ConexaoViewModel>();
-        // Os ViewModels dos ajustes e das chaves (sem tela nova: o XAML é das histórias 10 e 11).
+        // Os ViewModels dos ajustes, das chaves, das memórias e do link (sem tela nova: o XAML é
+        // das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
+        // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
-        // Singleton: assina Chaves.Mudou; transitório no contêiner raiz vazaria a cada resolução.
         builder.Services.AddSingleton<ChavesViewModel>();
+        builder.Services.AddSingleton<MemoriasViewModel>();
+        builder.Services.AddSingleton<LinkViewModel>();
         builder.Services.AddSingleton<MainPage>();
 
         var app = builder.Build();
-        // Criados já: o espelho precisa ver a primeira leitura, e as chaves começam a ler o guardado.
+        // Criados já: o espelho e a cópia antes precisam ver a primeira leitura (a retomada do
+        // "aplicado pela metade"), o link se pendura no escritor, e as chaves, a cópia e o link
+        // começam a ler o guardado.
         app.Services.GetRequiredService<EstadoAparelho>();
         app.Services.GetRequiredService<Escritor>();
+        app.Services.GetRequiredService<LinkCanais>();
+        app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
         return app;
     }
 }

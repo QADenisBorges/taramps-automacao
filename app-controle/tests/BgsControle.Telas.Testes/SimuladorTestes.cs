@@ -67,10 +67,15 @@ public sealed class SimuladorTestes
     }
 
     /// <summary>Uma escrita direta: nada antes de ~85 ms, e então o eco.</summary>
-    private async Task<string> EscreverEEsperarEco(string quadro)
+    private Task<string> EscreverEEsperarEco(string quadro) => EscreverEEsperar(quadro, ProcessadorSimulado.AtrasoEcoReal);
+
+    /// <summary>O ack do 240 e do 241: ~1,17 s (medido no 240 em 20/10).</summary>
+    private Task<string> EscreverEEsperarAck(string quadro) => EscreverEEsperar(quadro, ProcessadorSimulado.AtrasoAckSalvarReal);
+
+    private async Task<string> EscreverEEsperar(string quadro, TimeSpan atraso)
     {
         await Escrever(quadro);
-        _relogio.Avancar(TimeSpan.FromMilliseconds(84));
+        _relogio.Avancar(atraso - TimeSpan.FromMilliseconds(1));
         await Task.Delay(30);
         Assert.Equal("", Recebido);
         _relogio.Avancar(TimeSpan.FromMilliseconds(1));
@@ -272,7 +277,6 @@ public sealed class SimuladorTestes
     [InlineData("*073*0*720*", "#073#0#720#")]
     [InlineData("*100*3*1*", "#100#3#1#")]
     [InlineData("*220*255*", "#220#255#")]
-    [InlineData("*232*NOVO NOME*", "232#NOVO NOME")]
     [InlineData("*202*1*", "#202#1#")]
     [InlineData("*200*-20.0*", "#200#-20.0#")]
     [InlineData("*213*2*", "#213#2#")]
@@ -323,13 +327,13 @@ public sealed class SimuladorTestes
         await ConectarEAutenticar();
 
         await EscreverEEsperarEco("*081*0*-3.0*");
-        Assert.Equal("#240#1#\r\n", await EscreverEEsperarEco("*240*1*"));
+        Assert.Equal("#240#1#\r\n", await EscreverEEsperarAck("*240*1*"));
         Assert.Equal("-3.0", _simulador.Memoria(1)[("081", 0)]);
 
         await EscreverEEsperarEco("*081*0*5.0*");
         Assert.Equal("+5.0", _simulador.Valor("081", 0));
 
-        Assert.Equal("#241#1#\r\n", await EscreverEEsperarEco("*241*1*"));
+        Assert.Equal("#241#1#\r\n", await EscreverEEsperarAck("*241*1*"));
         Assert.Equal("-3.0", _simulador.Valor("081", 0));
         Assert.Equal("+10.0", _simulador.Memoria(0)[("081", 0)]); // as outras ficam como estavam
     }
@@ -339,7 +343,12 @@ public sealed class SimuladorTestes
     {
         await ConectarEAutenticar();
 
-        Assert.Equal("231#CINEMA\r\n", await EscreverEEsperarEco("*231*CINEMA*"));
+        // Medido em 20/10: o nome é aceito sem eco; só a releitura responde.
+        await Escrever("*231*CINEMA*");
+        _relogio.Avancar(TimeSpan.FromSeconds(2));
+        await Task.Delay(30);
+        Assert.Equal("", Recebido);
+        Assert.Equal("CINEMA", _simulador.Valor("231"));
         await Escrever("#231#");
         Assert.Equal("231#CINEMA\r\n", Recebido);
     }
