@@ -26,3 +26,13 @@ public interface IPreparoBluetooth
     /// </summary>
     Task<string?> PrepararAsync();
 }
+
+/// <summary>
+/// O seletor de arquivos de áudio do Android (história 11): escolhe vários de uma vez e devolve,
+/// na ordem escolhida, a URI, o nome, a pasta e a duração de cada um. O app não copia a música.
+/// </summary>
+public interface ISeletorAudio
+{
+    /// <summary>Os arquivos escolhidos, na ordem; vazio se o Denis desistiu.</summary>
+    Task<IReadOnlyList<BgsControle.Nucleo.Player.ArquivoAudio>> EscolherAsync();
+}
