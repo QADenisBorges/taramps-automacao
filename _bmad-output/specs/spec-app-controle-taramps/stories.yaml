@@ -137,7 +137,12 @@
     nada é desfeito. Chaves novas em chaves-de-acesso.md e regra 5 de
     failure-modes.md. Divisão da FILME em conhecimento-herdado.md. Testado
     contra o ProcessadorSimulado, com um teste garantindo que nenhum 240 ou
-    23N sai do app.
+    23N sai do app. Do UX da 3b (EXPERIENCE.md de 21/10, revisado em
+    23/10): conferência do Setup só na dúvida, com a lista do que não
+    bate e as saídas escolher, criar Setup do aparelho e seguir sem
+    Setup; o núcleo guarda as 3 memórias usadas por último em cada Setup,
+    fixas no lugar; um só Salvar que separa calibração (Setup) e caráter
+    (memória); memória nova parte do som atual.
 - id: "8d"
   title: Preset de 15 bandas e playlist da memória do celular
   description: >-
@@ -148,7 +153,10 @@
   invoke_dev_with: >-
     Depende da 8c. O preset herdado é o "Cinema" de conhecimento-herdado.md.
     A migração das playlists por posição precisa de uma regra para quando a
-    memória do celular correspondente não existir.
+    memória do celular correspondente não existir. Do UX da 3b: cada
+    memória lembra o último preset e o traz ao ser aplicada; ao salvar 15
+    bandas mexidas, atualizar o preset ou criar um novo (o herdado só
+    gera novo); o Player mostra só a playlist da memória em uso.
 - id: "10"
   title: Telas, parte 1 — leitura, ajustes, link, Setups e memórias
   description: >-

@@ -2,7 +2,7 @@
 name: BGS Controle
 description: App Android de controle do PRO 2.4BT + AUDIO (POC 1). Preto de estúdio, uma luz por saída, branco para o que está escolhido e uma só capa de fader. Família visual do BGS Sound Lab; o resto é próprio.
 status: final
-updated: 2026-10-21
+updated: 2026-10-23
 sources:
   - ../ux-taramps-automacao-2026-10-16/DESIGN.md
 colors:
@@ -18,8 +18,7 @@ colors:
   apoio: '#A1A1A6'            # texto de apoio
   apagado: '#85858A'          # rótulos, escalas, ponto "desconectado"
   sobre-escolhido: '#000000'  # texto sobre o branco do escolhido
-  sobre-escolhido-apoio: '#55555A'  # rótulo pequeno sobre o branco (ex.: MEMÓRIA 1 na aba ativa)
-  nota: '#8E8E93'             # pílula neutra (memória com a IA)
+  sobre-escolhido-apoio: '#55555A'  # texto pequeno sobre o branco (ex.: explicação da opção escolhida na folha do Salvar)
   # Uma luz por saída
   saida-l: '#7EAEFF'          # JBL L, azul
   saida-r: '#C495FF'          # JBL R, lilás
@@ -161,9 +160,25 @@ typography:
     fontFamily: Roboto
     fontSize: 15px
     fontWeight: '700'
+  botao-medio:                # nome no seletor de Setup, botão médio, título das opções da folha do Salvar
+    fontFamily: Roboto
+    fontSize: 15px
+    fontWeight: '800'
   botao-pequeno:
     fontFamily: Roboto
     fontSize: 13px
+    fontWeight: '800'
+  botao-memoria:              # nome nos botões de memória
+    fontFamily: Roboto
+    fontSize: 13px
+    fontWeight: '400'
+  botao-memoria-ativo:        # nome no botão da memória em uso
+    fontFamily: Roboto
+    fontSize: 13px
+    fontWeight: '600'
+  reticencias:                # "…" dos botões de memória
+    fontFamily: Roboto
+    fontSize: 20px
     fontWeight: '800'
   botao-parar:
     fontFamily: Roboto
@@ -274,6 +289,7 @@ components:
     height: '{spacing.topo-app}'
     marca: '{typography.marca}'
     marca-forte: '{typography.marca-forte}'
+    inicio: 'duas linhas de {spacing.topo-app}: marca + engrenagem; seletor de Setup + pílula de status'
   pilula-status:
     background: '{colors.sup-1}'
     border: '{colors.sup-2}'
@@ -283,6 +299,14 @@ components:
     ponto-esperando: '{colors.apoio}'
     radius: '{rounded.full}'
     typography: '{typography.detalhe}'
+  seletor-de-setup:           # "Setup Casa 2.1 ›" na segunda linha do cabeçalho do Início, ao lado da pílula de status
+    height: '{spacing.alvo-min}'
+    background: '{colors.sup-1}'
+    border: '{colors.campo-borda}'
+    rotulo: '{typography.detalhe} em {colors.apoio}'
+    nome: '{typography.botao-medio} em {colors.texto}'
+    seta: '20px em {colors.apagado}'
+    radius: '{rounded.md}'
   engrenagem:
     size: '{spacing.alvo-min}'
     background: '{colors.sup-1}'
@@ -300,13 +324,33 @@ components:
     background: '{colors.sup-1}'
     radius: '{rounded.card-lg}'
     nome: '{typography.memoria-hero}'
+    nome-longo: 'diminui até {typography.memoria-lista}, depois quebra em duas linhas; nunca corta'
     arco: 'conic {colors.saida-l} → {colors.saida-r} → {colors.saida-sub}, anel fino 180 px no canto superior direito, opacidade 0,85'
-  botoes-de-memoria:
+    linha-aparelho: '{typography.apoio} em {colors.apoio}'
+  chip-de-preset:             # "Preset: Cinema ▾" dentro do cartão da memória em uso
+    height: '{spacing.alvo-min}'
+    background: '{colors.palco}'
+    border: '{colors.campo-borda}'
+    rotulo: '{typography.apoio} em {colors.apoio}'
+    nome: '{typography.botao-pequeno} em {colors.texto}'
+    seta: '{colors.apoio}'
+    radius: '{rounded.full}'
+  botoes-de-memoria:          # 3 memórias do celular usadas por último + "…" (Início e Mesa)
+    colunas: '3 botões iguais + "…" como quarta coluna de 44px'
+    gap: '{spacing.2}'
     height: '{spacing.alvo-min}'
     radius: '{rounded.md}'
     border: '{colors.sup-2}'
+    foreground: '{colors.apoio}'
+    typography: '{typography.botao-memoria}'
     ativo-background: '{colors.texto}'
     ativo-foreground: '{colors.sobre-escolhido}'
+    ativo-typography: '{typography.botao-memoria-ativo}'
+    mais-size: '{spacing.alvo-min}'
+    mais-border: '{colors.sup-2}'
+    mais-foreground: '{colors.texto}'
+    mais-typography: '{typography.reticencias}'
+    travado-foreground: '{colors.apagado}'
   cartao-saida:
     background: '{colors.sup-1}'
     radius: '{rounded.card}'
@@ -315,12 +359,6 @@ components:
     nome: '{typography.nome-saida}'
     ajustar: '{typography.ajustar-saida} na cor da saída'
   # Mesa
-  abas-de-memoria:
-    height: 60px
-    radius: '{rounded.card}'
-    background: '{colors.sup-1}'
-    ativa-background: '{colors.texto}'
-    ativa-foreground: '{colors.sobre-escolhido}'
   canal-da-mesa:
     background: '{colors.sup-1}'
     radius: '{rounded.painel}'
@@ -436,12 +474,35 @@ components:
     pequeno-height: '{spacing.alvo-min}'
     pequeno-background: '{colors.sup-2}'
     pequeno-typography: '{typography.botao-pequeno}'
+    medio-background: '{colors.sup-2}'   # botão médio: "Criar Setup novo"
+    medio-typography: '{typography.botao-medio}'
+    dica: '{typography.detalhe} em {colors.apoio}, centrada, embaixo do botão'
   folha-de-confirmacao:
     background: '{colors.sup-1}'
     radius-topo: '{rounded.folha}'
     veu: '{colors.veu}'
     titulo: '{typography.titulo-folha}'
     texto: '{typography.corpo}'
+  folha-do-salvar:
+    camadas-background: '{colors.palco}'
+    camadas-radius: '{rounded.card}'
+    camadas-divisoria: '{colors.sup-3}'
+    camada-titulo: '{typography.titulo-parametro}'
+    camada-mudanca: '{typography.apoio} em {colors.apoio}; valor novo em peso 700 na cor da saída'
+    opcao-min-height: '{spacing.alvo-lista}'
+    opcao-radius: '{rounded.lg}'
+    opcao-border: '{colors.sup-2}'
+    opcao-titulo: '{typography.botao-medio}'
+    opcao-explicacao: '{typography.detalhe}'
+    opcao-escolhida-background: '{colors.texto}'
+    opcao-escolhida-foreground: '{colors.sobre-escolhido}'
+    opcao-escolhida-explicacao: '{colors.sobre-escolhido-apoio}'
+    opcao-travada-titulo: '{colors.apagado}'
+    opcao-travada-explicacao: '{colors.apoio}'
+    opcao-travada-cadeado: '12 × 14 px em {colors.apagado}'
+    campo-linha-background: '{colors.sup-1}'
+    campo-nome-sublinhado: '2px {colors.texto}'
+    campo-nome-valor: '{typography.valor-campo-linha}'
   # IA
   faixa-da-ia:
     background: '{colors.ia-fundo}'
@@ -495,7 +556,22 @@ components:
     radius: '{rounded.card-lg}'
     nome: '{typography.memoria-lista}'
     selo-em-uso: '{colors.texto} com texto {colors.sobre-escolhido}, {rounded.full}'
+    preset: '{typography.detalhe} em {colors.apoio}'
+    aparelho-rotulo: '{typography.rotulo} em {colors.apagado}'
+  linha-de-escolha:           # lista do "…", folha de presets, lista de Setups
+    min-height: '{spacing.alvo-lista}'
+    background: '{colors.sup-1}'
+    divisoria: '{colors.sup-3}'
+    nome: '{typography.linha-titulo}'
+    detalhe: '{typography.detalhe} em {colors.apoio}'
+    escolhida-background: '{colors.texto}'
+    escolhida-foreground: '{colors.sobre-escolhido}'
+    escolhida-detalhe: '{colors.sobre-escolhido-apoio}'
+    travada-foreground: '{colors.apagado}'
+    secao-rotulo: '{typography.rotulo} em {colors.apagado}'
   selo-herdado:
+    height: 22px
+    toque: '{spacing.alvo-min} (área estendida em volta do selo)'
     border: '{colors.campo-borda}'
     foreground: '{colors.apoio}'
     radius: '{rounded.full}'
@@ -510,6 +586,21 @@ components:
     background: '{colors.campo}'
     radius: '{rounded.lg}'
     atual-border: '2px {colors.texto}'
+  faixa-som-mutado:           # "Som mutado até você escolher." (Setup em dúvida)
+    min-height: '{spacing.alvo-lista}'
+    background: '{colors.sup-1}'
+    border: '{colors.campo-borda}'
+    radius: '{rounded.lg}'
+    icone: '{colors.texto}'
+    texto: '{typography.corpo} em {colors.apoio}, "Som mutado" em peso 800 {colors.texto}'
+  lista-o-que-nao-bate:       # Setup em dúvida
+    background: '{colors.sup-1}'
+    radius: '{rounded.card}'
+    linha-min-height: 60px
+    divisoria: '{colors.sup-3}'
+    barra-lateral: '4px na cor da saída'
+    titulo: '{typography.linha-titulo}'
+    detalhe: '{typography.apoio} em {colors.apoio}; valores em peso 700 {colors.texto}'
   # Player
   linha-da-playlist:
     min-height: '{spacing.alvo-lista}'
@@ -550,7 +641,7 @@ components:
 
 O BGS Controle é a tela do Denis para o processador PRO 2.4BT + AUDIO: um app de celular que substitui o app da Taramps e abre uma porta para a IA. Ele é andaime do BGS Sound Lab e herda dele **só a família visual** ([`../ux-taramps-automacao-2026-10-16/DESIGN.md`](../ux-taramps-automacao-2026-10-16/DESIGN.md)): o preto de palco ({colors.palco}), as superfícies grafite ({colors.sup-1}), os cinzas de apoio, as três luzes (fria, lilás, quente) e o vermelho de recusa. A usabilidade e a acessibilidade da Vitrine e dos Bastidores **não** são herdadas; o app é um produto novo.
 
-A postura junta duas direções que o Denis escolheu: a calma do **Estúdio Noturno** para ler de longe (pouca coisa na tela, nomes grandes e finos) e a pegada do **Console Tátil** para regular (faders com capa, botão giratório, − e + grandes, identidade marcante). O resultado é a **síntese v2** ([`mockups/direction-sintese-v2.html`](mockups/direction-sintese-v2.html)) e as **telas-chave** ([`mockups/key-screens.html`](mockups/key-screens.html)).
+A postura junta duas direções que o Denis escolheu: a calma do **Estúdio Noturno** para ler de longe (pouca coisa na tela, nomes grandes e finos) e a pegada do **Console Tátil** para regular (faders com capa, botão giratório, − e + grandes, identidade marcante). O resultado é a **síntese v2** ([`mockups/direction-sintese-v2.html`](mockups/direction-sintese-v2.html)), as **telas-chave** ([`mockups/key-screens.html`](mockups/key-screens.html)) e as **telas da 3b** ([`mockups/key-screens-3b.html`](mockups/key-screens-3b.html): Início com Setup, Setup em dúvida e folha do Salvar).
 
 Seis regras unem tudo:
 
@@ -565,7 +656,7 @@ Seis regras unem tudo:
 
 | Recorte | Origem | O que ficou |
 |---|---|---|
-| [`imports/escolha-1-mesa-faders.png`](imports/escolha-1-mesa-faders.png) | Console Tátil | Abas de memória, canal da mesa, capa do fader, MASTER e chips da Mesa. |
+| [`imports/escolha-1-mesa-faders.png`](imports/escolha-1-mesa-faders.png) | Console Tátil | Canal da mesa, capa do fader, MASTER e chips da Mesa. As abas de memória saíram na história 3b; a Mesa usa os botões de memória do Início. |
 | [`imports/escolha-2-inicio-noturno.png`](imports/escolha-2-inicio-noturno.png) | Híbrido Noturno | Topo do app, pílula de status, cartão da memória em uso, botões de memória e cartão de saída. |
 | [`imports/escolha-3-faixa-ia.png`](imports/escolha-3-faixa-ia.png) | Console Tátil | Faixa da IA e botão PARAR IA. |
 | [`imports/escolha-4-canais-travados.png`](imports/escolha-4-canais-travados.png) | Console Tátil | Painel ao vivo (controles esmaecidos e travados). |
@@ -578,14 +669,13 @@ Direções descartadas (só contexto, em `.working/`): Bancada Técnica e Papel 
 
 ### Diferenças em relação aos mocks
 
-Este documento e o EXPERIENCE.md ganham de qualquer mock em caso de conflito. Conflitos já conhecidos:
+Este documento e o EXPERIENCE.md ganham de qualquer mock em caso de conflito. Os conflitos de comportamento (barra de quatro pílulas, Avançado do Ajuste, nome "IA pela rede", modelo de memórias da 3b) estão no topo do EXPERIENCE.md. Os visuais:
 
-- A barra inferior tem quatro pílulas (Início · Mesa · Áudio · Player), não duas nem três.
 - {colors.apagado} mudou (ver Colors).
 - Nenhum texto fica abaixo de 11 px; os mocks têm escalas de 10 px e frequências do EQ de 9 px.
-- A Mesa ganhou a faixa de monitoração.
-- No Ajuste da saída, atraso, fase e EQ de saída descem para Avançado.
-- A chave da IA se chama "IA pela rede"; o mock de Chaves diz "Porta de comandos da IA".
+- A Mesa ganhou a faixa de monitoração, e os botões de memória no lugar das abas.
+- A v2 põe no cartão da memória em uso a linha "Memória 1 · Master 0,0 dB", que saiu.
+- No mock da 3b, o primeiro botão de memória é mais largo, para caber "MUSICA ORIG". [ASSUMPTION] Vale a divisão por igual dos três botões.
 
 Telas sem mock, montadas só com as peças de Components:
 
@@ -599,6 +689,11 @@ Telas sem mock, montadas só com as peças de Components:
 - Presets
 - Voltímetro e clip
 - Telas de função além do Crossover
+- Lista de memórias ("…"), folha de presets e lista de Setups (com a linha de escolha)
+- Trocar de Setup (variante da tela Setup em dúvida)
+- Cartão da memória em uso com "Som do aparelho" e o aviso de som diferente
+- Equilíbrio L/R no Avançado do Ajuste da JBL L e da JBL R
+- Folha do Salvar com uma memória do aparelho em uso (pergunta da calibração)
 
 ## Colors
 
@@ -630,6 +725,9 @@ Contraste medido (WCAG):
 | branco sobre {colors.parar} | 3,4 | PARAR IA (20 px, peso 800: texto grande, passa 3:1) |
 | {colors.ia-texto} sobre {colors.ia-fundo} | 11,2 | faixa da IA |
 | {colors.erro-texto} sobre {colors.sup-1} | 7,5 | erro |
+| {colors.sobre-escolhido-apoio} sobre {colors.texto} | 6,8 | explicação da opção escolhida (folha do Salvar), detalhe da linha de escolha em uso |
+| {colors.apoio} sobre {colors.palco} | 8,2 | chip de preset, bloco das camadas |
+| {colors.saida-l} / {colors.saida-r} / {colors.saida-sub} sobre {colors.palco} | 9,4 / 9,1 / 14,4 | valores novos no bloco das camadas |
 
 ## Typography
 
@@ -654,11 +752,12 @@ A tabela lista os papéis de destaque. Os demais tokens aparecem em Components, 
 | Escala | {typography.escala} | Marcas sob o fader (10, 100, 1k, 22k) |
 | Escala do EQ | {typography.escala-eq} | Frequências das 15 bandas no painel ao vivo |
 
-Fora da tabela, quatro tokens de uso amplo:
+Fora da tabela, cinco tokens de uso amplo:
 
 - {typography.valor-giratorio-campo}: o valor do giratório enquanto se escreve (campo dentro do disco).
 - {typography.botao-pequeno}: par de botões, botão OFF, Ajustar do canal da mesa e a variante pequena do botão secundário.
 - {typography.botao-secundario}: botão secundário (Cancelar, Deixar desligada).
+- {typography.botao-medio}: nome no seletor de Setup, variante média do botão secundário ("Criar Setup novo") e título das opções da folha do Salvar.
 - {typography.apoio}: frases de apoio.
 
 Regras:
@@ -675,16 +774,19 @@ Celular em retrato, quadro de referência 390 × 844. Uma coluna, margem lateral
 Regras gerais:
 
 - **Ritmo:** {spacing.gap-tela} entre blocos da tela; {spacing.gap-cartoes} entre cartões de saída e controles; {spacing.gap-grade} entre colunas da grade, abas e canais.
-- **Estrutura de tela com barra:** topo do app ({spacing.topo-app}: marca, pílula de status, engrenagem) · conteúdo · barra inferior ({spacing.barra-inferior}).
-- **Estrutura de tela cheia:** cabeçalho fixo ({spacing.cabecalho-tela}, com ‹) e, quando há o que salvar, o botão **Salvar na memória N** fixo embaixo; o meio rola. Sem barra inferior.
+- **Estrutura de tela com barra:** topo do app ({spacing.topo-app}: marca, pílula de status, engrenagem) · conteúdo · barra inferior ({spacing.barra-inferior}). No Início, o topo tem duas linhas de {spacing.topo-app}, quase coladas (ver Topo do app).
+- **Estrutura de tela cheia:** cabeçalho fixo ({spacing.cabecalho-tela}, com ‹) e, quando há o que salvar, o botão **Salvar** fixo embaixo; o meio rola. Sem barra inferior.
 - **Escala de fonte do Android:** o texto cresce com ela. Blocos crescem na altura e a tela rola; nada é cortado nem sobreposto. Os alvos de toque não diminuem.
 - **Alvos de toque:** vão de {spacing.alvo-min} a {spacing.alvo-passo-grande}. Nenhum alvo abaixo de 44 px. [ASSUMPTION] Os botões da grade de tipos de filtro, que no mock têm 42 × 38 px (16 opções em 2 linhas de 8), vão a 44 px de altura na implementação.
 
 Telas:
 
 - **Grade Áudio:** 2 colunas × 5 linhas ocupando a altura entre o topo e a barra; com a fonte do Android maior, a grade rola.
-- **Mesa:** 3 canais em colunas iguais que crescem na altura. Embaixo ficam o MASTER (76 px) e os chips; a faixa de monitoração (44 px) fica entre os canais e o MASTER.
-- **Player:** lista da playlist rolando entre o cabeçalho (abas de memória) e os controles do player, fixos embaixo, acima da barra.
+- **Mesa:** [ASSUMPTION] no topo, o rótulo MEMÓRIA EM USO com o nome em {typography.linha-titulo} e, embaixo, os botões de memória; com uma memória do aparelho ou "Som do aparelho", o nome diz isso e nenhum botão fica branco. Depois, 3 canais em colunas iguais que crescem na altura. Embaixo ficam o MASTER (76 px) e os chips; a faixa de monitoração (44 px) fica entre os canais e o MASTER.
+- **Player:** lista da playlist da memória em uso rolando entre o topo do app e os controles do player, fixos embaixo, acima da barra. Sem abas de memória.
+- **Início** ([mock da 3b, quadro 1](mockups/key-screens-3b.html)): topo em duas linhas · cartão da memória em uso (rótulo, nome, chip de preset, botões de memória) · rótulo SAÍDAS com "Toque para ajustar" à direita · três cartões de saída · barra.
+- **Setup em dúvida** ([mock da 3b, quadro 2](mockups/key-screens-3b.html)): sem barra, ‹ e engrenagem. Topo só com a marca e a pílula de status · título "Setup em dúvida" em {typography.titulo-tela} com a frase em {typography.apoio} {colors.apoio} · faixa do som mutado · rótulo O QUE NÃO BATE com "lido agora no aparelho" à direita · lista do que não bate · espaço livre · no pé, os três botões, cada um com a dica embaixo. [ASSUMPTION] Com muitas diferenças, a lista rola e os botões ficam fixos no pé.
+- **Trocar de Setup** (variante, ao tocar no seletor de Setup): [ASSUMPTION] o topo vira o cabeçalho de tela cheia, com ‹ e o título "Trocar de Setup"; a faixa do som mutado e os três botões ficam iguais. Sem diferença para listar, o rótulo O QUE NÃO BATE e a lista somem, e no lugar vem a frase "O aparelho está no Casa 2.1." em {typography.apoio} {colors.apoio}.
 
 ## Elevation & Depth
 
@@ -708,20 +810,24 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 ### Navegação e topo
 
 - **Barra inferior** (`barra-inferior`) — Quatro pílulas: Início · Mesa · Áudio · Player, cada uma com ícone de traço de 16 px e texto em {typography.nav}. A ativa em {colors.texto} com texto preto; as outras em {colors.apoio}. Divisória {colors.sup-3} em cima.
-- **Topo do app** (`topo-do-app`) — Faixa de {spacing.topo-app} com a marca "**BGS** Controle" ({typography.marca-forte} no BGS, {typography.marca} no resto), a **pílula de status** e a **engrenagem**.
+- **Topo do app** (`topo-do-app`) — Faixa de {spacing.topo-app} com a marca "**BGS** Controle" ({typography.marca-forte} no BGS, {typography.marca} no resto), a **pílula de status** e a **engrenagem**. **No Início, duas linhas** ([mock da 3b, quadro 1](mockups/key-screens-3b.html)): em cima, a marca à esquerda e a engrenagem à direita; embaixo, o **seletor de Setup** à esquerda e a pílula de status à direita. As duas linhas têm {spacing.topo-app} e ficam quase coladas (2 px no mock). Na tela Setup em dúvida, uma linha só, com a marca e a pílula, sem engrenagem; na variante Trocar de Setup, o cabeçalho de tela cheia.
 - **Pílula de status** (`pilula-status`) — {colors.sup-1}, contorno {colors.sup-2}, {rounded.full}. Ponto de 7 px: {colors.ok} com halo (Conectado · R003), {colors.apoio} sem halo (Conectando · senha), {colors.apagado} (Desconectado).
+- **Seletor de Setup** (`seletor-de-setup`) — Na segunda linha do topo do Início, à esquerda da pílula de status: botão de {spacing.alvo-min} de altura, {colors.sup-1}, contorno {colors.campo-borda}, {rounded.md}. Dentro, o rótulo "Setup" em {typography.detalhe} {colors.apoio}, o nome do Setup em {typography.botao-medio} {colors.texto} e a seta › de 20 px em {colors.apagado} ("Setup Casa 2.1 ›"). É negrito porque se toca (regra 1). [ASSUMPTION] Nome longo é cortado no fim; o nome inteiro aparece na escolha do Setup. [ASSUMPTION] Com Seguir sem Setup, o botão diz só "Sem Setup ›", sem o rótulo.
 - **Engrenagem** (`engrenagem`) — Botão quadrado de {spacing.alvo-min}, fundo {colors.sup-1}, {rounded.lg}, no topo do app.
-- **Cabeçalho de tela cheia** (`cabecalho-tela-cheia`) — ‹ em quadrado de {spacing.alvo-passo} ({colors.sup-1}, {rounded.xl}); título em {typography.titulo-tela} com subtítulo em {typography.detalhe} {colors.apoio}. No Ajuste da saída, o título usa {typography.titulo-saida} na cor da saída e o subtítulo diz "Saídas 3+4 em ponte · rota A+B · memória 1".
+- **Cabeçalho de tela cheia** (`cabecalho-tela-cheia`) — ‹ em quadrado de {spacing.alvo-passo} ({colors.sup-1}, {rounded.xl}); título em {typography.titulo-tela} com subtítulo em {typography.detalhe} {colors.apoio}. No Ajuste da saída, o título usa {typography.titulo-saida} na cor da saída e o subtítulo diz "Saídas 3+4 em ponte · rota A+B · FILME".
 
 ### Início
 
-- **Cartão da memória em uso** (`cartao-memoria-em-uso`) — {colors.sup-1}, {rounded.card-lg}; rótulo MEMÓRIA EM USO, nome em {typography.memoria-hero}, linha "Memória 1 · Master 0,0 dB", o arco de luz nas três cores no canto e os **botões de memória** embaixo.
-- **Botões de memória** (`botoes-de-memoria`) — Três botões segmentados de {spacing.alvo-min} (o do meio 1,45× mais largo para caber "2 MUSICA ORIG"); a memória em uso em branco.
+- **Cartão da memória em uso** (`cartao-memoria-em-uso`) — {colors.sup-1}, {rounded.card-lg}; rótulo MEMÓRIA EM USO, nome em {typography.memoria-hero}, o **chip de preset** logo embaixo do nome, o arco de luz nas três cores no canto e os **botões de memória** embaixo, dentro do cartão ([mock da 3b, quadro 1](mockups/key-screens-3b.html)). Sem a linha "Memória N · Master" (o MASTER fica na Mesa) e sem selo HERDADO. O que o nome diz em cada situação está em EXPERIENCE.md › Conectar e Setup. Variantes:
+  - **Memória do aparelho** carregada por este app: o nome lido em {typography.memoria-hero} e, embaixo dele, no lugar do chip, a linha "Memória 2 do aparelho (app da Taramps)" em {typography.apoio} {colors.apoio}.
+  - **"Som do aparelho"**: [ASSUMPTION] "Som do aparelho" em {typography.memoria-hero} e, no lugar do chip, "O app não sabe qual memória está tocando." em {typography.apoio} {colors.apoio}. Com caráter diferente da memória ativa, embaixo vem o **aviso de som diferente**: um lembrete com o ponto em {colors.apoio}, "Som diferente da FILME" em {typography.detalhe}, e **Reaplicar** em botão secundário pequeno à direita.
+  - **Nome longo**: [ASSUMPTION] a letra diminui até {typography.memoria-lista} e depois quebra em duas linhas; nunca corta. "MUSICA ORIG" em 60 px passa da largura útil (cerca de 324 px no quadro de 390).
+- **Chip de preset** (`chip-de-preset`) — Pílula de {spacing.alvo-min} de altura, fundo {colors.palco} (um buraco escuro no cartão), contorno {colors.campo-borda}, {rounded.full}: "Preset:" em {typography.apoio} {colors.apoio}, o nome do preset em {typography.botao-pequeno} {colors.texto} e a seta ▾ de traço em {colors.apoio} ("Preset: Cinema ▾"). Fica dentro do cartão porque o preset pertence à memória e volta junto com ela.
+- **Botões de memória** (`botoes-de-memoria`) — No Início e na Mesa: uma grade de quatro colunas com {spacing.2} entre elas: três botões de {spacing.alvo-min} com as memórias do celular usadas por último, contorno {colors.sup-2}, texto em {typography.botao-memoria} {colors.apoio}, e o botão **"…"** como quarta coluna de 44 px, com o mesmo contorno e as reticências em {typography.reticencias} {colors.texto}. A memória em uso em branco, com texto preto em {typography.botao-memoria-ativo}; com uma memória do aparelho ou "Som do aparelho", nenhum fica branco. [ASSUMPTION] Os três dividem a largura por igual e o nome que não cabe é cortado no fim (o mock da 3b alarga o primeiro). Com Seguir sem Setup, os três ficam travados, com o texto em {colors.apagado}. O "…" abre a lista de memórias, que sobe como a folha de confirmação ({colors.sup-1}, {rounded.folha} em cima), feita de **linhas de escolha**: as do celular e, sob o rótulo DO APARELHO, as 3 do processador.
 - **Cartão de saída** (`cartao-saida`) — {colors.sup-1}, {rounded.card}, barra lateral de 4 px na cor. Nome em {typography.nome-saida} com "Saída 1 · rota B" em {colors.apoio}; ganho em {typography.leitura-ganho}; resumo em duas linhas (PA, PB, limitador, atraso, fase); mini curva do crossover de 76 × 40 px na cor; "Ajustar ›" em {typography.ajustar-saida} na cor.
 
 ### Mesa
 
-- **Abas de memória** (`abas-de-memoria`) — Três abas de 60 px, rótulo MEMÓRIA N pequeno e nome em negrito; a ativa em branco.
 - **Canal da mesa** (`canal-da-mesa`) — Coluna {colors.sup-1}, {rounded.painel}, borda superior de 4 px na cor. Nome em {typography.nome-canal} na cor, "Saída 1 · B" em {colors.apagado}, **campo numérico** com o ganho, fader vertical (trilho de 8 px, nível na cor, marca do 0 dB em {colors.apagado}, capa), resumo PA/PB/Lim e botão **Ajustar** ({spacing.alvo-min}, {colors.sup-2}, texto em {typography.botao-pequeno} na cor).
 - **MASTER** (`master`) — Faixa de 76 px: "MASTER · todas as saídas", fader horizontal com escala −80 · −40 · 0, campo de 100 px. A cor do MASTER é {colors.texto}. O 0,0 dB fica no fim direito da escala (é o máximo).
 - **Faixa de monitoração** (`faixa-de-monitoracao`) — Faixa de {spacing.alvo-min}, {colors.sup-1}, {rounded.lg}. À esquerda, "Voltímetro" com o valor em {typography.valor-campo-linha} e "V"; à direita, um ponto de clip por saída e um da entrada, cada um com o nome escrito embaixo (L, R, Sub, Entrada). Ponto apagado em {colors.sup-2}; com clip, aceso em {colors.parar}. O mesmo ponto aceso aparece no topo da coluna do canal da mesa.
@@ -736,15 +842,16 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 - **Teclado** (`teclado`) — O teclado do sistema Android (numérico para valores, alfanumérico para senha e nomes). Os mocks só o ilustram.
 - **Controle de parâmetro** (`controle-de-parametro`) — Bloco {colors.sup-1}, {rounded.card}. **Recolhido** (padrão): só a linha de cima, com um indicador de expandir (⌄) ao lado do campo ([recolhido](imports/escolha-9-parametro-recolhido.png)). **Aberto** ([aberto](imports/escolha-8-parametros-abertos.png)): em cima, o nome ({typography.titulo-parametro}) com a faixa e o passo em {colors.apagado} ("10 Hz a 22 kHz · − e + de 1/12 de oitava") e o campo à direita; embaixo, − · fader horizontal · + e a escala. Frequências e Q usam escala logarítmica.
 - **Lista recolhida** (`lista-recolhida`) — Linha de {spacing.alvo-lista} com rótulo (TIPO DO FILTRO), descrição do escolhido ("Butterworth · 24 dB por oitava"), a **pílula** branca com o escolhido (BT24) e a seta. Aberta: fundo {colors.lista-aberta}, seta para cima, legenda "LR Linkwitz-Riley · BT Butterworth" e a grade de opções em botões {rounded.sm}, com o escolhido em branco.
-- **Avançado** (`avancado`) — Mesma linha da lista recolhida, sem pílula ("AVANÇADO" e o que há dentro). Aberto: fundo {colors.lista-aberta}, contorno {colors.campo-borda}.
+- **Avançado** (`avancado`) — Mesma linha da lista recolhida, sem pílula ("AVANÇADO" e o que há dentro). Aberto: fundo {colors.lista-aberta}, contorno {colors.campo-borda}. [ASSUMPTION] No Ajuste da JBL L e da JBL R, o equilíbrio L/R do Setup entra logo depois do atraso e da fase, como dois controles de parâmetro (ganho e limitador) na cor da saída, com o título dizendo o Setup ("Equilíbrio do Casa 2.1 · ganho").
 - **Par de botões** (`par-de-botoes`) — Dois botões lado a lado (Desl. · Lig.; 0° · 180°), o escolhido em branco. Em linha: 112 px de largura total e {spacing.alvo-min} de altura. Na Fase do Ajuste: largura inteira e {spacing.alvo-lista}.
 - **Botão OFF** (`botao-off`) — Botão de {spacing.alvo-min} ao lado do campo do limitador; branco quando o limitador está desligado.
 
 ### Botões e folhas
 
-- **Botão principal** (`botao-principal`) — {spacing.alvo-principal}, {colors.texto} com texto preto, {rounded.card}, {typography.botao-principal}: Salvar na memória N, Conectar, confirmação da folha.
-- **Botão secundário** (`botao-secundario`) — {spacing.alvo-lista}, só contorno {colors.campo-borda}, texto {colors.texto} em {typography.botao-secundario}: Cancelar, Deixar desligada. Variante pequena de 44 px ({colors.sup-2}, {typography.botao-pequeno}) para Trocar e Resetar; travada, fica sem fundo e com texto em {colors.apagado}.
-- **Folha de confirmação** (`folha-de-confirmacao`) — Sobe de baixo sobre o {colors.veu}: pega de 40 × 4 px, título em {typography.titulo-folha}, texto em {typography.corpo} com o que vai ser perdido em negrito branco, campo opcional (nome depois de salvar), botão principal e botão secundário.
+- **Botão principal** (`botao-principal`) — {spacing.alvo-principal}, {colors.texto} com texto preto, {rounded.card}, {typography.botao-principal}: Salvar, Conectar, Escolher o Setup, confirmação da folha.
+- **Botão secundário** (`botao-secundario`) — {spacing.alvo-lista}, só contorno {colors.campo-borda}, texto {colors.texto} em {typography.botao-secundario}: Cancelar, Deixar desligada. Variante pequena de 44 px ({colors.sup-2}, {typography.botao-pequeno}) para Trocar e Resetar; travada, fica sem fundo e com texto em {colors.apagado}. **Variante média** de {spacing.alvo-lista}, fundo {colors.sup-2}, contorno {colors.campo-borda} e {typography.botao-medio}: a ação do meio entre o botão branco e o contornado ("Criar Setup novo"). Na tela Setup em dúvida, cada botão leva uma **dica** embaixo, centrada, em {typography.detalhe} {colors.apoio}, com o que importa em peso 600 {colors.texto}.
+- **Folha de confirmação** (`folha-de-confirmacao`) — Sobe de baixo sobre o {colors.veu}: pega de 40 × 4 px, título em {typography.titulo-folha}, texto em {typography.corpo} com o que vai ser perdido em negrito branco, campo opcional (nome de preset ou de memória nova), botão principal e botão secundário.
+- **Folha do Salvar** (`folha-do-salvar`) — A folha de confirmação com as camadas ([mock da 3b, quadro 3](mockups/key-screens-3b.html)): título "Salvar o que mudou?", a frase "Cada mudança vai para o lugar dela.", o **bloco das camadas** e, no pé, **Salvar** (branco) e **Voltar** (contornado). O bloco das camadas é escuro, {colors.palco} sobre o {colors.sup-1} da folha, {rounded.card}, com uma linha por camada separada por {colors.sup-3}: o título em {typography.titulo-parametro} ("Calibração → Setup Casa 2.1", "Caráter → memória FILME", "15 bandas → preset Cinema" com o **selo HERDADO** ao lado) e, embaixo, cada mudança em {typography.apoio} {colors.apoio} com o antes e o depois ("Atraso do Sub: 80 → 85 cm"); o valor novo vai em peso 700 na cor da saída, e as mudanças que não são de uma saída (15 bandas) ficam todas em {colors.apoio}. A **escolha do preset** (e, com uma memória do aparelho em uso, a da calibração) vem em **opções de duas linhas**, uma embaixo da outra: {spacing.alvo-lista} de altura mínima, {rounded.lg}, contorno {colors.sup-2}, título em {typography.botao-medio} e explicação em {typography.detalhe}. A **escolhida** fica em branco, com o título preto e a explicação em {colors.sobre-escolhido-apoio}; a **travada** fica sem fundo, com um cadeado de 12 × 14 px e o título em {colors.apagado}, e a explicação em {colors.apoio} diz por quê ("Preset herdado não é sobrescrito."). O nome do preset novo vem numa linha {colors.sup-1}, {rounded.lg}: rótulo "Nome do preset novo" em {typography.detalhe} {colors.apoio} e o campo do nome à direita ({colors.campo}, {spacing.alvo-min}, valor em {typography.valor-campo-linha}), com o sublinhado de 2 px em {colors.texto}, porque o nome não é de uma saída. [ASSUMPTION] As diferenças de calibração com uma memória do aparelho em uso usam a mesma linha de mudança, no formato "Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho". A opção **Atualizar o Casa 2.1 com a do aparelho** explica o alcance, como a do preset: "Vale para todas as memórias do Casa 2.1." Os casos e as perguntas estão em EXPERIENCE.md › Salvar por camadas.
 
 ### IA
 
@@ -762,15 +869,18 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 
 ### Memórias e conexão
 
-- **Cartão de memória** (`cartao-de-memoria`) — {colors.sup-1}, {rounded.card-lg}: MEMÓRIA N, selo EM USO branco quando é a que toca, nome em {typography.memoria-lista}, botão Renomear contornado e Carregar · Salvar aqui em dois botões de 48 px.
-- **Selo herdado** (`selo-herdado`) — Pílula contornada "HERDADO" em {typography.rotulo}, nos cartões de memória e nos presets que vieram do conhecimento dos protótipos.
+- **Cartão de memória** (`cartao-de-memoria`) — Tela Memórias, memórias do celular do Setup em uso: {colors.sup-1}, {rounded.card-lg}; selo EM USO branco quando é a que toca, nome em {typography.memoria-lista}, o preset lembrado em {typography.detalhe} {colors.apoio} ("Preset: Rock"), **Aplicar** em botão secundário pequeno e **Renomear** · **Apagar** contornados. Apagar travado (memória em uso) fica sem fundo, com o texto em {colors.apagado}. No fim da lista, **Criar memória do som atual** em botão secundário. Na seção **DO APARELHO** ({typography.rotulo}), o mesmo cartão com "MEMÓRIA N DO APARELHO" em {typography.rotulo} {colors.apagado}, o nome lido e só **Carregar**; sem selo.
+- **Linha de escolha** (`linha-de-escolha`) — [ASSUMPTION] A linha das listas que sobem como folha: lista de memórias ("…"), folha de presets (chip de preset) e lista de Setups. Linhas de {spacing.alvo-lista} num grupo {colors.sup-1}, separadas por {colors.sup-3}: nome em {typography.linha-titulo}, detalhe embaixo em {typography.detalhe} {colors.apoio} ("Preset: Rock", "Memória 2 do aparelho") e, à direita, o **selo HERDADO** quando o item é herdado. A que está em uso fica em branco, com o nome preto e o detalhe em {colors.sobre-escolhido-apoio}. Travada: nome em {colors.apagado}. Seções com rótulo em {typography.rotulo} {colors.apagado} (DO APARELHO).
+- **Selo herdado** (`selo-herdado`) — Pílula contornada "HERDADO" de 22 px de altura, contorno {colors.campo-borda}, texto {colors.apoio} em {typography.rotulo}, com a área de toque estendida a {spacing.alvo-min}. Marca o Setup Casa 2.1, a memória FILME e o preset Cinema, que vieram do conhecimento dos protótipos, nas telas Setups, Memórias e Presets e na folha do Salvar. **Não aparece no Início.**
 - **Cartão de conexão** (`cartao-de-conexao`) — {colors.sup-1}: rótulo PROCESSADOR, "Desconectado" em {typography.estado-hero}, frase de ajuda e o botão principal Conectar. As saídas embaixo ficam vazias: barra lateral a 40 %, nome em {colors.apoio} e "—" no lugar do valor.
 - **Caixas da senha** (`caixas-da-senha`) — Quatro caixas de 64 px, fundo {colors.campo}, sublinhado em {colors.apagado}; a caixa atual com contorno branco de 2 px; os caracteres viram • na hora.
+- **Faixa do som mutado** (`faixa-som-mutado`) — Na tela Setup em dúvida ([mock da 3b, quadro 2](mockups/key-screens-3b.html)), logo abaixo do título: faixa de {spacing.alvo-lista} de altura mínima, {colors.sup-1}, contorno {colors.campo-borda}, {rounded.lg}; ícone de alto-falante cortado em traço {colors.texto} e "**Som mutado** até você escolher." em {typography.corpo} {colors.apoio}, com "Som mutado" em peso 800 {colors.texto}. Não é vermelha: mutar é proteção, não erro.
+- **Lista do que não bate** (`lista-o-que-nao-bate`) — Embaixo do rótulo O QUE NÃO BATE (com "lido agora no aparelho" à direita em {typography.detalhe} {colors.apoio}): grupo {colors.sup-1}, {rounded.card}, linhas de 60 px de altura mínima separadas por {colors.sup-3}. Cada linha tem a **barra lateral de 4 px na cor da saída** (como o cartão de saída), o nome do ajuste em {typography.linha-titulo} ("Atraso do Sub") e, embaixo, em {typography.apoio} {colors.apoio}, os dois valores em peso 700 {colors.texto} ("**80 cm** no Casa 2.1, **0 cm** no aparelho"). Só leitura. [ASSUMPTION] Diferença que não é de uma saída só leva a barra em {colors.apoio}.
 
 ### Player
 
 - **Linha da playlist** (`linha-da-playlist`) — Linha de {spacing.alvo-lista}: nome da faixa em {typography.linha-titulo}, duração e pasta em {typography.detalhe}. A faixa que toca tem a marca branca de 4 px na borda e o nome em peso 700. Arquivo que sumiu: nome em {colors.apagado} e "Arquivo não encontrado". No modo Editar, cada linha ganha a alça de arrastar (≡) à direita e o botão remover (−) de 44 px à esquerda.
-- **Controles do player** (`controles-do-player`) — Fixos embaixo: nome da faixa atual, botão tocar/pausar redondo de {spacing.alvo-parar} em branco com ícone preto e o botão próxima de {spacing.alvo-passo} em {colors.sup-2}. Acima, a linha da memória: "Playlist da FILME".
+- **Controles do player** (`controles-do-player`) — Fixos embaixo: nome da faixa atual, botão tocar/pausar redondo de {spacing.alvo-parar} em branco com ícone preto e o botão próxima de {spacing.alvo-passo} em {colors.sup-2}. Acima, a linha da memória em uso: "Playlist da FILME". Sem abas de memória.
 
 ### Avisos
 

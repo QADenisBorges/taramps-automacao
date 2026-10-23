@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telas da 3b · BGS Controle</title>
+<style>
+/*
+  TELAS DA HISTÓRIA 3b · BGS CONTROLE (23/10) · Setup e memórias no celular
+  Mesma família de mockups/direction-sintese-v2.html e mockups/key-screens.html. Cores e tipos do
+  frontmatter de DESIGN.md (inclusive o --apagado #85858A, que subiu para passar 4,5:1).
+
+  Seções do spine que regem estas telas (o spine ainda é o de antes da 3b; estas telas entram no Update)
+  - EXPERIENCE.md › Information Architecture (Início, barra Início · Mesa · Áudio · Player)
+  - EXPERIENCE.md › Component Patterns › Navegação, Memória (botões de memória, selo herdado), Folhas e avisos, Conexão
+  - EXPERIENCE.md › State Patterns (conectar, conferência do Setup) e Key Flows (fluxos 1 e "Levar o processador para o carro")
+  - EXPERIENCE.md › Accessibility Floor (4,5:1, 11 px, 44 px)
+  - DESIGN.md › Components › Navegação e topo, Início, Botões e folhas, Memórias e conexão, Controles de valor (giratório)
+
+  Decisões do .memlog.md (a partir de "Início da revisão da história 3b") que cada tela mostra
+  1 Início: Setup no cabeçalho junto da pílula ("Casa 2.1 ›", tocável, volta à conferência);
+    chip "Preset: Cinema ▾" embaixo do nome; 3 botões das memórias usadas por último, fixos no lugar,
+    mais "…" para a lista; memórias do aparelho só na lista; barra com Player.
+  2 Setup em dúvida: som mutado; lista do que não bate no topo; Escolher o Setup (branco),
+    Criar Setup novo, Seguir sem Setup (contornado) com as memórias do celular travadas.
+  3 Folha do Salvar: um só Salvar; cada mudança vai para a camada dona dela (calibração → Setup,
+    caráter → memória, 15 bandas → preset); preset herdado não é sobrescrito, só "criar preset novo".
+
+  Regras da família: fino é para ler, negrito é para mexer; branco é escolha feita; a cor da saída é o
+  que está sendo mexido; folha que sobe de baixo, botão branco faz e o contornado desiste.
+
+  Cores (DESIGN.md › colors)
+  --palco #000000 · --sup-1 #1C1C1E · --sup-2 #2C2C2E · --sup-3 #232325 · --lista-aberta #151517
+  --texto #F5F5F7 · --apoio #A1A1A6 · --apagado #85858A · --sobre-escolhido-apoio #55555A
+  --l #7EAEFF · --r #C495FF · --sub #FFCD94 · --ok #30D158 · --parar #FF453A
+  --capa-a #3C3C41 · --capa-b #26262A · --capa-borda #4C4C52 · --campo #0B0B0C · --campo-borda #3A3A3D
+  --veu #000000A8
+  Página de apresentação: #111113 (fundo), #E5E5EA (texto), #C7C7CC (lista), #3A3A3C (contorno das amostras)
+
+  Tipo: Roboto variável (200 e 800) no app; aqui a pilha da família, que no celular cai em Roboto.
+  Nenhum texto abaixo de 11 px. Alvos: 44 px (Setup, chip do preset, botões de memória, "…", selo com
+  área de toque estendida), 48 px (‹), 52 px (opções da folha, botão contornado), 56 px (botão branco).
+*/
+:root{
+  --palco:#000000; --sup-1:#1C1C1E; --sup-2:#2C2C2E; --sup-3:#232325; --lista-aberta:#151517;
+  --texto:#F5F5F7; --apoio:#A1A1A6; --apagado:#85858A; --sobre-escolhido-apoio:#55555A;
+  --l:#7EAEFF; --r:#C495FF; --sub:#FFCD94;
+  --ok:#30D158; --parar:#FF453A;
+  --capa-a:#3C3C41; --capa-b:#26262A; --capa-borda:#4C4C52;
+  --campo:#0B0B0C; --campo-borda:#3A3A3D;
+  --veu:#000000A8;
+  --fonte:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111113;color:#E5E5EA;font-family:var(--fonte);padding:40px 32px 64px}
+
+/* Apresentação */
+.intro{max-width:1240px;margin:0 auto 36px}
+.intro .tag{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--apoio)}
+.intro h1{font-weight:200;font-size:46px;letter-spacing:-.02em;margin:6px 0 14px;color:var(--texto)}
+.intro h1 b{font-weight:800}
+.porque{max-width:1180px;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;color:#C7C7CC}
+.porque b{color:var(--texto);font-weight:600}
+.palco{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start;max-width:2200px;margin:0 auto}
+figure{display:flex;flex-direction:column;gap:12px;align-items:center}
+figcaption{font-size:13px;color:var(--apoio);letter-spacing:.02em;text-align:center;max-width:390px;line-height:1.5}
+figcaption b{color:var(--texto);font-weight:600}
+.ilus{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--apagado);border:1px solid var(--sup-2);border-radius:6px;padding:1px 5px;vertical-align:middle;white-space:nowrap}
+
+/* Moldura do celular (igual à v2) */
+.cel{width:390px;height:844px;background:var(--palco);border-radius:46px;border:10px solid #2A2A2D;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;display:flex;flex-direction:column;
+  font-variant-numeric:tabular-nums;color:var(--texto);position:relative}
+.barra{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;color:var(--apoio)}
+.tela{flex:1;min-height:0;padding:6px 16px 12px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.tela > *{flex:none}
+
+/* Topo do app */
+.topo{display:flex;justify-content:space-between;align-items:center;height:44px;gap:8px}
+.marca{font-size:22px;font-weight:200;letter-spacing:-.01em;white-space:nowrap}
+.marca b{font-weight:600;letter-spacing:.02em}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--apoio);background:var(--sup-1);
+  border:1px solid var(--sup-2);border-radius:999px;padding:6px 11px;white-space:nowrap}
+.ponto{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.engrenagem{width:44px;height:44px;border-radius:14px;background:var(--sup-1);display:flex;align-items:center;justify-content:center;color:var(--texto);flex:none}
+.rotulo{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--apagado)}
+.cabeca{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px}
+.cabeca .ex{font-size:12px;color:var(--apoio)}
+
+/* 1 · INÍCIO: contexto do aparelho (Setup tocável + pílula de status) */
+.contexto{display:flex;justify-content:space-between;align-items:center;gap:8px;height:44px}
+.setup{height:44px;display:inline-flex;align-items:center;gap:7px;padding:0 12px 0 14px;border-radius:12px;
+  background:var(--sup-1);border:1px solid var(--campo-borda);white-space:nowrap}
+.setup span{font-size:12px;color:var(--apoio)}
+.setup b{font-size:15px;font-weight:800;color:var(--texto)}
+.setup i{font-style:normal;font-size:20px;font-weight:600;color:var(--apagado);margin-left:2px;line-height:1}
+
+/* Cartão MEMÓRIA EM USO (v2) com o chip do preset */
+.memoria{background:var(--sup-1);border-radius:20px;padding:14px 16px 12px 18px;position:relative;overflow:hidden}
+.memoria::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;border-radius:50%;
+  background:conic-gradient(from 200deg,var(--l),var(--r),var(--sub),var(--l));
+  -webkit-mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);
+  mask:radial-gradient(circle,transparent 62%,#000 63%,#000 66%,transparent 67%);opacity:.85;pointer-events:none}
+.memoria .nome{font-size:60px;font-weight:200;letter-spacing:-.03em;line-height:1;margin:4px 0 7px}
+.preset{position:relative;z-index:1;height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 12px 0 14px;
+  border-radius:999px;border:1px solid var(--campo-borda);background:var(--palco);font-size:13px;color:var(--apoio);white-space:nowrap}
+.preset b{font-weight:800;color:var(--texto)}
+.preset svg{color:var(--apoio);margin-left:2px}
+.mems{display:grid;grid-template-columns:1.45fr 1fr 1fr 44px;gap:6px;margin-top:10px;position:relative;z-index:1}
+.mems span{height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;border-radius:12px;border:1px solid var(--sup-2);color:var(--apoio);white-space:nowrap}
+.mems span.on{background:var(--texto);color:#000;border-color:var(--texto);font-weight:600}
+.mems span.mais{font-size:20px;font-weight:800;color:var(--texto);letter-spacing:.04em;padding-bottom:8px}
+
+/* Cartão de saída (v2) */
+.saidas{display:flex;flex-direction:column;gap:8px}
+.saida{background:var(--sup-1);border-radius:18px;padding:10px 14px 9px 18px;display:grid;
+  grid-template-columns:1fr 76px;gap:1px 10px;position:relative}
+.saida::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--cor)}
+.saida .n{font-size:16px;font-weight:600;white-space:nowrap}
+.saida .n small{font-size:12px;font-weight:400;color:var(--apoio);margin-left:6px}
+.saida .g{font-size:32px;font-weight:200;letter-spacing:-.02em;line-height:1.1}
+.saida .g small{font-size:13px;color:var(--apoio);margin-left:2px}
+.saida .r{font-size:12px;color:var(--apoio);line-height:1.5;white-space:nowrap}
+.saida svg{grid-row:1 / span 2;grid-column:2;align-self:center}
+.saida .aj{grid-column:2;grid-row:3;justify-self:end;align-self:end;font-size:13px;color:var(--cor);font-weight:600;white-space:nowrap}
+
+/* Barra de baixo: Início · Mesa · Áudio · Player */
+.nav{flex:none;height:72px;padding:6px 16px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;border-top:1px solid var(--sup-3)}
+.nav span{border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600;color:var(--apoio);white-space:nowrap}
+.nav span svg{flex:none}
+.nav span.on{background:var(--texto);color:#000}
+
+/* Botões (DESIGN › Botões e folhas) */
+.principal{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:none}
+.medio{height:52px;border-radius:18px;background:var(--sup-2);border:1px solid var(--campo-borda);color:var(--texto);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex:none}
+.secundario{height:52px;border-radius:18px;border:1px solid var(--campo-borda);color:var(--texto);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none}
+
+/* 2 · SETUP EM DÚVIDA */
+.titulo{display:flex;flex-direction:column;gap:4px;padding:2px 2px 0}
+.titulo h2{font-size:28px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.titulo small{font-size:13px;color:var(--apoio);line-height:1.45}
+.mudo{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 14px;border-radius:14px;background:var(--sup-1);border:1px solid var(--campo-borda)}
+.mudo svg{flex:none;color:var(--texto)}
+.mudo span{font-size:14px;color:var(--apoio);line-height:1.4}
+.mudo b{color:var(--texto);font-weight:800}
+.grupo{background:var(--sup-1);border-radius:18px;padding:0 14px 0 18px}
+.dif{min-height:60px;display:flex;flex-direction:column;justify-content:center;gap:3px;border-top:1px solid var(--sup-3);padding:9px 0;position:relative}
+.dif:first-child{border-top:0}
+.dif::before{content:"";position:absolute;left:-18px;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--cor)}
+.dif b{font-size:15px;font-weight:600}
+.dif span{font-size:13px;color:var(--apoio);line-height:1.4}
+.dif span em{font-style:normal;font-weight:700;color:var(--texto)}
+.espaco{flex:1 1 auto !important}
+.decisao{display:flex;flex-direction:column;gap:6px}
+.dica{font-size:12px;color:var(--apoio);line-height:1.45;padding:0 6px 6px;text-align:center}
+.dica b{color:var(--texto);font-weight:600}
+.dica:last-child{padding-bottom:0}
+
+/* 3 · AJUSTE DO SUB atrás da folha (cabeçalho e giratório da v2) */
+.fixo-topo{flex:none;padding:6px 16px 10px;border-bottom:1px solid var(--sup-3)}
+.cab{display:flex;align-items:center;gap:12px;height:48px}
+.cab .voltar{width:48px;height:48px;border-radius:16px;background:var(--sup-1);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--texto);flex:none}
+.cab h2{font-size:30px;font-weight:800;letter-spacing:-.01em;color:var(--sub);line-height:1}
+.cab h2 small{display:block;font-size:12px;font-weight:600;color:var(--apoio);letter-spacing:0;margin-top:4px}
+.fixo-baixo{flex:none;padding:10px 16px 16px;border-top:1px solid var(--sup-3);background:var(--palco)}
+.botao-giro{align-self:center;width:226px;height:226px;border-radius:50%;position:relative;
+  background:conic-gradient(from 225deg,var(--sub) 0deg 234deg,var(--sup-2) 234deg 270deg,transparent 270deg 360deg)}
+.botao-giro::before{content:"";position:absolute;inset:16px;border-radius:50%;background:var(--palco)}
+.botao-giro .disco{position:absolute;inset:30px;border-radius:50%;background:radial-gradient(circle at 40% 30%,var(--capa-a),var(--sup-1) 70%);border:1px solid var(--capa-borda);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(0,0,0,.6)}
+.botao-giro .disco small{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--apoio)}
+.botao-giro .disco b{font-size:44px;font-weight:800;letter-spacing:-.02em;line-height:1.05;border-bottom:2px dashed rgba(255,205,148,.55);padding:0 4px}
+.botao-giro .disco span{font-size:14px;font-weight:700;color:var(--apoio);margin-top:2px}
+.botao-giro .marca-giro{position:absolute;left:50%;top:50%;width:4px;height:110px;margin-left:-2px;transform-origin:50% 0;transform:rotate(279deg)}
+.botao-giro .marca-giro::after{content:"";position:absolute;bottom:0;left:-3px;width:10px;height:10px;border-radius:50%;background:var(--texto);box-shadow:0 0 10px var(--sub)}
+.passo{display:grid;grid-template-columns:72px 1fr 72px;gap:10px;align-items:center}
+.passo .b{height:72px;border-radius:22px;background:var(--sup-2);border:2px solid var(--campo-borda);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:500}
+.passo .meio{text-align:center;font-size:12px;font-weight:600;color:var(--apoio);line-height:1.4}
+.salvar{height:56px;border-radius:18px;background:var(--texto);color:#000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+
+/* Folha de confirmação (key-screens 4b/5b) */
+.veu{position:absolute;inset:0;background:var(--veu);z-index:4}
+.folha{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--sup-1);border-radius:26px 26px 0 0;padding:10px 16px 18px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--sup-2)}
+.folha .pega{width:40px;height:4px;border-radius:2px;background:var(--campo-borda);align-self:center}
+.folha h3{font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+.folha p{font-size:14px;color:var(--apoio);line-height:1.5}
+.folha p b{color:var(--texto);font-weight:600}
+/* Camadas: uma linha por destino, dentro de um bloco no preto */
+.camadas{background:var(--palco);border-radius:18px;padding:0 12px}
+.camada{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid var(--sup-3)}
+.camada:first-child{border-top:0}
+.camada > b{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.camada > span{font-size:13px;color:var(--apoio);line-height:1.4}
+.camada > span em{font-style:normal;font-weight:700;color:var(--sub)}
+/* Selo HERDADO (DESIGN › selo-herdado): pílula contornada, rótulo; área de toque estendida a 44 px */
+.selo{position:relative;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--campo-borda);
+  font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--apoio)}
+.selo::before{content:"";position:absolute;left:-6px;right:-6px;top:-11px;bottom:-11px}
+/* Opções do preset: escolhida em branco; travada sem fundo, com cadeado */
+.opcoes{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.opcao{min-height:52px;border-radius:14px;border:1px solid var(--sup-2);padding:8px 12px;display:flex;align-items:center;gap:10px}
+.opcao .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.opcao .tx b{font-size:15px;font-weight:800}
+.opcao .tx span{font-size:12px;line-height:1.4}
+.opcao.on{background:var(--texto);border-color:var(--texto);color:#000}
+.opcao.on .tx span{color:var(--sobre-escolhido-apoio)}
+.opcao.travada .tx b{color:var(--apagado)}
+.opcao.travada .tx span{color:var(--apoio)}
+.opcao svg{flex:none}
+.campo-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--sup-1);border-radius:14px;padding:8px 8px 8px 12px}
+.campo-linha span{font-size:12px;color:var(--apoio);line-height:1.35}
+.campo{height:44px;min-width:0;width:170px;padding:0 12px;border-radius:12px;background:var(--campo);border:1px solid var(--campo-borda);
+  border-bottom:2px solid var(--texto);display:flex;align-items:center;justify-content:flex-start;
+  font-size:17px;font-weight:700;white-space:nowrap;color:var(--texto)}
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="tag">Telas-chave · BGS Controle · história 3b · 23/10</div>
+  <h1><b>BGS</b> Controle · Setup e memórias no celular</h1>
+  <ul class="porque">
+    <li><b>Setup é contexto do aparelho:</b> fica no cabeçalho, junto da pílula de status, e só muda passando pela conferência (como numa nova conexão).</li>
+    <li><b>O preset pertence à memória:</b> aparece como chip dentro do cartão da memória em uso e volta junto com ela (FILME volta com Cinema).</li>
+    <li><b>Três botões de memória que não mudam de lugar:</b> as memórias do celular usadas por último neste Setup; as outras e as do aparelho ficam na lista do "…".</li>
+    <li><b>Um só Salvar:</b> cada mudança vai para a camada dona dela, e a folha diz o que vai para onde.</li>
+  </ul>
+</header>
+
+<main class="palco">
+
+<!-- 1 · INÍCIO NOVO, CONECTADO, SETUP CASA 2.1 -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:10</span><span>BT · 78%</span></div>
+  <div class="tela" style="padding-top:2px;padding-bottom:10px;gap:10px">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="engrenagem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8.2" stroke-width="3.4" stroke-dasharray="3.22 3.22"/><circle cx="12" cy="12" r="6.2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" stroke-width="1.8"/></svg></span>
+    </div>
+    <div class="contexto" style="margin-top:-8px">
+      <span class="setup"><span>Setup</span><b>Casa 2.1</b><i>›</i></span>
+      <span class="chip"><span class="ponto"></span>Conectado · R003</span>
+    </div>
+
+    <section class="memoria">
+      <div class="rotulo">Memória em uso</div>
+      <div class="nome">FILME</div>
+      <span class="preset">Preset: <b>Cinema</b><svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 5.5 7 9.5l4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <div class="mems"><span>MUSICA ORIG</span><span class="on">FILME</span><span>SPL</span><span class="mais">…</span></div>
+    </section>
+
+    <div class="cabeca"><span class="rotulo">Saídas</span><span class="ex">Toque para ajustar</span></div>
+    <div class="saidas">
+      <article class="saida" style="--cor:#7EAEFF">
+        <div class="n">JBL L<small>Saída 1 · rota B</small></div>
+        <div class="g">+10,0<small>dB</small></div>
+        <div class="r">PA 150 Hz LR24 · PB OFF<br>Limitador −15,0 dB · 0 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 16 36, 19 10, 26 7 L 74 7" fill="none" stroke="#7EAEFF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#C495FF">
+        <div class="n">JBL R<small>Saída 2 · rota A</small></div>
+        <div class="g">+7,0<small>dB</small></div>
+        <div class="r">PA 150 Hz LR24 · PB OFF<br>Limitador −18,0 dB · 100 cm · 0°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 36 C 16 36, 19 10, 26 7 L 74 7" fill="none" stroke="#C495FF" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+      <article class="saida" style="--cor:#FFCD94">
+        <div class="n">Sub<small>Saídas 3+4 em ponte · A+B</small></div>
+        <div class="g">+6,0<small>dB</small></div>
+        <div class="r">PA 40 Hz BT24 · PB 150 Hz LR24<br>Limitador −12,0 dB · 80 cm · 180°</div>
+        <svg width="76" height="40" viewBox="0 0 76 40"><path d="M2 34 C 5 18, 7 9, 12 8 L 18 8 C 23 8, 26 27, 32 36" fill="none" stroke="#FFCD94" stroke-width="2"/><line x1="2" y1="37" x2="74" y2="37" stroke="#2C2C2E"/></svg>
+        <div class="aj">Ajustar ›</div>
+      </article>
+    </div>
+  </div>
+  <nav class="nav">
+    <span class="on"><svg viewBox="0 0 16 16" width="16" height="16"><path d="M2 7.5 8 2.5l6 5V14H2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Início</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="2" x2="3" y2="14"/><line x1="8" y1="2" x2="8" y2="14"/><line x1="13" y1="2" x2="13" y2="14"/></g><g fill="currentColor"><rect x="1" y="5" width="4" height="3" rx="1"/><rect x="6" y="9" width="4" height="3" rx="1"/><rect x="11" y="4" width="4" height="3" rx="1"/></g></svg>Mesa</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="1.5" width="5" height="5" rx="1.5"/><rect x="1.5" y="9.5" width="5" height="5" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.5"/></svg>Áudio</span>
+    <span><svg viewBox="0 0 16 16" width="16" height="16"><path d="M4.5 2.5v11l9-5.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Player</span>
+  </nav>
+</div>
+<figcaption><b>1 · Início com Setup</b> · o Setup "Casa 2.1 ›" fica junto da pílula de status; tocar nele volta à conferência do Setup. Embaixo do nome FILME, o chip "Preset: Cinema ▾" abre a lista de presets. Os três botões de memória não mudam de lugar; o "…" abre a lista com as outras e com as do aparelho. Saídas com os valores da FILME de 18/10.</figcaption>
+</figure>
+
+<!-- 2 · SETUP EM DÚVIDA AO CONECTAR -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:04</span><span>BT · 78%</span></div>
+  <div class="tela" style="padding-top:2px;padding-bottom:18px">
+    <div class="topo">
+      <div class="marca"><b>BGS</b> Controle</div>
+      <span class="chip"><span class="ponto"></span>Conectado · R003</span>
+    </div>
+    <div class="titulo">
+      <h2>Setup em dúvida</h2>
+      <small>O aparelho não está como o Casa 2.1 deixou da última vez.</small>
+    </div>
+    <div class="mudo">
+      <svg width="26" height="22" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h4l5-4v14l-5-4H2z"/><line x1="16" y1="7.5" x2="23" y2="14.5"/><line x1="23" y1="7.5" x2="16" y2="14.5"/></svg>
+      <span><b>Som mutado</b> até você escolher.</span>
+    </div>
+
+    <div class="cabeca"><span class="rotulo">O que não bate</span><span class="ex">lido agora no aparelho</span></div>
+    <div class="grupo">
+      <div class="dif" style="--cor:#FFCD94"><b>Atraso do Sub</b><span><em>80 cm</em> no Casa 2.1, <em>0 cm</em> no aparelho</span></div>
+      <div class="dif" style="--cor:#FFCD94"><b>Corte do Sub</b><span><em>BT24 40 Hz</em> no Casa 2.1, <em>OFF</em> no aparelho</span></div>
+    </div>
+
+    <div class="espaco"></div>
+
+    <div class="decisao">
+      <div class="principal">Escolher o Setup</div>
+      <p class="dica">Aplica a calibração e a memória ativa dele, depois relê.</p>
+      <div class="medio">Criar Setup novo</div>
+      <p class="dica">Guarda a calibração que está no aparelho. Pede o nome.</p>
+      <div class="secundario">Seguir sem Setup</div>
+      <p class="dica">Desmuta e deixa o aparelho como está. <b>As memórias do celular ficam travadas até você escolher um Setup.</b></p>
+    </div>
+  </div>
+</div>
+<figcaption><b>2 · Setup em dúvida</b> · ao conectar, o que foi lido não bate com a última aplicação do Casa 2.1. O som fica mutado e a lista do que não bate vem no topo, com o Sub na cor dele. O botão branco escolhe o Setup; o contornado segue sem Setup e trava as memórias do celular. <span class="ilus">diferenças ilustrativas</span></figcaption>
+</figure>
+
+<!-- 3 · FOLHA DO SALVAR SOBRE O AJUSTE DO SUB -->
+<figure>
+<div class="cel">
+  <div class="barra"><span>21:22</span><span>BT · 76%</span></div>
+  <div class="fixo-topo">
+    <div class="cab">
+      <span class="voltar">‹</span>
+      <h2>SUB<small>Saídas 3+4 em ponte · rota A+B · FILME</small></h2>
+    </div>
+  </div>
+  <div class="tela" style="padding-top:14px">
+    <div class="botao-giro">
+      <i class="marca-giro"></i>
+      <div class="disco"><small>GANHO</small><b>+7,0</b><span>dB</span></div>
+    </div>
+    <div class="passo">
+      <span class="b">−</span>
+      <span class="meio">Gire o botão<br>ou toque em − e +</span>
+      <span class="b">+</span>
+    </div>
+  </div>
+  <div class="fixo-baixo"><div class="salvar">Salvar</div></div>
+
+  <div class="veu"></div>
+  <div class="folha">
+    <i class="pega"></i>
+    <h3>Salvar o que mudou?</h3>
+    <p>Cada mudança vai para o lugar dela.</p>
+    <div class="camadas">
+      <div class="camada">
+        <b>Calibração → Setup Casa 2.1</b>
+        <span>Atraso do Sub: 80 → <em>85 cm</em></span>
+      </div>
+      <div class="camada">
+        <b>Caráter → memória FILME</b>
+        <span>Ganho do Sub: +6,0 → <em>+7,0 dB</em></span>
+      </div>
+      <div class="camada">
+        <b>15 bandas → preset Cinema <span class="selo">HERDADO</span></b>
+        <span>160 Hz: +1,0 → +2,0 dB</span>
+        <div class="opcoes">
+          <div class="opcao travada">
+            <svg width="12" height="14" viewBox="0 0 12 14"><rect x="1" y="6" width="10" height="7" rx="2" fill="#85858A"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="#85858A" stroke-width="1.6"/></svg>
+            <div class="tx"><b>Atualizar o Cinema</b><span>Valeria para toda memória que usa ele. Preset herdado não é sobrescrito.</span></div>
+          </div>
+          <div class="opcao on">
+            <div class="tx"><b>Criar preset novo</b><span>Com nome. O Cinema fica como está.</span></div>
+          </div>
+          <div class="campo-linha"><span>Nome do<br>preset novo</span><span class="campo">Cinema 2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="principal">Salvar</div>
+    <div class="secundario">Voltar</div>
+  </div>
+</div>
+<figcaption><b>3 · Salvar por camada</b> · um só Salvar, sobre o Ajuste do Sub. A folha diz o que vai para onde: o atraso para o Setup, o ganho para a memória e as 15 bandas para o preset. Como o Cinema é herdado, "Atualizar" vem travado com o motivo e "Criar preset novo" já vem escolhido, com o campo do nome. <span class="ilus">mudanças e nome ilustrativos</span></figcaption>
+</figure>
+
+</main>
+</body>
+</html>
