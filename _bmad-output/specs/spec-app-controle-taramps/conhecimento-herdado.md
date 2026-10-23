@@ -15,6 +15,19 @@ Fica com os POCs só o conhecimento. Os arquivos citados aqui são a fonte, e o 
 - Sala: L a 3,20 m, sub a 2,40 m, R a 2,20 m, com 1,60 m entre as JBL. O ouvinte fica 0,9 m à direita da R.
 - Os limites atuais estão em `estado/guardiao.json`. Eles são **provisórios**: não são regra nem referência, e quem decide os valores é o Denis.
 
+## Os equipamentos do Setup "Casa 2.1" (CAP-16)
+
+Decisão do Denis de 23/10/2026: o que não se sabe fica genérico.
+
+| Equipamento | Grupo | Ligação |
+|---|---|---|
+| "Módulo genérico" (amplificador) | 2 | Entradas alimentadas pelo CH1, CH2, CH3 e CH4; ×19,6 nos canais das JBL e ×40 no bridge do sub |
+| JBL L: JBL 4TRMS80, 3,6 Ω, passa-alta mínimo de 100 Hz a 24 dB/oit | alto-falante passivo | Saída do módulo alimentada pelo CH1 |
+| JBL R: JBL 4TRMS80, 3,6 Ω, passa-alta mínimo de 100 Hz a 24 dB/oit | alto-falante passivo | Saída do módulo alimentada pelo CH2 |
+| "Subwoofer genérico" | alto-falante passivo | Bridge do módulo, alimentado pelo CH3 e pelo CH4 |
+
+O Link 3–4 do Casa 2.1 fica ligado: o CH3 e o CH4 alimentam o mesmo bridge e precisam ficar iguais. Na tela, o Sub é uma saída só.
+
 ## As 3 memórias do aparelho (índice em `estado/memorias.json`)
 
 O app só lê os nomes e carrega estas memórias. Quem salva e renomeia é o app da Taramps. As notas abaixo valem pela posição.
@@ -36,7 +49,7 @@ A leitura `estado/leituras/2026-10-18_2145.json` entra no app dividida assim:
 
 | Camada | Valores |
 |---|---|
-| **Setup "Casa 2.1"** (calibração) | Atrasos L 0, R 100 cm, sub 80 cm; fase do sub 180°; JBL com corte LR24 em 150 Hz; sub com passa-alta BT24 em 40 Hz e passa-baixa LR24 em 150 Hz; rotas 1 = B e 2 = A; equilíbrio: R −3 dB no ganho e no limiter |
+| **Setup "Casa 2.1"** (calibração) | Atrasos L 0, R 100 cm, sub 80 cm; fase do sub 180°; JBL com corte LR24 em 150 Hz; sub com passa-alta BT24 em 40 Hz e passa-baixa LR24 em 150 Hz; rotas 1 = B e 2 = A; Link 3–4 ligado; equilíbrio da saída JBL R (CH2): −3 dB no ganho e no limiter |
 | **Memória FILME** (caráter) | Ganhos L +10, sub +6; limiter JBL −15, sub −12; ataque 50 ms, liberação 200 ms; EQ de saída JBL 2 kHz +2,5 (Q 0,7) e sub 45 Hz +3 (Q 0,7) |
 | **Preset "Cinema"** (15 bandas) | 160 Hz +1, 400 Hz −1, 4 kHz −1, 6,3 kHz −2, 10 kHz +2, 16 kHz +2; o resto 0 |
 

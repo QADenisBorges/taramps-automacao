@@ -157,17 +157,65 @@
     memória lembra o último preset e o traz ao ser aplicada; ao salvar 15
     bandas mexidas, atualizar o preset ou criar um novo (o herdado só
     gera novo); o Player mostra só a playlist da memória em uso.
+# Proposta de mudança de 23/10/2026 (planning-artifacts/sprint-change-proposal-2026-10-23-equipamentos.md):
+# o Setup ganha equipamentos e o modelo de ligação (canal → uma ou mais entradas
+# de linha; quatro grupos; bridge do módulo); as saídas do app vêm do Setup; entra
+# o esquema do Setup em 2D com sensação de 3D. Ordem: 8e → 10 → 10b → 11 → 12.
+- id: "8e"
+  title: Equipamentos, ligações e saídas do Setup
+  description: >-
+    Os equipamentos do Setup (quatro grupos, categorias abertas, função
+    acústica, dados técnicos opcionais e "genérico"); as ligações (cada canal
+    do processador para uma ou mais entradas de linha, repasse do grupo 3,
+    canais e bridge do módulo, alto-falantes passivos nas saídas); as saídas
+    do app derivadas do Setup (um canal, ou um par vizinho com link, que
+    escreve nos dois), com nome e cor; o equilíbrio por saída no lugar do
+    equilíbrio L/R; o Casa 2.1 herdado com os equipamentos e o Link 3–4
+    ligado; a migração do setups.json (CAP-3, CAP-16).
+  invoke_dev_with: >-
+    Modelo de ligação na seção 2 da proposta de 23/10 (equipamentos) e na
+    seção "Equipamentos e saídas" do EXPERIENCE.md; equipamentos do Casa 2.1
+    em conhecimento-herdado.md. Reaproveita o Setup, o GerenteSetups, as
+    Camadas e o LinkCanais da 8c; nada é desfeito. Inclui o ViewModel da
+    lista e da folha de equipamento. Testado contra o ProcessadorSimulado.
 - id: "10"
-  title: Telas, parte 1 — leitura, ajustes, link, Setups e memórias
+  title: Telas, parte 1 — leitura, ajustes, link, Setups, equipamentos e memórias
   description: >-
     XAML e navegação das telas de leitura e de ajuste por canal e globais,
-    link, Setups e memórias, seguindo o DESIGN.md e o EXPERIENCE.md (CAP-2,
-    CAP-3, CAP-4, CAP-14, CAP-16).
+    link, Setups (com a tela do Setup e a folha de equipamento) e memórias,
+    seguindo o DESIGN.md e o EXPERIENCE.md; as abas, os cartões e os faders
+    vêm das saídas do Setup (CAP-2, CAP-3, CAP-4, CAP-14, CAP-16).
+  invoke_dev_with: >-
+    Retoma a tentativa salva em
+    _bmad-output/implementation-artifacts/historia-10-tentativa-1.patch
+    (aplica limpo sobre a 8d; a spec bloqueada dela está em
+    stories/arquivo/): aplicar o patch e trocar as saídas fixas (Saidas.cs)
+    pelas saídas do Setup da 8e, e corrigir os achados "patch" do triage log
+    da spec arquivada. O lugar do esquema na tela do Setup fica reservado
+    para a 10b. Sem celular no adb, a conferência visual fica pendente.
+- id: "10b"
+  title: Esquema do Setup em 2D com sensação de 3D
+  description: >-
+    O esquema do Setup na tela Setup: desenho isométrico com profundidade e
+    sombra no GraphicsView do MAUI; a forma de cada categoria gerada pelo
+    código, em proporção pelos dados técnicos; processador, cabos e Y,
+    equipamentos dos quatro grupos, saídas e bridge dos módulos e
+    alto-falantes, na cor de cada canal; atualizado sozinho; arrastar,
+    aproximar e tocar para abrir o equipamento (CAP-17).
+  invoke_dev_with: >-
+    Seção "Equipamentos e saídas" do EXPERIENCE.md e componente
+    "esquema-do-setup" do DESIGN.md. Sem biblioteca nova e sem internet. A
+    lógica de layout (posições, formas, proporções, o que um toque acerta)
+    fica num ViewModel testável; o desenho só pinta.
 - id: "11"
   title: Telas, parte 2 — gerador, monitoração, aparelho, chaves, presets, IA e histórico
   description: >-
-    XAML e navegação das demais telas, seguindo o DESIGN.md e o EXPERIENCE.md
-    (CAP-5, CAP-7 a CAP-13, CAP-15).
+    XAML e navegação das demais telas, seguindo o DESIGN.md e o EXPERIENCE.md,
+    com as saídas do Setup onde houver saídas (CAP-5, CAP-7 a CAP-13, CAP-15).
+  invoke_dev_with: >-
+    Inclui a aba Player e as linhas de Configurações que a 10 deixou. Decidir
+    com o Denis o Player ao perder o BLE (item adiado da 8d: o EXPERIENCE.md
+    diz que ele continua tocando).
 - id: "12"
   title: Integração e testes no aparelho real
   description: >-
@@ -180,7 +228,9 @@
     Precisa do celular e do processador. Voltímetro contra o multímetro;
     gerador só com o RCA dos módulos desconectado; Wi-Fi real; reset de
     fábrica testado só na recusa, a menos que o Denis decida outra coisa.
-    Cuidados de conhecimento-herdado.md para o app da Taramps.
+    Cuidados de conhecimento-herdado.md para o app da Taramps. Conferir
+    também o Sub do Casa 2.1 escrevendo no CH3 e no CH4 juntos e o
+    esquema do Casa 2.1 na tela.
 # Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
 # playlist, teste a seco, teto por preset), a partir de
 # _bmad-output/forge/teste-de-playlist/forged-idea.md.

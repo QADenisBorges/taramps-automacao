@@ -45,7 +45,7 @@ Cada parâmetro tem uma camada dona (CAP-4, CAP-5, CAP-16; decisões do Denis de
 
 | Camada | O que guarda |
 |---|---|
-| **Setup** | Uma instalação (o 2.1 de casa, o carro…): nome e **calibração** da instalação e da sala. Calibração = atraso, fase, corte (passa-alta e passa-baixa, frequência e tipo), equilíbrio L/R (ganho e limitador), rota, link 1–2 e 3–4 e EQ paramétrico de entrada. |
+| **Setup** | Uma instalação (o 2.1 de casa, o carro…): nome, **equipamentos** (ver Equipamentos e saídas) e **calibração** da instalação e da sala. Calibração = atraso, fase, corte (passa-alta e passa-baixa, frequência e tipo), equilíbrio de cada saída (ganho e limitador), rota, link 1–2 e 3–4 e EQ paramétrico de entrada. |
 | **Memória no celular** | O **caráter** do som: ganho de cada saída, limitador (limiar, ataque, liberação, Auto), EQ de saída e MASTER, como no app da Taramps. Guarda também a playlist e o preset lembrado. Pertence a um Setup; a quantidade é livre (no dia a dia, até 4 por Setup). |
 | **Preset** | Só o EQ de 15 bandas, por cima da memória. |
 | Fora das camadas [ASSUMPTION] | Mute, remote out, Bluetooth de áudio, gerador, nome do produto e senha. Valem na hora; o Salvar não os guarda. |
@@ -65,11 +65,13 @@ Barra inferior com quatro destinos: **Início · Mesa · Áudio · Player**. A *
 | **Setup em dúvida** | Sozinha ao conectar, quando a calibração lida não bate com a do último Setup usado | Escolher ou criar o Setup antes de tocar, com o som mutado (ver Conectar e Setup) | mock da 3b, quadro 2 |
 | **Trocar de Setup** | Tocar no nome do Setup no cabeçalho do Início ("Setup Casa 2.1 ›") | A mesma tela, para escolher outro Setup ou criar um (ver Conectar e Setup) | mock da 3b, quadro 2 (variante sem dúvida) |
 | **Lista de memórias** | Botão "…" ao lado dos 3 botões de memória (Início, Mesa) | As memórias do celular do Setup em uso e, na seção **"Do aparelho"**, as 3 do processador | só este documento |
-| **Ajuste da saída** (JBL L, JBL R, Sub) | "Ajustar ›" no cartão de saída (Início) ou "Ajustar" no canal (Mesa) | Os ajustes de uma saída numa tela; na JBL L e na JBL R, também o equilíbrio L/R do Setup, em Avançado (ver Ajuste da saída) | v2 quadros 3, 3b, 4 (com a divisão antiga); mock da 3b, quadro 3 (Salvar e folha do Salvar) |
+| **Ajuste da saída** (uma por saída do Setup; no Casa 2.1: JBL L, JBL R, Sub) | "Ajustar ›" no cartão de saída (Início) ou "Ajustar" no canal (Mesa) | Os ajustes de uma saída numa tela, com o equilíbrio do Setup em Avançado (ver Ajuste da saída) | v2 quadros 3, 3b, 4 (com a divisão antiga); mock da 3b, quadro 3 (Salvar e folha do Salvar) |
 | **Telas de função** (Roteamento, EQ 15 bandas, EQ de entrada, Crossover, Alinhamento, Fase, Limitador, Nível das saídas, EQ de saída) | Bloco da grade Áudio | Uma função para as três saídas, com abas de saída [ASSUMPTION] | telas-chave 2a, 2b (Crossover); as outras, só este documento |
 | **Gerador** | Bloco Gerador da grade Áudio | Tom fixo e sweep, com prazo de 30 s | só este documento |
 | **Configurações** | Engrenagem | Ponto de entrada familiar para quem vem do app da Taramps | telas-chave 3 (sem a linha do voltímetro) |
-| **Setups** | Configurações › Setups [ASSUMPTION] | Ver os Setups, renomear e apagar [ASSUMPTION]; selo HERDADO no Casa 2.1. Criar e trocar de Setup só pela tela Trocar de Setup ou Setup em dúvida | só este documento |
+| **Setups** | Configurações › Setups [ASSUMPTION] | Ver os Setups, renomear e apagar [ASSUMPTION]; selo HERDADO no Casa 2.1. Criar e trocar de Setup só pela tela Trocar de Setup ou Setup em dúvida. Tocar num Setup abre a tela **Setup** | só este documento |
+| **Setup** (um Setup) | Configurações › Setups › tocar num Setup; tocar no esquema no Início [ASSUMPTION] | O **esquema do Setup** em cima (2D com sensação de 3D) e a lista de **equipamentos** embaixo: adicionar, editar, tirar (ver Equipamentos e saídas) | só este documento (proposta de 23/10, equipamentos) |
+| **Folha de equipamento** | "Adicionar equipamento" ou tocar num equipamento (lista ou esquema) | Grupo, categoria, nome, modelo, função acústica, dados técnicos e onde está ligado | só este documento |
 | **Memórias** | Configurações › Memórias | Memórias do celular do Setup em uso: aplicar, criar do som atual, renomear, apagar. Seção **"Do aparelho"**: as 3 memórias do processador, pelos nomes lidos, só para carregar. Ver o que é herdado | telas-chave 4a, 4b (modelo antigo) |
 | **Presets no celular** | Configurações › Presets; chip de preset no Início (folha com a lista) | Presets de 15 bandas: aplicar por cima da memória, renomear, apagar, exportar; herdado: Cinema. Preset novo nasce na folha do Salvar | só este documento |
 | **Aparelho** (grupo dentro de Configurações) | Configurações | Remote out, Bluetooth de áudio, nome do produto, senha, Voltímetro e clip; resets em Avançado | telas-chave 3 |
@@ -92,7 +94,7 @@ Regra do Denis: em toda tela de parâmetros, as funções principais e as mais m
 
 | Tela | À vista | Em Avançado |
 |---|---|---|
-| Ajuste da saída | Ganho (giratório), passa-alta (frequência + tipo), passa-baixa (frequência + tipo), limitador (limiar + OFF) | Atraso, fase e, só na JBL L e na JBL R, **equilíbrio L/R do Setup** (ganho e limitador); EQ de saída (frequência, ganho, Q), ataque e liberação do limitador; [ASSUMPTION] Auto do limitador e mute |
+| Ajuste da saída | Ganho (giratório), passa-alta (frequência + tipo), passa-baixa (frequência + tipo), limitador (limiar + OFF) | Atraso, fase e o **equilíbrio do Setup** daquela saída (ganho e limitador); EQ de saída (frequência, ganho, Q), ataque e liberação do limitador; [ASSUMPTION] Auto do limitador e mute |
 | Crossover | Por saída: passa-alta e passa-baixa (frequência + tipo) | Link 1–2 e Link 3–4 |
 | Limitador | Limiar com OFF | Ataque e liberação; [ASSUMPTION] Auto |
 | Alinhamento | Atraso de cada saída (é a função da tela) | — |
@@ -113,7 +115,7 @@ O padrão das telas de função é o mesmo do Ajuste: o que dá nome à tela fic
 
 Tela cheia com ‹, aberta por "Ajustar ›" (Início) ou "Ajustar" (Mesa). À vista e em Avançado, como na tabela acima. O botão **Salvar** fica fixo no pé ([mock da 3b, quadro 3](mockups/key-screens-3b.html)).
 
-**Equilíbrio L/R do Setup** (decisão do Denis, 23/10): mexe-se no Ajuste da **JBL L** ou da **JBL R**, em **Avançado**, junto do atraso e da fase. São dois valores por lado, **ganho** e **limitador**, somados ao valor da memória (no Casa 2.1, a R fica −3 dB nos dois). O Sub não tem equilíbrio.
+**Equilíbrio do Setup** (decisões do Denis de 23/10; por saída desde a proposta dos equipamentos): mexe-se no Ajuste de **qualquer saída**, em **Avançado**, junto do atraso e da fase. São dois valores por saída, **ganho** e **limitador**, somados ao valor da memória (no Casa 2.1, a JBL R fica −3 dB nos dois; as outras, 0). Um par com link é uma saída só e tem um equilíbrio só.
 
 - Mexer muda o som na hora, como qualquer ajuste. **Salvar** leva o equilíbrio para a camada **Calibração → Setup**.
 - [ASSUMPTION] Os dois usam o controle de parâmetro, em dB com passo de 0,1 dB, e o título diz de onde vêm: "Equilíbrio do Casa 2.1 · ganho".
@@ -131,7 +133,7 @@ Ao conectar, depois da senha e da leitura completa, o app **confere o Setup** (C
 | Calibração não bate | **Muta** e abre a tela **Setup em dúvida**. |
 | Os 4 canais ainda mutados por uma dúvida que não terminou | Volta à tela **Setup em dúvida** (estado **Dúvida interrompida**). |
 
-**O equilíbrio L/R na conferência** (decisão da história 8c): no aparelho, o equilíbrio vem somado ao caráter (ganho e limitador finais), e não há como lê-lo à parte. Por isso a calibração confere **sem o equilíbrio**; o equilíbrio entra na comparação do **caráter** (o final lido contra a memória ativa mais o equilíbrio do Setup). Se ele mudou, o caso cai em **Som diferente da memória ativa** (sem mutar), com **Reaplicar**.
+**O equilíbrio na conferência** (decisão da história 8c): no aparelho, o equilíbrio vem somado ao caráter (ganho e limitador finais), e não há como lê-lo à parte. Por isso a calibração confere **sem o equilíbrio**; o equilíbrio entra na comparação do **caráter** (o final lido contra a memória ativa mais o equilíbrio do Setup). Se ele mudou, o caso cai em **Som diferente da memória ativa** (sem mutar), com **Reaplicar**.
 
 **O mudo da dúvida** é o mute do aparelho nos **4 canais** (MAPA, comando `100`). Ele fica no aparelho até o Denis decidir, mesmo se o app fechar ou a conexão cair. Sem o celular, o mudo sai pelo app da Taramps. Durante a dúvida, **a IA fica bloqueada**.
 
@@ -191,6 +193,65 @@ A pílula **Player** abre a playlist da **memória do celular em uso**. **Cada m
 - **Controles fixos embaixo:** tocar/pausar e próxima.
 - **Trocar de memória com música tocando:** [ASSUMPTION] a música continua; a playlist da nova memória entra quando a faixa atual acabar.
 - **Segundo plano:** [ASSUMPTION] a música continua com o app em segundo plano, com tocar/pausar e próxima na notificação do Android.
+
+### Equipamentos e saídas
+
+Proposta aprovada pelo Denis em 23/10/2026 (`sprint-change-proposal-2026-10-23-equipamentos.md`).
+
+**O modelo de ligação.**
+- O processador tem **CH1 a CH4**, saídas de linha.
+- Cada canal vai para **uma ou mais entradas de linha** (cabo direto, Y ou divisor), e todas recebem o mesmo sinal com a mesma configuração.
+- Os equipamentos com entrada de linha são de quatro grupos:
+  1. **amplificam e tocam:** caixa ativa, sub ativo, monitor ativo, line array ativo, soundbar ou receiver;
+  2. **amplificam para alto-falantes passivos:** módulo ou amplificador, com os canais dele e o **bridge** como opção;
+  3. **processam ou distribuem e repassam:** outro processador, crossover ativo, equalizador, distribuidor de linha, transmissor sem fio;
+  4. **só recebem:** interface de áudio, gravador, mesa.
+- Os **alto-falantes passivos** ficam numa saída ou num bridge de um equipamento do grupo 2, e pode haver mais de um por saída.
+- As categorias são uma lista aberta: tweeter, driver, médio, médio-grave, woofer, coaxial, subwoofer, shaker… e o usuário pode criar outras.
+- O que não se sabe (modelo, dados técnicos) fica **genérico**.
+
+**As saídas do app.**
+- O que se ajusta é o **canal do processador**.
+- A saída na tela é um canal, ou um par vizinho com o **link** ligado, que vira uma saída só e escreve nos dois.
+- O nome vem dos equipamentos que o canal alimenta (no Casa 2.1: JBL L, JBL R, Sub). Sem equipamento, aparece CH1 a CH4.
+- A cor é a do canal (a do canal mestre, num par).
+- As abas das telas de função, os cartões do Início e os canais da Mesa saem dessa lista, na ordem dos canais.
+
+**Folha de equipamento.**
+- Sobe de baixo, com um campo por linha:
+  - **grupo** (os quatro, mais "alto-falante passivo");
+  - **categoria** (lista aberta, com "Outra…" para escrever);
+  - **nome** (sugerido pela categoria e pela posição, por exemplo "JBL R");
+  - **modelo** ("genérico" quando vazio);
+  - **função acústica** (sugerida pela categoria e pelo corte do canal, por exemplo um passa-baixa em 150 Hz sugere grave ou sub; o Denis pode trocar);
+  - **dados técnicos** (diâmetro, impedância, potência RMS, sensibilidade, faixa de frequência; todos opcionais);
+  - **onde está ligado**:
+    - grupos 1, 3 e 4: os canais do processador ou o equipamento do grupo 3 que alimenta a entrada;
+    - grupo 2: os canais dele e quais estão em bridge;
+    - alto-falante passivo: a saída ou o bridge do módulo.
+- ✓ guarda; nada vai pelo BLE.
+- **Tirar** pede confirmação ("Tirar a JBL R do Casa 2.1?"); um módulo com alto-falantes ligados avisa que eles ficam sem ligação.
+
+**Esquema do Setup** (CAP-17).
+- Fica no alto da tela Setup: **2D com sensação de 3D** (perspectiva isométrica, profundidade e sombra).
+- À esquerda fica o processador com os 4 canais na cor de cada um. Os cabos saem em direção aos equipamentos, abrindo em Y quando um canal vai para mais de uma entrada. Depois vêm os equipamentos dos grupos 1 a 4, e por último os alto-falantes nas saídas dos módulos. O bridge aparece como uma chave juntando os dois canais do módulo.
+- Cada categoria tem a sua forma, gerada pelo código e proporcional aos dados técnicos:
+  - tweeter: domo pequeno;
+  - driver: corneta;
+  - médio-grave e woofer: cone, pelo diâmetro;
+  - coaxial: cone com domo no centro;
+  - subwoofer: caixa grande com cone;
+  - caixa ativa: caixa com as vias de dentro;
+  - módulo: bloco com os canais.
+
+  Uma categoria nova usa a forma da função acústica dela.
+- **Interação:**
+  - arrastar gira o ângulo de visão entre posições isométricas;
+  - os dedos aproximam;
+  - um toque num equipamento abre a folha dele;
+  - um toque num canal destaca tudo o que ele alimenta.
+- O esquema muda **na hora**, sem botão de atualizar, sempre que um equipamento entra, sai ou muda.
+- O 3D de verdade fica para uma versão futura.
 
 ## Voice and Tone
 
@@ -334,7 +395,7 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Eco diferente do pedido** | Qualquer controle | [ASSUMPTION] O controle mostra o valor relido do aparelho (não o pedido) e um aviso curto "O aparelho ficou em X". |
 | **Avançado aberto** | Crossover (telas-chave 2b), Ajuste, Configurações | Fundo mais claro; os controles dentro seguem as regras normais. |
 | **Passa-alta ou passa-baixa em OFF** | Crossover (telas-chave 2a), Ajuste | [ASSUMPTION] A frequência some da tela e volta junto com o tipo escolhido. |
-| **Link ligado** | Crossover › Avançado e telas de saída | Mexer no canal mestre muda o par (1–2: JBL L manda na JBL R; 3–4: Sub). [NOTE FOR UX] Não está desenhado como a aba e o Ajuste da JBL R aparecem com o link 1–2 ligado, nem como o Sub mostra os canais 3 e 4 quando o link 3–4 está desligado. |
+| **Link ligado** | Crossover › Avançado e telas de saída | O par vira **uma saída só** nas abas, nos cartões e na Mesa, com o nome dos equipamentos e a cor do canal mestre; mexer nela escreve nos dois canais. Com o link desligado, cada canal é uma saída própria (no Casa 2.1, o Link 3–4 fica ligado porque o CH3 e o CH4 alimentam o mesmo bridge). Resolvido na proposta de 23/10 (equipamentos). |
 | **Aplicando memória** (celular) | Início, Mesa, lista "…", Memórias, Reaplicar | Sem confirmação. Passa pela chave "Aplicar memória do celular", guarda a cópia (failure-modes 3), escreve o caráter da memória (somado ao equilíbrio do Setup) e o preset que ela lembra, e relê. [ASSUMPTION] Os valores ficam esmaecidos com "Aplicando a FILME" até a releitura. |
 | **Carregando memória do aparelho** | Lista "…" › Do aparelho, Memórias › Do aparelho | Sem confirmação. Passa pela chave "Carregar memória do aparelho", guarda a cópia, carrega (`241`) e relê. [ASSUMPTION] Os valores ficam esmaecidos com "Carregando a memória 2 do aparelho" até a releitura. Depois, o cartão mostra o nome lido e "Memória 2 do aparelho (app da Taramps)" até a conexão cair. Para guardar esse som no celular: Salvar (ver Salvar por camadas). |
 | **Salvando** | Folha do Salvar | Guarda no celular; nada vai pelo BLE, então não há queda no meio do salvar. A exceção (Manter a calibração) está em Salvar por camadas. |
@@ -342,6 +403,7 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Preset aplicado** | Chip de preset, Presets | Cópia antes, aplica só as 15 bandas, relê. A memória em uso passa a lembrar esse preset. [ASSUMPTION] "Preset Rock aplicado na MUSICA ORIG." |
 | **Presets vazio** | Presets no celular | [ASSUMPTION] Só o herdado Cinema e "Mexa nas 15 bandas e toque em Salvar para criar um preset." |
 | **Apagar preset** | Presets | Folha de confirmação "Apagar o preset X?" [ASSUMPTION]. [ASSUMPTION] Um preset lembrado por alguma memória não se apaga: Apagar fica travado com "Lembrado por 2 memórias." O Cinema herdado também não se apaga. |
+| **Setup sem equipamentos** | Início, Mesa, Áudio, Setup | As saídas aparecem como **CH1 a CH4** (os pares com link, como "CH3 + CH4"), na cor de cada canal. Na tela Setup, o esquema mostra só o processador e a frase "Adicione os equipamentos ligados em cada canal." com **Adicionar equipamento**. |
 | **Setup sem memórias** | Início, Memórias | [ASSUMPTION] Logo depois de Criar Setup novo: o cartão diz "Nenhuma memória" e oferece **Criar memória do som atual**; sem chip de preset; a lista "…" só tem a seção "Do aparelho". |
 | **Apagar memória** | Memórias | [ASSUMPTION] Folha "Apagar a MUSICA ORIG?" + "**A memória e a playlist dela somem.**" Na memória em uso, Apagar fica travado com "Esta memória está em uso." [ASSUMPTION na redação] |
 | **Apagar Setup** | Setups | [ASSUMPTION] Folha "Apagar o Setup Carro?" + "**O Setup, as memórias e as playlists dele somem.**" O Setup em uso e o Casa 2.1 herdado não se apagam. |

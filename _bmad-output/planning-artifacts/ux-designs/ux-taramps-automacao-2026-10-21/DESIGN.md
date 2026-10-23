@@ -20,9 +20,14 @@ colors:
   sobre-escolhido: '#000000'  # texto sobre o branco do escolhido
   sobre-escolhido-apoio: '#55555A'  # texto pequeno sobre o branco (ex.: explicação da opção escolhida na folha do Salvar)
   # Uma luz por saída
-  saida-l: '#7EAEFF'          # JBL L, azul
-  saida-r: '#C495FF'          # JBL R, lilás
-  saida-sub: '#FFCD94'        # Sub, âmbar
+  # Uma luz por canal do processador (proposta de 23/10, equipamentos); um par com link usa a do mestre
+  canal-1: '#7EAEFF'          # CH1, azul (no Casa 2.1, a JBL L)
+  canal-2: '#C495FF'          # CH2, lilás (no Casa 2.1, a JBL R)
+  canal-3: '#FFCD94'          # CH3, âmbar (no Casa 2.1, o Sub, com o CH4 no link)
+  canal-4: '#8FE3CF'          # CH4, menta (aparece quando o Link 3–4 está desligado)
+  saida-l: '#7EAEFF'          # nome antigo de canal-1
+  saida-r: '#C495FF'          # nome antigo de canal-2
+  saida-sub: '#FFCD94'        # nome antigo de canal-3
   saida-sub-fundo: '#241D13'  # fundo do campo do Sub enquanto se escreve
   # IA
   ia: '#C495FF'               # IA (mesmo valor de saida-r, por decisão)
@@ -702,7 +707,7 @@ Tema único, escuro. [ASSUMPTION] O app não muda com o tema claro do Android; t
 - **Palco ({colors.palco})** é o fundo de toda tela. Nada de degradê no fundo.
 - **Superfícies ({colors.sup-1}, {colors.sup-2}, {colors.sup-3})** fazem a hierarquia por tom: cartão sobre o palco, trilho e botões sobre o cartão, divisória fina entre linhas. {colors.lista-aberta} marca o que está aberto (lista recolhida aberta, Avançado aberto). {colors.registro-fundo} é o fundo do registro.
 - **Texto ({colors.texto})** é também a cor do escolhido: a pílula branca com texto preto. **Apoio ({colors.apoio})** para frases de apoio. **Apagado ({colors.apagado})** para rótulos em caixa alta e escalas.
-- **Luz por saída:** **JBL L azul ({colors.saida-l})**, **JBL R lilás ({colors.saida-r})**, **Sub âmbar ({colors.saida-sub})**. São versões das luzes fria, lilás e quente do BGS Sound Lab. Aparecem só onde aquela saída está sendo lida ou mexida: borda do canal, barra lateral do cartão, nível do fader, risco da capa, sublinhado do campo, arco do giratório, título da saída e números do resumo na grade. Nunca pintam o fundo de um bloco inteiro.
+- **Luz por canal:** **CH1 azul ({colors.canal-1})**, **CH2 lilás ({colors.canal-2})**, **CH3 âmbar ({colors.canal-3})**, **CH4 menta ({colors.canal-4})**; uma saída que é um par com link usa a cor do canal mestre (no Casa 2.1: JBL L azul, JBL R lilás, Sub âmbar). Os nomes antigos `saida-l`, `saida-r` e `saida-sub` são os mesmos valores de `canal-1` a `canal-3`. São versões das luzes fria, lilás e quente do BGS Sound Lab. Aparecem só onde aquela saída está sendo lida ou mexida: borda do canal, barra lateral do cartão, nível do fader, risco da capa, sublinhado do campo, arco do giratório, título da saída e números do resumo na grade. Nunca pintam o fundo de um bloco inteiro.
 - **IA lilás ({colors.ia})** com fundo {colors.ia-fundo} e texto {colors.ia-texto}. É o mesmo lilás da JBL R por escolha do Denis (recorte 3). Na tela da IA ativa, a JBL R continua identificada pelo nome escrito.
 - **Conectado ({colors.ok})** só no ponto da pílula de status.
 - **Vermelho ({colors.parar})** é o único alarme: PARAR IA (decisão do Denis) e também erro de senha e aviso de risco ([ASSUMPTION] registrada no memlog). Texto de erro e de risco em {colors.erro-texto}; fundo do aviso de risco em {colors.risco-fundo}.
@@ -881,6 +886,12 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 
 - **Linha da playlist** (`linha-da-playlist`) — Linha de {spacing.alvo-lista}: nome da faixa em {typography.linha-titulo}, duração e pasta em {typography.detalhe}. A faixa que toca tem a marca branca de 4 px na borda e o nome em peso 700. Arquivo que sumiu: nome em {colors.apagado} e "Arquivo não encontrado". No modo Editar, cada linha ganha a alça de arrastar (≡) à direita e o botão remover (−) de 44 px à esquerda.
 - **Controles do player** (`controles-do-player`) — Fixos embaixo: nome da faixa atual, botão tocar/pausar redondo de {spacing.alvo-parar} em branco com ícone preto e o botão próxima de {spacing.alvo-passo} em {colors.sup-2}. Acima, a linha da memória em uso: "Playlist da FILME". Sem abas de memória.
+
+### Setup e equipamentos
+
+- **Esquema do Setup** (`esquema-do-setup`) — Área de 280 px de altura mínima no alto da tela Setup, fundo {colors.palco} com uma grade isométrica muito fraca em {colors.sup-3}. Peças em perspectiva isométrica (30°), com três tons por peça para dar volume (topo {colors.sup-2}, lados {colors.sup-1} e {colors.registro-fundo}) e uma sombra elíptica a 40 % embaixo. Cabos em traço de 2 px na cor do canal, com a junção em Y marcada por um ponto. Rótulos curtos em {typography.detalhe} {colors.apoio}, com o nome em {colors.texto}. O equipamento tocado ganha contorno branco de 2 px. Nunca pinta uma peça inteira com a cor do canal: a cor fica no cabo, na borda da entrada e no pequeno rótulo CHn.
+- **Linha de equipamento** (`linha-de-equipamento`) — Na lista embaixo do esquema: ícone isométrico pequeno da categoria (32 px), nome em {typography.linha-titulo}, detalhe em {typography.detalhe} {colors.apoio} ("Alto-falante passivo · saída 2 do Módulo genérico · CH2") e, à esquerda, a barra de 4 px na cor do canal. O "genérico" aparece em {colors.apagado}.
+- **Folha de equipamento** (`folha-de-equipamento`) — A folha padrão, com os campos em linhas de {spacing.alvo-lista}; grupo e categoria em linhas de escolha; dados técnicos em Avançado, recolhido; "Onde está ligado" com os canais como pílulas (a escolhida em branco) e o bridge como par de pílulas unidas.
 
 ### Avisos
 
