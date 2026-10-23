@@ -1,0 +1,25 @@
+# Overrides do projeto para bmad-build-auto (regras do Denis, 23/10/2026).
+
+[workflow]
+
+persistent_facts = [
+  "Git deste projeto: o trabalho é sempre no main. O main serve para qualquer história e não conta como desencontro de branch. Não criar branch nem worktree. Cada história fecha com o seu commit no main, sem push e sem PR.",
+]
+
+activation_steps_prepend = [
+  "Se o pedido não trouxer história, arquivo de spec, pasta e id nem descrição, trate como folder+id dispatch: a pasta é _bmad-output/specs/spec-app-controle-taramps e o id é o da história que vem logo depois, na ordem do stories.yaml, da última que tem arquivo em stories/ com status done (a história 3, de UX, não tem arquivo e já foi feita). Antes de começar, aplique a ela as regras de parada do On Complete (passo 3); se alguma valer, pare e relate sem começar.",
+]
+
+on_complete = """
+Encadear histórias no mesmo contexto (regra do Denis: uma chamada faz mais de uma história).
+
+1. Se o status final desta execução não for `done`, pare e relate o motivo.
+2. Se foi `done`, a próxima é a história que vem logo depois desta, na ordem do stories.yaml da mesma pasta.
+3. Pare e relate, sem começar a próxima, se:
+   - não houver próxima história;
+   - ela tiver `spec_checkpoint` ou `done_checkpoint`;
+   - o `invoke_dev_with` dela pedir trabalho interativo com o Denis (por exemplo, a skill bmad-ux);
+   - ela precisar do celular e do processador reais (por exemplo, a história 12).
+4. Senão, rode a skill bmad-build-auto de novo, como folder+id dispatch, com a mesma pasta e o id da próxima, passando o `invoke_dev_with` dela como contexto extra. Cada execução continua fazendo uma história só; o encadeamento acontece só aqui.
+5. Ao parar, relate uma linha por história feita nesta chamada: id, status e commit.
+"""

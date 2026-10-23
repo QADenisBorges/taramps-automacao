@@ -1,0 +1,7 @@
+# Overrides do projeto para bmad-build (regra do Denis, 23/10/2026).
+
+[workflow]
+
+persistent_facts = [
+  "Git deste projeto: o trabalho é sempre no main. O main serve para qualquer história e não conta como desencontro de branch. Não criar branch nem worktree. Cada história fecha com o seu commit no main, sem push e sem PR, a menos que o Denis peça na hora.",
+]
