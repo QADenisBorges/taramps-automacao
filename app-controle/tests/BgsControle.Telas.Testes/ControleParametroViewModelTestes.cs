@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
@@ -65,9 +66,11 @@ internal sealed class Bancada
         // História 8: os presets no celular, guardados nos arquivos falsos.
         Presets = new GerentePresets(Sessao, Estado, Escritor, Leitura, Copia,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPresets), Log, Relogio);
+        // História 8d: as playlists por memória do celular, guardadas nos arquivos falsos.
+        Playlists = new GerentePlaylists(new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPlaylists), Log);
         if (setups)
         {
-            Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Memorias, Chaves,
+            Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Memorias, Presets, Playlists, Chaves,
                 new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetups),
                 new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetupMudo), Log, Relogio);
         }
@@ -118,7 +121,10 @@ internal sealed class Bancada
 
     public GerentePresets Presets { get; }
 
-    public PresetsViewModel CriarPresetsViewModel() => new(Presets, Copia, Sessao, Chaves, Estado, Tela, Relogio);
+    /// <summary>A tela Presets (só com <c>setups: true</c>: a memória do celular em uso lembra o preset aplicado).</summary>
+    public PresetsViewModel CriarPresetsViewModel() => new(Presets, Setups!, Copia, Sessao, Chaves, Estado, Tela, Relogio);
+
+    public GerentePlaylists Playlists { get; }
 
     public RelogioFalso Relogio { get; } = new();
     public ProcessadorSimulado Simulador { get; }

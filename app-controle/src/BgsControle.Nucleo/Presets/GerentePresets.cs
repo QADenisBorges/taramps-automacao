@@ -6,27 +6,39 @@ using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Nucleo.Presets;
 
 /// <summary>
-/// Os presets no celular (CAP-5): guardar o som atual, aplicar, renomear, apagar e exportar. Um
-/// preset são os valores de áudio do Marco 1; ele fica em <c>presets.json</c> nos arquivos privados
-/// (só os próprios). Os herdados (<see cref="ConhecimentoHerdado.Presets"/>) vêm sempre primeiro e
-/// não mudam.
+/// Os presets no celular (CAP-5): só o EQ de 15 bandas (<c>020</c>). Criar (das bandas atuais),
+/// atualizar as bandas de um próprio, aplicar, renomear, apagar e exportar. Os próprios ficam em
+/// <c>presets.json</c> nos arquivos privados (formato 2); os herdados
+/// (<see cref="ConhecimentoHerdado.Presets"/>, o "Cinema") vêm sempre primeiro e não mudam.
 /// <list type="bullet">
-/// <item><b>Guardar</b> tira os valores do espelho e não manda nada ao aparelho.</item>
+/// <item><b>Criar</b> e <b>atualizar</b> não mandam nada ao aparelho. O preset novo nasce na folha do
+/// Salvar (<see cref="Setups.GerenteSetups"/>).</item>
 /// <item><b>Aplicar</b> passa pela <see cref="CopiaAntes"/> (regra 3 de <c>failure-modes.md</c>): guarda
-/// a cópia, escreve só os ajustes diferentes, uma de cada vez, relê tudo e confere. Se cair no meio,
+/// a cópia, escreve só as bandas diferentes, uma de cada vez, relê tudo e confere. Se cair no meio,
 /// ao reconectar o estado fica "aplicado pela metade", com Terminar (refaz, com a mesma cópia) e
-/// Voltar à cópia (da <see cref="CopiaAntes"/>).</item>
-/// <item>Renomear e apagar valem só para os próprios e não mandam nada ao aparelho.</item>
+/// Voltar à cópia (da <see cref="CopiaAntes"/>). Depois de aplicar bem, avisa quem ouve
+/// (<see cref="AoAplicar"/>): a memória do celular em uso passa a lembrar o preset.</item>
+/// <item>Renomear e apagar valem só para os próprios e não mandam nada ao aparelho. Um preset lembrado
+/// por alguma memória não se apaga (<see cref="Lembrados"/>).</item>
 /// </list>
-/// Todas as operações do gerente são exclusivas entre si.
+/// Um <c>presets.json</c> no formato 1 (os 84 valores do Marco 1) é lido assim: cada preset próprio
+/// com as 15 bandas vira um preset de 15 bandas; o que não as tem é descartado. A próxima gravação
+/// já sai no formato 2. Todas as operações do gerente são exclusivas entre si.
 /// </summary>
 public sealed class GerentePresets
 {
-    public const int Formato = 1;
+    public const int Formato = 2;
+
+    /// <summary>O formato antigo (os 84 valores do Marco 1), lido e convertido.</summary>
+    public const int FormatoAntigo = 1;
+
+    /// <summary>O código das 15 bandas do EQ gráfico.</summary>
+    public const string CodigoBandas = "020";
 
     /// <summary>O tipo registrado na <see cref="CopiaAntes"/>; o alvo da marca é o id do preset.</summary>
     public const string TipoAplicar = "aplicar-preset";
@@ -40,29 +52,43 @@ public sealed class GerentePresets
     public const string MsgNaoExiste = "O preset não existe mais.";
     public const string MsgNaoExisteTerminar = "O preset não existe mais; use Voltar à cópia.";
     public const string MsgHerdado = "Preset herdado não muda.";
+    public const string MsgHerdadoNaoSobrescrito = "Preset herdado não é sobrescrito.";
     public const string MsgCaiuAplicar = "A conexão caiu no meio do aplicar. Ao reconectar, o app mostra o que ficou.";
 
     public static string MsgIncompleta(int n) => n == 1
-        ? "A leitura está incompleta (1 ajuste sem valor)."
-        : $"A leitura está incompleta ({n} ajustes sem valor).";
+        ? "A leitura está incompleta (1 banda sem valor)."
+        : $"A leitura está incompleta ({n} bandas sem valor).";
 
-    public static string MsgGuardado(string nome) => $"Preset {nome} guardado.";
+    public static string MsgCriado(string nome) => $"Preset {nome} criado.";
+
+    public static string MsgAtualizado(string nome) => $"Preset {nome} atualizado.";
 
     public static string MsgJaAplicado(string nome) => $"Preset {nome} já está aplicado.";
 
-    public static string MsgAplicado(string nome) => $"Preset {nome} aplicado. Para guardar numa memória, use Salvar.";
+    public static string MsgAplicado(string nome) => $"Preset {nome} aplicado.";
 
     public static string MsgAplicadoDiferente(string nome, int n) => n == 1
-        ? $"Preset {nome} aplicado, mas 1 ajuste ficou diferente."
-        : $"Preset {nome} aplicado, mas {n} ajustes ficaram diferentes.";
+        ? $"Preset {nome} aplicado, mas 1 banda ficou diferente."
+        : $"Preset {nome} aplicado, mas {n} bandas ficaram diferentes.";
 
     public static string MsgNaoEscritos(int n, string? motivo) => n == 1
-        ? $"1 ajuste não foi escrito: {motivo}"
-        : $"{n} ajustes não foram escritos: {motivo}";
+        ? $"1 banda não foi escrita: {motivo}"
+        : $"{n} bandas não foram escritas: {motivo}";
 
     public static string MsgRenomeado(string nome) => $"Preset renomeado para {nome}.";
 
     public static string MsgApagado(string nome) => $"Preset {nome} apagado.";
+
+    /// <summary>"Lembrado por 1 memória." / "Lembrado por 2 memórias."</summary>
+    public static string MsgLembrado(int n) => n == 1 ? "Lembrado por 1 memória." : $"Lembrado por {n} memórias.";
+
+    /// <summary>As consultas das 15 bandas (<c>020</c>, banda 0 a 14), na ordem do catálogo.</summary>
+    public static IReadOnlyList<Consulta> ConsultasBandas { get; } =
+        Catalogo.ConsultasMarco1.Where(c => c.Parametro.Codigo == CodigoBandas).ToArray();
+
+    /// <summary>O EQ plano: as 15 bandas em 0,0 dB (a referência do Salvar sem preset lembrado).</summary>
+    public static IReadOnlyList<ValorCopiado> BandasPlanas { get; } =
+        ConsultasBandas.Select(c => new ValorCopiado(CodigoBandas, c.Indice, "+0.0")).ToArray();
 
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
@@ -111,10 +137,22 @@ public sealed class GerentePresets
     /// <summary>A lista ou o andamento mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
+    /// <summary>
+    /// Quantas memórias do celular lembram o preset (posto pelo <see cref="GerenteSetups"/>). Sem
+    /// ninguém, nenhuma.
+    /// </summary>
+    internal Func<string, int>? Lembrados { get; set; }
+
+    /// <summary>
+    /// Chamado depois de um aplicar que terminou bem (também o "já está aplicado" e o Terminar), antes
+    /// de o resultado voltar: o <see cref="GerenteSetups"/> faz a memória do celular em uso lembrar o preset.
+    /// </summary>
+    internal Func<Preset, Task>? AoAplicar { get; set; }
+
     /// <summary>Uma operação do gerente está andando.</summary>
     public bool Ocupado => Volatile.Read(ref _ocupado) == 1;
 
-    /// <summary>A frase da última operação ("Preset NOITE aplicado…"), ou null.</summary>
+    /// <summary>A frase da última operação ("Preset Rock aplicado."), ou null.</summary>
     public string? Aviso
     {
         get
@@ -124,7 +162,7 @@ public sealed class GerentePresets
         }
     }
 
-    /// <summary>Os presets guardados pelo Denis, do mais antigo ao mais novo.</summary>
+    /// <summary>Os presets criados pelo Denis, do mais antigo ao mais novo.</summary>
     public IReadOnlyList<Preset> Proprios
     {
         get
@@ -138,7 +176,68 @@ public sealed class GerentePresets
     public IReadOnlyList<Preset> Presets => [.. ConhecimentoHerdado.Presets, .. Proprios];
 
     /// <summary>O preset (herdado ou próprio) pelo id, ou null.</summary>
-    public Preset? Obter(string id) => Presets.FirstOrDefault(p => p.Id == id);
+    public Preset? Obter(string? id) => id is null ? null : Presets.FirstOrDefault(p => p.Id == id);
+
+    /// <summary>Quantas memórias do celular lembram o preset.</summary>
+    public int QuantasLembram(string id) => Lembrados?.Invoke(id) ?? 0;
+
+    /// <summary>Por que o preset não se apaga ("Preset herdado não muda.", "Lembrado por 2 memórias."), ou null.</summary>
+    public string? MotivoTravaApagar(string id)
+    {
+        if (Obter(id) is { Herdado: true })
+            return MsgHerdado;
+        var n = QuantasLembram(id);
+        return n > 0 ? MsgLembrado(n) : null;
+    }
+
+    // ------------------------------------------------------------------ bandas
+
+    /// <summary>
+    /// As 15 bandas do espelho, na ordem do catálogo, e quantas não têm valor (uma leitura que falhou).
+    /// </summary>
+    public static (IReadOnlyList<ValorCopiado> Bandas, int Faltam) TirarBandas(IReadOnlyDictionary<Endereco, Valor> espelho)
+    {
+        var bandas = new List<ValorCopiado>();
+        var faltam = 0;
+        foreach (var c in ConsultasBandas)
+        {
+            if (espelho.TryGetValue(new Endereco(CodigoBandas, c.Indice), out var v))
+                bandas.Add(new ValorCopiado(CodigoBandas, c.Indice, v.NoFio));
+            else
+                faltam++;
+        }
+        return (bandas, faltam);
+    }
+
+    /// <summary>As bandas guardadas e as do espelho são as mesmas (as 15, banda por banda).</summary>
+    public static bool MesmasBandas(IReadOnlyList<ValorCopiado> bandas, IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        FaltamEm(bandas) == 0 && Camadas.Diferentes(bandas, espelho).Count == 0;
+
+    /// <summary>O primeiro preset (os herdados primeiro) com as mesmas 15 bandas do espelho, ou null.</summary>
+    public Preset? ComAsBandas(IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        Presets.FirstOrDefault(p => MesmasBandas(p.Valores, espelho));
+
+    /// <summary>Quantas das 15 bandas a lista não traz.</summary>
+    private static int FaltamEm(IReadOnlyList<ValorCopiado> valores)
+    {
+        var tem = valores.Where(v => v.Codigo == CodigoBandas).Select(v => v.Indice).ToHashSet();
+        return ConsultasBandas.Count(c => !tem.Contains(c.Indice));
+    }
+
+    /// <summary>Só as 15 bandas, uma vez cada, na ordem do catálogo (o que mais vier é descartado).</summary>
+    private static IReadOnlyList<ValorCopiado> SoBandas(IEnumerable<ValorCopiado> valores)
+    {
+        var porIndice = new Dictionary<int, ValorCopiado>();
+        foreach (var v in valores)
+        {
+            if (v.Codigo == CodigoBandas && v.Indice is { } i)
+                porIndice.TryAdd(i, v);
+        }
+        return ConsultasBandas
+            .Select(c => porIndice.GetValueOrDefault(c.Indice!.Value))
+            .OfType<ValorCopiado>()
+            .ToArray();
+    }
 
     // ------------------------------------------------------------------ nome
 
@@ -163,43 +262,49 @@ public sealed class GerentePresets
     private bool NomeRepetido(string nome, string? ignorarId) =>
         Presets.Any(p => p.Id != ignorarId && string.Equals(p.Nome, nome, StringComparison.OrdinalIgnoreCase));
 
-    // ------------------------------------------------------------------ guardar
+    /// <summary>O nome de um preset novo, ou o motivo de não valer (inválido ou repetido).</summary>
+    public (string? Nome, string? Motivo) ConferirNomeNovo(string? digitado)
+    {
+        if (NomeValido(digitado) is not { } nome)
+            return (null, MsgNomeInvalido);
+        if (NomeRepetido(nome, null))
+            return (null, MsgNomeRepetido);
+        return (nome, null);
+    }
+
+    // ------------------------------------------------------------------ criar e atualizar
 
     /// <summary>
-    /// Guarda o som atual (o espelho) como preset próprio. Exige a leitura completa. Não manda nada
-    /// ao aparelho e não precisa de chave.
+    /// Cria um preset próprio com as 15 bandas dadas, ou com as do espelho (exige a leitura das 15).
+    /// Não manda nada ao aparelho e não precisa de chave. O caminho da tela é a folha do Salvar.
     /// </summary>
-    public async Task<ResultadoPreset> GuardarAsync(string? nomeDigitado)
+    public async Task<ResultadoPreset> CriarAsync(string? nomeDigitado, IReadOnlyList<ValorCopiado>? bandas = null)
     {
         await Carregada;
         if (!Ocupar())
             return ResultadoPreset.Falha(MsgOcupado);
         try
         {
-            if (_estado.Lendo)
-                return Terminar(ResultadoPreset.Falha(Escritor.MsgLendo));
-            if (!_estado.Pronto)
-                return Terminar(ResultadoPreset.Falha(Escritor.MsgSemLeitura));
-
-            var espelho = _estado.Copiar();
-            var faltam = Catalogo.ConsultasMarco1.Count(c => !espelho.ContainsKey(new Endereco(c.Parametro.Codigo, c.Indice)));
-            if (faltam > 0)
+            if (bandas is null)
+            {
+                var (lidas, motivo) = TirarDoEspelho();
+                if (motivo is not null)
+                    return Terminar(ResultadoPreset.Falha(motivo));
+                bandas = lidas;
+            }
+            bandas = SoBandas(bandas);
+            if (FaltamEm(bandas) is > 0 and var faltam)
                 return Terminar(ResultadoPreset.Falha(MsgIncompleta(faltam)));
 
-            if (NomeValido(nomeDigitado) is not { } nome)
-                return Terminar(ResultadoPreset.Falha(MsgNomeInvalido));
-            if (NomeRepetido(nome, null))
-                return Terminar(ResultadoPreset.Falha(MsgNomeRepetido));
+            var (nome, motivoNome) = ConferirNomeNovo(nomeDigitado);
+            if (nome is null)
+                return Terminar(ResultadoPreset.Falha(motivoNome!));
 
-            var valores = Catalogo.ConsultasMarco1
-                .Select(c => new ValorCopiado(c.Parametro.Codigo, c.Indice, espelho[new Endereco(c.Parametro.Codigo, c.Indice)].NoFio))
-                .ToArray();
-            var preset = new Preset($"preset-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), valores);
-
+            var preset = new Preset($"preset-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), bandas);
             if (!await GravarAsync([.. Proprios, preset]))
                 return Terminar(ResultadoPreset.Falha(MsgNaoGuardou));
-            _log.Evento($"preset {nome} guardado ({valores.Length} valores)");
-            return Terminar(new ResultadoPreset(true, null, MsgGuardado(nome), preset));
+            _log.Evento($"preset {nome} criado");
+            return Terminar(new ResultadoPreset(true, null, MsgCriado(nome), preset));
         }
         finally
         {
@@ -207,9 +312,59 @@ public sealed class GerentePresets
         }
     }
 
+    /// <summary>
+    /// Troca as 15 bandas de um preset próprio pelas dadas (ou pelas do espelho). Vale para toda
+    /// memória que lembra ele. Um herdado não é sobrescrito. Não manda nada ao aparelho.
+    /// </summary>
+    public async Task<ResultadoPreset> AtualizarAsync(string id, IReadOnlyList<ValorCopiado>? bandas = null)
+    {
+        await Carregada;
+        if (!Ocupar())
+            return ResultadoPreset.Falha(MsgOcupado);
+        try
+        {
+            if (Obter(id) is { Herdado: true })
+                return Terminar(ResultadoPreset.Falha(MsgHerdadoNaoSobrescrito));
+            var proprios = Proprios;
+            if (proprios.FirstOrDefault(p => p.Id == id) is not { } preset)
+                return Terminar(ResultadoPreset.Falha(MsgNaoExiste));
+            if (bandas is null)
+            {
+                var (lidas, motivo) = TirarDoEspelho();
+                if (motivo is not null)
+                    return Terminar(ResultadoPreset.Falha(motivo));
+                bandas = lidas;
+            }
+            bandas = SoBandas(bandas);
+            if (FaltamEm(bandas) is > 0 and var faltam)
+                return Terminar(ResultadoPreset.Falha(MsgIncompleta(faltam)));
+
+            var novo = preset with { Valores = bandas, Quando = _relogio.GetLocalNow() };
+            if (!await GravarAsync(proprios.Select(p => p.Id == id ? novo : p).ToArray()))
+                return Terminar(ResultadoPreset.Falha(MsgNaoGuardou));
+            _log.Evento($"preset {preset.Nome} atualizado");
+            return Terminar(new ResultadoPreset(true, null, MsgAtualizado(preset.Nome), novo));
+        }
+        finally
+        {
+            Desocupar();
+        }
+    }
+
+    /// <summary>As bandas do espelho, ou o motivo de não poder (sem leitura, lendo, incompleta).</summary>
+    private (IReadOnlyList<ValorCopiado> Bandas, string? Motivo) TirarDoEspelho()
+    {
+        if (_estado.Lendo)
+            return ([], Escritor.MsgLendo);
+        if (!_estado.Pronto)
+            return ([], Escritor.MsgSemLeitura);
+        var (bandas, faltam) = TirarBandas(_estado.Copiar());
+        return faltam > 0 ? ([], MsgIncompleta(faltam)) : (bandas, null);
+    }
+
     // ------------------------------------------------------------------ renomear e apagar
 
-    /// <summary>Renomeia um preset próprio (as mesmas regras de nome do guardar). Não manda nada ao aparelho.</summary>
+    /// <summary>Renomeia um preset próprio (as mesmas regras de nome do criar). Não manda nada ao aparelho.</summary>
     public async Task<ResultadoPreset> RenomearAsync(string id, string? nomeDigitado)
     {
         await Carregada;
@@ -239,7 +394,7 @@ public sealed class GerentePresets
         }
     }
 
-    /// <summary>Apaga um preset próprio. Não manda nada ao aparelho.</summary>
+    /// <summary>Apaga um preset próprio que nenhuma memória lembra. Não manda nada ao aparelho.</summary>
     public async Task<ResultadoPreset> ApagarAsync(string id)
     {
         await Carregada;
@@ -252,6 +407,8 @@ public sealed class GerentePresets
             var proprios = Proprios;
             if (proprios.FirstOrDefault(p => p.Id == id) is not { } preset)
                 return Terminar(ResultadoPreset.Falha(MsgNaoExiste));
+            if (QuantasLembram(id) is > 0 and var n)
+                return Terminar(ResultadoPreset.Falha(MsgLembrado(n)));
 
             if (!await GravarAsync(proprios.Where(p => p.Id != id).ToArray()))
                 return Terminar(ResultadoPreset.Falha(MsgNaoGuardou));
@@ -267,7 +424,7 @@ public sealed class GerentePresets
     // ------------------------------------------------------------------ exportar
 
     /// <summary>
-    /// O JSON de um preset, próprio ou herdado (formato 1, com o nome, a nota e os valores), ou null
+    /// O JSON de um preset, próprio ou herdado (formato 2, com o nome, a nota e as 15 bandas), ou null
     /// se o id não existe. O arquivo e o compartilhar são da história 11; nunca é <c>.trps</c>.
     /// </summary>
     public string? ExportarJson(string id) => Obter(id) is { } preset ? ParaJson(preset, exportando: true) : null;
@@ -275,9 +432,9 @@ public sealed class GerentePresets
     // ------------------------------------------------------------------ aplicar
 
     /// <summary>
-    /// Aplica o preset: cópia antes, escreve só os ajustes diferentes, relê tudo e confere. Sem
-    /// confirmação (decisão da UX). Se cair no meio, a <see cref="CopiaAntes"/> deixa "aplicado
-    /// pela metade".
+    /// Aplica o preset por cima da memória: cópia antes, escreve só as bandas diferentes, relê tudo
+    /// e confere. Sem confirmação (decisão da UX). A chave é "Ajustes de áudio". Se cair no meio, a
+    /// <see cref="CopiaAntes"/> deixa "aplicado pela metade".
     /// </summary>
     public Task<ResultadoPreset> AplicarAsync(string id) => AplicarInternoAsync(id, refazendo: false);
 
@@ -305,11 +462,11 @@ public sealed class GerentePresets
 
             var alvo = preset.ComoCopia();
             var (escritas, ilegiveis) = CopiaAntes.Diferencas(alvo, _estado.Copiar());
-            ilegiveis += ValoresQueFaltam(preset);
+            ilegiveis += FaltamEm(preset.Valores);
             if (ilegiveis > 0)
             {
                 // Aplicar só uma parte daria "aplicado" sem estar: nada sai.
-                _log.Evento($"preset {preset.Nome}: {ilegiveis} valores ilegíveis ou ausentes");
+                _log.Evento($"preset {preset.Nome}: {ilegiveis} bandas ilegíveis ou ausentes");
                 return Terminar(ResultadoPreset.Falha(CopiaAntes.MsgCopiaIlegivel(ilegiveis)));
             }
 
@@ -319,9 +476,9 @@ public sealed class GerentePresets
                 if (refazendo)
                 {
                     await _copia.ConcluirAsync();
-                    return Terminar(new ResultadoPreset(true, null, MsgAplicado(preset.Nome), preset));
+                    return await AplicouAsync(new ResultadoPreset(true, null, MsgAplicado(preset.Nome), preset));
                 }
-                return Terminar(new ResultadoPreset(true, null, MsgJaAplicado(preset.Nome), preset));
+                return await AplicouAsync(new ResultadoPreset(true, null, MsgJaAplicado(preset.Nome), preset));
             }
 
             // A trava do primeiro quadro: chave "Ajustes de áudio", sessão Conectada, fora do modo só leitura.
@@ -337,8 +494,8 @@ public sealed class GerentePresets
                 return Terminar(ResultadoPreset.Falha(copia.Motivo!));
             Avisar(null);
 
-            // Suposição PRESET-APLICA-TUDO: escrever os ajustes diferentes em sequência e reler tudo confirma o preset.
-            _log.Evento($"preset {preset.Nome}: {escritas.Count} ajustes diferentes");
+            // Suposição PRESET-APLICA-TUDO: escrever as bandas diferentes em sequência e reler tudo confirma o preset.
+            _log.Evento($"preset {preset.Nome}: {escritas.Count} bandas diferentes");
             var falhas = 0;
             string? ultimoMotivo = null;
             foreach (var e in escritas)
@@ -352,7 +509,7 @@ public sealed class GerentePresets
             }
             if (falhas > 0)
             {
-                _log.Evento($"preset {preset.Nome}: {falhas} ajustes não foram escritos ({ultimoMotivo})");
+                _log.Evento($"preset {preset.Nome}: {falhas} bandas não foram escritas ({ultimoMotivo})");
                 // Com a sessão aberta, fica pela metade já; caída, a marca espera a próxima conexão.
                 if (SessaoAberta)
                     _copia.MarcarPelaMetade();
@@ -377,7 +534,7 @@ public sealed class GerentePresets
             var (restam, _) = CopiaAntes.Diferencas(alvo, _estado.Copiar());
             await _copia.ConcluirAsync();
             var frase = restam.Count == 0 ? MsgAplicado(preset.Nome) : MsgAplicadoDiferente(preset.Nome, restam.Count);
-            return Terminar(new ResultadoPreset(true, null, frase, preset));
+            return await AplicouAsync(new ResultadoPreset(true, null, frase, preset));
         }
         finally
         {
@@ -385,11 +542,21 @@ public sealed class GerentePresets
         }
     }
 
-    /// <summary>Quantos parâmetros do Marco 1 o preset não traz (um arquivo editado à mão).</summary>
-    private static int ValoresQueFaltam(Preset preset)
+    /// <summary>Um aplicar que terminou bem: avisa quem ouve (a memória em uso lembra o preset) e devolve o resultado.</summary>
+    private async Task<ResultadoPreset> AplicouAsync(ResultadoPreset r)
     {
-        var tem = preset.Valores.Select(v => new Endereco(v.Codigo, v.Indice)).ToHashSet();
-        return Catalogo.ConsultasMarco1.Count(c => !tem.Contains(new Endereco(c.Parametro.Codigo, c.Indice)));
+        if (AoAplicar is { } aviso && r.Preset is { } preset)
+        {
+            try
+            {
+                await aviso(preset);
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"falha no aviso do preset aplicado ({e.GetType().Name})");
+            }
+        }
+        return Terminar(r);
     }
 
     private bool SessaoAberta => _sessao.Estado == EstadoSessao.Conectado && _sessao.SegurandoConexao;
@@ -433,7 +600,7 @@ public sealed class GerentePresets
         Notificar();
     }
 
-    /// <summary>O JSON do <c>presets.json</c> (formato 1): só os presets próprios.</summary>
+    /// <summary>O JSON do <c>presets.json</c> (formato 2): só os presets próprios, cada um com as 15 bandas.</summary>
     public static string ParaJson(IEnumerable<Preset> proprios)
     {
         using var fluxo = new MemoryStream();
@@ -465,15 +632,19 @@ public sealed class GerentePresets
     }
 
     /// <summary>
-    /// Lê o <c>presets.json</c>. Fora do formato 1, ou com outra forma: lista vazia. Uma entrada sem id,
-    /// com nome inválido, sem valores ou com id repetido é descartada; as outras ficam.
+    /// Lê o <c>presets.json</c>. Formato 2: cada preset com as bandas que tem (só o <c>020</c>; sem
+    /// nenhuma banda, descartado). Formato 1 (os 84 valores): cada preset com as 15 bandas vira um de
+    /// 15 bandas; o que não as tem é descartado. Outro formato, ou outra forma: lista vazia. Uma
+    /// entrada sem id, com nome inválido, com id ou nome repetido (ou o id ou o nome de um herdado) é
+    /// descartada; as outras ficam.
     /// </summary>
     public static IReadOnlyList<Preset> DeJson(string json)
     {
         using var doc = JsonDocument.Parse(json);
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
-            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != Formato
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato)
+            || formato is not (Formato or FormatoAntigo)
             || !raiz.TryGetProperty("presets", out var lista) || lista.ValueKind != JsonValueKind.Array)
             return [];
 
@@ -484,9 +655,12 @@ public sealed class GerentePresets
             if (item.ValueKind != JsonValueKind.Object)
                 continue;
             var id = Texto(item, "id");
-            if (string.IsNullOrEmpty(id) || ConhecimentoHerdado.Presets.Any(h => h.Id == id) || !ids.Add(id))
+            if (string.IsNullOrEmpty(id) || ConhecimentoHerdado.Presets.Any(h => h.Id == id) || ids.Contains(id))
                 continue;
             if (NomeValido(Texto(item, "nome")) is not { } nome)
+                continue;
+            // Um nome repetido, entre os próprios ou com um herdado ("Cinema", em qualquer caixa), sai.
+            if (saida.Concat(ConhecimentoHerdado.Presets).Any(p => string.Equals(p.Nome, nome, StringComparison.OrdinalIgnoreCase)))
                 continue;
             var quando = Texto(item, "quando") is { } q
                          && DateTimeOffset.TryParse(q, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var d)
@@ -504,12 +678,12 @@ public sealed class GerentePresets
                     valores.Add(new ValorCopiado(codigo, indice, noFio));
                 }
             }
-            if (valores.Count == 0)
-            {
-                ids.Remove(id);
+            var bandas = SoBandas(valores);
+            // O formato 1 só passa com as 15 bandas; o 2, com alguma (o aplicar recusa as que faltam).
+            if (bandas.Count == 0 || (formato == FormatoAntigo && FaltamEm(bandas) > 0))
                 continue;
-            }
-            saida.Add(new Preset(id, nome, quando, valores));
+            ids.Add(id);
+            saida.Add(new Preset(id, nome, quando, bandas));
         }
         return saida;
     }

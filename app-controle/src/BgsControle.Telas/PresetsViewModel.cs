@@ -2,6 +2,7 @@ using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
@@ -9,6 +10,8 @@ namespace BgsControle.Telas;
 public sealed class ItemPresetViewModel : TelaBase
 {
     private string _nome;
+    private bool _emUso;
+    private string? _motivoTravaApagar;
 
     internal ItemPresetViewModel(Preset preset, PresetsViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -36,6 +39,35 @@ public sealed class ItemPresetViewModel : TelaBase
         }
     }
 
+    /// <summary>É o preset em uso (o lembrado pela memória do celular em uso, ou o último aplicado): a linha em branco.</summary>
+    public bool EmUso
+    {
+        get => _emUso;
+        internal set
+        {
+            if (_emUso == value)
+                return;
+            _emUso = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>Por que Apagar está travado ("Preset herdado não muda.", "Lembrado por 2 memórias."), ou null.</summary>
+    public string? MotivoTravaApagar
+    {
+        get => _motivoTravaApagar;
+        internal set
+        {
+            if (_motivoTravaApagar == value)
+                return;
+            _motivoTravaApagar = value;
+            Avisar();
+            Avisar(nameof(PodeApagar));
+        }
+    }
+
+    public bool PodeApagar => _motivoTravaApagar is null;
+
     /// <summary>Veio dos protótipos (CAP-6): não muda.</summary>
     public bool Herdado { get; }
 
@@ -51,23 +83,23 @@ public sealed class ItemPresetViewModel : TelaBase
     /// <summary>Abre o campo do nome (só os próprios; um herdado recusa).</summary>
     public Comando Renomear { get; }
 
-    /// <summary>Abre a folha "Apagar o preset X?" (só os próprios; um herdado recusa).</summary>
+    /// <summary>Abre a folha "Apagar o preset X?" (só os próprios que nenhuma memória lembra; senão, o motivo).</summary>
     public Comando Apagar { get; }
 }
 
 /// <summary>
-/// A tela Presets no celular (Configurações › Presets, CAP-5): a lista (os herdados primeiro, com
-/// selo e nota, depois os próprios), "Guardar o som atual" com o nome, Aplicar por item, Renomear
-/// e Apagar com a folha "Apagar o preset X?" (Confirmar ou Cancelar). Cada ação fica travada, com o
-/// motivo, sem conexão, em modo só leitura ou com a chave desligada. Depois de uma queda no meio de
-/// um aplicar, mostra "aplicado pela metade" com Terminar e Voltar à cópia, como a tela Memórias.
-/// Nada sai ao aparelho antes do botão de confirmar da folha; guardar, renomear e apagar nunca
-/// mandam nada ao aparelho.
+/// A tela Presets no celular (Configurações › Presets, CAP-5): os presets de 15 bandas (o herdado
+/// Cinema primeiro, com selo e nota, depois os próprios), Aplicar por item (só as 15 bandas, por cima
+/// da memória; a memória do celular em uso passa a lembrar o preset), Renomear e Apagar com a folha
+/// "Apagar o preset X?" (Confirmar ou Cancelar). Apagar fica travado num herdado e num preset que
+/// alguma memória lembra ("Lembrado por 2 memórias."). O preset novo nasce na folha do Salvar. Cada
+/// ação fica travada, com o motivo, sem conexão, em modo só leitura ou com a chave desligada. Depois
+/// de uma queda no meio de um aplicar, mostra "aplicado pela metade" com Terminar e Voltar à cópia.
+/// Renomear e apagar nunca mandam nada ao aparelho.
 /// </summary>
 public sealed class PresetsViewModel : TelaBase, IDisposable
 {
-    public const string TextoSemProprios = "Guarde o som atual como preset.";
-    public const string TextoGuardar = "Guardar o som atual";
+    public const string TextoSemProprios = "Mexa nas 15 bandas e toque em Salvar para criar um preset.";
     public const string TextoCancelar = "Cancelar";
     public const string TextoRenomear = "Renomear";
     public const string TituloPelaMetade = "Aplicado pela metade";
@@ -77,6 +109,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     public const string MsgVoltou = "O som voltou à cópia.";
 
     private readonly GerentePresets _gerente;
+    private readonly GerenteSetups _setups;
     private readonly CopiaAntes _copia;
     private readonly Sessao _sessao;
     private readonly IChaves _chaves;
@@ -86,8 +119,6 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     private IReadOnlyList<ItemPresetViewModel> _itens = [];
     private string? _mensagem;
     private string? _ultimoAvisoGerente;
-    private string _nomeNovo = "";
-    private string? _erroNome;
     private string? _renomear;
     private string _nomeRenomear = "";
     private string? _erroRenomear;
@@ -96,6 +127,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
 
     public PresetsViewModel(
         GerentePresets gerente,
+        GerenteSetups setups,
         CopiaAntes copia,
         Sessao sessao,
         IChaves chaves,
@@ -105,12 +137,12 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
         : base(despachante, relogio)
     {
         _gerente = gerente;
+        _setups = setups;
         _copia = copia;
         _sessao = sessao;
         _chaves = chaves;
         _estado = estado;
 
-        Guardar = new Comando(GuardarAsync);
         ConfirmarRenomear = new Comando(ConfirmarRenomearAsync);
         CancelarRenomear = new Comando(FecharRenomear);
         ConfirmarApagar = new Comando(ConfirmarApagarAsync);
@@ -120,6 +152,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
 
         _ultimoAvisoGerente = _gerente.Aviso;
         _gerente.Mudou += AoMudarAlgo;
+        _setups.Mudou += AoMudarAlgo;
         _copia.Mudou += AoMudarAlgo;
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
@@ -134,10 +167,10 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     public ItemPresetViewModel? Item(string nome) =>
         _itens.FirstOrDefault(i => string.Equals(i.Nome, nome, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>"Guarde o som atual como preset." quando não há preset próprio; senão null.</summary>
+    /// <summary>"Mexa nas 15 bandas e toque em Salvar para criar um preset." quando só há o herdado; senão null.</summary>
     public string? TextoVazio => _gerente.Proprios.Count == 0 ? TextoSemProprios : null;
 
-    /// <summary>A última frase: "Preset A aplicado…", "Chave desligada", "Já existe um preset com esse nome."</summary>
+    /// <summary>A última frase: "Preset Rock aplicado na FILME.", "Chave desligada", "Já existe um preset com esse nome."</summary>
     public string? Mensagem
     {
         get => _mensagem;
@@ -178,92 +211,15 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>
-    /// Por que "Guardar o som atual" está travado, ou null. Guardar não manda nada ao aparelho e
-    /// não precisa de chave; precisa só da leitura completa.
-    /// </summary>
-    public string? MotivoTravaGuardar
-    {
-        get
-        {
-            if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
-                return ControleParametroViewModel.MsgSemConexao;
-            if (_estado.Lendo)
-                return ControleParametroViewModel.MsgLendo;
-            if (!_estado.Pronto)
-                return ControleParametroViewModel.MsgNaoLeu;
-            if (Ocupado)
-                return MsgEmAndamento;
-            return null;
-        }
-    }
-
     public bool PodeAplicar => MotivoTravaAplicar is null;
-    public bool PodeGuardar => MotivoTravaGuardar is null;
-
-    // ------------------------------------------------------------------ guardar o som atual
-
-    /// <summary>O nome do preset novo (como foi digitado; vale sem os espaços das pontas).</summary>
-    public string NomeNovo
-    {
-        get => _nomeNovo;
-        set
-        {
-            if (_nomeNovo == value)
-                return;
-            _nomeNovo = value;
-            Avisar();
-        }
-    }
-
-    /// <summary>"Use de 1 a 24 letras, números, espaço, _ ou -", "Já existe um preset com esse nome.", ou null.</summary>
-    public string? ErroNome
-    {
-        get => _erroNome;
-        private set
-        {
-            if (_erroNome == value)
-                return;
-            _erroNome = value;
-            Avisar();
-        }
-    }
-
-    /// <summary>Guarda o som atual com o nome. Se não valer, o campo fica com o nome digitado e o erro.</summary>
-    public Comando Guardar { get; }
-
-    private async Task GuardarAsync()
-    {
-        if (MotivoTravaGuardar is { } motivo)
-        {
-            ErroNome = null;
-            Mensagem = motivo;
-            return;
-        }
-        ErroNome = null;
-        ResultadoPreset? resultado = null;
-        await Agir(async () =>
-        {
-            resultado = await _gerente.GuardarAsync(NomeNovo);
-            return Frase(resultado);
-        }, depois: () =>
-        {
-            if (resultado is { Ok: true })
-            {
-                _nomeNovo = "";
-                Avisar(nameof(NomeNovo));
-            }
-            else
-            {
-                _erroNome = Frase(resultado);
-                Avisar(nameof(ErroNome));
-            }
-        });
-    }
 
     // ------------------------------------------------------------------ aplicar
 
-    /// <summary>Aplicar: age direto, sem confirmação (a cópia antes é guardada). Travado, nada sai e o motivo aparece.</summary>
+    /// <summary>
+    /// Aplicar: age direto, sem confirmação (a cópia antes é guardada). Com uma memória do celular em
+    /// uso, ela passa a lembrar o preset: "Preset Rock aplicado na FILME.". Travado, nada sai e o
+    /// motivo aparece.
+    /// </summary>
     public async Task AplicarAsync(string id)
     {
         if (MotivoTravaAplicar is { } motivo)
@@ -271,8 +227,18 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
             Mensagem = motivo;
             return;
         }
-        await Agir(async () => Frase(await _gerente.AplicarAsync(id)));
+        await Agir(async () =>
+        {
+            var r = await _gerente.AplicarAsync(id);
+            if (r is { Ok: true, Preset: { } preset } && r.Mensagem == GerentePresets.MsgAplicado(preset.Nome)
+                && _setups.MemoriaEmUso is { } memoria && memoria.IdPreset == preset.Id)
+                return MsgAplicadoNa(preset.Nome, memoria.Nome);
+            return Frase(r);
+        });
     }
+
+    /// <summary>"Preset Rock aplicado na FILME."</summary>
+    public static string MsgAplicadoNa(string preset, string memoria) => $"Preset {preset} aplicado na {memoria}.";
 
     // ------------------------------------------------------------------ renomear
 
@@ -379,11 +345,19 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     /// <summary>O botão contornado, o véu ou Voltar: nada muda.</summary>
     public Comando CancelarApagar { get; }
 
-    /// <summary>"Apagar": abre a folha de confirmação. Um herdado recusa; ocupado, só o motivo. Nada sai antes do botão.</summary>
+    /// <summary>
+    /// "Apagar": abre a folha de confirmação. Um herdado ou um preset lembrado recusa com o motivo;
+    /// ocupado, só o motivo. Nada sai antes do botão.
+    /// </summary>
     public void AbrirApagar(string id)
     {
         if (RecusaMudar(id))
             return;
+        if (_gerente.MotivoTravaApagar(id) is { } lembrado)
+        {
+            Mensagem = lembrado;
+            return;
+        }
         FecharRenomear();
         _apagar = id;
         Mensagem = null;
@@ -549,9 +523,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
 
         Avisar(nameof(TextoVazio));
         Avisar(nameof(MotivoTravaAplicar));
-        Avisar(nameof(MotivoTravaGuardar));
         Avisar(nameof(PodeAplicar));
-        Avisar(nameof(PodeGuardar));
         Avisar(nameof(Ocupado));
         Avisar(nameof(PelaMetade));
         Avisar(nameof(TextoPelaMetade));
@@ -563,12 +535,15 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     private void MontarItens()
     {
         var presets = _gerente.Presets;
+        var emUso = _setups.IdPresetEmUso;
         var novos = new List<ItemPresetViewModel>(presets.Count);
         foreach (var p in presets)
         {
             if (!_porId.TryGetValue(p.Id, out var item))
                 _porId[p.Id] = item = new ItemPresetViewModel(p, this, Despachante, Relogio);
             item.Nome = p.Nome;
+            item.EmUso = p.Id == emUso;
+            item.MotivoTravaApagar = _gerente.MotivoTravaApagar(p.Id);
             novos.Add(item);
         }
         foreach (var id in _porId.Keys.Where(id => presets.All(p => p.Id != id)).ToArray())
@@ -583,6 +558,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     public void Dispose()
     {
         _gerente.Mudou -= AoMudarAlgo;
+        _setups.Mudou -= AoMudarAlgo;
         _copia.Mudou -= AoMudarAlgo;
         _sessao.Mudou -= AoMudarAlgo;
         _chaves.Mudou -= AoMudarChave;

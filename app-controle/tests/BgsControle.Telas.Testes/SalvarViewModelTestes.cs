@@ -1,10 +1,11 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Herdado;
+using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas.Testes;
 
-/// <summary>A folha do Salvar por camadas (história 8c), contra o processador simulado.</summary>
+/// <summary>A folha do Salvar por camadas (histórias 8c e 8d, com a linha das 15 bandas), contra o processador simulado.</summary>
 public sealed class SalvarViewModelTestes : IDisposable
 {
     private readonly Bancada _b = new(setups: true);
@@ -23,6 +24,7 @@ public sealed class SalvarViewModelTestes : IDisposable
 
     private static Parametro Ganho => Catalogo.ParametroDe("081")!;
     private static Parametro Atraso => Catalogo.ParametroDe("050")!;
+    private static Parametro Banda => Catalogo.ParametroDe("020")!;
 
     [Fact]
     public async Task Nada_mudou_o_Salvar_fica_travado_e_nao_abre()
@@ -193,5 +195,144 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.False(_vm.Aberta);
         Assert.Equal(gravacoes, _b.Arquivos.Gravacoes);
         Assert.Equal("+10.0", Setups.Memoria(ConhecimentoHerdado.IdMemoriaFilme)!.Carater.Single(v => v.Codigo == "081" && v.Indice == 0).NoFio);
+    }
+
+    // ----------------------------------------------------------------- 8d: a linha das 15 bandas
+
+    [Fact]
+    public async Task Bandas_mexidas_na_FILME_com_o_Cinema_Atualizar_travado_Criar_ja_escolhido_e_o_nome_do_preset()
+    {
+        await _b.Conectar();
+        await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 4, 3.0m)); // 160 Hz
+        await _b.Tela.EsvaziarAsync();
+        Assert.True(_vm.PodeSalvar);
+
+        await _vm.Abrir.ExecutarAsync();
+
+        var linha = Assert.Single(_vm.Linhas);
+        Assert.Equal("15 bandas → preset Cinema", linha.Titulo);
+        Assert.Equal("HERDADO", linha.Selo);
+        Assert.Equal(["Banda 160 Hz: +1,0 dB → +3,0 dB"], linha.Mudancas);
+        Assert.True(_vm.PerguntaPreset);
+        Assert.Equal("Atualizar o preset Cinema", _vm.TextoAtualizarPreset);
+        Assert.Equal("Vale para toda memória que usa ele.", _vm.AvisoAtualizarPreset);
+        Assert.Equal("Preset herdado não é sobrescrito.", _vm.MotivoAtualizarPresetTravado);
+        Assert.False(_vm.PodeAtualizarPreset);
+        Assert.Equal(EscolhaPreset.Criar, _vm.EscolhaPreset); // já vem escolhido
+        Assert.True(_vm.PedeNomePreset);
+        Assert.False(_vm.PedeNome);
+        Assert.False(_vm.PodeConfirmar); // falta o nome do preset
+
+        await _vm.EscolherAtualizarPreset.ExecutarAsync();
+        Assert.Equal("Preset herdado não é sobrescrito.", _vm.Erro);
+        Assert.Equal(EscolhaPreset.Criar, _vm.EscolhaPreset);
+
+        // Nome repetido: a folha fica, nada guardado.
+        _vm.NomePreset = "cinema";
+        Assert.True(_vm.PodeConfirmar);
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+        Assert.True(_vm.Aberta);
+        Assert.Equal("Nome do preset: Já existe um preset com esse nome.", _vm.Erro);
+        Assert.Empty(_b.Presets.Proprios);
+
+        _vm.NomePreset = "CINEMA 2";
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+
+        Assert.False(_vm.Aberta);
+        Assert.Equal("Salvo: 15 bandas no preset CINEMA 2.", _vm.Mensagem);
+        var novo = Assert.Single(_b.Presets.Proprios);
+        Assert.Equal(novo.Id, Setups.Memoria(ConhecimentoHerdado.IdMemoriaFilme)!.IdPreset);
+        Assert.Equal("Nada para salvar.", _vm.MotivoTrava);
+    }
+
+    [Fact]
+    public async Task Bandas_mexidas_com_um_preset_proprio_nenhuma_escolha_vem_marcada_e_Atualizar_vale_para_ele()
+    {
+        await _b.Conectar();
+        var rock = (await _b.Presets.CriarAsync("Rock", ConhecimentoHerdado.BandasCinema.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
+        await _b.Rodar(_b.Presets.AplicarAsync(rock.Id)); // a FILME lembra o Rock
+        await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 1, -2.0m));
+        await _b.Tela.EsvaziarAsync();
+
+        await _vm.Abrir.ExecutarAsync();
+
+        Assert.Equal(["15 bandas → preset Rock"], _vm.Linhas.Select(l => l.Titulo));
+        Assert.Null(_vm.Linhas[0].Selo);
+        Assert.True(_vm.PodeAtualizarPreset);
+        Assert.Equal(EscolhaPreset.Nenhuma, _vm.EscolhaPreset);
+        Assert.False(_vm.PedeNomePreset);
+        Assert.False(_vm.PodeConfirmar); // travado até escolher
+
+        await _vm.EscolherCriarPreset.ExecutarAsync();
+        Assert.True(_vm.PedeNomePreset);
+        await _vm.EscolherAtualizarPreset.ExecutarAsync();
+        Assert.False(_vm.PedeNomePreset);
+        Assert.True(_vm.PodeConfirmar);
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+
+        Assert.Equal("Salvo: 15 bandas no preset Rock.", _vm.Mensagem);
+        Assert.Equal("-2.0", _b.Presets.Obter(rock.Id)!.Valores.Single(v => v.Indice == 1).NoFio);
+    }
+
+    [Fact]
+    public async Task Memoria_nova_com_bandas_diferentes_de_todos_pede_os_dois_nomes()
+    {
+        _b.Simulador.DefinirMemoria(1, "020", 0, "+6.0");
+        await _b.Conectar();
+        await _b.Rodar(_b.Memorias.CarregarAsync(1));
+        await _b.Tela.EsvaziarAsync();
+
+        await _vm.Abrir.ExecutarAsync();
+
+        Assert.Contains("15 bandas → preset novo", _vm.Linhas.Select(l => l.Titulo));
+        Assert.True(_vm.PedeNome);
+        Assert.True(_vm.PedeNomePreset);
+        Assert.False(_vm.PerguntaPreset);
+        _vm.NomeMemoria = "MUSICA ORIG";
+        Assert.False(_vm.PodeConfirmar);
+        _vm.NomePreset = "ORIG EQ";
+        Assert.True(_vm.PodeConfirmar);
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+
+        Assert.Equal("Salvo: caráter na MUSICA ORIG, 15 bandas no preset ORIG EQ.", _vm.Mensagem);
+        Assert.Equal(_b.Presets.Proprios.Single().Id, Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
+    }
+
+    [Fact]
+    public async Task Memoria_nova_com_as_bandas_do_Cinema_so_pede_o_nome_da_memoria()
+    {
+        await _b.Conectar();
+        await _b.Rodar(_b.Memorias.CarregarAsync(1));
+        await _b.Tela.EsvaziarAsync();
+
+        await _vm.Abrir.ExecutarAsync();
+
+        var bandas = _vm.Linhas.Single(l => l.Titulo.StartsWith("15 bandas", StringComparison.Ordinal));
+        Assert.Equal("15 bandas → preset Cinema", bandas.Titulo);
+        Assert.Equal("HERDADO", bandas.Selo);
+        Assert.False(_vm.PedeNomePreset);
+        _vm.NomeMemoria = "MUSICA ORIG";
+        Assert.True(_vm.PodeConfirmar);
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+
+        Assert.Equal("Salvo: caráter na MUSICA ORIG.", _vm.Mensagem);
+        Assert.Equal(ConhecimentoHerdado.IdCinema, Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
+    }
+
+    [Fact]
+    public async Task Nome_de_preset_invalido_a_frase_diz_que_e_o_nome_do_preset_e_nada_e_guardado()
+    {
+        await _b.Conectar();
+        await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 4, 3.0m));
+        await _b.Tela.EsvaziarAsync();
+        await _vm.Abrir.ExecutarAsync();
+
+        _vm.NomePreset = "a#b";
+        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
+
+        Assert.True(_vm.Aberta);
+        Assert.Equal("Nome do preset: Use de 1 a 24 letras, números, espaço, _ ou -", _vm.Erro);
+        Assert.Equal("a#b", _vm.NomePreset);
+        Assert.Empty(_b.Presets.Proprios);
     }
 }

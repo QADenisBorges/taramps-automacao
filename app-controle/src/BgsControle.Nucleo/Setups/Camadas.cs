@@ -12,7 +12,7 @@ public enum Camada
     /// <summary>O caráter do som: vai para a memória do celular.</summary>
     Carater,
 
-    /// <summary>O EQ de 15 bandas e o preset de EQ do aparelho: vai para o preset (história 8d).</summary>
+    /// <summary>O EQ de 15 bandas (vai para o preset, CAP-5) e o preset de EQ do aparelho (220, que não entra em preset nem em memória).</summary>
     Bandas,
 
     /// <summary>O mute e os extras: valem na hora; o Salvar não guarda.</summary>

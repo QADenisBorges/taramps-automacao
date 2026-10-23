@@ -18,18 +18,12 @@ public sealed record SecaoHerdada(string Titulo, IReadOnlyList<string> Linhas);
 
 /// <summary>
 /// O conhecimento que os protótipos deixaram (CAP-6), embutido no app: as notas das 3 memórias do
-/// aparelho, a leitura da FILME de 18/10 (o preset herdado FILME, até a história 8d, e a mesma
-/// leitura dividida em três camadas: o Setup "Casa 2.1", a memória FILME e as 15 bandas do
-/// "Cinema") e as seções de texto de <c>conhecimento-herdado.md</c>. Está sempre presente: não
-/// depende de arquivo do usuário nem de digitar nada.
+/// aparelho, a leitura da FILME de 18/10 dividida em três camadas (o Setup "Casa 2.1", a memória
+/// FILME e o preset "Cinema", com as 15 bandas) e as seções de texto de <c>conhecimento-herdado.md</c>.
+/// Está sempre presente: não depende de arquivo do usuário nem de digitar nada.
 /// </summary>
 public static class ConhecimentoHerdado
 {
-    /// <summary>O id fixo do preset herdado FILME.</summary>
-    public const string IdFilme = "herdado-filme-2026-10-18";
-
-    public const string NomeFilme = "FILME";
-
     /// <summary>O recurso embutido: as respostas cruas da leitura completa de 18/10/2026.</summary>
     internal const string RecursoFilme = "leitura-2026-10-18_2145.json";
 
@@ -43,7 +37,10 @@ public static class ConhecimentoHerdado
 
     public const string NomeMemoriaFilme = "FILME";
 
-    /// <summary>O nome do preset de 15 bandas herdado (a 8d o cria a partir de <see cref="BandasCinema"/>).</summary>
+    /// <summary>O id fixo do preset herdado "Cinema" (as 15 bandas da leitura de 18/10).</summary>
+    public const string IdCinema = "herdado-cinema-2026-10-18";
+
+    /// <summary>O nome do preset de 15 bandas herdado.</summary>
     public const string NomeCinema = "Cinema";
 
     /// <summary>O equilíbrio do Casa 2.1: a JBL R (saída 2) 3 dB abaixo no ganho e no limiter.</summary>
@@ -60,14 +57,16 @@ public static class ConhecimentoHerdado
     public const string NotaCinema =
         "As 15 bandas da FILME de 18/10: 160 Hz +1, 400 Hz −1, 4 kHz −1, 6,3 kHz −2, 10 kHz +2, 16 kHz +2; o resto 0.";
 
-    private static readonly Lazy<Preset> Filme = new(LerFilme);
+    private static readonly Lazy<(DateTimeOffset Quando, IReadOnlyList<ValorCopiado> Valores)> Leitura = new(LerFilme);
     private static readonly Lazy<Setup> Casa = new(() => new Setup(
-        IdSetupCasa, NomeSetupCasa, PresetFilme.Quando, Da(Camada.Calibracao), EquilibrioCasa,
+        IdSetupCasa, NomeSetupCasa, QuandoFilme, Da(Camadas.Consultas(Camada.Calibracao)), EquilibrioCasa,
         Link12: false, Link34: false, Herdado: true, Nota: NotaSetupCasa));
     private static readonly Lazy<MemoriaCelular> MemoriaFilmeHerdada = new(() => new MemoriaCelular(
-        IdMemoriaFilme, IdSetupCasa, NomeMemoriaFilme, PresetFilme.Quando, Camadas.Separar(Da(Camada.Carater), EquilibrioCasa),
-        Herdado: true, Nota: NotaMemoriaFilme));
-    private static readonly Lazy<IReadOnlyList<ValorCopiado>> Cinema = new(() => Da(Camada.Bandas));
+        IdMemoriaFilme, IdSetupCasa, NomeMemoriaFilme, QuandoFilme,
+        Camadas.Separar(Da(Camadas.Consultas(Camada.Carater)), EquilibrioCasa),
+        Herdado: true, Nota: NotaMemoriaFilme, IdPreset: IdCinema));
+    private static readonly Lazy<Preset> Cinema = new(() => new Preset(
+        IdCinema, NomeCinema, QuandoFilme, Da(GerentePresets.ConsultasBandas), Herdado: true, Nota: NotaCinema));
 
     private static readonly IReadOnlyList<NotaMemoriaHerdada> Notas =
     [
@@ -77,7 +76,7 @@ public static class ConhecimentoHerdado
             "Versão antiga, precisa ser refeita: ganhos −5/−10, limitadores −11/−6. É o teste 1 do sinal de sucesso."),
         new(3, "FILME",
             "A versão definitiva de 18/10. Atrasos: L 0, R 100 cm, sub 80 cm. Ganhos: L +10, R +7, sub +6. "
-            + "Limitadores −15/−18/−12, liberação de 200 ms. O preset herdado FILME tem esses valores."),
+            + "Limitadores −15/−18/−12, liberação de 200 ms. No app, ela é o Setup Casa 2.1, a memória FILME e o preset Cinema."),
     ];
 
     /// <summary>
@@ -87,26 +86,35 @@ public static class ConhecimentoHerdado
     public static NotaMemoriaHerdada? NotaMemoria(int numero) =>
         numero is >= 1 and <= 3 ? Notas[numero - 1] : null;
 
-    /// <summary>O preset herdado FILME: os 84 valores do Marco 1 da leitura de 18/10.</summary>
-    public static Preset PresetFilme => Filme.Value;
+    /// <summary>
+    /// A leitura completa de 18/10: os 84 valores do Marco 1, na ordem do catálogo. É a base do
+    /// Setup "Casa 2.1", da memória FILME e do preset "Cinema"; não é um preset.
+    /// </summary>
+    public static IReadOnlyList<ValorCopiado> LeituraFilme => Leitura.Value.Valores;
+
+    /// <summary>Quando a leitura de 18/10 foi feita.</summary>
+    public static DateTimeOffset QuandoFilme => Leitura.Value.Quando;
+
+    /// <summary>O preset herdado "Cinema": as 15 bandas (<c>020</c>) da leitura de 18/10.</summary>
+    public static Preset PresetCinema => Cinema.Value;
 
     /// <summary>Os presets herdados, que vêm sempre primeiro na lista e não mudam.</summary>
-    public static IReadOnlyList<Preset> Presets => [PresetFilme];
+    public static IReadOnlyList<Preset> Presets => [PresetCinema];
 
     /// <summary>O Setup herdado "Casa 2.1": a calibração da leitura de 18/10, o equilíbrio R −3 e o link desligado.</summary>
     public static Setup SetupCasa => Casa.Value;
 
-    /// <summary>A memória do celular herdada FILME: o caráter da leitura de 18/10 sem o equilíbrio (R +10 e −15).</summary>
+    /// <summary>A memória do celular herdada FILME: o caráter da leitura de 18/10 sem o equilíbrio (R +10 e −15); lembra o Cinema.</summary>
     public static MemoriaCelular MemoriaFilme => MemoriaFilmeHerdada.Value;
 
-    /// <summary>As 15 bandas e o preset de EQ do aparelho da leitura de 18/10: o "Cinema" (para a história 8d).</summary>
-    public static IReadOnlyList<ValorCopiado> BandasCinema => Cinema.Value;
+    /// <summary>As 15 bandas da leitura de 18/10: as do preset "Cinema".</summary>
+    public static IReadOnlyList<ValorCopiado> BandasCinema => PresetCinema.Valores;
 
-    /// <summary>Os valores da leitura de 18/10 na camada, na ordem da leitura.</summary>
-    private static IReadOnlyList<ValorCopiado> Da(Camada camada)
+    /// <summary>Os valores da leitura de 18/10 nas consultas dadas, na ordem da leitura.</summary>
+    private static IReadOnlyList<ValorCopiado> Da(IEnumerable<Consulta> consultas)
     {
-        var codigos = Camadas.Consultas(camada).Select(c => (c.Parametro.Codigo, c.Indice)).ToHashSet();
-        return PresetFilme.Valores.Where(v => codigos.Contains((v.Codigo, v.Indice))).ToArray();
+        var codigos = consultas.Select(c => (c.Parametro.Codigo, c.Indice)).ToHashSet();
+        return LeituraFilme.Where(v => codigos.Contains((v.Codigo, v.Indice))).ToArray();
     }
 
     /// <summary>As seções de texto, em português, na ordem do arquivo de conhecimento herdado.</summary>
@@ -148,9 +156,9 @@ public static class ConhecimentoHerdado
         ]),
         new("Presets",
         [
-            "O preset FILME vem da leitura de 18/10 e se aplica como qualquer outro.",
+            "O preset é só o EQ de 15 bandas. O herdado é o Cinema, as 15 bandas da FILME de 18/10: ele se aplica como qualquer outro e não se renomeia, não se apaga nem se sobrescreve.",
             "Os presets DIALOGO e NOITE, que estão no celular, são de antes do alinhamento e estão desatualizados. Eles não entram no app: são arquivos .trps do app da Taramps, cifrados, e não são lidos.",
-            "Um preset antigo entra carregando-o pelo app da Taramps e salvando a leitura como preset próprio.",
+            "Um preset antigo entra carregando-o pelo app da Taramps e salvando a leitura como memória do celular.",
         ]),
         new("Preferências e método",
         [
@@ -174,10 +182,10 @@ public static class ConhecimentoHerdado
     ];
 
     /// <summary>
-    /// Monta o preset FILME com as respostas cruas da leitura de 18/10: para cada consulta do
-    /// Marco 1, a resposta que casa, decodificada pelo catálogo.
+    /// Lê a leitura de 18/10 com as respostas cruas: para cada consulta do Marco 1, a resposta que
+    /// casa, decodificada pelo catálogo.
     /// </summary>
-    private static Preset LerFilme()
+    private static (DateTimeOffset, IReadOnlyList<ValorCopiado>) LerFilme()
     {
         using var fluxo = typeof(ConhecimentoHerdado).Assembly.GetManifestResourceStream(RecursoFilme)
                           ?? throw new InvalidOperationException($"Recurso {RecursoFilme} ausente.");
@@ -200,6 +208,6 @@ public static class ConhecimentoHerdado
                 throw new InvalidOperationException($"A leitura de 18/10 tem {consulta.Parametro.Codigo} {consulta.Onde} ilegível ({noFio}).");
             valores.Add(new ValorCopiado(consulta.Parametro.Codigo, consulta.Indice, noFio));
         }
-        return new Preset(IdFilme, NomeFilme, quando, valores, Herdado: true, Nota: Notas[2].Texto);
+        return (quando, valores);
     }
 }

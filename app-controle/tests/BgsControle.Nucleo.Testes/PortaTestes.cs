@@ -8,8 +8,11 @@ using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
+using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
+using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
@@ -97,6 +100,8 @@ public sealed class PortaTestes : IDisposable
     private readonly CopiaAntes _copia;
     private readonly GerenteMemorias _memorias;
     private readonly LinkCanais _link;
+    private readonly GerentePresets _presets;
+    private readonly GerentePlaylists _playlists;
     private readonly GerenteSetups _setups;
     private readonly GeradorSinal _gerador;
     private readonly MonitorAparelho _monitor;
@@ -121,7 +126,9 @@ public sealed class PortaTestes : IDisposable
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
         _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, Escrita, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, new TextoMemoria(), _log);
-        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _chaves,
+        _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio);
+        _playlists = new GerentePlaylists(new TextoMemoria(), _log);
+        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _presets, _playlists, _chaves,
             new TextoMemoria(), new TextoMemoria(), _log, _relogio);
         _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, _memorias, Escrita, TemposDoGerador, _relogio);
         _monitor = new MonitorAparelho(_sessao, _leitura, _relogio);
@@ -467,10 +474,11 @@ public sealed class PortaTestes : IDisposable
 
         var ajuste = await Pedir("POST", "/ajuste", """{"codigo":"081","indice":2,"valor":2.0}""", chave);
         var carregar = await Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
+        var aplicar = await Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);
         var tarefa = await Pedir("POST", "/tarefa", """{"frase":"IA mexendo"}""", chave);
         var estado = await Pedir("GET", "/estado", chave: chave);
 
-        foreach (var r in new[] { ajuste, carregar, tarefa })
+        foreach (var r in new[] { ajuste, carregar, aplicar, tarefa })
         {
             Assert.Equal(409, r.Status);
             Assert.Equal("Setup em dúvida; escolha na tela.", Motivo(r));
@@ -495,8 +503,9 @@ public sealed class PortaTestes : IDisposable
     {
         // Um segundo gerente cujo setups.json só se lê no fim: a conferência dele fica pendente.
         var guardado = new TextoSegurado(null);
-        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _chaves,
-            guardado, new TextoMemoria(), _log, _relogio);
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias,
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio),
+            new GerentePlaylists(new TextoMemoria(), _log), _chaves, guardado, new TextoMemoria(), _log, _relogio);
         using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
         await Conectar();
         await LigarPorta(porta);
@@ -1199,5 +1208,146 @@ public sealed class PortaTestes : IDisposable
             _relogio.Avancar(passo);
             await Task.Delay(1);
         }
+    }
+
+    // ----------------------------------------------------------------- 8d: aplicar memória do celular
+
+    [Fact]
+    public async Task A_IA_aplica_a_FILME_pelo_nome_depois_do_toque_e_o_estado_mostra_ela_em_uso()
+    {
+        _simulador.Definir("081", 0, "+1.0"); // o caráter diferente da FILME: haverá o que escrever
+        var chave = await Pronto();
+        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
+
+        var pedido = Pedir("POST", "/memoria/aplicar", """{"memoria":"filme"}""", chave);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        Assert.Equal("A IA pede para aplicar a memória FILME", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Troca todo o som de uma vez.", _confirmacoes.Atual.Risco);
+        Assert.Equal("Aplicar a FILME", _confirmacoes.Atual.TextoBotao);
+        Assert.DoesNotContain("*081*0*10.0*", _simulador.Escritas); // nada antes do toque
+        _confirmacoes.Confirmar();
+        var r = await Rodar(pedido);
+
+        Assert.Equal(200, r.Status);
+        Assert.Equal("Memória FILME aplicada.", Json(r).GetProperty("mensagem").GetString());
+        Assert.Contains("*081*0*10.0*", _simulador.Escritas);
+        Assert.Contains(_historico.Entradas, e => e.Origem == OrigemComando.Ia && e.Enviado && e.Tipo == TipoComando.AjusteAudio);
+
+        var estado = Json(await Pedir("GET", "/estado", chave: chave)).GetProperty("setup");
+        Assert.Equal("confere", estado.GetProperty("estado").GetString());
+        var filme = Assert.Single(estado.GetProperty("memorias").EnumerateArray());
+        Assert.Equal(ConhecimentoHerdado.IdMemoriaFilme, filme.GetProperty("id").GetString());
+        Assert.Equal("FILME", filme.GetProperty("nome").GetString());
+        Assert.True(filme.GetProperty("emUso").GetBoolean());
+        Assert.Equal("Cinema", filme.GetProperty("preset").GetString());
+        Assert.Equal(ConhecimentoHerdado.IdCinema, filme.GetProperty("idPreset").GetString());
+        Assert.Equal("Cinema", estado.GetProperty("presetEmUso").GetProperty("nome").GetString());
+    }
+
+    [Fact]
+    public async Task A_IA_aplica_pelo_id_e_a_folha_recusada_nao_escreve_nada()
+    {
+        _simulador.Definir("081", 0, "+1.0");
+        var chave = await Pronto();
+        var antes = _simulador.Escritas.Count;
+
+        var pedido = Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{ConhecimentoHerdado.IdMemoriaFilme}}"}""", chave);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        _confirmacoes.Recusar();
+        var r = await pedido;
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal("O usuário recusou na tela.", Motivo(r));
+        Assert.Equal(antes, _simulador.Escritas.Count);
+        var e = Ultima();
+        Assert.Equal((OrigemComando.Ia, TipoComando.AplicarMemoriaCelular, "FILME", false, "O usuário recusou na tela."),
+            (e.Origem, e.Tipo, e.Valor, e.Enviado, e.Motivo));
+    }
+
+    [Fact]
+    public async Task Com_a_chave_Aplicar_memoria_desligada_a_IA_recebe_409_sem_folha()
+    {
+        var chave = await Pronto();
+        Assert.True((await _chaves.DefinirAsync(Chave.AplicarMemoriaCelular, false, OrigemComando.Tela)).Ok);
+        var antes = _simulador.Escritas.Count;
+
+        var r = await Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(Sessao.MotivoChaveDesligada, Motivo(r));
+        Assert.Null(_confirmacoes.Atual);
+        Assert.Equal(antes, _simulador.Escritas.Count);
+        // A recusa entra no histórico como IA (trava 4).
+        var e = Ultima();
+        Assert.Equal(OrigemComando.Ia, e.Origem);
+        Assert.Equal(TipoComando.AplicarMemoriaCelular, e.Tipo);
+        Assert.Equal("FILME", e.Valor);
+        Assert.False(e.Enviado);
+        Assert.Equal(Sessao.MotivoChaveDesligada, e.Motivo);
+    }
+
+    [Theory]
+    [InlineData("""{"memoria":"NAO EXISTE"}""")]
+    [InlineData("""{"memoria":""}""")]
+    [InlineData("""{"outro":"FILME"}""")]
+    public async Task Uma_memoria_que_nao_existe_ou_sem_o_campo_da_400_sem_folha(string corpo)
+    {
+        var chave = await Pronto();
+
+        var r = await Pedir("POST", "/memoria/aplicar", corpo, chave);
+
+        Assert.Equal(400, r.Status);
+        Assert.Null(_confirmacoes.Atual);
+    }
+
+    [Fact]
+    public async Task A_ajuda_descreve_o_caminho_de_aplicar_memoria_do_celular()
+    {
+        var chave = await Pronto();
+
+        var texto = Json(await Pedir("GET", "/ajuda", chave: chave)).GetProperty("texto").GetString()!;
+
+        Assert.Contains("POST /memoria/aplicar", texto);
+        Assert.Contains("presetEmUso", texto);
+    }
+
+    [Fact]
+    public async Task Uma_memoria_de_outro_Setup_pelo_id_da_400_antes_da_folha()
+    {
+        _simulador.Definir("050", 2, "0.0"); // a dúvida: dá para criar o Setup Carro
+        await Conectar();
+        await AndarAte(() => _setups.Estado == EstadoConferencia.Duvida && !_setups.Ocupado);
+        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("ESTRADA"))).Ok);
+        var estrada = _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single().Id;
+        Assert.True((await Rodar(_setups.TrocarAsync())).Ok);
+        Assert.True((await Rodar(_setups.EscolherAsync(ConhecimentoHerdado.IdSetupCasa))).Ok);
+        await LigarPorta();
+        var chave = await Parear();
+        var antes = _simulador.Escritas.Count;
+
+        var r = await Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{estrada}}"}""", chave);
+
+        Assert.Equal(400, r.Status);
+        Assert.Equal($"Não há memória do celular \"{estrada}\" no Casa 2.1 (veja GET /estado).", Motivo(r));
+        Assert.Null(_confirmacoes.Atual);
+        Assert.Equal(antes, _simulador.Escritas.Count);
+    }
+
+    [Fact]
+    public async Task Sem_Setup_em_uso_aplicar_memoria_do_celular_da_400_antes_da_folha()
+    {
+        _simulador.Definir("050", 2, "0.0");
+        await Conectar();
+        await AndarAte(() => _setups.Estado == EstadoConferencia.Duvida && !_setups.Ocupado);
+        Assert.True((await Rodar(_setups.SeguirSemSetupAsync())).Ok);
+        await LigarPorta();
+        var chave = await Parear();
+
+        var r = await Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{ConhecimentoHerdado.IdMemoriaFilme}}"}""", chave);
+
+        Assert.Equal(400, r.Status);
+        Assert.Equal("Sem Setup em uso, nenhuma memória do celular se aplica. Escolha um Setup na tela.", Motivo(r));
+        Assert.Null(_confirmacoes.Atual);
     }
 }

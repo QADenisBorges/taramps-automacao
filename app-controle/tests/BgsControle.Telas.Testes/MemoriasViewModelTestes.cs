@@ -7,9 +7,9 @@ using BgsControle.Nucleo.Setups;
 namespace BgsControle.Telas.Testes;
 
 /// <summary>
-/// A tela Memórias da história 8c contra o processador simulado: as memórias do celular do Setup em
-/// uso (Aplicar, Renomear, Apagar, Criar memória do som atual), a seção "Do aparelho" (só Carregar)
-/// e o "aplicado pela metade".
+/// A tela Memórias das histórias 8c e 8d contra o processador simulado: as memórias do celular do
+/// Setup em uso (Aplicar, Renomear, Apagar, Criar memória do som atual, o preset lembrado), a seção
+/// "Do aparelho" (só Carregar) e o "aplicado pela metade".
 /// </summary>
 public sealed class MemoriasViewModelTestes : IDisposable
 {
@@ -326,5 +326,52 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.Equal("+10.0", _b.Simulador.Valor("081", 0));
         Assert.Equal("+6.0", _b.Simulador.Valor("081", 2));
         Assert.Equal(ConhecimentoHerdado.IdMemoriaFilme, Setups.EmUso.IdMemoria);
+    }
+
+    // ----------------------------------------------------------------- 8d: o preset lembrado e a playlist
+
+    [Fact]
+    public async Task O_cartao_mostra_o_preset_lembrado_e_a_memoria_nova_lembra_o_preset_em_uso()
+    {
+        await _b.Conectar();
+        Assert.Equal("Preset: Cinema", _vm.Cartao("FILME")!.TextoPreset);
+
+        await Criar("NOITE");
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal("Preset: Cinema", _vm.Cartao("NOITE")!.TextoPreset);
+        var rock = (await _b.Presets.CriarAsync("Rock", ConhecimentoHerdado.BandasCinema.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
+        await _b.Rodar(_b.Presets.AplicarAsync(rock.Id)); // a NOITE, em uso, passa a lembrar o Rock
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("Preset: Rock", _vm.Cartao("NOITE")!.TextoPreset);
+        Assert.Equal("Preset: Cinema", _vm.Cartao("FILME")!.TextoPreset);
+    }
+
+    [Fact]
+    public async Task Aplicar_a_FILME_pelo_cartao_traz_as_bandas_do_Cinema_junto()
+    {
+        await _b.Conectar();
+        await _b.Rodar(_b.Escritor.EscreverAsync(Catalogo.ParametroDe("020")!, 4, 3.0m));
+        await Criar("NOITE"); // a NOITE nasce lembrando o Cinema, com 160 Hz em +3 no aparelho
+
+        await _b.Rodar(_vm.Cartao("FILME")!.Aplicar.ExecutarAsync());
+
+        Assert.Equal("Memória FILME aplicada.", _vm.Mensagem);
+        Assert.Equal("+1.0", _b.Simulador.Valor("020", 4)); // a banda do Cinema voltou
+    }
+
+    [Fact]
+    public async Task Apagar_a_memoria_apaga_a_playlist_dela()
+    {
+        await _b.Conectar();
+        await Criar("NOITE");
+        var noite = _vm.Cartao("NOITE")!.Id;
+        Assert.True((await _b.Playlists.AdicionarAsync(noite, [new Nucleo.Player.ArquivoAudio("content://a", "A", "M", TimeSpan.Zero)])).Ok);
+        await _b.Rodar(_vm.Cartao("FILME")!.Aplicar.ExecutarAsync());
+
+        _vm.Cartao("NOITE")!.Apagar.Execute(null);
+        await _b.Rodar(_vm.ConfirmarApagar.ExecutarAsync());
+
+        Assert.Empty(_b.Playlists.Playlist(noite));
     }
 }

@@ -54,6 +54,7 @@ public static class FraseComando
             TipoComando.ResetFabrica => "Reset de fábrica",
             TipoComando.ResetAudio => "Reset de áudio",
             TipoComando.TrocaSenha => TrocaSenha,
+            TipoComando.AplicarMemoriaCelular => $"Aplicar a memória {e.Valor}",
             _ => Juntar(Desconhecido, codigo),
         };
     }

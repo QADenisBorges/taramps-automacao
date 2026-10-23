@@ -6,6 +6,7 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
@@ -80,8 +81,23 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LogBle>()));
 
-        // História 8c: os Setups e as memórias do celular (conferência ao conectar, aplicar, Salvar por
-        // camadas), em setups.json, e a marca do mudo da dúvida em setup-mudo.json.
+        // História 8 e 8d: os presets de 15 bandas no celular (criar no Salvar, aplicar, renomear, apagar), com
+        // o aplicar pela cópia antes, e as playlists por memória do celular (playlists.json). Antes dos
+        // Setups, que os recebem. O conhecimento herdado (CAP-6) vem embutido no núcleo.
+        builder.Services.AddSingleton(sp => new GerentePresets(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPresets),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new GerentePlaylists(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPlaylists),
+            sp.GetRequiredService<LogBle>()));
+
+        // História 8c e 8d: os Setups e as memórias do celular (conferência ao conectar, aplicar com o preset
+        // lembrado, Salvar por camadas), em setups.json, e a marca do mudo da dúvida em setup-mudo.json.
         builder.Services.AddSingleton(sp => new GerenteSetups(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<EstadoAparelho>(),
@@ -90,20 +106,11 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LinkCanais>(),
             sp.GetRequiredService<GerenteMemorias>(),
+            sp.GetRequiredService<GerentePresets>(),
+            sp.GetRequiredService<GerentePlaylists>(),
             sp.GetRequiredService<IChaves>(),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetups),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetupMudo),
-            sp.GetRequiredService<LogBle>()));
-
-        // História 8: os presets no celular (guardar, aplicar, renomear, apagar), com o aplicar pela
-        // cópia antes. O conhecimento herdado (CAP-6) vem embutido no núcleo: não há o que registrar.
-        builder.Services.AddSingleton(sp => new GerentePresets(
-            sp.GetRequiredService<Sessao>(),
-            sp.GetRequiredService<EstadoAparelho>(),
-            sp.GetRequiredService<Escritor>(),
-            sp.GetRequiredService<LeituraAutomatica>(),
-            sp.GetRequiredService<CopiaAntes>(),
-            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPresets),
             sp.GetRequiredService<LogBle>()));
 
         // História 7a: o gerador de sinal, com as regras de falha 1 e 2 (desliga no prazo, no
@@ -177,11 +184,12 @@ public static class MauiProgram
         app.Services.GetRequiredService<Escritor>();
         app.Services.GetRequiredService<LinkCanais>();
         app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
-        // Os Setups cedo: a conferência roda na primeira leitura de cada conexão, e os tipos
-        // "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam registrados na CopiaAntes.
-        app.Services.GetRequiredService<GerenteSetups>();
         // Os presets cedo: o tipo "aplicar-preset" precisa estar registrado na CopiaAntes antes da primeira leitura.
         app.Services.GetRequiredService<GerentePresets>();
+        // Os Setups cedo (com os presets e as playlists): a conferência roda na primeira leitura de cada
+        // conexão, os tipos "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam
+        // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas.
+        app.Services.GetRequiredService<GerenteSetups>();
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
         app.Services.GetRequiredService<GeradorSinal>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.

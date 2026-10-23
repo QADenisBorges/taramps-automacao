@@ -31,6 +31,9 @@ public enum TipoComando
 
     /// <summary>Um texto fora do catálogo (a porta recusa); só o código, se houver.</summary>
     Desconhecido,
+
+    /// <summary>Aplicar uma memória do celular pela porta (história 8d); o valor é o nome da memória. Fica no fim: o <c>historico.json</c> guarda o nome.</summary>
+    AplicarMemoriaCelular,
 }
 
 /// <summary>
@@ -44,6 +47,9 @@ public sealed record ComandoNaPorta(TipoComando Tipo, Endereco? Endereco, string
 
     // A forma de leitura (#CCC#…, ou CCC#b da banda): mesmo fora do catálogo, nunca entra.
     private static readonly Regex FormaDeLeitura = new(@"^(#|\d{3}#)", RegexOptions.CultureInvariant);
+
+    /// <summary>Aplicar a memória do celular <paramref name="nome"/> (vários ajustes, sem um quadro só).</summary>
+    public static ComandoNaPorta AplicarMemoria(string nome) => new(TipoComando.AplicarMemoriaCelular, null, nome);
 
     /// <summary><c>*202*0*</c>: desligar o gerador nunca fica travado.</summary>
     public bool DesligaGerador =>

@@ -20,7 +20,7 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>A marca do mudo da dúvida: o mute anterior dos 4 canais e o Setup que era a referência.</summary>
     public const string ArquivoSetupMudo = "setup-mudo.json";
 
-    /// <summary>As 3 playlists do Player, uma por posição de memória (só as URIs; a música fica onde está).</summary>
+    /// <summary>As playlists do Player, uma por memória do celular, e as pendentes do formato antigo (só as URIs; a música fica onde está).</summary>
     public const string ArquivoPlaylists = "playlists.json";
 
     /// <summary>O histórico dos comandos (as últimas 1000 entradas, sem senhas).</summary>

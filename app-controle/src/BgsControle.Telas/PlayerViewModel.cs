@@ -1,6 +1,6 @@
 using System.Globalization;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
@@ -82,9 +82,9 @@ public sealed class LinhaPlaylistViewModel : TelaBase
 }
 
 /// <summary>
-/// A tela Player (CAP-15): a playlist da memória carregada, sem abas (decisão do Denis, 22/10). O
-/// título "Playlist da NOME"; sem memória, "Carregue uma memória para usar o Player." e nenhum
-/// comando. As linhas (nome, m:ss, pasta, tocando, "Arquivo não encontrado"); Editar e Pronto;
+/// A tela Player (CAP-15): a playlist da memória do celular em uso, sem abas (decisão do Denis,
+/// 22/10). O título "Playlist da NOME"; sem memória do celular em uso, "Sem memória do celular em
+/// uso, não há playlist. Aplique uma memória do celular." e nenhum comando. As linhas (nome, m:ss, pasta, tocando, "Arquivo não encontrado"); Editar e Pronto;
 /// Adicionar músicas (o seletor do Android, vários de uma vez, no fim); Remover e Mover; Tocar/pausar
 /// e Próxima. Nada daqui manda nada ao processador.
 /// </summary>
@@ -108,7 +108,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
 
     private readonly Player _player;
     private readonly GerentePlaylists _playlists;
-    private readonly GerenteMemorias _memorias;
+    private readonly GerenteSetups _setups;
     private readonly ISeletorAudio _seletor;
 
     private readonly Dictionary<string, LinhaPlaylistViewModel> _porId = [];
@@ -117,12 +117,12 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     private string? _ultimoAvisoPlayer;
     private bool _editando;
     private bool _agindo;
-    private int? _memoriaVista;
+    private string? _memoriaVista;
 
     public PlayerViewModel(
         Player player,
         GerentePlaylists playlists,
-        GerenteMemorias memorias,
+        GerenteSetups setups,
         ISeletorAudio seletor,
         IDespachante despachante,
         TimeProvider relogio)
@@ -130,7 +130,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     {
         _player = player;
         _playlists = playlists;
-        _memorias = memorias;
+        _setups = setups;
         _seletor = seletor;
 
         Adicionar = new Comando(AdicionarAsync);
@@ -143,20 +143,20 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         _memoriaVista = _player.Memoria;
         _player.Mudou += AoMudarAlgo;
         _playlists.Mudou += AoMudarAlgo;
-        _memorias.Mudou += AoMudarAlgo;
+        _setups.Mudou += AoMudarAlgo;
         Atualizar();
     }
 
     // ------------------------------------------------------------------ o que aparece
 
-    /// <summary>Há memória carregada: a playlist e os comandos aparecem.</summary>
+    /// <summary>Há memória do celular em uso: a playlist e os comandos aparecem.</summary>
     public bool TemMemoria => _player.Memoria is not null;
 
-    /// <summary>"Playlist da FILME" (sem nome, "Playlist da Memória 3"); null sem memória.</summary>
+    /// <summary>"Playlist da FILME"; null sem memória do celular em uso.</summary>
     public string? Titulo => _player.Memoria is { } n ? Player.TituloPlaylist(_player.NomeMemoria(n)) : null;
 
     /// <summary>
-    /// O aviso fixo: "Carregue uma memória para usar o Player." sem memória; "Playlist da FILME
+    /// O aviso fixo: "Sem memória do celular em uso, não há playlist…" sem memória; "Playlist da FILME
     /// vazia. Toque em Adicionar músicas." com a playlist vazia; null com faixas.
     /// </summary>
     public string? TextoAviso => _player.Memoria is not { } n
@@ -275,8 +275,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ apoio
 
-    /// <summary>A memória carregada, ou null com a frase "Carregue uma memória para usar o Player.".</summary>
-    private int? SemMemoria()
+    /// <summary>A memória do celular em uso, ou null com a frase "Sem memória do celular em uso…".</summary>
+    private string? SemMemoria()
     {
         if (_player.Memoria is { } n)
             return n;
@@ -401,6 +401,6 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     {
         _player.Mudou -= AoMudarAlgo;
         _playlists.Mudou -= AoMudarAlgo;
-        _memorias.Mudou -= AoMudarAlgo;
+        _setups.Mudou -= AoMudarAlgo;
     }
 }

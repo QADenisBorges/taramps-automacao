@@ -1,5 +1,5 @@
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Nucleo.Player;
 
@@ -12,11 +12,12 @@ public enum EstadoPlayer
 }
 
 /// <summary>
-/// O Player (CAP-15): toca a playlist da memória carregada (<see cref="GerenteMemorias.EmUso"/>) pela
-/// porta <see cref="IReprodutor"/>. O som sai do celular pelo Bluetooth de áudio; nada vai ao
+/// O Player (CAP-15): toca a playlist da memória do celular em uso (<see cref="GerenteSetups.EmUso"/>)
+/// pela porta <see cref="IReprodutor"/>. O som sai do celular pelo Bluetooth de áudio; nada vai ao
 /// processador pelo BLE.
 /// <list type="bullet">
-/// <item>Sem memória carregada, nada de playlist nem de comandos.</item>
+/// <item>Sem memória do celular em uso (memória do aparelho, "Som do aparelho", sem Setup,
+/// desconectado), nada de playlist nem de comandos.</item>
 /// <item>Se a memória em uso muda (inclusive para nenhuma), o Player para na hora e passa a mostrar
 /// a playlist da nova memória, parado (decisão do Denis, 22/10).</item>
 /// <item>No fim de uma faixa, segue para a próxima; depois da última, para, e o próximo Tocar
@@ -29,7 +30,7 @@ public enum EstadoPlayer
 /// </summary>
 public sealed class Player : IDisposable
 {
-    public const string MsgSemMemoria = "Carregue uma memória para usar o Player.";
+    public const string MsgSemMemoria = "Sem memória do celular em uso, não há playlist. Aplique uma memória do celular.";
     public const string TextoIndisponivel = "Arquivo não encontrado";
 
     /// <summary>"Playlist da FILME".</summary>
@@ -42,27 +43,27 @@ public sealed class Player : IDisposable
     public static string MsgNenhumaDisponivel(string nome) => $"Nenhuma faixa disponível na playlist da {nome}.";
 
     private readonly GerentePlaylists _playlists;
-    private readonly GerenteMemorias _memorias;
+    private readonly GerenteSetups _setups;
     private readonly IReprodutor _reprodutor;
     private readonly LogBle _log;
 
     private readonly SemaphoreSlim _porta = new(1, 1);
     private readonly object _trava = new();
     private readonly HashSet<string> _indisponiveis = [];
-    private int? _memoria;
+    private string? _memoria;
     private EstadoPlayer _estado = EstadoPlayer.Parado;
     private Faixa? _atual;
     private string? _aviso;
 
-    public Player(GerentePlaylists playlists, GerenteMemorias memorias, IReprodutor reprodutor, LogBle log)
+    public Player(GerentePlaylists playlists, GerenteSetups setups, IReprodutor reprodutor, LogBle log)
     {
         _playlists = playlists;
-        _memorias = memorias;
+        _setups = setups;
         _reprodutor = reprodutor;
         _log = log;
-        _memoria = memorias.EmUso;
+        _memoria = MemoriaEmUso();
 
-        _memorias.Mudou += AoMudarMemoria;
+        _setups.Mudou += AoMudarMemoria;
         _playlists.Mudou += AoMudarPlaylists;
         _reprodutor.Terminou += AoTerminar;
     }
@@ -70,8 +71,8 @@ public sealed class Player : IDisposable
     /// <summary>O estado, a faixa atual, a memória ou o aviso mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
-    /// <summary>A memória cuja playlist o Player mostra (0 a 2): a carregada. Null = nenhuma.</summary>
-    public int? Memoria
+    /// <summary>A memória do celular cuja playlist o Player mostra (o id): a em uso. Null = nenhuma.</summary>
+    public string? Memoria
     {
         get
         {
@@ -99,7 +100,7 @@ public sealed class Player : IDisposable
         }
     }
 
-    /// <summary>A última frase do Player ("Nenhuma faixa disponível…", "Carregue uma memória…"), ou null.</summary>
+    /// <summary>A última frase do Player ("Nenhuma faixa disponível…", "Sem memória do celular em uso…"), ou null.</summary>
     public string? Aviso
     {
         get
@@ -109,8 +110,8 @@ public sealed class Player : IDisposable
         }
     }
 
-    /// <summary>As faixas da playlist da memória carregada, na ordem; vazia sem memória.</summary>
-    public IReadOnlyList<Faixa> Faixas => Memoria is { } n ? _playlists.Playlist(n) : [];
+    /// <summary>As faixas da playlist da memória em uso, na ordem; vazia sem memória.</summary>
+    public IReadOnlyList<Faixa> Faixas => _playlists.Playlist(Memoria);
 
     /// <summary>O reprodutor recusou o arquivo desta faixa ("Arquivo não encontrado").</summary>
     public bool Indisponivel(string id)
@@ -119,8 +120,11 @@ public sealed class Player : IDisposable
             return _indisponiveis.Contains(id);
     }
 
-    /// <summary>O nome da memória n (0 a 2) para os textos: o lido do aparelho, ou "Memória N".</summary>
-    public string NomeMemoria(int n) => _memorias.Nome(n) is { Length: > 0 } nome ? nome : $"Memória {n + 1}";
+    /// <summary>O nome da memória do celular para os textos ("FILME"), ou "memória" se ela sumiu.</summary>
+    public string NomeMemoria(string id) => _setups.Memoria(id)?.Nome ?? "memória";
+
+    /// <summary>A memória do celular em uso agora (o id), ou null.</summary>
+    private string? MemoriaEmUso() => _setups.EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso ? uso.IdMemoria : null;
 
     // ------------------------------------------------------------------ comandos
 
@@ -178,7 +182,7 @@ public sealed class Player : IDisposable
     /// Toca a primeira faixa que o reprodutor aceitar, de <paramref name="inicio"/> em diante; as
     /// recusadas ficam marcadas. Se nenhuma tocar, para (com o aviso se nenhuma da playlist está disponível).
     /// </summary>
-    private async Task TocarAPartirAsync(int n, IReadOnlyList<Faixa> lista, int inicio)
+    private async Task TocarAPartirAsync(string n, IReadOnlyList<Faixa> lista, int inicio)
     {
         Avisar(null);
         for (var i = Math.Max(inicio, 0); i < lista.Count; i++)
@@ -189,12 +193,12 @@ public sealed class Player : IDisposable
                 lock (_trava)
                     _indisponiveis.Remove(faixa.Id);
                 Definir(EstadoPlayer.Tocando, faixa);
-                _log.Evento($"player: tocando a faixa {i + 1} da playlist da memória {n + 1}");
+                _log.Evento($"player: tocando a faixa {i + 1} da playlist da {NomeMemoria(n)}");
                 return;
             }
             lock (_trava)
                 _indisponiveis.Add(faixa.Id);
-            _log.Evento($"player: a faixa {i + 1} da playlist da memória {n + 1} não abriu (arquivo não encontrado)");
+            _log.Evento($"player: a faixa {i + 1} da playlist da {NomeMemoria(n)} não abriu (arquivo não encontrado)");
             Notificar();
         }
 
@@ -220,7 +224,7 @@ public sealed class Player : IDisposable
     /// </summary>
     private async Task SincronizarAsync()
     {
-        var emUso = _memorias.EmUso;
+        var emUso = MemoriaEmUso();
         bool trocou;
         lock (_trava)
         {
@@ -231,7 +235,7 @@ public sealed class Player : IDisposable
         {
             await PararAsync();
             Avisar(null);
-            _log.Evento(emUso is { } m ? $"player: memória {m + 1} em uso; parado" : "player: nenhuma memória em uso; parado");
+            _log.Evento(emUso is { } m ? $"player: {NomeMemoria(m)} em uso; parado" : "player: nenhuma memória do celular em uso; parado");
             return;
         }
 
@@ -246,7 +250,7 @@ public sealed class Player : IDisposable
 
     private void AoMudarMemoria()
     {
-        if (_memorias.EmUso != Memoria)
+        if (MemoriaEmUso() != Memoria)
             _ = Executar(() => Task.CompletedTask); // o Sincronizar para o Player na hora
     }
 
@@ -286,10 +290,10 @@ public sealed class Player : IDisposable
     }
 
     /// <summary>
-    /// Início de um comando do Denis: a memória carregada (o aviso anterior sai), ou null com o aviso
-    /// "Carregue uma memória para usar o Player.".
+    /// Início de um comando do Denis: a memória do celular em uso (o aviso anterior sai), ou null com o
+    /// aviso "Sem memória do celular em uso, não há playlist…".
     /// </summary>
-    private int? ComMemoria()
+    private string? ComMemoria()
     {
         if (Memoria is { } n)
         {
@@ -341,7 +345,7 @@ public sealed class Player : IDisposable
 
     public void Dispose()
     {
-        _memorias.Mudou -= AoMudarMemoria;
+        _setups.Mudou -= AoMudarMemoria;
         _playlists.Mudou -= AoMudarPlaylists;
         _reprodutor.Terminou -= AoTerminar;
     }

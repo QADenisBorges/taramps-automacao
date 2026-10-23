@@ -27,8 +27,9 @@ public sealed record Setup(
     string? Nota = null);
 
 /// <summary>
-/// Uma memória no celular (CAP-4): o caráter do som, dentro de um Setup. O ganho e o limiter das
-/// saídas 1 e 2 guardam a parte da memória, sem o equilíbrio do Setup.
+/// Uma memória no celular (CAP-4): o caráter do som, dentro de um Setup, e o preset que ela lembra
+/// (as 15 bandas, CAP-5), que volta junto quando ela é aplicada. O ganho e o limiter das saídas 1 e
+/// 2 guardam a parte da memória, sem o equilíbrio do Setup.
 /// </summary>
 /// <param name="Id">Único e estável (a herdada tem o id fixo do código).</param>
 /// <param name="IdSetup">O Setup dono.</param>
@@ -37,6 +38,7 @@ public sealed record Setup(
 /// <param name="Carater">Os valores da camada caráter (<see cref="Camada.Carater"/>), sem o equilíbrio.</param>
 /// <param name="Herdado">Vem dos protótipos (CAP-6).</param>
 /// <param name="Nota">A nota herdada, quando há.</param>
+/// <param name="IdPreset">O preset lembrado (o último usado com ela), ou null.</param>
 public sealed record MemoriaCelular(
     string Id,
     string IdSetup,
@@ -44,7 +46,8 @@ public sealed record MemoriaCelular(
     DateTimeOffset Quando,
     IReadOnlyList<ValorCopiado> Carater,
     bool Herdado = false,
-    string? Nota = null);
+    string? Nota = null,
+    string? IdPreset = null);
 
 /// <summary>O que o app sabe que está tocando.</summary>
 public enum TipoSomEmUso
@@ -137,12 +140,26 @@ public sealed record MudancaSalvar(string Rotulo, string Antes, string Depois)
     public string Linha => $"{Rotulo}: {Antes} → {Depois}";
 }
 
+/// <summary>A resposta à pergunta das 15 bandas na folha do Salvar, com uma memória do celular em uso.</summary>
+public enum EscolhaPreset
+{
+    /// <summary>A folha não perguntou (ou ainda não houve escolha).</summary>
+    Nenhuma,
+
+    /// <summary>"Atualizar o preset Rock": vale para toda memória que usa ele.</summary>
+    Atualizar,
+
+    /// <summary>"Criar preset novo", com o nome: a memória passa a lembrar o novo.</summary>
+    Criar,
+}
+
 /// <summary>Uma linha por camada na folha do Salvar: "Calibração → Setup Casa 2.1", com as mudanças.</summary>
-public sealed record LinhaSalvar(Camada Camada, string Titulo, IReadOnlyList<MudancaSalvar> Mudancas);
+/// <param name="Herdado">A linha vai para um preset herdado (o selo HERDADO na linha das 15 bandas).</param>
+public sealed record LinhaSalvar(Camada Camada, string Titulo, IReadOnlyList<MudancaSalvar> Mudancas, bool Herdado = false);
 
 /// <summary>
-/// A folha do Salvar por camadas (EXPERIENCE, "Salvar por camadas"), sem a linha das 15 bandas
-/// (história 8d). <see cref="Trava"/> diz por que o Salvar está travado ("Nada para salvar.").
+/// A folha do Salvar por camadas (EXPERIENCE, "Salvar por camadas"). <see cref="Trava"/> diz por que
+/// o Salvar está travado ("Nada para salvar.").
 /// </summary>
 /// <param name="Trava">Por que não há o que salvar, ou null.</param>
 /// <param name="Linhas">Uma por camada que muda.</param>
@@ -159,4 +176,22 @@ public sealed record FolhaSalvar(
     IReadOnlyList<DiferencaCalibracao> Diferencas)
 {
     public static FolhaSalvar Travada(string motivo, string? nomeSetup = null) => new(motivo, [], false, false, nomeSetup, []);
+
+    /// <summary>
+    /// As 15 bandas mexidas com uma memória do celular que lembra um preset: a escolha entre
+    /// <see cref="EscolhaPreset.Atualizar"/> e <see cref="EscolhaPreset.Criar"/>.
+    /// </summary>
+    public bool PerguntaPreset { get; init; }
+
+    /// <summary>O preset da linha das 15 bandas ("Rock", "Cinema"), ou null (preset novo).</summary>
+    public string? NomePreset { get; init; }
+
+    /// <summary>Por que "Atualizar o preset" está travado ("Preset herdado não é sobrescrito."), ou null.</summary>
+    public string? MotivoAtualizarTravado { get; init; }
+
+    /// <summary>A escolha que já vem marcada: <see cref="EscolhaPreset.Criar"/> com um preset herdado; senão nenhuma.</summary>
+    public EscolhaPreset EscolhaPresetInicial { get; init; }
+
+    /// <summary>As 15 bandas vão, sem pergunta, para um preset novo: pede o nome dele.</summary>
+    public bool PedeNomePreset { get; init; }
 }

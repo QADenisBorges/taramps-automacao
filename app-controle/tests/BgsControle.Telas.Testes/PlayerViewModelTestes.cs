@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using BgsControle.Nucleo;
+using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Player;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas.Testes;
 
@@ -118,15 +120,15 @@ internal sealed class SeletorFalso : ISeletorAudio
 }
 
 /// <summary>
-/// A história 8b nas telas, contra o processador simulado: o <see cref="PlayerViewModel"/> com o
-/// <see cref="Player"/>, o <see cref="GerentePlaylists"/> e a memória em uso de verdade. Uma linha de
-/// teste para cada linha da matriz de <c>8b-player-playlist-por-memoria.md</c>.
+/// As histórias 8b e 8d nas telas, contra o processador simulado: o <see cref="PlayerViewModel"/> com o
+/// <see cref="Player"/>, o <see cref="GerentePlaylists"/> e a memória do celular em uso de verdade (o
+/// <see cref="GerenteSetups"/>). Ao conectar, a conferência põe a FILME herdada em uso.
 /// </summary>
 public sealed class PlayerViewModelTestes : IDisposable
 {
     private static readonly Regex Senha = new(@"^\*000\*[0-9A-Z]{4}\*$");
 
-    private readonly Bancada _b = new();
+    private readonly Bancada _b = new(setups: true);
     private readonly ReprodutorFalso _reprodutor = new();
     private readonly SeletorFalso _seletor = new();
     private readonly GerentePlaylists _playlists;
@@ -136,14 +138,14 @@ public sealed class PlayerViewModelTestes : IDisposable
 
     public PlayerViewModelTestes()
     {
-        _playlists = NovoGerente();
-        _player = new Player(_playlists, _b.Memorias, _reprodutor, _b.Log);
-        _vm = new PlayerViewModel(_player, _playlists, _b.Memorias, _seletor, _b.Tela, _b.Relogio);
+        _playlists = _b.Playlists;
+        _player = new Player(_playlists, _b.Setups!, _reprodutor, _b.Log);
+        _vm = new PlayerViewModel(_player, _playlists, _b.Setups!, _seletor, _b.Tela, _b.Relogio);
     }
 
     /// <summary>
-    /// Critério de aceite: nenhuma escrita da 8b chegou ao aparelho. Fora a senha e as leituras, só
-    /// os carregar de memória que o próprio teste pediu para pôr a memória em uso.
+    /// Critério de aceite: nenhuma escrita do Player chegou ao aparelho. Fora a senha e as leituras, só
+    /// os carregar de memória do aparelho que o próprio teste pediu.
     /// </summary>
     public void Dispose()
     {
@@ -162,23 +164,52 @@ public sealed class PlayerViewModelTestes : IDisposable
 
     private static string Uri(int i) => $"content://musica/{i}";
 
-    /// <summary>Conecta e carrega a memória n (0 a 2): o único jeito de a memória ficar em uso.</summary>
-    private async Task Carregar(int n)
+    private static string Filme => ConhecimentoHerdado.IdMemoriaFilme;
+
+    /// <summary>Conecta: a conferência põe a FILME herdada (memória do celular) em uso.</summary>
+    private async Task Conectar()
     {
         if (_b.Sessao.Estado != EstadoSessao.Conectado)
             await _b.Conectar();
+        await Apoio.Esperar(() => _player.Memoria == Filme);
+        await _b.Tela.EsvaziarAsync();
+    }
+
+    /// <summary>Carrega a memória n (0 a 2) do aparelho: sem memória do celular em uso, não há playlist.</summary>
+    private async Task CarregarDoAparelho(int n)
+    {
         _carregadas.Add($"*241*{n}*");
         var r = _b.Memorias.CarregarAsync(n);
         await _b.Rodar(r);
         Assert.True((await r).Ok, (await r).Mensagem);
-        await Apoio.Esperar(() => _player.Memoria == n);
+        await Apoio.Esperar(() => _player.Memoria is null);
         await _b.Tela.EsvaziarAsync();
     }
 
-    /// <summary>A FILME (memória 3) em uso, com as faixas 1 a <paramref name="quantas"/> na playlist.</summary>
+    /// <summary>Cria a memória do celular SHOW (do som atual, que é o da FILME): ela fica em uso, sem nada pelo BLE.</summary>
+    private async Task<string> CriarShow()
+    {
+        Assert.True((await _b.Setups!.CriarMemoriaAsync("SHOW")).Ok);
+        var id = _b.Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "SHOW").Id;
+        await Apoio.Esperar(() => _player.Memoria == id);
+        await _b.Tela.EsvaziarAsync();
+        return id;
+    }
+
+    /// <summary>Aplica uma memória do celular (o som é o mesmo: nada sai pelo BLE).</summary>
+    private async Task Aplicar(string id)
+    {
+        var r = _b.Setups!.AplicarAsync(id);
+        await _b.Rodar(r);
+        Assert.True((await r).Ok, (await r).Mensagem);
+        await Apoio.Esperar(() => _player.Memoria == id);
+        await _b.Tela.EsvaziarAsync();
+    }
+
+    /// <summary>A FILME (memória do celular) em uso, com as faixas 1 a <paramref name="quantas"/> na playlist.</summary>
     private async Task FilmeCom(int quantas)
     {
-        await Carregar(2);
+        await Conectar();
         _seletor.Escolhidos = Enumerable.Range(1, quantas).Select(i => Arquivo(i)).ToArray();
         await _vm.Adicionar.ExecutarAsync();
         Assert.Equal(quantas, _vm.Linhas.Count);
@@ -196,21 +227,23 @@ public sealed class PlayerViewModelTestes : IDisposable
 
     // ----------------------------------------------------------------- sem memória e vazia
 
+    private const string SemMemoria = "Sem memória do celular em uso, não há playlist. Aplique uma memória do celular.";
+
     [Fact]
-    public async Task Sem_memoria_nada_de_playlist_nem_de_comandos()
+    public async Task Desconectado_sem_memoria_do_celular_nada_de_playlist_nem_de_comandos()
     {
-        await _b.Conectar();
+        await _b.Setups!.Carregada;
         await _b.Tela.EsvaziarAsync();
         _seletor.Escolhidos = [Arquivo(1)];
 
-        Assert.Null(_b.Memorias.EmUso);
+        Assert.Equal(SomEmUso.Nenhum, _b.Setups.EmUso);
         Assert.False(_vm.TemMemoria);
         Assert.Null(_vm.Titulo);
-        Assert.Equal("Carregue uma memória para usar o Player.", _vm.TextoAviso);
+        Assert.Equal(SemMemoria, _vm.TextoAviso);
         Assert.Empty(_vm.Linhas);
 
         await _vm.TocarPausar.ExecutarAsync();
-        Assert.Equal("Carregue uma memória para usar o Player.", _vm.Mensagem);
+        Assert.Equal(SemMemoria, _vm.Mensagem);
         await _vm.Proxima.ExecutarAsync();
         await _vm.Adicionar.ExecutarAsync();
 
@@ -220,9 +253,43 @@ public sealed class PlayerViewModelTestes : IDisposable
     }
 
     [Fact]
+    public async Task Com_uma_memoria_do_aparelho_em_uso_nao_ha_playlist_e_tocar_fica_travado()
+    {
+        await FilmeCom(2);
+        await _vm.TocarPausar.ExecutarAsync();
+        Assert.Equal(Uri(1), _reprodutor.Tocando);
+
+        await CarregarDoAparelho(0);
+
+        Assert.False(_vm.TemMemoria);
+        Assert.Equal(SemMemoria, _vm.TextoAviso);
+        Assert.Empty(_vm.Linhas);
+        Assert.Null(_reprodutor.Tocando); // trocar de memória para o Player
+        await _vm.TocarPausar.ExecutarAsync();
+        Assert.Equal(SemMemoria, _vm.Mensagem);
+        Assert.Equal([Uri(1)], _reprodutor.Pedidas);
+    }
+
+    [Fact]
+    public async Task Ao_desconectar_nao_ha_mais_memoria_do_celular_em_uso_e_o_Player_para()
+    {
+        await FilmeCom(2);
+        await _vm.TocarPausar.ExecutarAsync();
+        Assert.Equal(Uri(1), _reprodutor.Tocando);
+
+        await _b.Sessao.DesconectarAsync();
+        await Apoio.Esperar(() => _player.Memoria is null && _player.Estado == EstadoPlayer.Parado);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(_vm.TemMemoria);
+        Assert.Null(_reprodutor.Tocando);
+        Assert.Equal(SemMemoria, _vm.TextoAviso);
+    }
+
+    [Fact]
     public async Task Vazia_mostra_o_titulo_e_o_aviso_de_adicionar()
     {
-        await Carregar(2);
+        await Conectar();
 
         Assert.True(_vm.TemMemoria);
         Assert.Equal("Playlist da FILME", _vm.Titulo);
@@ -240,7 +307,7 @@ public sealed class PlayerViewModelTestes : IDisposable
     [Fact]
     public async Task Adicionar_tres_arquivos_entram_no_fim_na_ordem_e_o_arquivo_e_gravado()
     {
-        await Carregar(2);
+        await Conectar();
         _seletor.Escolhidos = [Arquivo(1, 187), Arquivo(2, 59), Arquivo(3, 3725)];
         await _vm.Adicionar.ExecutarAsync();
 
@@ -258,15 +325,14 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Equal(["Faixa 1", "Faixa 2", "Faixa 3", "Faixa 4"], Nomes());
 
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1), Uri(2), Uri(3), Uri(4)], gravado[2].Select(f => f.Uri));
-        Assert.Empty(gravado[0]);
-        Assert.Empty(gravado[1]);
+        Assert.Equal([Uri(1), Uri(2), Uri(3), Uri(4)], gravado.PorMemoria[Filme].Select(f => f.Uri));
+        Assert.Equal([Filme], gravado.PorMemoria.Keys);
     }
 
     [Fact]
     public async Task Desistir_no_seletor_nao_muda_nada()
     {
-        await Carregar(2);
+        await Conectar();
         _seletor.Escolhidos = [];
         await _vm.Adicionar.ExecutarAsync();
 
@@ -278,7 +344,7 @@ public sealed class PlayerViewModelTestes : IDisposable
     [Fact]
     public async Task Toque_duplo_em_Adicionar_abre_o_seletor_uma_vez_e_adiciona_uma_vez()
     {
-        await Carregar(2);
+        await Conectar();
         _seletor.Escolhidos = [Arquivo(1), Arquivo(2)];
         _seletor.Portao = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -294,13 +360,13 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Equal(["Faixa 1", "Faixa 2"], Nomes());
         Assert.False(_vm.Ocupado);
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1), Uri(2)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(1), Uri(2)], gravado.PorMemoria[Filme].Select(f => f.Uri));
     }
 
     [Fact]
     public async Task Desistir_no_seletor_destrava_a_proxima_edicao()
     {
-        await Carregar(2);
+        await Conectar();
         _seletor.Escolhidos = [];
         await _vm.Adicionar.ExecutarAsync();
         Assert.False(_vm.Ocupado);
@@ -322,7 +388,7 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Equal(["Faixa 3", "Faixa 1", "Faixa 2"], Nomes());
         Assert.Equal([1, 2, 3], _vm.Linhas.Select(l => l.Posicao));
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(3), Uri(1), Uri(2)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(3), Uri(1), Uri(2)], gravado.PorMemoria[Filme].Select(f => f.Uri));
 
         await _vm.Pronto.ExecutarAsync();
         Assert.False(_vm.Editando);
@@ -336,7 +402,7 @@ public sealed class PlayerViewModelTestes : IDisposable
 
         Assert.Equal(["Faixa 1", "Faixa 3"], Nomes());
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1), Uri(3)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(1), Uri(3)], gravado.PorMemoria[Filme].Select(f => f.Uri));
     }
 
     [Fact]
@@ -358,7 +424,7 @@ public sealed class PlayerViewModelTestes : IDisposable
 
         // O arquivo continua com o que foi gravado antes da falha.
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1), Uri(2)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(1), Uri(2)], gravado.PorMemoria[Filme].Select(f => f.Uri));
     }
 
     // ----------------------------------------------------------------- tocar
@@ -517,19 +583,22 @@ public sealed class PlayerViewModelTestes : IDisposable
     [Fact]
     public async Task Troca_de_memoria_tocando_para_na_hora_e_mostra_a_playlist_da_nova_parada()
     {
-        // A playlist da memória 1 (posição 0) já tem uma faixa.
-        Assert.True((await _playlists.AdicionarAsync(0, [Arquivo(9)])).Ok);
+        // A SHOW já tem uma faixa na playlist dela.
+        await Conectar();
+        var show = await CriarShow();
+        Assert.True((await _playlists.AdicionarAsync(show, [Arquivo(9)])).Ok);
+        await Aplicar(Filme);
         await FilmeCom(2);
         await _vm.TocarPausar.ExecutarAsync();
         Assert.Equal(Uri(1), _reprodutor.Tocando);
         var paradas = _reprodutor.Paradas;
 
-        // A memória em uso passa da 2 para a 0 (no meio, sem memória: o 241 saiu e a releitura anda).
-        await Carregar(0);
+        // A memória em uso passa da FILME para a SHOW.
+        await Aplicar(show);
 
         Assert.True(_reprodutor.Paradas > paradas);
 
-        Assert.Equal("Playlist da SPL", _vm.Titulo);
+        Assert.Equal("Playlist da SHOW", _vm.Titulo);
         Assert.Equal(["Faixa 9"], Nomes());
         Assert.Equal(EstadoPlayer.Parado, _vm.Estado);
         Assert.Null(_vm.FaixaAtual);
@@ -549,8 +618,8 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Equal("Nenhuma faixa disponível na playlist da FILME.", _vm.Mensagem);
         Assert.True(_vm.Editando);
 
-        await Carregar(0);
-        await Apoio.Esperar(() => _vm.Titulo == "Playlist da SPL");
+        await CriarShow();
+        await Apoio.Esperar(() => _vm.Titulo == "Playlist da SHOW");
         await _b.Tela.EsvaziarAsync();
 
         Assert.Null(_vm.Mensagem);
@@ -573,7 +642,7 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Null(_vm.FaixaAtual);
         Assert.Equal(["Faixa 1", "Faixa 3"], Nomes());
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1), Uri(3)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(1), Uri(3)], gravado.PorMemoria[Filme].Select(f => f.Uri));
     }
 
     [Fact]
@@ -595,34 +664,35 @@ public sealed class PlayerViewModelTestes : IDisposable
     // ----------------------------------------------------------------- guardado
 
     [Fact]
-    public async Task Reabrir_as_3_playlists_voltam_na_ordem()
+    public async Task Reabrir_as_playlists_por_memoria_voltam_na_ordem()
     {
         await FilmeCom(3);
         await _vm.MoverAsync(2, 1);
-        Assert.True((await _playlists.AdicionarAsync(0, [Arquivo(7), Arquivo(8)])).Ok);
-        Assert.True((await _playlists.AdicionarAsync(1, [Arquivo(5)])).Ok);
+        Assert.True((await _playlists.AdicionarAsync("memoria-a", [Arquivo(7), Arquivo(8)])).Ok);
+        Assert.True((await _playlists.AdicionarAsync("memoria-b", [Arquivo(5)])).Ok);
 
         var outro = NovoGerente();
         await outro.Carregada;
 
-        Assert.Equal([Uri(7), Uri(8)], outro.Playlist(0).Select(f => f.Uri));
-        Assert.Equal([Uri(5)], outro.Playlist(1).Select(f => f.Uri));
-        Assert.Equal([Uri(2), Uri(1), Uri(3)], outro.Playlist(2).Select(f => f.Uri));
-        Assert.Equal(_playlists.Playlist(2), outro.Playlist(2)); // os mesmos ids, nomes, pastas e durações
+        Assert.Equal([Uri(7), Uri(8)], outro.Playlist("memoria-a").Select(f => f.Uri));
+        Assert.Equal([Uri(5)], outro.Playlist("memoria-b").Select(f => f.Uri));
+        Assert.Equal([Uri(2), Uri(1), Uri(3)], outro.Playlist(Filme).Select(f => f.Uri));
+        Assert.Equal(_playlists.Playlist(Filme), outro.Playlist(Filme)); // os mesmos ids, nomes, pastas e durações
     }
 
     [Fact]
-    public async Task Arquivo_estragado_vira_3_vazias_e_adicionar_funciona()
+    public async Task Arquivo_estragado_vira_nenhuma_playlist_e_adicionar_funciona()
     {
+        await _b.Playlists.Carregada;
         await _b.Arquivos.GravarTextoAsync(RepositorioTextoArquivos.ArquivoPlaylists, "{ isto não é json");
         var playlists = NovoGerente();
         await playlists.Carregada;
-        using var player = new Player(playlists, _b.Memorias, _reprodutor, _b.Log);
-        using var vm = new PlayerViewModel(player, playlists, _b.Memorias, _seletor, _b.Tela, _b.Relogio);
+        using var player = new Player(playlists, _b.Setups!, _reprodutor, _b.Log);
+        using var vm = new PlayerViewModel(player, playlists, _b.Setups!, _seletor, _b.Tela, _b.Relogio);
 
-        Assert.All(Enumerable.Range(0, 3), n => Assert.Empty(playlists.Playlist(n)));
-        await Carregar(2);
-        await Apoio.Esperar(() => player.Memoria == 2);
+        Assert.Empty(playlists.Playlist(Filme));
+        await Conectar();
+        await Apoio.Esperar(() => player.Memoria == Filme);
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("Playlist da FILME vazia. Toque em Adicionar músicas.", vm.TextoAviso);
 
@@ -631,7 +701,7 @@ public sealed class PlayerViewModelTestes : IDisposable
 
         Assert.Equal(["Faixa 1"], vm.Linhas.Select(l => l.Nome));
         var gravado = GerentePlaylists.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists)!);
-        Assert.Equal([Uri(1)], gravado[2].Select(f => f.Uri));
+        Assert.Equal([Uri(1)], gravado.PorMemoria[Filme].Select(f => f.Uri));
     }
 
     // ----------------------------------------------------------------- textos

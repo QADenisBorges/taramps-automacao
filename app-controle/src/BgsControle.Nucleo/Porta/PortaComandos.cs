@@ -464,6 +464,7 @@ public sealed class PortaComandos : IDisposable
         {
             ("POST", "/ajuste") => Ajuste,
             ("POST", "/memoria/carregar") => CarregarMemoria,
+            ("POST", "/memoria/aplicar") => AplicarMemoria,
             ("POST", "/gerador/tom") => Tom,
             ("POST", "/gerador/sweep") => Sweep,
             ("POST", "/gerador/parar") => PararGerador,
@@ -497,6 +498,8 @@ public sealed class PortaComandos : IDisposable
             if (op.Confirmacao is { } pedido)
             {
                 // A chave, o só leitura, a conexão e o uso compartilhado recusam já, sem folha.
+                if (op.ChaveAntes is { } chave && !_chaves.Ligada(chave))
+                    return RecusaDaPorta(op, Sessao.MotivoChaveDesligada);
                 if (op.Quadro is { } quadro && _sessao.Conferir(quadro) is { } motivo)
                     return RecusaDaPorta(op, motivo); // o Conferir não registra: entra aqui, uma vez
                 var decisao = await Confirmacoes.PedirAsync(pedido);
@@ -538,9 +541,11 @@ public sealed class PortaComandos : IDisposable
 
     /// <summary>
     /// Uma operação montada do corpo: o comando para o histórico das recusas da porta, o primeiro
-    /// quadro para o <see cref="Sessao.Conferir"/>, a folha (null = não confirma) e o que ela faz.
+    /// quadro para o <see cref="Sessao.Conferir"/>, a folha (null = não confirma), o que ela faz e,
+    /// quando há, a chave própria dela, conferida antes da folha (a de aplicar memória do celular).
     /// </summary>
-    private sealed record Operacao(ComandoNaPorta? Comando, string? Quadro, PedidoConfirmacao? Confirmacao, Func<Task<RespostaPorta>> Executar);
+    private sealed record Operacao(ComandoNaPorta? Comando, string? Quadro, PedidoConfirmacao? Confirmacao, Func<Task<RespostaPorta>> Executar,
+        Chave? ChaveAntes = null);
 
     private static bool Confirma(Chave chave) => ChavesPadrao.De(chave).ConfirmacaoIa == ConfirmacaoIa.Sempre;
 
@@ -622,6 +627,39 @@ public sealed class PortaComandos : IDisposable
                 var r = await _memorias.CarregarAsync(n);
                 return r.Ok ? Feito(r.Mensagem) : Recusa(409, r.Mensagem ?? r.Motivo ?? "falhou");
             });
+    }
+
+    /// <summary>
+    /// Aplicar uma memória do celular (CAP-12): pelo id ou pelo nome (sem diferença de caixa), só entre
+    /// as memórias do Setup em uso; sem Setup em uso, ou uma memória de fora dele, é 400 antes da folha.
+    /// Sempre com a folha ("Troca todo o som de uma vez."), depois da chave "Aplicar memória do celular"
+    /// e da trava de um ajuste de áudio (o aplicar escreve ajustes de áudio). Com o Setup em dúvida, a
+    /// memória não é procurada: a recusa é a da dúvida (409). As recusas vão ao histórico.
+    /// </summary>
+    private Operacao AplicarMemoria(CorpoPedido corpo)
+    {
+        var pedido = corpo.Texto("memoria").Trim();
+        if (pedido.Length == 0)
+            throw new PedidoInvalidoException("O campo \"memoria\" é o id ou o nome de uma memória do celular.");
+        var quadro = Catalogo.ParametroDe(Camadas.CodigoMaster)!.CodificarEscrita(null, 0m);
+        if (_setups.MotivoBloqueioIa is not null)
+            return new Operacao(ComandoNaPorta.AplicarMemoria(pedido), quadro, null,
+                () => Task.FromResult(Recusa(409, GerenteSetups.MsgDuvida)), Chave.AplicarMemoriaCelular);
+
+        var setup = _setups.SetupEmUso
+                    ?? throw new PedidoInvalidoException("Sem Setup em uso, nenhuma memória do celular se aplica. Escolha um Setup na tela.");
+        var doSetup = _setups.MemoriasDe(setup.Id);
+        var memoria = doSetup.FirstOrDefault(m => m.Id == pedido)
+                      ?? doSetup.FirstOrDefault(m => string.Equals(m.Nome, pedido, StringComparison.OrdinalIgnoreCase))
+                      ?? throw new PedidoInvalidoException($"Não há memória do celular \"{pedido}\" no {setup.Nome} (veja GET /estado).");
+        return new Operacao(ComandoNaPorta.AplicarMemoria(memoria.Nome), quadro,
+            Folha(Chave.AplicarMemoriaCelular, $"A IA pede para aplicar a memória {memoria.Nome}", $"Aplicar a {memoria.Nome}"),
+            async () =>
+            {
+                var r = await _setups.AplicarAsync(memoria.Id);
+                return r.Ok ? Feito(r.Mensagem) : Recusa(409, r.Mensagem ?? r.Motivo ?? "falhou");
+            },
+            Chave.AplicarMemoriaCelular);
     }
 
     private static string Db(decimal db) => db.ToString("+0.0;-0.0;0.0", Tela);
@@ -759,6 +797,32 @@ public sealed class PortaComandos : IDisposable
             EstadoConferencia.Trocando => "trocando",
             _ => "nenhum",
         });
+        // As memórias do celular do Setup em uso e o preset em uso (CAP-12).
+        var somEmUso = _setups.EmUso;
+        w.WriteStartArray("memorias");
+        foreach (var m in _setups.MemoriasDe(setup?.Id))
+        {
+            w.WriteStartObject();
+            w.WriteString("id", m.Id);
+            w.WriteString("nome", m.Nome);
+            w.WriteBoolean("emUso", somEmUso.Tipo == TipoSomEmUso.MemoriaCelular && somEmUso.IdMemoria == m.Id);
+            var lembrado = _setups.PresetDe(m);
+            w.WriteString("preset", lembrado?.Nome);
+            w.WriteString("idPreset", lembrado?.Id);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        if (_setups.PresetEmUso is { } preset)
+        {
+            w.WriteStartObject("presetEmUso");
+            w.WriteString("id", preset.Id);
+            w.WriteString("nome", preset.Nome);
+            w.WriteEndObject();
+        }
+        else
+        {
+            w.WriteNull("presetEmUso");
+        }
         w.WriteEndObject();
 
         w.WriteStartObject("ia");
@@ -959,12 +1023,13 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos está na tela IA pela rede do celular. Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, a memória do aparelho em uso e os nomes, o Setup (nome em uso ou null, duvida), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, a memória do aparelho em uso e os nomes, o Setup (nome em uso ou null, duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada e cada comando da tela enviado). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
         POST /memoria/carregar {"memoria":1}: carrega a memória do aparelho de 1 a 3. Pede o toque do usuário na tela.
+        POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a calibração do Setup, o caráter da memória e o preset que ela lembra. Pede o toque do usuário na tela. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na tela. O gerador desliga sozinho em 30 s.
         POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque.
         POST /gerador/parar: desliga o gerador. Não pede o toque nem a chave do gerador, e a pausa da IA não o trava; com firmware diferente do R003, recusa como todo POST.

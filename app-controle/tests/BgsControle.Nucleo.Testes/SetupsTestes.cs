@@ -3,6 +3,8 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Player;
+using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
@@ -11,9 +13,11 @@ using BgsControle.Simulador;
 namespace BgsControle.Nucleo.Testes;
 
 /// <summary>
-/// A história 8c no núcleo, contra o processador simulado: os Setups, as memórias do celular, a
-/// conferência ao conectar com o mudo da dúvida, o Salvar por camadas e a FILME herdada dividida
-/// em três. Uma linha da matriz de <c>8c-setup-e-memoria-no-celular.md</c> por teste (ou mais).
+/// As histórias 8c e 8d no núcleo, contra o processador simulado: os Setups, as memórias do celular,
+/// a conferência ao conectar com o mudo da dúvida, o Salvar por camadas (com a linha das 15 bandas),
+/// a FILME herdada dividida em três, o preset lembrado por cada memória e as playlists por memória.
+/// Uma linha da matriz de <c>8c-setup-e-memoria-no-celular.md</c> e de
+/// <c>8d-preset-15-bandas-e-playlist-da-memoria.md</c> por teste (ou mais).
 /// </summary>
 public sealed class SetupsTestes : IDisposable
 {
@@ -39,9 +43,13 @@ public sealed class SetupsTestes : IDisposable
     private readonly TextoMemoria _guardadoLink = new();
     private readonly TextoMemoria _guardadoSetups;
     private readonly TextoMemoria _guardadoMudo;
+    private readonly TextoMemoria _guardadoPresets;
+    private readonly TextoMemoria _guardadoPlaylists;
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
     private readonly GerenteMemorias _memorias;
+    private readonly GerentePresets _presets;
+    private readonly GerentePlaylists _playlists;
     private readonly GerenteSetups _setups;
 
     private static Parametro Ganho => Catalogo.ParametroDe("081")!;
@@ -56,10 +64,12 @@ public sealed class SetupsTestes : IDisposable
     {
     }
 
-    private SetupsTestes(string? setupsGuardado, string? mudoGuardado)
+    private SetupsTestes(string? setupsGuardado, string? mudoGuardado, string? playlistsGuardado = null, string? presetsGuardado = null)
     {
         _guardadoSetups = new TextoMemoria(setupsGuardado);
         _guardadoMudo = new TextoMemoria(mudoGuardado);
+        _guardadoPresets = new TextoMemoria(presetsGuardado);
+        _guardadoPlaylists = new TextoMemoria(playlistsGuardado);
         _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         _chaves = new Chaves(new RepositorioMemoria());
         _sessao = new Sessao(_simulador, new CofreFalso { Senha = "AB12" }, _log, Tempos, _chaves);
@@ -70,7 +80,9 @@ public sealed class SetupsTestes : IDisposable
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, _guardadoCopia, _log, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, _guardadoLink, _log);
         _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
-        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _chaves,
+        _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, _guardadoPresets, _log, _relogio);
+        _playlists = new GerentePlaylists(_guardadoPlaylists, _log);
+        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _presets, _playlists, _chaves,
             _guardadoSetups, _guardadoMudo, _log, _relogio);
     }
 
@@ -151,14 +163,16 @@ public sealed class SetupsTestes : IDisposable
         foreach (var v in setup.Calibracao.Concat(Camadas.Compor(memoria.Carater, setup.Equilibrio)).Concat(ConhecimentoHerdado.BandasCinema))
             Assert.True(composto.TryAdd((v.Codigo, v.Indice), v.NoFio), $"{v.Codigo} {v.Indice} repetido");
 
-        var leitura = ConhecimentoHerdado.PresetFilme.Valores.Where(v => Camadas.De(v.Codigo) != Camada.Fora).ToArray();
+        // A leitura nas três camadas: calibração, caráter e as 15 bandas (o 220 e o mute ficam fora).
+        var leitura = ConhecimentoHerdado.LeituraFilme.Where(v => Camadas.De(v.Codigo) != Camada.Fora && v.Codigo != "220").ToArray();
         Assert.Equal(leitura.Length, composto.Count);
         foreach (var v in leitura)
             Assert.True(Camadas.Iguais(v.Codigo, v.NoFio, composto[(v.Codigo, v.Indice)]), $"{v.Codigo} {v.Indice}: {v.NoFio} × {composto[(v.Codigo, v.Indice)]}");
 
-        // As três camadas cobrem o Marco 1 inteiro, menos o mute.
-        Assert.Equal(Catalogo.ConsultasMarco1.Count - 4, composto.Count);
-        Assert.Equal(15 + 1, ConhecimentoHerdado.BandasCinema.Count); // as 15 bandas e o preset de EQ do aparelho
+        // As três camadas cobrem o Marco 1 inteiro, menos o mute e o preset de EQ do aparelho.
+        Assert.Equal(Catalogo.ConsultasMarco1.Count - 4 - 1, composto.Count);
+        Assert.Equal(15, ConhecimentoHerdado.BandasCinema.Count); // só as 15 bandas
+        Assert.Equal(ConhecimentoHerdado.IdCinema, memoria.IdPreset); // a FILME lembra o Cinema
     }
 
     [Fact]
@@ -566,7 +580,7 @@ public sealed class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_memoria_com_limiter_OFF_escreve_0_5_sem_soma_e_as_bandas_e_o_mute_nao_mudam()
+    public async Task Aplicar_memoria_com_limiter_OFF_escreve_0_5_sem_soma_volta_as_bandas_do_preset_e_o_mute_nao_muda()
     {
         await Conectar();
         // Uma memória "SEM LIMITE" com o limiter da saída 2 em OFF, criada do som atual.
@@ -584,16 +598,17 @@ public sealed class SetupsTestes : IDisposable
         var r = await Rodar(_setups.AplicarAsync(_setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Id));
 
         Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal(["*071*1*0.5*"], AudioDesde(inicio));
+        // A memória nasceu com a FILME em uso: lembra o Cinema, e a banda volta junto.
+        Assert.Equal(["*071*1*0.5*", Banda.CodificarEscrita(3, 0.0m)], AudioDesde(inicio));
         var copia = CopiaAntes.DeJson(_guardadoCopia.Texto!)!;
         Assert.Null(copia.Operacao); // a cópia antes foi guardada e a marca saiu no fim
         Assert.Contains(copia.Valores, v => v is { Codigo: "071", Indice: 1, NoFio: "-18.0" }); // o estado antes
-        // O espelho relido: a calibração do Setup, o caráter da memória com o equilíbrio; bandas e mute como estavam.
+        // O espelho relido: a calibração do Setup, o caráter da memória com o equilíbrio, as bandas do Cinema; o mute como estava.
         var espelho = _estado.Copiar();
         var memoria = _setups.Memoria(_setups.EmUso.IdMemoria)!;
         Assert.Empty(Camadas.Diferentes(ConhecimentoHerdado.SetupCasa.Calibracao, espelho));
         Assert.Empty(Camadas.Diferentes(Camadas.Compor(memoria.Carater, ConhecimentoHerdado.EquilibrioCasa), espelho));
-        Assert.Equal(-4.0m, _estado.Valor("020", 3)!.Numero);
+        Assert.Empty(Camadas.Diferentes(ConhecimentoHerdado.BandasCinema, espelho));
         Assert.Equal(1m, _estado.Valor("100", 3)!.Numero);
         Assert.Equal("SEM LIMITE", memoria.Nome);
     }
@@ -869,7 +884,7 @@ public sealed class SetupsTestes : IDisposable
         Assert.Equal(dados.Setups.Select(s => (s.Id, s.Nome, s.Equilibrio, s.Link12, s.Link34, s.Herdado)),
             outro.Setups.Select(s => (s.Id, s.Nome, s.Equilibrio, s.Link12, s.Link34, s.Herdado)));
         Assert.Equal(dados.Setups.SelectMany(s => s.Calibracao), outro.Setups.SelectMany(s => s.Calibracao));
-        Assert.Equal(dados.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.Herdado)), outro.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.Herdado)));
+        Assert.Equal(dados.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.Herdado, m.IdPreset)), outro.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.Herdado, m.IdPreset)));
         Assert.Equal(dados.Memorias.SelectMany(m => m.Carater), outro.Memorias.SelectMany(m => m.Carater));
         foreach (var s in dados.Setups)
         {
@@ -980,7 +995,8 @@ public sealed class SetupsTestes : IDisposable
         Assert.Null(folha.Trava);
         Assert.True(folha.PedeNome);
         Assert.False(folha.PerguntaCalibracao);
-        Assert.Equal(["Calibração → Setup Carro", "Caráter → memória nova"], folha.Linhas.Select(l => l.Titulo));
+        Assert.Equal(["Calibração → Setup Carro", "Caráter → memória nova", "15 bandas → preset Cinema"], folha.Linhas.Select(l => l.Titulo));
+        Assert.False(folha.PedeNomePreset); // as bandas são as do Cinema: lembra ele, sem pergunta
 
         var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "PRIMEIRA");
 
@@ -988,6 +1004,7 @@ public sealed class SetupsTestes : IDisposable
         Assert.Equal("30.0", Valor(_setups.Setup(carro)!.Calibracao, "050", 2));
         var primeira = Assert.Single(_setups.MemoriasDe(carro));
         Assert.Equal("PRIMEIRA", primeira.Nome);
+        Assert.Equal(ConhecimentoHerdado.IdCinema, primeira.IdPreset);
         Assert.Equal(SomEmUso.DoCelular(primeira.Id), _setups.EmUso);
     }
 
@@ -1102,5 +1119,471 @@ public sealed class SetupsTestes : IDisposable
         Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*240*", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
         Assert.Contains("*241*2*", _simulador.Escritas);
         Assert.Equal(3, _setups.MemoriasDe(Casa).Count);
+    }
+
+    // ----------------------------------------------------------------- 8d: o preset lembrado e as 15 bandas
+
+    /// <summary>O "Rock": o Cinema com 160 Hz em +4 e 10 kHz em −3.</summary>
+    private async Task<Preset> CriarRock()
+    {
+        var bandas = ConhecimentoHerdado.BandasCinema
+            .Select(v => v.Indice switch { 4 => v with { NoFio = "+4.0" }, 13 => v with { NoFio = "-3.0" }, _ => v })
+            .ToArray();
+        var r = await _presets.CriarAsync("Rock", bandas);
+        Assert.True(r.Ok, r.Mensagem);
+        return r.Preset!;
+    }
+
+    private static bool EhBanda(string quadro) => Catalogo.EscritaDeAudio(quadro)?.Parametro.Codigo == "020";
+
+    [Fact]
+    public async Task Aplicar_um_preset_com_a_FILME_em_uso_muda_so_as_bandas_e_a_FILME_passa_a_lembrar_ele()
+    {
+        await Conectar();
+        Assert.Equal(SomEmUso.DoCelular(Filme), _setups.EmUso);
+        Assert.Equal(ConhecimentoHerdado.IdCinema, _setups.IdPresetEmUso);
+        var rock = await CriarRock();
+        var antes = _simulador.EstadoMarco1();
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await Rodar(_presets.AplicarAsync(rock.Id));
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal([Banda.CodificarEscrita(4, 4.0m), Banda.CodificarEscrita(13, -3.0m)], AudioDesde(inicio));
+        // A releitura: só as 15 bandas mudaram; a calibração e o caráter ficaram iguais (CAP-5).
+        var depois = _simulador.EstadoMarco1();
+        Assert.All(depois.Where(kv => kv.Key.Codigo != "020"), kv => Assert.Equal(antes[kv.Key], kv.Value));
+        Assert.Empty(Camadas.Diferentes(rock.Valores, _estado.Copiar()));
+        Assert.Equal(rock.Id, _setups.Memoria(Filme)!.IdPreset);
+        Assert.Equal(rock.Id, _setups.IdPresetEmUso);
+        Assert.Same(rock, _setups.PresetEmUso);
+        Assert.Equal(rock.Id, GerenteSetups.DeJson(_guardadoSetups.Texto!)!.Memorias.Single(m => m.Id == Filme).IdPreset);
+        Assert.Equal(EstadoConferencia.Confere, _setups.Estado);
+    }
+
+    [Fact]
+    public async Task Aplicar_a_FILME_com_as_bandas_planas_traz_o_Cinema_e_o_espelho_fica_igual_a_leitura_de_18_10()
+    {
+        foreach (var b in GerentePresets.BandasPlanas)
+            _simulador.Definir("020", b.Indice, b.NoFio);
+        _simulador.Definir("081", 0, "+1.0"); // e o caráter diferente da FILME
+        await Conectar();
+        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado); // as bandas não entram na conferência
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await Rodar(_setups.AplicarAsync(Filme));
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Memória FILME aplicada.", r.Mensagem);
+        var audio = AudioDesde(inicio);
+        Assert.Contains("*081*0*10.0*", audio);
+        Assert.Equal(6, audio.Count(EhBanda)); // as 6 bandas do Cinema fora do 0
+        // A releitura: a calibração do Casa 2.1, o caráter da FILME e as bandas do Cinema = a leitura de 18/10.
+        var espelho = _estado.Copiar();
+        foreach (var v in ConhecimentoHerdado.LeituraFilme.Where(v => Camadas.De(v.Codigo) != Camada.Fora && v.Codigo != "220"))
+            Assert.True(Camadas.Iguais(v, espelho), $"{v.Codigo} {v.Indice}");
+        Assert.Equal(ConhecimentoHerdado.IdCinema, _setups.IdPresetEmUso);
+        Assert.Null(_copia.PelaMetade);
+    }
+
+    [Fact]
+    public async Task Uma_memoria_que_lembra_um_preset_que_sumiu_aplica_sem_as_bandas_e_avisa()
+    {
+        var herdados = GerenteSetups.Herdados();
+        var editado = herdados with { Memorias = [herdados.Memorias[0] with { IdPreset = "preset-que-sumiu" }] };
+        using var t = new SetupsTestes(GerenteSetups.ParaJson(editado), null);
+        await t.Conectar();
+        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Banda, 4, 3.0m))).Ok);
+        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Ganho, 0, 4.0m))).Ok);
+        var inicio = t._simulador.Escritas.Count;
+
+        var r = await t.Rodar(t._setups.AplicarAsync(Filme));
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal($"Memória FILME aplicada. {GerenteSetups.MsgPresetSumiu}", r.Mensagem);
+        Assert.Equal(["*081*0*10.0*"], t.AudioDesde(inicio)); // nenhuma banda
+        Assert.Equal("+3.0", t._simulador.Valor("020", 4));
+        Assert.Null(t._setups.PresetEmUso);
+    }
+
+    [Fact]
+    public async Task Apagar_um_preset_lembrado_por_duas_memorias_e_recusado_e_o_Cinema_nao_muda()
+    {
+        await Conectar();
+        var rock = await CriarRock();
+        Assert.True((await Rodar(_presets.AplicarAsync(rock.Id))).Ok); // a FILME lembra o Rock
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("SHOW"))).Ok); // a nova lembra o preset em uso
+        Assert.Equal(rock.Id, _setups.MemoriasDe(Casa).Single(m => m.Nome == "SHOW").IdPreset);
+
+        var r = await _presets.ApagarAsync(rock.Id);
+
+        Assert.False(r.Ok);
+        Assert.Equal("Lembrado por 2 memórias.", r.Motivo);
+        Assert.Contains(_presets.Proprios, p => p.Id == rock.Id);
+        Assert.Equal("Preset herdado não muda.", (await _presets.ApagarAsync(ConhecimentoHerdado.IdCinema)).Motivo);
+
+        Assert.True((await Rodar(_presets.AplicarAsync(ConhecimentoHerdado.IdCinema))).Ok); // a SHOW passa a lembrar o Cinema
+        Assert.Equal("Lembrado por 1 memória.", (await _presets.ApagarAsync(rock.Id)).Motivo);
+    }
+
+    [Fact]
+    public async Task Salvar_as_bandas_mexidas_na_FILME_com_o_Cinema_cria_um_preset_novo_e_a_FILME_lembra_ele()
+    {
+        await Conectar();
+        Assert.True((await Rodar(_escritor.EscreverAsync(Banda, 4, 3.0m))).Ok); // 160 Hz
+
+        var folha = _setups.PrepararSalvar();
+
+        Assert.Null(folha.Trava);
+        var linha = Assert.Single(folha.Linhas);
+        Assert.Equal(Camada.Bandas, linha.Camada);
+        Assert.Equal("15 bandas → preset Cinema", linha.Titulo);
+        Assert.True(linha.Herdado);
+        Assert.Equal("Banda 160 Hz: +1,0 dB → +3,0 dB", Assert.Single(linha.Mudancas).Linha);
+        Assert.True(folha.PerguntaPreset);
+        Assert.Equal("Cinema", folha.NomePreset);
+        Assert.Equal("Preset herdado não é sobrescrito.", folha.MotivoAtualizarTravado);
+        Assert.Equal(EscolhaPreset.Criar, folha.EscolhaPresetInicial);
+        Assert.False(folha.PedeNome);
+
+        // Atualizar o herdado, ou um nome inválido ou repetido: recusa, nada guardado.
+        var gravacoesSetups = _guardadoSetups.Gravacoes;
+        Assert.Equal("Preset herdado não é sobrescrito.", (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Atualizar)).Motivo);
+        Assert.Equal("Nome do preset: Já existe um preset com esse nome.",
+            (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Criar, "cinema")).Motivo);
+        Assert.Equal(GerenteSetups.MsgNomePreset(GerentePresets.MsgNomeInvalido),
+            (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Criar, "a#b")).Motivo);
+        Assert.Equal(gravacoesSetups, _guardadoSetups.Gravacoes);
+        Assert.Equal(0, _guardadoPresets.Gravacoes);
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Nenhuma, "CINEMA 2"); // Criar já vinha escolhido
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Salvo: 15 bandas no preset CINEMA 2.", r.Mensagem);
+        var novo = Assert.Single(_presets.Proprios);
+        Assert.Equal("CINEMA 2", novo.Nome);
+        Assert.Equal("+3.0", novo.Valores.Single(v => v.Indice == 4).NoFio);
+        Assert.Equal(novo.Id, _setups.Memoria(Filme)!.IdPreset);
+        Assert.Equal("+1.0", ConhecimentoHerdado.PresetCinema.Valores.Single(v => v.Indice == 4).NoFio); // o herdado não muda
+        Assert.Equal(inicio, _simulador.Escritas.Count); // salvar não manda nada
+        Assert.Equal(GerenteSetups.MsgNadaParaSalvar, _setups.PrepararSalvar().Trava);
+    }
+
+    [Fact]
+    public async Task Salvar_as_bandas_com_a_memoria_lembrando_um_preset_proprio_atualiza_ele_depois_da_escolha()
+    {
+        await Conectar();
+        var rock = await CriarRock();
+        Assert.True((await Rodar(_presets.AplicarAsync(rock.Id))).Ok);
+        Assert.True((await Rodar(_escritor.EscreverAsync(Banda, 0, 5.0m))).Ok);
+        Assert.True((await Rodar(_escritor.EscreverAsync(Ganho, 0, 8.0m))).Ok);
+
+        var folha = _setups.PrepararSalvar();
+
+        Assert.Equal(["Caráter → memória FILME", "15 bandas → preset Rock"], folha.Linhas.Select(l => l.Titulo));
+        Assert.False(folha.Linhas[1].Herdado);
+        Assert.True(folha.PerguntaPreset);
+        Assert.Null(folha.MotivoAtualizarTravado);
+        Assert.Equal(EscolhaPreset.Nenhuma, folha.EscolhaPresetInicial); // nenhuma vem escolhida
+        Assert.Equal(GerenteSetups.MsgEscolhaPreset, (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null)).Motivo);
+
+        var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Atualizar);
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Salvo: caráter na FILME, 15 bandas no preset Rock.", r.Mensagem);
+        var atualizado = Assert.Single(_presets.Proprios);
+        Assert.Equal(rock.Id, atualizado.Id);
+        Assert.Equal("+5.0", atualizado.Valores.Single(v => v.Indice == 0).NoFio);
+        Assert.Equal(rock.Id, _setups.Memoria(Filme)!.IdPreset);
+        Assert.Equal("+8.0", Valor(_setups.Memoria(Filme)!.Carater, "081", 0));
+        Assert.Equal(GerenteSetups.MsgNadaParaSalvar, _setups.PrepararSalvar().Trava);
+    }
+
+    [Fact]
+    public async Task Salvar_uma_memoria_nova_com_as_bandas_do_Cinema_lembra_o_Cinema_sem_pedir_nome_de_preset()
+    {
+        await Conectar();
+        Assert.True((await Rodar(_memorias.CarregarAsync(1))).Ok); // a memória 1 do aparelho tem as bandas do Cinema
+        Assert.Null(_setups.IdPresetEmUso); // memória do aparelho: nenhum preset em uso
+
+        var folha = _setups.PrepararSalvar();
+
+        Assert.Contains(folha.Linhas, l => l.Titulo == "15 bandas → preset Cinema" && l.Herdado);
+        Assert.False(folha.PedeNomePreset);
+        Assert.False(folha.PerguntaPreset);
+        var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "MUSICA ORIG");
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Salvo: caráter na MUSICA ORIG.", r.Mensagem);
+        Assert.Equal(ConhecimentoHerdado.IdCinema, _setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
+        Assert.Empty(_presets.Proprios);
+        Assert.Equal(ConhecimentoHerdado.IdCinema, _setups.IdPresetEmUso);
+    }
+
+    [Fact]
+    public async Task Salvar_uma_memoria_nova_com_bandas_diferentes_de_todos_pede_o_nome_do_preset_novo()
+    {
+        _simulador.DefinirMemoria(1, "020", 0, "+6.0");
+        await Conectar();
+        Assert.True((await Rodar(_memorias.CarregarAsync(1))).Ok);
+
+        var folha = _setups.PrepararSalvar();
+
+        Assert.Contains(folha.Linhas, l => l.Titulo == "15 bandas → preset novo");
+        Assert.True(folha.PedeNomePreset);
+        Assert.Equal(GerenteSetups.MsgNomePreset(GerentePresets.MsgNomeInvalido), (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "MUSICA ORIG")).Motivo);
+        Assert.DoesNotContain(_setups.MemoriasDe(Casa), m => m.Nome == "MUSICA ORIG"); // nada guardado
+
+        var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "MUSICA ORIG", EscolhaPreset.Nenhuma, "ORIG EQ");
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Salvo: caráter na MUSICA ORIG, 15 bandas no preset ORIG EQ.", r.Mensagem);
+        var preset = Assert.Single(_presets.Proprios);
+        Assert.Equal("+6.0", preset.Valores.Single(v => v.Indice == 0).NoFio);
+        var nova = _setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
+        Assert.Equal(preset.Id, nova.IdPreset);
+        Assert.Equal(SomEmUso.DoCelular(nova.Id), _setups.EmUso);
+    }
+
+    [Fact]
+    public async Task Memoria_sem_preset_lembrado_compara_com_o_EQ_plano_e_so_cria_um_preset_novo()
+    {
+        await EntrarNaDuvida();
+        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
+        Assert.Null(_setups.IdPresetEmUso); // nada aplicado nesta conexão
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("ESTRADA"))).Ok);
+        var estrada = _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single();
+        Assert.Null(estrada.IdPreset);
+
+        var folha = _setups.PrepararSalvar();
+
+        var linha = Assert.Single(folha.Linhas);
+        Assert.Equal("15 bandas → preset novo", linha.Titulo);
+        Assert.Equal(6, linha.Mudancas.Count); // o Cinema que está no aparelho contra o EQ plano
+        Assert.False(folha.PerguntaPreset);
+        Assert.True(folha.PedeNomePreset);
+
+        var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null, EscolhaPreset.Nenhuma, "ESTRADA EQ");
+
+        Assert.True(r.Ok, r.Mensagem);
+        var preset = Assert.Single(_presets.Proprios);
+        Assert.Equal(preset.Id, _setups.Memoria(estrada.Id)!.IdPreset);
+        Assert.Equal(GerenteSetups.MsgNadaParaSalvar, _setups.PrepararSalvar().Trava);
+    }
+
+    [Fact]
+    public async Task O_preset_em_uso_e_o_ultimo_aplicado_sem_memoria_do_celular_e_nenhum_depois_de_carregar_ou_cair()
+    {
+        await EntrarNaDuvida();
+        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
+        var rock = await CriarRock();
+        Assert.True((await Rodar(_presets.AplicarAsync(rock.Id))).Ok); // sem memória do celular em uso
+        Assert.Equal(rock.Id, _setups.IdPresetEmUso);
+
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("ESTRADA"))).Ok);
+
+        Assert.Equal(rock.Id, _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single().IdPreset); // a nova lembra o preset em uso
+        Assert.True((await Rodar(_memorias.CarregarAsync(0))).Ok);
+        Assert.Null(_setups.IdPresetEmUso);
+        Assert.True((await Rodar(_presets.AplicarAsync(rock.Id))).Ok);
+        Assert.Equal(rock.Id, _setups.IdPresetEmUso);
+        Assert.Equal(rock.Id, _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single().IdPreset);
+        await _sessao.DesconectarAsync();
+        Assert.Null(_setups.IdPresetEmUso);
+    }
+
+    // ----------------------------------------------------------------- 8d: playlists por memória
+
+    private const string PlaylistsAntigas = """
+        {"formato":1,"playlists":[
+          [],
+          [{"id":"o1","uri":"content://o1"},{"id":"o2","uri":"content://o2"}],
+          [{"id":"f1","uri":"content://f1"},{"id":"f2","uri":"content://f2"},{"id":"f3","uri":"content://f3"}]]}
+        """;
+
+    [Fact]
+    public async Task O_playlists_json_antigo_a_FILME_herdada_adota_as_3_faixas_e_a_MUSICA_ORIG_fica_pendente()
+    {
+        using var t = new SetupsTestes(null, null, PlaylistsAntigas);
+
+        await t._setups.Carregada;
+
+        Assert.Equal(["content://f1", "content://f2", "content://f3"], t._playlists.Playlist(Filme).Select(f => f.Uri));
+        Assert.Equal("MUSICA ORIG", Assert.Single(t._playlists.Pendentes).Nome);
+        var gravado = GerentePlaylists.DeJson(t._guardadoPlaylists.Texto!);
+        Assert.Equal(3, gravado.PorMemoria[Filme].Count);
+        Assert.Equal("MUSICA ORIG", Assert.Single(gravado.Pendentes).Nome);
+    }
+
+    [Fact]
+    public async Task Adocao_tardia_criar_a_memoria_MUSICA_ORIG_traz_as_2_faixas_e_a_pendente_sai()
+    {
+        using var t = new SetupsTestes(null, null, PlaylistsAntigas);
+        await t.Conectar();
+
+        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("MUSICA ORIG"))).Ok);
+
+        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
+        Assert.Equal(["content://o1", "content://o2"], t._playlists.Playlist(nova.Id).Select(f => f.Uri));
+        Assert.Empty(t._playlists.Pendentes);
+    }
+
+    [Fact]
+    public async Task Renomear_uma_memoria_para_o_nome_da_pendente_tambem_adota()
+    {
+        using var t = new SetupsTestes(null, null, PlaylistsAntigas);
+        await t.Conectar();
+        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("NOVA"))).Ok);
+        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "NOVA");
+        Assert.Empty(t._playlists.Playlist(nova.Id));
+
+        Assert.True((await t._setups.RenomearMemoriaAsync(nova.Id, "musica orig")).Ok);
+
+        Assert.Equal(2, t._playlists.Playlist(nova.Id).Count);
+        Assert.Empty(t._playlists.Pendentes);
+    }
+
+    [Fact]
+    public void A_ordem_de_adocao_e_o_Casa_2_1_primeiro_e_depois_os_outros_Setups_e_as_memorias_na_ordem_de_criacao()
+    {
+        var casa = ConhecimentoHerdado.SetupCasa;
+        var carro = casa with { Id = "carro", Nome = "Carro", Herdado = false };
+        var sitio = casa with { Id = "sitio", Nome = "Sitio", Herdado = false };
+        MemoriaCelular M(string id, string setup) => new(id, setup, id, DateTimeOffset.UnixEpoch, []);
+        var dados = new DadosSetups([carro, casa, sitio],
+            [M("carro-1", "carro"), M("casa-1", casa.Id), M("sitio-1", "sitio"), M("casa-2", casa.Id), M("carro-2", "carro")],
+            casa.Id, new Dictionary<string, UsoDoSetup>());
+
+        var ordem = GerenteSetups.OrdemDeAdocao(dados);
+
+        Assert.Equal(["casa-1", "casa-2", "carro-1", "carro-2", "sitio-1"], ordem.Select(m => m.Id));
+    }
+
+    [Fact]
+    public async Task Apagar_uma_memoria_apaga_a_playlist_dela()
+    {
+        await Conectar();
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("SHOW"))).Ok);
+        var show = _setups.MemoriasDe(Casa).Single(m => m.Nome == "SHOW");
+        Assert.True((await _playlists.AdicionarAsync(show.Id, [new ArquivoAudio("content://a", "A", "M", TimeSpan.Zero)])).Ok);
+        Assert.True((await _playlists.AdicionarAsync(Filme, [new ArquivoAudio("content://b", "B", "M", TimeSpan.Zero)])).Ok);
+        Assert.True((await Rodar(_setups.AplicarAsync(Filme))).Ok); // a SHOW sai de uso
+
+        Assert.True((await _setups.ApagarMemoriaAsync(show.Id)).Ok);
+
+        Assert.Empty(_playlists.Playlist(show.Id));
+        Assert.Single(_playlists.Playlist(Filme));
+        Assert.False(GerentePlaylists.DeJson(_guardadoPlaylists.Texto!).PorMemoria.ContainsKey(show.Id));
+    }
+
+    [Fact]
+    public async Task Apagar_um_Setup_apaga_as_playlists_das_memorias_dele()
+    {
+        await EntrarNaDuvida();
+        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
+        var carro = _setups.SetupEmUso!.Id;
+        Assert.True((await Rodar(_setups.CriarMemoriaAsync("ESTRADA"))).Ok);
+        var estrada = _setups.MemoriasDe(carro).Single();
+        Assert.True((await _playlists.AdicionarAsync(estrada.Id, [new ArquivoAudio("content://a", "A", "M", TimeSpan.Zero)])).Ok);
+        Assert.True((await _playlists.AdicionarAsync(Filme, [new ArquivoAudio("content://b", "B", "M", TimeSpan.Zero)])).Ok);
+        Assert.True((await Rodar(_setups.TrocarAsync())).Ok);
+        Assert.True((await Rodar(_setups.EscolherAsync(Casa))).Ok);
+
+        Assert.True((await _setups.ApagarSetupAsync(carro)).Ok);
+
+        Assert.Empty(_playlists.Playlist(estrada.Id));
+        Assert.Single(_playlists.Playlist(Filme));
+    }
+
+    [Fact]
+    public async Task Um_setups_json_ilegivel_nao_apaga_nenhuma_playlist()
+    {
+        const string playlists = """
+            {"formato":2,"playlists":[{"memoria":"memoria-de-antes","faixas":[{"id":"a","uri":"content://a"}]}],"pendentes":[]}
+            """;
+        using var t = new SetupsTestes("{ isto não é json", null, playlists);
+
+        await t._setups.Carregada;
+
+        Assert.Equal([Filme], t._setups.Dados.Memorias.Select(m => m.Id)); // voltou ao herdado
+        Assert.Single(t._playlists.Playlist("memoria-de-antes"));
+        Assert.Equal(0, t._guardadoPlaylists.Gravacoes);
+    }
+
+    // ----------------------------------------------------------------- 8d: revisão
+
+    [Fact]
+    public void Um_setups_json_da_8c_sem_o_campo_preset_a_FILME_herdada_lembra_o_Cinema_e_as_outras_nenhum()
+    {
+        var herdados = GerenteSetups.Herdados();
+        var outra = new MemoriaCelular("memoria-da-8c", ConhecimentoHerdado.IdSetupCasa, "MUSICA ORIG", DateTimeOffset.UnixEpoch,
+            ConhecimentoHerdado.MemoriaFilme.Carater);
+        var json = GerenteSetups.ParaJson(herdados with { Memorias = [herdados.Memorias[0], outra] });
+        var da8c = Regex.Replace(json, @"\s*""preset"": ""[^""]*"",", "");
+        Assert.DoesNotContain("\"preset\"", da8c);
+
+        var dados = GerenteSetups.DeJson(da8c)!;
+
+        Assert.Equal(ConhecimentoHerdado.IdCinema, dados.Memorias.Single(m => m.Id == Filme).IdPreset);
+        Assert.Null(dados.Memorias.Single(m => m.Id == "memoria-da-8c").IdPreset);
+    }
+
+    [Fact]
+    public async Task Adocao_pelo_Salvar_a_memoria_nova_MUSICA_ORIG_recebe_as_2_faixas_e_a_pendente_sai()
+    {
+        using var t = new SetupsTestes(null, null, PlaylistsAntigas);
+        await t.Conectar();
+        Assert.True((await t.Rodar(t._memorias.CarregarAsync(1))).Ok);
+
+        var r = await t._setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "MUSICA ORIG");
+
+        Assert.True(r.Ok, r.Mensagem);
+        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
+        Assert.Equal(["content://o1", "content://o2"], t._playlists.Playlist(nova.Id).Select(f => f.Uri));
+        Assert.Empty(t._playlists.Pendentes);
+    }
+
+    [Fact]
+    public async Task Escolher_o_Setup_com_as_bandas_diferentes_do_preset_da_memoria_ativa_escreve_as_bandas_de_volta()
+    {
+        _simulador.Definir("020", 4, "+3.0");
+        await EntrarNaDuvida();
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await Rodar(_setups.EscolherAsync(Casa));
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Contains(Banda.CodificarEscrita(4, 1.0m), AudioDesde(inicio));
+        Assert.Empty(Camadas.Diferentes(ConhecimentoHerdado.BandasCinema, _estado.Copiar()));
+    }
+
+    [Fact]
+    public async Task Escolher_o_Setup_com_o_preset_lembrado_sumido_avisa_no_fim_da_frase()
+    {
+        var herdados = GerenteSetups.Herdados();
+        var editado = herdados with { Memorias = [herdados.Memorias[0] with { IdPreset = "preset-que-sumiu" }] };
+        using var t = new SetupsTestes(GerenteSetups.ParaJson(editado), null);
+        t.MexerNaCalibracao();
+        await t.Conectar();
+        Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
+
+        var r = await t.Rodar(t._setups.EscolherAsync(Casa));
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.EndsWith(GerenteSetups.MsgPresetSumiu, r.Mensagem);
+    }
+
+    [Fact]
+    public async Task Ao_conectar_so_as_15_bandas_diferentes_do_preset_da_memoria_ativa_a_conferencia_confere()
+    {
+        _simulador.Definir("020", 4, "+3.0");
+        _simulador.Definir("020", 13, "-4.0");
+
+        await Conectar();
+
+        Assert.Equal(EstadoConferencia.Confere, _setups.Estado);
+        Assert.Equal(SomEmUso.DoCelular(Filme), _setups.EmUso);
+        Assert.True(Mutados(false));
     }
 }

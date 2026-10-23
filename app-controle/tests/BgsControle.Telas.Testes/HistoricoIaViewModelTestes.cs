@@ -183,6 +183,16 @@ public sealed class HistoricoIaViewModelTestes : IDisposable
         Assert.Equal(frase, FraseComando.De(e));
     }
 
+    [Fact]
+    public void Aplicar_memoria_do_celular_vira_a_frase_com_o_nome_e_volta_igual_do_json()
+    {
+        var comando = ComandoNaPorta.AplicarMemoria("FILME");
+        var e = new EntradaHistorico(DateTimeOffset.UnixEpoch, OrigemComando.Ia, comando.Tipo, comando.Endereco, comando.Valor, false, "Chave desligada");
+
+        Assert.Equal("Aplicar a memória FILME", FraseComando.De(e));
+        Assert.Equal([e], Historico.DeJson(Historico.ParaJson([e])));
+    }
+
     // ----------------------------------------------------------------- IA ativa
 
     [Fact]

@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
@@ -41,7 +42,12 @@ public sealed record DadosSetups(
 /// <item><b>Aplicar</b> uma memória, <b>escolher</b> um Setup e o <b>Manter a calibração</b> do Salvar
 /// passam pela <see cref="CopiaAntes"/> (regra 3): escrevem só o que difere, relêem e conferem.</item>
 /// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho.</item>
-/// <item>O <b>Salvar</b> leva cada mudança para a camada dona dela (<see cref="Camadas"/>).</item>
+/// <item>O <b>Salvar</b> leva cada mudança para a camada dona dela (<see cref="Camadas"/>); as 15
+/// bandas vão para um preset (<see cref="GerentePresets"/>).</item>
+/// <item>Cada memória do celular <b>lembra um preset</b> (as 15 bandas), que volta junto quando ela é
+/// aplicada; aplicar um preset com uma memória do celular em uso faz ela lembrar esse preset.</item>
+/// <item>As <b>playlists</b> (<see cref="GerentePlaylists"/>) são por memória: apagar a memória (ou o
+/// Setup dela) apaga a playlist; criar ou renomear memórias, e carregar, adota as pendentes pelo nome.</item>
 /// </list>
 /// Uma operação por vez. O ganho e o limiter finais das saídas 1 e 2 são a memória mais o
 /// equilíbrio do Setup (<see cref="Camadas.Somar"/>).
@@ -76,6 +82,8 @@ public sealed class GerenteSetups
     public const string MsgOutroSetup = "A memória é de outro Setup.";
     public const string MsgPedeFolha = "Este som não é de uma memória do celular. Toque em Salvar para guardá-lo.";
     public const string MsgEscolha = "Escolha manter ou atualizar a calibração.";
+    public const string MsgEscolhaPreset = "Escolha atualizar o preset ou criar um preset novo.";
+    public const string MsgPresetSumiu = "O preset lembrado não existe mais; as 15 bandas ficaram como estavam.";
     public const string MsgSemConexao = "Sem conexão com o aparelho.";
     public const string MsgEquilibrioSaida = "O equilíbrio é só das saídas 1 e 2.";
     public const string MsgEquilibrioFaixa = "Fora da faixa: −12,0 a +12,0 dB";
@@ -83,6 +91,9 @@ public sealed class GerenteSetups
     public const string MsgSemMudo = "O som não estava mutado.";
 
     public static string MsgNomeRepetidoMemoria(string setup) => $"Já existe uma memória com esse nome no {setup}.";
+
+    /// <summary>"Nome do preset: Já existe um preset com esse nome.": a recusa diz que é o nome do preset, não o da memória.</summary>
+    public static string MsgNomePreset(string motivo) => $"Nome do preset: {motivo}";
 
     public static string MsgCriada(string nome, string setup) => $"Memória {nome} criada no {setup}.";
 
@@ -133,6 +144,8 @@ public sealed class GerenteSetups
     private readonly LeituraAutomatica _leitura;
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
+    private readonly GerentePresets _presets;
+    private readonly GerentePlaylists _playlists;
     private readonly IChaves _chaves;
     private readonly IRepositorioTexto _repositorio;
     private readonly IRepositorioTexto _repositorioMudo;
@@ -149,6 +162,7 @@ public sealed class GerenteSetups
     private string? _setupEmUso;
     private SomEmUso _emUso = SomEmUso.Nenhum;
     private string? _referencia;
+    private string? _ultimoPreset;
     private IReadOnlyList<DiferencaCalibracao> _diferencas = [];
     private string? _motivoMudo;
     private string? _aviso;
@@ -166,6 +180,8 @@ public sealed class GerenteSetups
         CopiaAntes copia,
         LinkCanais link,
         GerenteMemorias memorias,
+        GerentePresets presets,
+        GerentePlaylists playlists,
         IChaves chaves,
         IRepositorioTexto repositorio,
         IRepositorioTexto repositorioMudo,
@@ -178,6 +194,8 @@ public sealed class GerenteSetups
         _leitura = leitura;
         _copia = copia;
         _link = link;
+        _presets = presets;
+        _playlists = playlists;
         _chaves = chaves;
         _repositorio = repositorio;
         _repositorioMudo = repositorioMudo;
@@ -190,6 +208,10 @@ public sealed class GerenteSetups
         _leitura.Terminou += AoTerminarLeitura;
         memorias.Carregou += AoCarregar;
         memorias.Bloqueio = () => EmEscolha ? MsgDuvida : null;
+        // O preset lembrado: o apagar pergunta quem lembra; o aplicar faz a memória em uso lembrar.
+        presets.Lembrados = id => Dados.Memorias.Count(m => m.IdPreset == id);
+        presets.AoAplicar = AoAplicarPresetAsync;
+        presets.Mudou += Notificar; // um preset renomeado muda o "Preset: Cinema" das memórias
 
         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
         _copia.Registrar(TipoAplicarMemoria,
@@ -252,6 +274,9 @@ public sealed class GerenteSetups
         return dados.UsoDe(idSetup).Botoes.Select(id => dados.Memorias.FirstOrDefault(m => m.Id == id)).ToArray();
     }
 
+    /// <summary>O preset que a memória lembra, ou null (nenhum, ou ele não existe mais).</summary>
+    public Preset? PresetDe(MemoriaCelular? memoria) => _presets.Obter(memoria?.IdPreset);
+
     // ------------------------------------------------------------------ o que está acontecendo
 
     public EstadoConferencia Estado
@@ -282,6 +307,27 @@ public sealed class GerenteSetups
                 return _emUso;
         }
     }
+
+    /// <summary>A memória do celular em uso, ou null.</summary>
+    public MemoriaCelular? MemoriaEmUso => EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso ? Memoria(uso.IdMemoria) : null;
+
+    /// <summary>
+    /// O id do preset em uso: o lembrado pela memória do celular em uso, ou o último aplicado nesta
+    /// conexão; nenhum depois de carregar uma memória do aparelho ou de uma queda.
+    /// </summary>
+    public string? IdPresetEmUso
+    {
+        get
+        {
+            if (MemoriaEmUso is { } memoria)
+                return memoria.IdPreset;
+            lock (_trava)
+                return _ultimoPreset;
+        }
+    }
+
+    /// <summary>O preset em uso (<see cref="IdPresetEmUso"/>), ou null (nenhum, ou ele não existe mais).</summary>
+    public Preset? PresetEmUso => _presets.Obter(IdPresetEmUso);
 
     /// <summary>Na dúvida ou na troca: o Setup que era a referência (o "Casa 2.1" da frase), ou null.</summary>
     public Setup? Referencia
@@ -422,6 +468,7 @@ public sealed class GerenteSetups
                 _emUso = SomEmUso.Nenhum;
                 _diferencas = [];
                 _referencia = null;
+                _ultimoPreset = null;
                 _pendente = null;
                 _antes = null;
                 _motivoMudo = null;
@@ -665,7 +712,7 @@ public sealed class GerenteSetups
             }
 
             var ativa = Ativa(setup.Id);
-            var alvo = Alvo(setup, ativa);
+            var (alvo, sumiu) = Alvo(setup, ativa);
             var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
             var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
             if (!aplicado.Ok)
@@ -677,6 +724,8 @@ public sealed class GerenteSetups
             var frase = MsgSetupEscolhido(setup.Nome);
             if (aplicado.Restam > 0)
                 frase += $" {MsgFicaramDiferentes(aplicado.Restam)}";
+            if (sumiu)
+                frase += $" {MsgPresetSumiu}";
             if (link is not null)
                 frase += $" {MsgLinkNaoGuardado(link)}";
             _log.Evento($"setup: {setup.Nome} escolhido");
@@ -715,6 +764,8 @@ public sealed class GerenteSetups
             _situacao = EstadoConferencia.Confere;
             _setupEmUso = setup.Id;
             _emUso = ativa is null ? SomEmUso.Nenhum : SomEmUso.DoCelular(ativa.Id);
+            if (ativa is not null)
+                _ultimoPreset = _presets.Obter(ativa.IdPreset)?.Id;
             _diferencas = [];
             _referencia = null;
             _motivoMudo = null;
@@ -942,6 +993,8 @@ public sealed class GerenteSetups
                 uso);
             if (!await GravarAsync(novos))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            // As playlists das memórias dele somem junto.
+            await _playlists.ApagarAsync(dados.Memorias.Where(m => m.IdSetup == id).Select(m => m.Id));
             _log.Evento($"setup: {setup.Nome} apagado");
             return Terminar(ResultadoSetup.Feito(MsgSetupApagado(setup.Nome)));
         }
@@ -973,7 +1026,8 @@ public sealed class GerenteSetups
                 return Terminar(new ResultadoSetup(false, MsgPedeFolha, MsgPedeFolha, PedeFolhaSalvar: true));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
-            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), EquilibrioEfetivo);
+            // A memória nova lembra o preset em uso.
+            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), EquilibrioEfetivo, PresetEmUso?.Id);
             if (memoria is null)
                 return Terminar(ResultadoSetup.Falha(motivo!));
 
@@ -992,6 +1046,7 @@ public sealed class GerenteSetups
                     _situacao = EstadoConferencia.Confere;
             }
             _log.Evento($"memória {memoria.Nome} criada no {setup.Nome}");
+            await AdotarPlaylistsAsync();
             return Terminar(ResultadoSetup.Feito(MsgCriada(memoria.Nome, setup.Nome)));
         }
         finally
@@ -1055,7 +1110,8 @@ public sealed class GerenteSetups
             ? $"Reaplicar a calibração do {setup.Nome} com a {memoria.Nome}"
             : $"Aplicar a memória {memoria.Nome}";
         var op = new OperacaoPendente(tipo, memoria.Id, descricao, memoria.Nome);
-        var aplicado = await AplicarAlvoAsync(Alvo(setup, memoria), op, refazendo);
+        var (alvo, sumiu) = Alvo(setup, memoria);
+        var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
         if (!aplicado.Ok)
             return ResultadoSetup.Falha(aplicado.Motivo!);
 
@@ -1079,11 +1135,14 @@ public sealed class GerenteSetups
             _situacao = EstadoConferencia.Confere;
             _setupEmUso = setup.Id;
             _emUso = SomEmUso.DoCelular(memoria.Id);
+            _ultimoPreset = sumiu ? null : memoria.IdPreset;
             _pendente = null;
         }
         await GravarUsoAsync(d => d with { Uso = Com(d.Uso, setup.Id, Usar(d.UsoDe(setup.Id), memoria.Id)) });
         _log.Evento($"memória {memoria.Nome} aplicada");
         var frase = aplicado.Restam == 0 ? MsgAplicada(memoria.Nome) : MsgAplicadaDiferente(memoria.Nome, aplicado.Restam);
+        if (sumiu)
+            frase += $" {MsgPresetSumiu}";
         if (link is not null)
             frase += $" {MsgLinkNaoGuardado(link)}";
         return ResultadoSetup.Feito(frase);
@@ -1106,6 +1165,7 @@ public sealed class GerenteSetups
             if (!await GravarAsync(dados with { Memorias = dados.Memorias.Select(m => m.Id == id ? m with { Nome = nome } : m).ToArray() }))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
             _log.Evento($"memória {memoria.Nome} renomeada para {nome}");
+            await AdotarPlaylistsAsync();
             return Terminar(ResultadoSetup.Feito(MsgRenomeado(nome)));
         }
         finally
@@ -1114,7 +1174,7 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Apaga a memória do celular (e a playlist dela, na história 8d). A memória em uso não se apaga.</summary>
+    /// <summary>Apaga a memória do celular e a playlist dela. A memória em uso não se apaga.</summary>
     public async Task<ResultadoSetup> ApagarMemoriaAsync(string id)
     {
         await Carregada;
@@ -1134,6 +1194,7 @@ public sealed class GerenteSetups
             };
             if (!await GravarAsync(novos))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            await _playlists.ApagarAsync([id]); // a playlist dela some junto
             _log.Evento($"memória {memoria.Nome} apagada");
             return Terminar(ResultadoSetup.Feito(MsgMemoriaApagada(memoria.Nome)));
         }
@@ -1224,17 +1285,45 @@ public sealed class GerenteSetups
                     linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
                 if (carater.Count > 0)
                     linhas.Add(new LinhaSalvar(Camada.Carater, $"Caráter → memória {memoria.Nome}", carater));
+
+                // As 15 bandas contra o preset lembrado (sem ele, contra o EQ plano).
+                var lembrado = PresetDe(memoria);
+                var bandas = MudancasDeBandas(lembrado?.Valores ?? GerentePresets.BandasPlanas, espelho);
+                if (bandas.Count > 0)
+                {
+                    if (lembrado is null)
+                        linhas.Add(new LinhaSalvar(Camada.Bandas, "15 bandas → preset novo", bandas));
+                    else
+                        linhas.Add(new LinhaSalvar(Camada.Bandas, $"15 bandas → preset {lembrado.Nome}", bandas, lembrado.Herdado));
+                }
                 if (linhas.Count == 0)
                     return FolhaSalvar.Travada(MsgNadaParaSalvar, setup.Nome);
-                return new FolhaSalvar(null, linhas, PedeNome: false, PerguntaCalibracao: false, setup.Nome, []);
+                var folha = new FolhaSalvar(null, linhas, PedeNome: false, PerguntaCalibracao: false, setup.Nome, []);
+                if (bandas.Count == 0)
+                    return folha;
+                if (lembrado is null)
+                    return folha with { PedeNomePreset = true };
+                return folha with
+                {
+                    PerguntaPreset = true,
+                    NomePreset = lembrado.Nome,
+                    MotivoAtualizarTravado = lembrado.Herdado ? GerentePresets.MsgHerdadoNaoSobrescrito : null,
+                    EscolhaPresetInicial = lembrado.Herdado ? EscolhaPreset.Criar : EscolhaPreset.Nenhuma,
+                };
             }
             case TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho:
             {
                 linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
                 if (calibracao.Count > 0)
                     linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração do aparelho × Setup {setup.Nome}", calibracao));
+                var (linha, igual) = LinhaBandasMemoriaNova(espelho);
+                linhas.Add(linha);
                 return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: calibracao.Count > 0, setup.Nome,
-                    DiferencasDeCalibracao(setup, espelho));
+                    DiferencasDeCalibracao(setup, espelho))
+                {
+                    NomePreset = igual?.Nome,
+                    PedeNomePreset = igual is null,
+                };
             }
             default:
             {
@@ -1242,16 +1331,37 @@ public sealed class GerenteSetups
                 if (calibracao.Count > 0)
                     linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
                 linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
-                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: false, setup.Nome, []);
+                var (linha, igual) = LinhaBandasMemoriaNova(espelho);
+                linhas.Add(linha);
+                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: false, setup.Nome, [])
+                {
+                    NomePreset = igual?.Nome,
+                    PedeNomePreset = igual is null,
+                };
             }
         }
     }
 
     /// <summary>
-    /// Salva o que a folha mostra, cada mudança na sua camada. Só o <see cref="EscolhaCalibracao.Manter"/>
-    /// manda algo ao aparelho: guarda a memória nova e reaplica a calibração do Setup, com cópia antes.
+    /// A linha das 15 bandas de uma memória nova: se as bandas lidas são as de um preset, a memória
+    /// lembra ele, sem pergunta; senão, um preset novo, com o nome.
     /// </summary>
-    public async Task<ResultadoSetup> SalvarAsync(EscolhaCalibracao escolha, string? nomeMemoriaNova)
+    private (LinhaSalvar Linha, Preset? Igual) LinhaBandasMemoriaNova(IReadOnlyDictionary<Endereco, Valor> espelho)
+    {
+        if (_presets.ComAsBandas(espelho) is { } igual)
+            return (new LinhaSalvar(Camada.Bandas, $"15 bandas → preset {igual.Nome}", [], igual.Herdado), igual);
+        return (new LinhaSalvar(Camada.Bandas, "15 bandas → preset novo", []), null);
+    }
+
+    /// <summary>
+    /// Salva o que a folha mostra, cada mudança na sua camada; as 15 bandas vão para o preset
+    /// (atualizar o lembrado, criar um novo com o nome, ou lembrar o igual). Só o
+    /// <see cref="EscolhaCalibracao.Manter"/> manda algo ao aparelho: guarda a memória nova e reaplica
+    /// a calibração do Setup, com cópia antes. Nomes inválidos ou repetidos recusam antes de guardar
+    /// qualquer coisa.
+    /// </summary>
+    public async Task<ResultadoSetup> SalvarAsync(EscolhaCalibracao escolha, string? nomeMemoriaNova,
+        EscolhaPreset escolhaPreset = EscolhaPreset.Nenhuma, string? nomePresetNovo = null)
     {
         await Carregada;
         if (!await _operacao.WaitAsync(0))
@@ -1265,6 +1375,22 @@ public sealed class GerenteSetups
                 escolha = EscolhaCalibracao.Nenhuma; // uma escolha velha não vale quando a folha não pergunta
             else if (escolha == EscolhaCalibracao.Nenhuma)
                 return Terminar(ResultadoSetup.Falha(MsgEscolha));
+
+            // As 15 bandas: a escolha (com a memória do celular em uso) ou o caminho sem pergunta.
+            if (folha.PerguntaPreset)
+            {
+                if (escolhaPreset == EscolhaPreset.Nenhuma)
+                    escolhaPreset = folha.EscolhaPresetInicial;
+                if (escolhaPreset == EscolhaPreset.Nenhuma)
+                    return Terminar(ResultadoSetup.Falha(MsgEscolhaPreset));
+                if (escolhaPreset == EscolhaPreset.Atualizar && folha.MotivoAtualizarTravado is { } travado)
+                    return Terminar(ResultadoSetup.Falha(travado));
+            }
+            else
+            {
+                escolhaPreset = folha.PedeNomePreset ? EscolhaPreset.Criar : EscolhaPreset.Nenhuma;
+            }
+
             // Manter reaplica a calibração pelo BLE: a chave vale antes de guardar qualquer coisa.
             if (escolha == EscolhaCalibracao.Manter && !_chaves.Ligada(Chave.AplicarMemoriaCelular))
                 return Terminar(ResultadoSetup.Falha(Sessao.MotivoChaveDesligada));
@@ -1275,15 +1401,33 @@ public sealed class GerenteSetups
             var calibracaoMudou = MudancasDeCalibracao(setup, espelho, equilibrio).Count > 0;
             var dados = Dados;
             var emUso = EmUso;
+            var memoriaEmUso = emUso.Tipo == TipoSomEmUso.MemoriaCelular ? Memoria(emUso.IdMemoria) : null;
             var partes = new List<string>();
 
+            // Tudo o que pode recusar vem antes de guardar qualquer coisa.
             MemoriaCelular? nova = null;
             if (folha.PedeNome)
             {
-                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, equilibrio);
+                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, equilibrio, idPreset: null);
                 if (memoria is null)
                     return Terminar(ResultadoSetup.Falha(motivo!));
                 nova = memoria;
+            }
+
+            string? nomePreset = null;
+            IReadOnlyList<ValorCopiado> bandas = [];
+            if (escolhaPreset != EscolhaPreset.Nenhuma)
+            {
+                if (escolhaPreset == EscolhaPreset.Criar)
+                {
+                    var (nome, motivo) = _presets.ConferirNomeNovo(nomePresetNovo);
+                    if (nome is null)
+                        return Terminar(ResultadoSetup.Falha(MsgNomePreset(motivo!)));
+                    nomePreset = nome;
+                }
+                (bandas, var faltamBandas) = GerentePresets.TirarBandas(espelho);
+                if (faltamBandas > 0)
+                    return Terminar(ResultadoSetup.Falha(GerentePresets.MsgIncompleta(faltamBandas)));
             }
 
             var atualizarSetup = calibracaoMudou && escolha != EscolhaCalibracao.Manter;
@@ -1305,26 +1449,72 @@ public sealed class GerenteSetups
                 partes.Add($"calibração no {setup.Nome}");
             }
 
+            IReadOnlyList<ValorCopiado>? caraterNovo = null;
+            if (nova is null && memoriaEmUso is not null && MudancasDeCarater(memoriaEmUso, espelho, setup.Equilibrio, equilibrio).Count > 0)
+            {
+                var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
+                if (faltam > 0)
+                    return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
+                caraterNovo = Camadas.Separar(carater, equilibrio);
+            }
+
+            // O preset: criar (com o nome), atualizar o lembrado, ou lembrar o que tem as mesmas bandas.
+            string? idPreset = null;
+            string? parteBandas = null;
+            switch (escolhaPreset)
+            {
+                case EscolhaPreset.Criar:
+                {
+                    var r = await _presets.CriarAsync(nomePreset, bandas);
+                    if (!r.Ok)
+                        return Terminar(ResultadoSetup.Falha(r.Mensagem ?? r.Motivo ?? MsgNaoGuardou));
+                    idPreset = r.Preset!.Id;
+                    parteBandas = $"15 bandas no preset {r.Preset.Nome}";
+                    break;
+                }
+                case EscolhaPreset.Atualizar:
+                {
+                    var lembrado = PresetDe(memoriaEmUso)!;
+                    var r = await _presets.AtualizarAsync(lembrado.Id, bandas);
+                    if (!r.Ok)
+                        return Terminar(ResultadoSetup.Falha(r.Mensagem ?? r.Motivo ?? MsgNaoGuardou));
+                    idPreset = lembrado.Id;
+                    parteBandas = $"15 bandas no preset {lembrado.Nome}";
+                    break;
+                }
+                default:
+                    // A memória nova com as bandas de um preset que já existe: lembra ele, sem pergunta.
+                    if (nova is not null && _presets.ComAsBandas(espelho) is { } igual)
+                        idPreset = igual.Id;
+                    break;
+            }
+
             var memorias = dados.Memorias.ToList();
             var uso = dados.UsoDe(setup.Id);
             string? idEmUso = null;
             if (nova is not null)
             {
+                nova = nova with { IdPreset = idPreset };
                 memorias.Add(nova);
                 uso = Usar(uso, nova.Id);
                 idEmUso = nova.Id;
                 partes.Add($"caráter na {nova.Nome}");
             }
-            else if (emUso.Tipo == TipoSomEmUso.MemoriaCelular && Memoria(emUso.IdMemoria) is { } memoria
-                     && MudancasDeCarater(memoria, espelho, setup.Equilibrio, equilibrio).Count > 0)
+            else if (memoriaEmUso is not null)
             {
-                var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
-                if (faltam > 0)
-                    return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
-                var atualizada = memoria with { Carater = Camadas.Separar(carater, equilibrio), Quando = _relogio.GetLocalNow() };
-                memorias = memorias.Select(m => m.Id == memoria.Id ? atualizada : m).ToList();
-                partes.Add($"caráter na {memoria.Nome}");
+                var atualizada = memoriaEmUso;
+                if (caraterNovo is not null)
+                {
+                    atualizada = atualizada with { Carater = caraterNovo, Quando = _relogio.GetLocalNow() };
+                    partes.Add($"caráter na {memoriaEmUso.Nome}");
+                }
+                if (escolhaPreset == EscolhaPreset.Criar)
+                    atualizada = atualizada with { IdPreset = idPreset };
+                if (!ReferenceEquals(atualizada, memoriaEmUso))
+                    memorias = memorias.Select(m => m.Id == memoriaEmUso.Id ? atualizada : m).ToList();
             }
+            if (parteBandas is not null)
+                partes.Add(parteBandas);
 
             var novos = dados with
             {
@@ -1340,9 +1530,13 @@ public sealed class GerenteSetups
                     _pendente = null;
                 if (idEmUso is not null)
                     _emUso = SomEmUso.DoCelular(idEmUso);
+                if (idPreset is not null)
+                    _ultimoPreset = idPreset;
                 if (_situacao == EstadoConferencia.SomDiferente)
                     _situacao = EstadoConferencia.Confere;
             }
+            if (nova is not null)
+                await AdotarPlaylistsAsync();
             var frase = $"Salvo: {string.Join(", ", partes)}.";
             _log.Evento($"setup: {frase}");
 
@@ -1361,6 +1555,63 @@ public sealed class GerenteSetups
         finally
         {
             _operacao.Release();
+        }
+    }
+
+    /// <summary>As 15 bandas do aparelho contra a referência (o preset lembrado, ou o EQ plano).</summary>
+    private static List<MudancaSalvar> MudancasDeBandas(IReadOnlyList<ValorCopiado> referencia, IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        Camadas.Diferentes(referencia, espelho)
+            .Select(v => new MudancaSalvar(Camadas.Rotulo(v.Codigo, v.Indice), Camadas.Exibir(v.Codigo, v.NoFio),
+                Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio)))
+            .ToList();
+
+    // ------------------------------------------------------------------ preset aplicado e playlists
+
+    /// <summary>
+    /// Um preset foi aplicado (pela tela ou pela IA): ele passa a ser o preset em uso desta conexão, e
+    /// a memória do celular em uso passa a lembrá-lo.
+    /// </summary>
+    private async Task AoAplicarPresetAsync(Preset preset)
+    {
+        string? idMemoria;
+        lock (_trava)
+        {
+            _ultimoPreset = preset.Id;
+            idMemoria = _emUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso ? uso.IdMemoria : null;
+        }
+        if (idMemoria is not null && Memoria(idMemoria) is { } memoria && memoria.IdPreset != preset.Id)
+        {
+            await GravarUsoAsync(d => d with
+            {
+                Memorias = d.Memorias.Select(m => m.Id == idMemoria ? m with { IdPreset = preset.Id } : m).ToArray(),
+            });
+            _log.Evento($"memória {memoria.Nome} lembra o preset {preset.Nome}");
+            return;
+        }
+        Notificar();
+    }
+
+    /// <summary>
+    /// As memórias na ordem em que uma playlist pendente procura a dona: as do Casa 2.1 primeiro,
+    /// depois as dos outros Setups na ordem; dentro de cada Setup, na ordem de criação.
+    /// </summary>
+    public static IReadOnlyList<(string Id, string Nome)> OrdemDeAdocao(DadosSetups dados) =>
+        dados.Setups
+            .OrderBy(s => s.Id == ConhecimentoHerdado.IdSetupCasa ? 0 : 1) // estável: os outros ficam na ordem
+            .SelectMany(s => dados.Memorias.Where(m => m.IdSetup == s.Id))
+            .Select(m => (m.Id, m.Nome))
+            .ToArray();
+
+    /// <summary>As playlists pendentes procuram a memória com o nome delas.</summary>
+    private async Task AdotarPlaylistsAsync()
+    {
+        try
+        {
+            await _playlists.AdotarAsync(OrdemDeAdocao(Dados));
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"playlists: falha na adoção ({e.GetType().Name})");
         }
     }
 
@@ -1412,9 +1663,9 @@ public sealed class GerenteSetups
         return lista;
     }
 
-    /// <summary>Uma memória nova com o caráter lido (menos o equilíbrio), ou o motivo de não poder.</summary>
+    /// <summary>Uma memória nova com o caráter lido (menos o equilíbrio) e o preset lembrado, ou o motivo de não poder.</summary>
     private (MemoriaCelular? Memoria, string? Motivo) NovaMemoria(Setup setup, string? nomeDigitado,
-        IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
+        IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio, string? idPreset)
     {
         if (NomeValido(nomeDigitado) is not { } nome)
             return (null, GerentePresets.MsgNomeInvalido);
@@ -1424,7 +1675,7 @@ public sealed class GerenteSetups
         if (faltam > 0)
             return (null, MsgIncompleta(faltam));
         return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(),
-            Camadas.Separar(carater, equilibrio)), null);
+            Camadas.Separar(carater, equilibrio), IdPreset: idPreset), null);
     }
 
     // ------------------------------------------------------------------ memória do aparelho
@@ -1434,6 +1685,7 @@ public sealed class GerenteSetups
         lock (_trava)
         {
             _emUso = SomEmUso.DoAparelho(n);
+            _ultimoPreset = null; // o som do aparelho: nenhum preset em uso
             _pendente = null;
             if (_situacao == EstadoConferencia.SomDiferente)
                 _situacao = EstadoConferencia.Confere;
@@ -1448,9 +1700,25 @@ public sealed class GerenteSetups
         public static Aplicado Falha(string motivo) => new(false, motivo, false, 0);
     }
 
-    /// <summary>A calibração do Setup e, se há, o caráter da memória somado ao equilíbrio do Setup.</summary>
-    private static IReadOnlyList<ValorCopiado> Alvo(Setup setup, MemoriaCelular? memoria) =>
-        memoria is null ? setup.Calibracao : [.. setup.Calibracao, .. Camadas.Compor(memoria.Carater, setup.Equilibrio)];
+    /// <summary>
+    /// A calibração do Setup e, se há memória, o caráter dela somado ao equilíbrio do Setup e as 15
+    /// bandas do preset que ela lembra. <c>Sumiu</c>: ela lembra um preset que não existe mais (o
+    /// arquivo foi editado); o alvo vai sem as bandas.
+    /// </summary>
+    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu) Alvo(Setup setup, MemoriaCelular? memoria)
+    {
+        if (memoria is null)
+            return (setup.Calibracao, false);
+        IReadOnlyList<ValorCopiado> carater = [.. setup.Calibracao, .. Camadas.Compor(memoria.Carater, setup.Equilibrio)];
+        if (memoria.IdPreset is null)
+            return (carater, false);
+        if (_presets.Obter(memoria.IdPreset) is not { } preset)
+        {
+            _log.Evento($"memória {memoria.Nome}: o preset lembrado não existe mais; aplica sem as bandas");
+            return (carater, true);
+        }
+        return ([.. carater, .. preset.Valores], false);
+    }
 
     /// <summary>
     /// Escreve o alvo com a cópia antes: só o que difere, uma escrita por vez, e relê tudo. Em caso de
@@ -1698,6 +1966,8 @@ public sealed class GerenteSetups
             _marca ??= marca;
         }
         Notificar();
+        // As playlists que esperam a memória delas (as do playlists.json antigo) procuram pelo nome.
+        await AdotarPlaylistsAsync();
     }
 
     /// <summary>O JSON do <c>setups.json</c> (formato 1).</summary>
@@ -1753,6 +2023,8 @@ public sealed class GerenteSetups
                 w.WriteString("setup", m.IdSetup);
                 w.WriteString("nome", m.Nome);
                 w.WriteString("quando", m.Quando.ToString("O", Fio));
+                if (m.IdPreset is { } preset)
+                    w.WriteString("preset", preset);
                 EscreverValores(w, "carater", m.Carater);
                 w.WriteEndObject();
             }
@@ -1766,6 +2038,8 @@ public sealed class GerenteSetups
     /// Lê o <c>setups.json</c>. Fora do formato 1, sem nenhum Setup válido ou com outra forma: null
     /// (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória de
     /// um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo id.
+    /// O preset lembrado de cada memória vem do campo <c>preset</c> (ausente = nenhum; na FILME herdada,
+    /// ausente = o Cinema, como num <c>setups.json</c> gravado pela 8c).
     /// </summary>
     public static DadosSetups? DeJson(string json)
     {
@@ -1808,8 +2082,12 @@ public sealed class GerenteSetups
                     || memorias.Any(m => m.IdSetup == idSetup && MesmoNome(m.Nome, nome)))
                     continue;
                 var herdada = id == ConhecimentoHerdado.IdMemoriaFilme;
+                // Sem o campo "preset" (um setups.json da 8c), a FILME herdada lembra o Cinema; as outras, nenhum.
+                var idPreset = Texto(item, "preset") is { Length: > 0 } preset ? preset
+                    : herdada && !item.TryGetProperty("preset", out _) ? ConhecimentoHerdado.IdCinema
+                    : null;
                 memorias.Add(new MemoriaCelular(id, idSetup, nome, Quando(item), LerValores(item, "carater", Camada.Carater),
-                    herdada, herdada ? ConhecimentoHerdado.NotaMemoriaFilme : null));
+                    herdada, herdada ? ConhecimentoHerdado.NotaMemoriaFilme : null, idPreset));
             }
         }
 

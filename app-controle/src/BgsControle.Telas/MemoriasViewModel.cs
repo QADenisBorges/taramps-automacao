@@ -7,10 +7,11 @@ using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>O cartão de uma memória do celular na tela Memórias: nome, EM USO, selo HERDADO, Aplicar, Renomear e Apagar.</summary>
+/// <summary>O cartão de uma memória do celular na tela Memórias: nome, o preset lembrado, EM USO, selo HERDADO, Aplicar, Renomear e Apagar.</summary>
 public sealed class CartaoMemoriaCelularViewModel : TelaBase
 {
     private string _nome;
+    private string? _textoPreset;
     private bool _emUso;
     private bool _notaVisivel;
 
@@ -40,6 +41,19 @@ public sealed class CartaoMemoriaCelularViewModel : TelaBase
             if (_nome == value)
                 return;
             _nome = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>"Preset: Cinema" (o preset que ela lembra e aplica junto), ou null sem preset lembrado.</summary>
+    public string? TextoPreset
+    {
+        get => _textoPreset;
+        internal set
+        {
+            if (_textoPreset == value)
+                return;
+            _textoPreset = value;
             Avisar();
         }
     }
@@ -199,6 +213,9 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     public const string TextoVoltar = "Voltar à cópia";
     public const string MsgEmAndamento = "Uma operação está em andamento";
     public const string MsgVoltou = "O som voltou à cópia.";
+
+    /// <summary>"Preset: Cinema".</summary>
+    public static string TextoPresetDe(string nome) => $"Preset: {nome}";
 
     private readonly GerenteSetups _setups;
     private readonly GerenteMemorias _memorias;
@@ -737,6 +754,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         foreach (var (cartao, memoria) in novos.Zip(memorias))
         {
             cartao.Nome = memoria.Nome;
+            cartao.TextoPreset = _setups.PresetDe(memoria) is { } preset ? TextoPresetDe(preset.Nome) : null;
             cartao.EmUso = emUso.Tipo == TipoSomEmUso.MemoriaCelular && emUso.IdMemoria == memoria.Id;
         }
         var mudouLista = !novos.SequenceEqual(_cartoes);
