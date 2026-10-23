@@ -54,7 +54,8 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.Equal("Salvar o que mudou?", _vm.Titulo);
         Assert.Equal("Cada mudança vai para o lugar dela.", _vm.Subtitulo);
         Assert.Equal(["Calibração → Setup Casa 2.1", "Caráter → memória FILME"], _vm.Linhas.Select(l => l.Titulo));
-        Assert.Equal(["Atraso da saída 3: 80 cm → 85 cm"], _vm.Linhas[0].Mudancas);
+        // O Link 3–4 do Casa 2.1 (história 8e) repete o atraso no CH4.
+        Assert.Equal(["Atraso da saída 3: 80 cm → 85 cm", "Atraso da saída 4: 80 cm → 85 cm"], _vm.Linhas[0].Mudancas);
         Assert.Equal(["Ganho da saída 1: +10,0 dB → +8,0 dB"], _vm.Linhas[1].Mudancas);
         Assert.False(_vm.Pergunta);
         Assert.False(_vm.PedeNome);

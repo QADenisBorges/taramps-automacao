@@ -237,7 +237,7 @@ public sealed class PresetsTestes : IDisposable
         var secoes = ConhecimentoHerdado.Secoes;
 
         Assert.Equal(
-            ["Protocolo", "O sistema do Denis", "As 3 memórias", "A FILME em três camadas", "Presets", "Preferências e método", "Cuidados com o app da Taramps", "Situação registrada"],
+            ["Protocolo", "O sistema do Denis", "As 3 memórias", "A FILME em três camadas", "Os equipamentos do Casa 2.1", "Presets", "Preferências e método", "Cuidados com o app da Taramps", "Situação registrada"],
             secoes.Select(s => s.Titulo));
         Assert.All(secoes, s => Assert.NotEmpty(s.Linhas));
         var presets = string.Join(' ', secoes.Single(s => s.Titulo == "Presets").Linhas);

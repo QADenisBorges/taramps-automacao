@@ -20,37 +20,56 @@ public enum Camada
 }
 
 /// <summary>
-/// O equilíbrio L/R de um Setup (CAP-16): um ganho e um limiter para a saída 1 (JBL L) e para a
-/// saída 2 (JBL R), em dB, de −12,0 a +12,0, passo 0,1. No aparelho vale a soma com a memória.
+/// O equilíbrio de um Setup (CAP-16), por canal (história 8e): um ganho e um limiter para cada um
+/// dos 4 canais, em dB, de −12,0 a +12,0, passo 0,1. No aparelho vale a soma com a memória. Uma
+/// saída que é um par com link tem o mesmo valor nos dois canais.
 /// </summary>
-public sealed record Equilibrio(decimal Ganho1, decimal Limiter1, decimal Ganho2, decimal Limiter2)
+public sealed record Equilibrio(
+    decimal Ganho1,
+    decimal Limiter1,
+    decimal Ganho2,
+    decimal Limiter2,
+    decimal Ganho3 = 0m,
+    decimal Limiter3 = 0m,
+    decimal Ganho4 = 0m,
+    decimal Limiter4 = 0m)
 {
+    public const int Canais = 4;
+
     public static Equilibrio Zero { get; } = new(0m, 0m, 0m, 0m);
 
-    /// <summary>O valor da saída (0 = saída 1, 1 = saída 2) no ganho ou no limiter.</summary>
-    public decimal Valor(int saida, bool limiter) => (saida, limiter) switch
+    /// <summary>O valor do canal (0 a 3 = CH1 a CH4) no ganho ou no limiter.</summary>
+    public decimal Valor(int canal, bool limiter) => (canal, limiter) switch
     {
         (0, false) => Ganho1,
         (0, true) => Limiter1,
         (1, false) => Ganho2,
         (1, true) => Limiter2,
-        _ => throw new ArgumentOutOfRangeException(nameof(saida), "O equilíbrio é só das saídas 1 e 2."),
+        (2, false) => Ganho3,
+        (2, true) => Limiter3,
+        (3, false) => Ganho4,
+        (3, true) => Limiter4,
+        _ => throw new ArgumentOutOfRangeException(nameof(canal), "O canal vai de 0 a 3."),
     };
 
     /// <summary>Uma cópia com um valor trocado.</summary>
-    public Equilibrio Com(int saida, bool limiter, decimal valor) => (saida, limiter) switch
+    public Equilibrio Com(int canal, bool limiter, decimal valor) => (canal, limiter) switch
     {
         (0, false) => this with { Ganho1 = valor },
         (0, true) => this with { Limiter1 = valor },
         (1, false) => this with { Ganho2 = valor },
         (1, true) => this with { Limiter2 = valor },
-        _ => throw new ArgumentOutOfRangeException(nameof(saida), "O equilíbrio é só das saídas 1 e 2."),
+        (2, false) => this with { Ganho3 = valor },
+        (2, true) => this with { Limiter3 = valor },
+        (3, false) => this with { Ganho4 = valor },
+        (3, true) => this with { Limiter4 = valor },
+        _ => throw new ArgumentOutOfRangeException(nameof(canal), "O canal vai de 0 a 3."),
     };
 }
 
 /// <summary>
 /// A camada de cada parâmetro do Marco 1 (decisão da história 8c, pela tabela "Três camadas do
-/// som") e a soma e a subtração do equilíbrio L/R. Uma regra só para a conferência ao conectar, o
+/// som") e a soma e a subtração do equilíbrio por canal. Uma regra só para a conferência ao conectar, o
 /// aplicar e o Salvar.
 /// <list type="bullet">
 /// <item><b>Calibração:</b> 010 rota, 060 fase, 040/041/042/043 cortes, 050 atraso, 030/031/032 EQ de
@@ -105,14 +124,14 @@ public static class Camadas
 
     // ------------------------------------------------------------------ equilíbrio
 
-    /// <summary>O ganho (081) e o limiter (071) das saídas 1 e 2 levam o equilíbrio.</summary>
+    /// <summary>O ganho (081) e o limiter (071) de cada canal (0 a 3) levam o equilíbrio.</summary>
     public static bool TemEquilibrio(string codigo, int? indice) =>
-        codigo is CodigoGanho or CodigoLimiter && indice is 0 or 1;
+        codigo is CodigoGanho or CodigoLimiter && indice is >= 0 and < Equilibrio.Canais;
 
     /// <summary>
     /// O valor final no aparelho: a parte da memória mais o equilíbrio, preso à faixa do MAPA
     /// (ganho −45,0 a +15,0; limiter −48,0 a 0,0). O limiter em OFF (<c>0.5</c>) fica OFF, sem soma.
-    /// Fora do ganho e do limiter das saídas 1 e 2, o valor passa como está.
+    /// Fora do ganho e do limiter, o valor passa como está.
     /// </summary>
     public static string Somar(string codigo, int? indice, string noFio, Equilibrio equilibrio)
     {

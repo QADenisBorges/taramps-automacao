@@ -439,7 +439,8 @@ public sealed class PortaTestes : IDisposable
         Assert.Equal("+2,0 dB", Json(r).GetProperty("exibicao").GetString());
         Assert.Contains("*081*2*2.0*", _simulador.Escritas);
         Assert.Equal(2.0m, _estado.Valor("081", 2)!.Numero);
-        var e = Ultima();
+        Assert.Contains("*081*3*2.0*", _simulador.Escritas); // o Link 3–4 do Casa 2.1 (história 8e) repete no CH4
+        var e = _historico.Entradas.Last(x => x.Endereco == new Endereco("081", 2));
         Assert.Equal(OrigemComando.Ia, e.Origem);
         Assert.Equal(TipoComando.AjusteAudio, e.Tipo);
         Assert.Equal(new Endereco("081", 2), e.Endereco);

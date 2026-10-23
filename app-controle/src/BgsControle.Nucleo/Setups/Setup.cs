@@ -3,14 +3,15 @@ using BgsControle.Nucleo.Escrita;
 namespace BgsControle.Nucleo.Setups;
 
 /// <summary>
-/// Um Setup (CAP-16): uma instalação do mesmo PRO 2.4BT (o 2.1 de casa, o carro…), com a
-/// calibração dela. Criar, renomear e apagar não mandam nada ao aparelho.
+/// Um Setup (CAP-16): uma instalação do mesmo PRO 2.4BT (o 2.1 de casa, o carro…), com os
+/// equipamentos e a calibração dela. Criar, renomear e apagar (e mexer nos equipamentos) não mandam
+/// nada ao aparelho.
 /// </summary>
 /// <param name="Id">Único e estável (o herdado tem o id fixo do código).</param>
 /// <param name="Nome">De 1 a 24 caracteres (a regra dos presets), sem repetir entre os Setups.</param>
 /// <param name="Quando">Quando a calibração foi guardada.</param>
 /// <param name="Calibracao">Os valores da camada calibração (<see cref="Camada.Calibracao"/>), como o aparelho os devolve.</param>
-/// <param name="Equilibrio">O equilíbrio L/R, somado ao ganho e ao limiter das saídas 1 e 2.</param>
+/// <param name="Equilibrio">O equilíbrio por canal, somado ao ganho e ao limiter de cada canal.</param>
 /// <param name="Link12">O link 1–2 (só do app).</param>
 /// <param name="Link34">O link 3–4 (só do app).</param>
 /// <param name="Herdado">Vem dos protótipos (CAP-6): não se apaga.</param>
@@ -24,12 +25,26 @@ public sealed record Setup(
     bool Link12,
     bool Link34,
     bool Herdado = false,
-    string? Nota = null);
+    string? Nota = null)
+{
+    /// <summary>
+    /// Os equipamentos e as ligações (o modelo de ligação de <see cref="Ligacoes"/>), na ordem de
+    /// criação. A lista é sempre válida (<see cref="Ligacoes.Validar"/>).
+    /// </summary>
+    public IReadOnlyList<Equipamento> Equipamentos { get; init; } = [];
+}
+
+/// <summary>Como terminou uma operação de equipamento. <see cref="Mensagem"/> é a frase para a tela.</summary>
+/// <param name="Id">O id do equipamento (o novo, ao adicionar), ou null.</param>
+public sealed record ResultadoEquipamento(bool Ok, string? Motivo, string? Mensagem = null, string? Id = null)
+{
+    public static ResultadoEquipamento Falha(string motivo) => new(false, motivo, motivo);
+}
 
 /// <summary>
 /// Uma memória no celular (CAP-4): o caráter do som, dentro de um Setup, e o preset que ela lembra
-/// (as 15 bandas, CAP-5), que volta junto quando ela é aplicada. O ganho e o limiter das saídas 1 e
-/// 2 guardam a parte da memória, sem o equilíbrio do Setup.
+/// (as 15 bandas, CAP-5), que volta junto quando ela é aplicada. O ganho e o limiter de cada canal
+/// guardam a parte da memória, sem o equilíbrio do Setup.
 /// </summary>
 /// <param name="Id">Único e estável (a herdada tem o id fixo do código).</param>
 /// <param name="IdSetup">O Setup dono.</param>

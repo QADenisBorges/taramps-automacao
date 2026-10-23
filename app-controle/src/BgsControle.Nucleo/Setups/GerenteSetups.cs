@@ -31,17 +31,22 @@ public sealed record DadosSetups(
 
 /// <summary>
 /// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5). Guarda tudo em
-/// <c>setups.json</c> (formato 1) e a marca do mudo da dúvida em <c>setup-mudo.json</c>; sem
-/// arquivo (ou com ele estragado), começa com o herdado: o Setup "Casa 2.1" e a memória FILME.
+/// <c>setups.json</c> (formato 2; lê também o 1) e a marca do mudo da dúvida em <c>setup-mudo.json</c>;
+/// sem arquivo (ou com ele estragado), começa com o herdado: o Setup "Casa 2.1" (com os equipamentos e
+/// o Link 3–4 ligado) e a memória FILME.
 /// <list type="bullet">
 /// <item><b>Conferência:</b> na primeira leitura completa de cada conexão nova (depois da regra 2 do
 /// gerador), compara a calibração lida com a do último Setup usado. Bate: "Setup confere", ou "som
 /// diferente" se só o caráter difere da memória ativa (sem mutar). Não bate: guarda a marca, muta os
 /// 4 canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
-/// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.</item>
+/// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.
+/// Quando o Setup confere, o link dele passa a valer no app.</item>
 /// <item><b>Aplicar</b> uma memória, <b>escolher</b> um Setup e o <b>Manter a calibração</b> do Salvar
 /// passam pela <see cref="CopiaAntes"/> (regra 3): escrevem só o que difere, relêem e conferem.</item>
-/// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho.</item>
+/// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho; nem adicionar, editar
+/// ou tirar equipamentos (história 8e), que não têm chave.</item>
+/// <item>As <b>saídas do app</b> (<see cref="SaidasEmUso"/>) vêm dos equipamentos do Setup em uso e do
+/// link (<see cref="Ligacoes.Saidas"/>): um canal, ou um par com link, que é uma saída só.</item>
 /// <item>O <b>Salvar</b> leva cada mudança para a camada dona dela (<see cref="Camadas"/>); as 15
 /// bandas vão para um preset (<see cref="GerentePresets"/>).</item>
 /// <item>Cada memória do celular <b>lembra um preset</b> (as 15 bandas), que volta junto quando ela é
@@ -49,12 +54,19 @@ public sealed record DadosSetups(
 /// <item>As <b>playlists</b> (<see cref="GerentePlaylists"/>) são por memória: apagar a memória (ou o
 /// Setup dela) apaga a playlist; criar ou renomear memórias, e carregar, adota as pendentes pelo nome.</item>
 /// </list>
-/// Uma operação por vez. O ganho e o limiter finais das saídas 1 e 2 são a memória mais o
-/// equilíbrio do Setup (<see cref="Camadas.Somar"/>).
+/// Uma operação por vez. O ganho e o limiter finais de cada canal são a memória mais o equilíbrio
+/// do Setup naquele canal (<see cref="Camadas.Somar"/>).
 /// </summary>
 public sealed class GerenteSetups
 {
-    public const int Formato = 1;
+    /// <summary>O formato do <c>setups.json</c>: o 2 tem o equilíbrio por canal e os equipamentos (história 8e).</summary>
+    public const int Formato = 2;
+
+    /// <summary>O formato da 8c e da 8d: o equilíbrio L/R e sem equipamentos. Ainda se lê.</summary>
+    public const int FormatoAntigo = 1;
+
+    /// <summary>O formato do <c>setup-mudo.json</c> (não mudou na 8e).</summary>
+    public const int FormatoMudo = 1;
 
     /// <summary>Os tipos registrados na <see cref="CopiaAntes"/>. O alvo da marca é o id da memória ou do Setup.</summary>
     public const string TipoAplicarMemoria = "aplicar-memoria-celular";
@@ -85,7 +97,7 @@ public sealed class GerenteSetups
     public const string MsgEscolhaPreset = "Escolha atualizar o preset ou criar um preset novo.";
     public const string MsgPresetSumiu = "O preset lembrado não existe mais; as 15 bandas ficaram como estavam.";
     public const string MsgSemConexao = "Sem conexão com o aparelho.";
-    public const string MsgEquilibrioSaida = "O equilíbrio é só das saídas 1 e 2.";
+    public const string MsgEquilibrioCanal = "O canal vai de CH1 a CH4.";
     public const string MsgEquilibrioFaixa = "Fora da faixa: −12,0 a +12,0 dB";
     public const string MsgCaiu = "A conexão caiu no meio. Ao reconectar, o app mostra o que ficou.";
     public const string MsgSemMudo = "O som não estava mutado.";
@@ -132,6 +144,20 @@ public sealed class GerenteSetups
     public static string MsgRenomeado(string nome) => $"Agora se chama {nome}.";
 
     public static string MsgSetupApagado(string nome) => $"Setup {nome} apagado.";
+
+    public const string MsgEquipamentoNaoExiste = "O equipamento não existe mais.";
+
+    public static string MsgEquipamentoAdicionado(string nome, string setup) => $"{nome} adicionado ao {setup}.";
+
+    public static string MsgEquipamentoGuardado(string nome) => $"{nome} guardado.";
+
+    public static string MsgEquipamentoTirado(string nome, string setup) => $"{nome} tirado do {setup}.";
+
+    /// <summary>"Ficaram sem ligação: Tweeter 1, Tweeter 2 e Woofer."</summary>
+    public static string MsgSemLigacao(IReadOnlyList<string> nomes) => $"Ficaram sem ligação: {Ligacoes.Lista(nomes)}.";
+
+    /// <summary>"Ficaram sem fonte: Módulo A e Módulo B."</summary>
+    public static string MsgSemFonte(IReadOnlyList<string> nomes) => $"Ficaram sem fonte: {Ligacoes.Lista(nomes)}.";
 
     public static string MsgMemoriaApagada(string nome) => $"Memória {nome} apagada.";
 
@@ -212,6 +238,7 @@ public sealed class GerenteSetups
         presets.Lembrados = id => Dados.Memorias.Count(m => m.IdPreset == id);
         presets.AoAplicar = AoAplicarPresetAsync;
         presets.Mudou += Notificar; // um preset renomeado muda o "Preset: Cinema" das memórias
+        _link.Mudou += _ => Notificar(); // as saídas do app dependem do link
 
         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
         _copia.Registrar(TipoAplicarMemoria,
@@ -444,6 +471,61 @@ public sealed class GerenteSetups
         }
     }
 
+    // ------------------------------------------------------------------ saídas do app (história 8e)
+
+    /// <summary>
+    /// As saídas do app no Setup em uso, com o link que vale agora no app: cada par com link é uma
+    /// saída só. Sem Setup em uso, CH1 a CH4 (também com os pares do link).
+    /// </summary>
+    public IReadOnlyList<SaidaApp> SaidasEmUso =>
+        Ligacoes.Saidas(SetupEmUso?.Equipamentos ?? [], _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34));
+
+    /// <summary>As saídas de um Setup guardado, com o link dele (vazio se o Setup não existe).</summary>
+    public IReadOnlyList<SaidaApp> Saidas(string? idSetup) =>
+        Setup(idSetup) is { } setup ? Ligacoes.Saidas(setup.Equipamentos, setup.Link12, setup.Link34) : [];
+
+    /// <summary>A saída do app em uso que tem o canal (0 a 3), ou null.</summary>
+    public SaidaApp? SaidaDe(int canal) => SaidasEmUso.FirstOrDefault(s => s.Canais.Contains(canal));
+
+    /// <summary>O equipamento do Setup, ou null.</summary>
+    public Equipamento? Equipamento(string? idSetup, string? idEquipamento) =>
+        idEquipamento is null ? null : Setup(idSetup)?.Equipamentos.FirstOrDefault(e => e.Id == idEquipamento);
+
+    /// <summary>
+    /// A função acústica sugerida para o equipamento (que pode ainda não estar guardado) no Setup:
+    /// pela categoria, senão pelo corte guardado na calibração do Setup (não o do aparelho) no primeiro
+    /// canal que o alimenta. Só para quem toca (grupo 1 e alto-falante passivo); os outros, null.
+    /// </summary>
+    public static FuncaoAcustica? FuncaoSugerida(Setup? setup, Equipamento equipamento)
+    {
+        if (!equipamento.Toca)
+            return null;
+        var equipamentos = setup?.Equipamentos ?? [];
+        var lista = equipamentos.Any(e => e.Id == equipamento.Id)
+            ? equipamentos.Select(e => e.Id == equipamento.Id ? equipamento : e).ToArray()
+            : [.. equipamentos, equipamento];
+        var canais = Ligacoes.CanaisQueAlimentam(lista, equipamento.Id);
+        return Ligacoes.SugerirFuncao(equipamento.Categoria, setup is not null && canais.Count > 0 ? Corte(setup, canais[0]) : null);
+    }
+
+    /// <summary>A função que vale: a escolhida pelo usuário, ou a sugerida. Só para quem toca; os outros, null.</summary>
+    public FuncaoAcustica? Funcao(string? idSetup, Equipamento equipamento) =>
+        !equipamento.Toca ? null : equipamento.Funcao ?? FuncaoSugerida(Setup(idSetup), equipamento);
+
+    /// <summary>
+    /// O corte guardado na calibração do Setup para o canal (0 a 3): a frequência de cada filtro, ou
+    /// null com o filtro em OFF (ou sem o valor guardado).
+    /// </summary>
+    public static CorteCanal Corte(Setup setup, int canal)
+    {
+        decimal? Numero(string codigo) =>
+            setup.Calibracao.FirstOrDefault(v => v.Codigo == codigo && v.Indice == canal) is { } v
+                ? Catalogo.ParametroDe(codigo)?.Decodificar(v.NoFio).Valor?.Numero
+                : null;
+        decimal? Frequencia(string tipo, string frequencia) => Numero(tipo) is { } t && t != 0 ? Numero(frequencia) : null;
+        return new CorteCanal(Frequencia("042", "040"), Frequencia("043", "041"));
+    }
+
     // ------------------------------------------------------------------ nomes
 
     /// <summary>A regra dos presets: de 1 a 24 letras, números, espaço, <c>_</c> ou <c>-</c> (null = não vale).</summary>
@@ -590,6 +672,9 @@ public sealed class GerenteSetups
                 _log.Evento(situacao == EstadoConferencia.Confere
                     ? $"setup: {referencia.Nome} confere"
                     : $"setup: {referencia.Nome} confere; o caráter difere da {ativa!.Nome}");
+                // O Setup em uso manda no link (as saídas do app vêm dele). Não manda nada ao aparelho.
+                if (await _link.DefinirEstadoAsync(referencia.Link12, referencia.Link34) is { } motivoLink)
+                    _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
                 return true;
             }
 
@@ -1004,6 +1089,97 @@ public sealed class GerenteSetups
         }
     }
 
+    // ------------------------------------------------------------------ equipamentos (história 8e)
+
+    /// <summary>
+    /// Adiciona um equipamento ao Setup, com as ligações dele (o id vem daqui). A lista inteira tem de
+    /// continuar válida (<see cref="Ligacoes.Validar"/>): uma ligação quebrada, para o grupo errado,
+    /// um bridge que não vale ou um ciclo no grupo 3 recusam sem mudar nada. Não manda nada ao aparelho.
+    /// </summary>
+    public Task<ResultadoEquipamento> AdicionarEquipamentoAsync(string idSetup, Equipamento rascunho) =>
+        MudarEquipamentosAsync(idSetup, setup =>
+        {
+            var (limpo, motivo) = Ligacoes.Limpar(rascunho with { Id = $"equipamento-{Guid.NewGuid():N}" });
+            if (limpo is null)
+                return new Mudanca(null, motivo, null, null);
+            return new Mudanca([.. setup.Equipamentos, limpo], null, MsgEquipamentoAdicionado(limpo.Nome, setup.Nome), limpo.Id);
+        });
+
+    /// <summary>Guarda o equipamento editado (pelo id), com as mesmas regras do adicionar.</summary>
+    public Task<ResultadoEquipamento> EditarEquipamentoAsync(string idSetup, Equipamento editado) =>
+        MudarEquipamentosAsync(idSetup, setup =>
+        {
+            if (setup.Equipamentos.All(e => e.Id != editado.Id))
+                return new Mudanca(null, MsgEquipamentoNaoExiste, null, null);
+            var (limpo, motivo) = Ligacoes.Limpar(editado);
+            if (limpo is null)
+                return new Mudanca(null, motivo, null, null);
+            return new Mudanca(setup.Equipamentos.Select(e => e.Id == limpo.Id ? limpo : e).ToArray(), null,
+                MsgEquipamentoGuardado(limpo.Nome), limpo.Id, Editado: limpo.Id);
+        });
+
+    /// <summary>
+    /// Tira o equipamento do Setup. Tirar um módulo deixa os alto-falantes dele sem ligação; tirar um
+    /// equipamento do grupo 3 deixa sem fonte quem ele alimentava; nos dois casos, a frase avisa.
+    /// </summary>
+    public Task<ResultadoEquipamento> TirarEquipamentoAsync(string idSetup, string idEquipamento) =>
+        MudarEquipamentosAsync(idSetup, setup =>
+        {
+            if (setup.Equipamentos.FirstOrDefault(e => e.Id == idEquipamento) is not { } tirado)
+                return new Mudanca(null, MsgEquipamentoNaoExiste, null, null);
+            var r = Ligacoes.Tirar(setup.Equipamentos, idEquipamento);
+            var frase = MsgEquipamentoTirado(tirado.Nome, setup.Nome);
+            if (r.SemLigacao.Count > 0)
+                frase += $" {MsgSemLigacao(r.SemLigacao)}";
+            if (r.SemFonte.Count > 0)
+                frase += $" {MsgSemFonte(r.SemFonte)}";
+            return new Mudanca(r.Lista, null, frase, idEquipamento);
+        });
+
+    /// <param name="Editado">O equipamento editado: os alto-falantes que perderiam a ligação nele vêm na recusa.</param>
+    private sealed record Mudanca(IReadOnlyList<Equipamento>? Lista, string? Motivo, string? Mensagem, string? Id, string? Editado = null);
+
+    /// <summary>Uma mudança nos equipamentos de um Setup: confere a lista inteira e só guarda se ela vale. Uma operação por vez.</summary>
+    private async Task<ResultadoEquipamento> MudarEquipamentosAsync(string idSetup, Func<Setup, Mudanca> mudar)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return TerminarEquipamento(ResultadoEquipamento.Falha(MsgOcupado));
+        try
+        {
+            if (Setup(idSetup) is not { } setup)
+                return TerminarEquipamento(ResultadoEquipamento.Falha(MsgSetupNaoExiste));
+            var m = mudar(setup);
+            if (m.Lista is null)
+                return TerminarEquipamento(ResultadoEquipamento.Falha(m.Motivo!));
+            if (Ligacoes.Validar(m.Lista, m.Editado) is { } invalido)
+                return TerminarEquipamento(ResultadoEquipamento.Falha(invalido));
+            var dados = Dados;
+            var novos = dados with
+            {
+                Setups = dados.Setups.Select(s => s.Id == setup.Id ? s with { Equipamentos = m.Lista } : s).ToArray(),
+            };
+            if (!await GravarAsync(novos))
+                return TerminarEquipamento(ResultadoEquipamento.Falha(MsgNaoGuardou));
+            _log.Evento($"setup {setup.Nome}: {m.Mensagem}");
+            return TerminarEquipamento(new ResultadoEquipamento(true, null, m.Mensagem, m.Id));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    private ResultadoEquipamento TerminarEquipamento(ResultadoEquipamento r)
+    {
+        lock (_trava)
+            _aviso = r.Mensagem;
+        if (!r.Ok)
+            _log.Evento($"equipamento: {r.Mensagem ?? r.Motivo}");
+        Notificar();
+        return r;
+    }
+
     // ------------------------------------------------------------------ memórias do celular
 
     /// <summary>
@@ -1207,11 +1383,13 @@ public sealed class GerenteSetups
     // ------------------------------------------------------------------ equilíbrio
 
     /// <summary>
-    /// Mexe no equilíbrio L/R do Setup em uso (saída 0 = JBL L, 1 = JBL R; ganho ou limiter): escreve
-    /// o valor final (a parte da memória mais o equilíbrio novo, presa à faixa) e guarda o equilíbrio
-    /// como pendente até o Salvar. O limiter em OFF fica OFF (só o equilíbrio muda).
+    /// Mexe no equilíbrio da saída do app que tem o <paramref name="canal"/> (0 a 3), no Setup em uso
+    /// (ganho ou limiter): o mesmo valor vai para todos os canais da saída (os dois, num par com link).
+    /// Escreve no canal mestre o valor final (a parte da memória mais o equilíbrio novo, presa à
+    /// faixa); com o link ligado, o aparelho repete no outro canal. Guarda o equilíbrio como pendente
+    /// até o Salvar. O limiter em OFF fica OFF (só o equilíbrio muda).
     /// </summary>
-    public async Task<ResultadoSetup> AjustarEquilibrioAsync(int saida, bool limiter, decimal valor)
+    public async Task<ResultadoSetup> AjustarEquilibrioAsync(int canal, bool limiter, decimal valor)
     {
         await Carregada;
         if (!await _operacao.WaitAsync(0))
@@ -1224,16 +1402,19 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(MsgDuvida));
             if (SetupEmUso is not { } setup)
                 return Terminar(ResultadoSetup.Falha(MsgSemSetup));
-            if (saida is not (0 or 1))
-                return Terminar(ResultadoSetup.Falha(MsgEquilibrioSaida));
+            if (canal is < 0 or >= Equilibrio.Canais || SaidaDe(canal) is not { } saidaApp)
+                return Terminar(ResultadoSetup.Falha(MsgEquilibrioCanal));
             if (valor is < Camadas.EquilibrioMinimo or > Camadas.EquilibrioMaximo || decimal.Round(valor, 1) != valor)
                 return Terminar(ResultadoSetup.Falha(MsgEquilibrioFaixa));
 
+            var saida = saidaApp.Mestre;
             var codigo = limiter ? Camadas.CodigoLimiter : Camadas.CodigoGanho;
             if (_estado.Valor(codigo, saida) is not { } lido)
                 return Terminar(ResultadoSetup.Falha(Escritor.MsgSemLeitura));
             var atual = EquilibrioEfetivo;
-            var novo = atual.Com(saida, limiter, valor);
+            var novo = atual;
+            foreach (var c in saidaApp.Canais)
+                novo = novo.Com(c, limiter, valor);
             string? aviso = null;
             if (!(limiter && lido.Numero == Camadas.LimiterOff))
             {
@@ -1628,7 +1809,7 @@ public sealed class GerenteSetups
             if (agora != antes)
                 lista.Add(new MudancaSalvar($"Link {LinkCanais.Rotulo(par)}", antes ? "ligado" : "desligado", agora ? "ligado" : "desligado"));
         }
-        for (var saida = 0; saida <= 1; saida++)
+        for (var saida = 0; saida < Equilibrio.Canais; saida++)
         {
             foreach (var limiter in new[] { false, true })
             {
@@ -1970,7 +2151,7 @@ public sealed class GerenteSetups
         await AdotarPlaylistsAsync();
     }
 
-    /// <summary>O JSON do <c>setups.json</c> (formato 1).</summary>
+    /// <summary>O JSON do <c>setups.json</c> (formato 2: o equilíbrio por canal e os equipamentos de cada Setup).</summary>
     public static string ParaJson(DadosSetups dados)
     {
         using var fluxo = new MemoryStream();
@@ -1989,15 +2170,20 @@ public sealed class GerenteSetups
                 w.WriteString("id", s.Id);
                 w.WriteString("nome", s.Nome);
                 w.WriteString("quando", s.Quando.ToString("O", Fio));
+                // O equilíbrio por canal: CH1 a CH4, na ordem.
                 w.WriteStartObject("equilibrio");
-                w.WriteNumber("ganho1", s.Equilibrio.Ganho1);
-                w.WriteNumber("limiter1", s.Equilibrio.Limiter1);
-                w.WriteNumber("ganho2", s.Equilibrio.Ganho2);
-                w.WriteNumber("limiter2", s.Equilibrio.Limiter2);
+                foreach (var limiter in new[] { false, true })
+                {
+                    w.WriteStartArray(limiter ? "limiter" : "ganho");
+                    for (var c = 0; c < Equilibrio.Canais; c++)
+                        w.WriteNumberValue(s.Equilibrio.Valor(c, limiter));
+                    w.WriteEndArray();
+                }
                 w.WriteEndObject();
                 w.WriteBoolean("link12", s.Link12);
                 w.WriteBoolean("link34", s.Link34);
                 EscreverValores(w, "calibracao", s.Calibracao);
+                EscreverEquipamentos(w, s.Equipamentos);
                 var uso = dados.UsoDe(s.Id);
                 w.WriteStartArray("recentes");
                 foreach (var r in uso.Recentes)
@@ -2035,18 +2221,26 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Lê o <c>setups.json</c>. Fora do formato 1, sem nenhum Setup válido ou com outra forma: null
-    /// (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória de
-    /// um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo id.
-    /// O preset lembrado de cada memória vem do campo <c>preset</c> (ausente = nenhum; na FILME herdada,
-    /// ausente = o Cinema, como num <c>setups.json</c> gravado pela 8c).
+    /// Lê o <c>setups.json</c>. Fora dos formatos 1 e 2, sem nenhum Setup válido ou com outra forma:
+    /// null (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória
+    /// de um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo
+    /// id. O preset lembrado de cada memória vem do campo <c>preset</c> (ausente = nenhum; na FILME
+    /// herdada, ausente = o Cinema, como num <c>setups.json</c> gravado pela 8c).
+    /// <list type="bullet">
+    /// <item><b>Formato 2</b> (história 8e): o equilíbrio por canal (<c>ganho</c> e <c>limiter</c>, CH1 a
+    /// CH4) e os equipamentos de cada Setup. Um equipamento ilegível é descartado; os outros ficam, e
+    /// as ligações para ele se desfazem (<see cref="Ligacoes.Sanear"/>).</item>
+    /// <item><b>Formato 1</b> (8c e 8d): <c>ganho1</c>/<c>limiter1</c>/<c>ganho2</c>/<c>limiter2</c> viram os
+    /// canais 1 e 2, e os outros ficam 0. O Casa 2.1 herdado recebe os equipamentos do herdado e passa
+    /// ao Link 3–4 ligado; um Setup próprio fica sem equipamentos.</item>
+    /// </list>
     /// </summary>
     public static DadosSetups? DeJson(string json)
     {
         using var doc = JsonDocument.Parse(json);
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
-            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != Formato
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato is not (Formato or FormatoAntigo)
             || !raiz.TryGetProperty("setups", out var setupsJson) || setupsJson.ValueKind != JsonValueKind.Array)
             return null;
 
@@ -2061,11 +2255,45 @@ public sealed class GerenteSetups
             var eq = Equilibrio.Zero;
             if (item.TryGetProperty("equilibrio", out var e) && e.ValueKind == JsonValueKind.Object)
             {
-                eq = new Equilibrio(NumeroEq(e, "ganho1"), NumeroEq(e, "limiter1"), NumeroEq(e, "ganho2"), NumeroEq(e, "limiter2"));
+                if (formato == FormatoAntigo)
+                {
+                    eq = new Equilibrio(NumeroEq(e, "ganho1"), NumeroEq(e, "limiter1"), NumeroEq(e, "ganho2"), NumeroEq(e, "limiter2"));
+                }
+                else
+                {
+                    for (var c = 0; c < Equilibrio.Canais; c++)
+                    {
+                        eq = eq.Com(c, limiter: false, NumeroEq(e, "ganho", c));
+                        eq = eq.Com(c, limiter: true, NumeroEq(e, "limiter", c));
+                    }
+                }
             }
             var herdado = id == ConhecimentoHerdado.IdSetupCasa;
+            var link34 = Booleano(item, "link34");
+            IReadOnlyList<Equipamento> equipamentos;
+            if (formato == FormatoAntigo)
+            {
+                // A migração da 8e: o Casa 2.1 herdado ganha os equipamentos e o Link 3–4 ligado. Um
+                // par com link é uma saída só: o segundo canal fica com o equilíbrio do mestre.
+                equipamentos = herdado ? ConhecimentoHerdado.EquipamentosCasa : [];
+                link34 = link34 || herdado;
+                foreach (var (mestre, ligado) in new[] { (0, Booleano(item, "link12")), (2, link34) })
+                {
+                    if (!ligado)
+                        continue;
+                    foreach (var limiter in new[] { false, true })
+                        eq = eq.Com(mestre + 1, limiter, eq.Valor(mestre, limiter));
+                }
+            }
+            else
+            {
+                equipamentos = LerEquipamentos(item);
+            }
             setups.Add(new Setup(id, nome, Quando(item), LerValores(item, "calibracao", Camada.Calibracao), eq,
-                Booleano(item, "link12"), Booleano(item, "link34"), herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null));
+                Booleano(item, "link12"), link34, herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null)
+            {
+                Equipamentos = equipamentos,
+            });
             usos[id] = (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
         if (setups.Count == 0)
@@ -2113,7 +2341,7 @@ public sealed class GerenteSetups
         using (var w = NovoEscritor(fluxo))
         {
             w.WriteStartObject();
-            w.WriteNumber("formato", Formato);
+            w.WriteNumber("formato", FormatoMudo);
             if (marca is null)
             {
                 w.WriteNull("marca");
@@ -2143,7 +2371,7 @@ public sealed class GerenteSetups
         using var doc = JsonDocument.Parse(json);
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
-            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != Formato
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != FormatoMudo
             || !raiz.TryGetProperty("marca", out var m) || m.ValueKind != JsonValueKind.Object
             || !m.TryGetProperty("muteAnterior", out var anterior) || anterior.ValueKind != JsonValueKind.Array)
             return null;
@@ -2208,10 +2436,315 @@ public sealed class GerenteSetups
 
     private static decimal NumeroEq(JsonElement o, string nome)
     {
-        if (!o.TryGetProperty(nome, out var p) || !p.TryGetDecimal(out var v))
+        if (!o.TryGetProperty(nome, out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetDecimal(out var v))
             return 0m;
-        v = decimal.Round(v, 1);
-        return Math.Clamp(v, Camadas.EquilibrioMinimo, Camadas.EquilibrioMaximo);
+        return Eq(v);
+    }
+
+    /// <summary>O valor do canal (0 a 3) na lista <paramref name="nome"/> do equilíbrio (formato 2), ou 0.</summary>
+    private static decimal NumeroEq(JsonElement o, string nome, int canal)
+    {
+        if (!o.TryGetProperty(nome, out var a) || a.ValueKind != JsonValueKind.Array || a.GetArrayLength() <= canal)
+            return 0m;
+        var p = a[canal];
+        return p.ValueKind == JsonValueKind.Number && p.TryGetDecimal(out var v) ? Eq(v) : 0m;
+    }
+
+    private static decimal Eq(decimal v) => Math.Clamp(decimal.Round(v, 1), Camadas.EquilibrioMinimo, Camadas.EquilibrioMaximo);
+
+    // ------------------------------------------------------------------ equipamentos no JSON (formato 2)
+
+    private static string NomeGrupo(GrupoEquipamento g) => g switch
+    {
+        GrupoEquipamento.AmplificaETocam => "ativo",
+        GrupoEquipamento.Amplificador => "amplificador",
+        GrupoEquipamento.Repassa => "repasse",
+        GrupoEquipamento.SoRecebe => "receptor",
+        _ => "alto-falante",
+    };
+
+    private static GrupoEquipamento? GrupoDe(string? nome) => nome switch
+    {
+        "ativo" => GrupoEquipamento.AmplificaETocam,
+        "amplificador" => GrupoEquipamento.Amplificador,
+        "repasse" => GrupoEquipamento.Repassa,
+        "receptor" => GrupoEquipamento.SoRecebe,
+        "alto-falante" => GrupoEquipamento.AltoFalante,
+        _ => null,
+    };
+
+    private static string NomeFuncao(FuncaoAcustica f) => f switch
+    {
+        FuncaoAcustica.Sub => "sub",
+        FuncaoAcustica.Grave => "grave",
+        FuncaoAcustica.MedioGrave => "medio-grave",
+        FuncaoAcustica.Medio => "medio",
+        FuncaoAcustica.Agudo => "agudo",
+        FuncaoAcustica.SuperAgudo => "super-agudo",
+        FuncaoAcustica.FullRange => "full-range",
+        _ => "outra",
+    };
+
+    private static FuncaoAcustica? FuncaoDe(string? nome) =>
+        Ligacoes.Funcoes.Cast<FuncaoAcustica?>().FirstOrDefault(f => NomeFuncao(f!.Value) == nome);
+
+    private static void EscreverEquipamentos(Utf8JsonWriter w, IReadOnlyList<Equipamento> equipamentos)
+    {
+        w.WriteStartArray("equipamentos");
+        foreach (var e in equipamentos)
+        {
+            w.WriteStartObject();
+            w.WriteString("id", e.Id);
+            w.WriteString("grupo", NomeGrupo(e.Grupo));
+            w.WriteString("categoria", e.Categoria);
+            w.WriteString("nome", e.Nome);
+            if (e.Modelo is { } modelo)
+                w.WriteString("modelo", modelo);
+            if (e.Funcao is { } funcao)
+                w.WriteString("funcao", NomeFuncao(funcao));
+            if (e.Nota is { } nota)
+                w.WriteString("nota", nota);
+            EscreverDados(w, e.Dados);
+            if (e.Grupo != GrupoEquipamento.AltoFalante)
+            {
+                w.WriteStartArray(e.Grupo == GrupoEquipamento.Amplificador ? "canais" : "entradas");
+                foreach (var entrada in e.Entradas)
+                {
+                    w.WriteStartObject();
+                    w.WriteNumber("n", entrada.Numero);
+                    w.WritePropertyName("fonte");
+                    EscreverFonte(w, entrada.Fonte);
+                    w.WriteEndObject();
+                }
+                w.WriteEndArray();
+            }
+            if (e.Grupo == GrupoEquipamento.Amplificador)
+            {
+                w.WriteStartArray("bridges");
+                foreach (var b in e.Bridges)
+                {
+                    w.WriteStartArray();
+                    w.WriteNumberValue(b.A);
+                    w.WriteNumberValue(b.B);
+                    w.WriteEndArray();
+                }
+                w.WriteEndArray();
+            }
+            if (e.Grupo == GrupoEquipamento.AltoFalante)
+            {
+                if (e.Ligado is { } l)
+                {
+                    w.WriteStartObject("ligado");
+                    w.WriteString("equipamento", l.IdModulo);
+                    if (l.Canal is { } c)
+                        w.WriteNumber("canal", c);
+                    if (l.Bridge is { } b)
+                    {
+                        w.WriteStartArray("bridge");
+                        w.WriteNumberValue(b.A);
+                        w.WriteNumberValue(b.B);
+                        w.WriteEndArray();
+                    }
+                    w.WriteEndObject();
+                }
+                else
+                {
+                    w.WriteNull("ligado");
+                }
+            }
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
+    /// <summary>A fonte: <c>"CH1"</c> a <c>"CH4"</c>, <c>{"equipamento": id}</c> ou <c>null</c>.</summary>
+    private static void EscreverFonte(Utf8JsonWriter w, FonteSinal? fonte)
+    {
+        if (fonte?.Canal is { } canal)
+        {
+            w.WriteStringValue($"CH{canal + 1}");
+        }
+        else if (fonte?.IdEquipamento is { } id)
+        {
+            w.WriteStartObject();
+            w.WriteString("equipamento", id);
+            w.WriteEndObject();
+        }
+        else
+        {
+            w.WriteNullValue();
+        }
+    }
+
+    private static void EscreverDados(Utf8JsonWriter w, DadosTecnicos d)
+    {
+        w.WriteStartObject("dados");
+        void Numero(string nome, decimal? v)
+        {
+            if (v is { } n)
+                w.WriteNumber(nome, n);
+        }
+        Numero("diametro", d.Diametro);
+        Numero("impedancia", d.Impedancia);
+        Numero("potenciaRms", d.PotenciaRms);
+        Numero("sensibilidade", d.Sensibilidade);
+        Numero("faixaMinima", d.FaixaMinima);
+        Numero("faixaMaxima", d.FaixaMaxima);
+        Numero("ganho", d.Ganho);
+        if (d.Canais is { } canais)
+            w.WriteNumber("canais", canais);
+        if (d.Vias.Count > 0)
+        {
+            w.WriteStartArray("vias");
+            foreach (var v in d.Vias)
+            {
+                w.WriteStartObject();
+                w.WriteString("descricao", v.Descricao);
+                Numero("diametro", v.Diametro);
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+        }
+        w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// Os equipamentos de um Setup (formato 2). Fica o primeiro de cada id. Um bridge que não vale sai
+    /// (o módulo fica). Um equipamento ilegível (sem id, grupo, nome ou categoria válidos, ou com um
+    /// campo de outra forma) é descartado; os outros ficam, e as ligações para ele se desfazem.
+    /// </summary>
+    private static IReadOnlyList<Equipamento> LerEquipamentos(JsonElement setup)
+    {
+        var lista = new List<Equipamento>();
+        var vistos = new HashSet<string>();
+        if (!setup.TryGetProperty("equipamentos", out var a) || a.ValueKind != JsonValueKind.Array)
+            return lista;
+        foreach (var item in a.EnumerateArray())
+        {
+            var id = item.ValueKind == JsonValueKind.Object ? Texto(item, "id") : null;
+            if (id is not null && !vistos.Add(id))
+                continue; // fica o primeiro de cada id
+            Equipamento? e = null;
+            try
+            {
+                e = LerEquipamento(item);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException)
+            {
+                // Um campo com outra forma: ilegível.
+            }
+            if (e is not null && Ligacoes.SemBridgesInvalidos(e) is var limpo && Ligacoes.ValidarUm(limpo) is null)
+                lista.Add(limpo);
+        }
+        return Ligacoes.Sanear(lista);
+    }
+
+    private static Equipamento? LerEquipamento(JsonElement item)
+    {
+        if (item.ValueKind != JsonValueKind.Object || Texto(item, "id") is not { Length: > 0 } id
+            || GrupoDe(Texto(item, "grupo")) is not { } grupo
+            || Ligacoes.TextoValido(Texto(item, "nome")) is not { } nome
+            || Ligacoes.TextoValido(Texto(item, "categoria")) is not { } categoria)
+            return null;
+        FuncaoAcustica? funcao = null;
+        if (Texto(item, "funcao") is { } textoFuncao && (funcao = FuncaoDe(textoFuncao)) is null)
+            return null;
+
+        var entradas = new List<Entrada>();
+        if (item.TryGetProperty(grupo == GrupoEquipamento.Amplificador ? "canais" : "entradas", out var es))
+        {
+            if (es.ValueKind != JsonValueKind.Array)
+                return null;
+            foreach (var x in es.EnumerateArray())
+            {
+                if (x.ValueKind != JsonValueKind.Object || !x.TryGetProperty("n", out var n) || !n.TryGetInt32(out var numero))
+                    return null;
+                FonteSinal? fonte = null;
+                if (x.TryGetProperty("fonte", out var fj) && fj.ValueKind != JsonValueKind.Null)
+                {
+                    fonte = LerFonte(fj);
+                    if (fonte is null)
+                        return null;
+                }
+                entradas.Add(new Entrada(numero, fonte));
+            }
+        }
+
+        var bridges = new List<Bridge>();
+        if (item.TryGetProperty("bridges", out var bs))
+        {
+            if (bs.ValueKind != JsonValueKind.Array)
+                return null;
+            foreach (var b in bs.EnumerateArray())
+            {
+                if (LerBridge(b) is not { } bridge)
+                    return null;
+                bridges.Add(bridge);
+            }
+        }
+
+        LigacaoAltoFalante? ligado = null;
+        if (item.TryGetProperty("ligado", out var l) && l.ValueKind != JsonValueKind.Null)
+        {
+            if (l.ValueKind != JsonValueKind.Object || Texto(l, "equipamento") is not { Length: > 0 } modulo)
+                return null;
+            // "canal": null (e sem bridge) é "sem ligação"; um canal de outra forma deixa o equipamento ilegível.
+            int? canal = l.TryGetProperty("canal", out var c) && c.ValueKind != JsonValueKind.Null ? c.GetInt32() : null;
+            Bridge? bridge = null;
+            if (l.TryGetProperty("bridge", out var bj) && bj.ValueKind != JsonValueKind.Null && (bridge = LerBridge(bj)) is null)
+                return null;
+            ligado = canal is null && bridge is null ? null : new LigacaoAltoFalante(modulo, canal, bridge);
+        }
+
+        var modelo = Texto(item, "modelo");
+        return new Equipamento(id, grupo, categoria, nome, string.IsNullOrWhiteSpace(modelo) ? null : modelo.Trim(), funcao)
+        {
+            Dados = LerDados(item),
+            Entradas = entradas,
+            Bridges = bridges,
+            Ligado = ligado,
+            Nota = Texto(item, "nota"),
+        };
+    }
+
+    private static FonteSinal? LerFonte(JsonElement f)
+    {
+        if (f.ValueKind == JsonValueKind.String)
+        {
+            var texto = f.GetString();
+            return texto is { Length: 3 } && texto.StartsWith("CH", StringComparison.Ordinal) && texto[2] is >= '1' and <= '4'
+                ? FonteSinal.DoCanal(texto[2] - '1')
+                : null;
+        }
+        return f.ValueKind == JsonValueKind.Object && Texto(f, "equipamento") is { Length: > 0 } id ? FonteSinal.DoEquipamento(id) : null;
+    }
+
+    private static Bridge? LerBridge(JsonElement b) =>
+        b.ValueKind == JsonValueKind.Array && b.GetArrayLength() == 2 && b[0].TryGetInt32(out var x) && b[1].TryGetInt32(out var y)
+            ? new Bridge(x, y)
+            : null;
+
+    private static DadosTecnicos LerDados(JsonElement item)
+    {
+        if (!item.TryGetProperty("dados", out var d) || d.ValueKind != JsonValueKind.Object)
+            return DadosTecnicos.Nenhum;
+        decimal? Numero(JsonElement o, string nome) =>
+            o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetDecimal(out var v) ? v : null;
+        int? canais = d.TryGetProperty("canais", out var c) && c.ValueKind == JsonValueKind.Number && c.TryGetInt32(out var n) ? n : null;
+        var vias = new List<Via>();
+        if (d.TryGetProperty("vias", out var vs) && vs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var v in vs.EnumerateArray())
+            {
+                if (v.ValueKind == JsonValueKind.Object && Texto(v, "descricao") is { Length: > 0 } descricao)
+                    vias.Add(new Via(descricao, Numero(v, "diametro")));
+            }
+        }
+        return new DadosTecnicos(Numero(d, "diametro"), Numero(d, "impedancia"), Numero(d, "potenciaRms"), Numero(d, "sensibilidade"),
+            Numero(d, "faixaMinima"), Numero(d, "faixaMaxima"), Numero(d, "ganho"), canais)
+        {
+            Vias = vias,
+        };
     }
 
     private static bool Booleano(JsonElement o, string nome) =>

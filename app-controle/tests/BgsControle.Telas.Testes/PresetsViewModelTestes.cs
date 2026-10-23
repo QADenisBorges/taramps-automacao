@@ -95,8 +95,9 @@ public sealed class PresetsViewModelTestes : IDisposable
 
         // As seções de texto.
         Assert.Equal("HERDADO", herdado.Selo);
-        Assert.Equal(8, herdado.Secoes.Count);
+        Assert.Equal(9, herdado.Secoes.Count);
         Assert.NotNull(herdado.Secao("Cuidados com o app da Taramps"));
+        Assert.NotNull(herdado.Secao("Os equipamentos do Casa 2.1")); // história 8e
         Assert.NotNull(herdado.Secao("A FILME em três camadas"));
         Assert.Equal("MUSICA HIGH", herdado.NotaMemoria(1)!.NomeNoPrototipo);
 

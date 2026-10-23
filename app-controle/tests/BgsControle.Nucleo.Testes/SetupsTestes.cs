@@ -19,7 +19,7 @@ namespace BgsControle.Nucleo.Testes;
 /// Uma linha da matriz de <c>8c-setup-e-memoria-no-celular.md</c> e de
 /// <c>8d-preset-15-bandas-e-playlist-da-memoria.md</c> por teste (ou mais).
 /// </summary>
-public sealed class SetupsTestes : IDisposable
+public sealed partial class SetupsTestes : IDisposable
 {
     private static readonly TemposSessao Tempos = new(
         Scan: TimeSpan.FromSeconds(1),
@@ -184,9 +184,9 @@ public sealed class SetupsTestes : IDisposable
         Assert.Equal("+10.0", Valor(memoria.Carater, "081", 1));
         Assert.Equal("-15.0", Valor(memoria.Carater, "071", 1));
         Assert.Equal("+10.0", Valor(memoria.Carater, "081", 0));
-        Assert.Equal(new Equilibrio(0m, 0m, -3.0m, -3.0m), setup.Equilibrio);
+        Assert.Equal(new Equilibrio(0m, 0m, -3.0m, -3.0m, 0m, 0m, 0m, 0m), setup.Equilibrio);
         Assert.False(setup.Link12);
-        Assert.False(setup.Link34);
+        Assert.True(setup.Link34); // história 8e: o CH3 e o CH4 alimentam o mesmo bridge
         Assert.True(setup.Herdado);
         Assert.True(memoria.Herdado);
         Assert.Equal("Casa 2.1", setup.Nome);
@@ -204,7 +204,7 @@ public sealed class SetupsTestes : IDisposable
     [InlineData("081", 1, "-44.0", "-45.0")] // preso à faixa do MAPA
     [InlineData("071", 1, "-47.0", "-48.0")]
     [InlineData("081", 0, "+10.0", "+10.0")] // a saída 1 sem equilíbrio no Casa
-    [InlineData("081", 2, "+6.0", "+6.0")] // o sub não tem equilíbrio
+    [InlineData("081", 2, "+6.0", "+6.0")] // o sub tem equilíbrio 0 no Casa
     [InlineData("091", 1, "+2.5", "+2.5")] // só o ganho e o limiter levam o equilíbrio
     public void Somar_o_equilibrio_do_Casa(string codigo, int indice, string memoria, string final) =>
         Assert.Equal(final, Camadas.Somar(codigo, indice, memoria, ConhecimentoHerdado.EquilibrioCasa));
@@ -750,7 +750,8 @@ public sealed class SetupsTestes : IDisposable
         Assert.False(folha.PerguntaCalibracao);
         Assert.Equal(2, folha.Linhas.Count);
         Assert.Equal("Calibração → Setup Casa 2.1", folha.Linhas[0].Titulo);
-        Assert.Equal("Atraso da saída 3: 80 cm → 85 cm", Assert.Single(folha.Linhas[0].Mudancas).Linha);
+        // O Link 3–4 do Casa 2.1 (história 8e) repete o atraso no CH4.
+        Assert.Equal(["Atraso da saída 3: 80 cm → 85 cm", "Atraso da saída 4: 80 cm → 85 cm"], folha.Linhas[0].Mudancas.Select(m => m.Linha));
         Assert.Equal("Caráter → memória FILME", folha.Linhas[1].Titulo);
         Assert.Equal("Ganho da saída 1: +10,0 dB → +8,0 dB", Assert.Single(folha.Linhas[1].Mudancas).Linha);
         var inicio = _simulador.Escritas.Count;
@@ -798,7 +799,8 @@ public sealed class SetupsTestes : IDisposable
 
         Assert.False(r.Ok);
         Assert.Equal(GerenteSetups.MsgEquilibrioFaixa, r.Motivo);
-        Assert.Equal(GerenteSetups.MsgEquilibrioSaida, (await _setups.AjustarEquilibrioAsync(2, false, 1.0m)).Motivo);
+        Assert.Equal(GerenteSetups.MsgEquilibrioCanal, (await _setups.AjustarEquilibrioAsync(4, false, 1.0m)).Motivo);
+        Assert.Equal(GerenteSetups.MsgEquilibrioCanal, (await _setups.AjustarEquilibrioAsync(-1, false, 1.0m)).Motivo);
     }
 
     [Fact]
@@ -956,10 +958,11 @@ public sealed class SetupsTestes : IDisposable
 
         var carro = _setups.SetupEmUso!;
         Assert.True(carro.Link12);
-        Assert.False(carro.Link34);
+        Assert.True(carro.Link34); // o link que vale agora: o do Casa 2.1 (Link 3–4 ligado, história 8e)
+        Assert.Empty(carro.Equipamentos); // nasce sem equipamentos: as saídas são CH1 + CH2 e CH3 + CH4
         var relido = GerenteSetups.DeJson(GerenteSetups.ParaJson(_setups.Dados))!.Setups.Single(s => s.Id == carro.Id);
         Assert.True(relido.Link12);
-        Assert.False(relido.Link34);
+        Assert.True(relido.Link34);
     }
 
     [Fact]

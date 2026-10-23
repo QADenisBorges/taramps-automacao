@@ -24,7 +24,7 @@ Decisão do Denis de 23/10/2026: o que não se sabe fica genérico.
 | "Módulo genérico" (amplificador) | 2 | Entradas alimentadas pelo CH1, CH2, CH3 e CH4; ×19,6 nos canais das JBL e ×40 no bridge do sub |
 | JBL L: JBL 4TRMS80, 3,6 Ω, passa-alta mínimo de 100 Hz a 24 dB/oit | alto-falante passivo | Saída do módulo alimentada pelo CH1 |
 | JBL R: JBL 4TRMS80, 3,6 Ω, passa-alta mínimo de 100 Hz a 24 dB/oit | alto-falante passivo | Saída do módulo alimentada pelo CH2 |
-| "Subwoofer genérico" | alto-falante passivo | Bridge do módulo, alimentado pelo CH3 e pelo CH4 |
+| "Sub": categoria subwoofer, modelo desconhecido (aparece como genérico) | alto-falante passivo | Bridge do módulo, alimentado pelo CH3 e pelo CH4; a saída do app se chama "Sub" |
 
 O Link 3–4 do Casa 2.1 fica ligado: o CH3 e o CH4 alimentam o mesmo bridge e precisam ficar iguais. Na tela, o Sub é uma saída só.
 
