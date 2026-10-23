@@ -44,7 +44,7 @@ public sealed class ComandosAparelho
     public const string MsgCaiu = "A conexão caiu antes da resposta do aparelho.";
     public const string MsgSemConfirmacao = "O aparelho não confirmou: sem eco e sem resposta à releitura.";
     public const string MsgIlegivel = "O aparelho respondeu um valor ilegível.";
-    public const string MsgNomeInvalido = GerenteMemorias.MsgNomeInvalido;
+    public const string MsgNomeInvalido = "Use até 12 letras, números, espaço ou _";
     public const string MsgSenhaInvalida = Sessao.MsgSenhaInvalida;
     public const string MsgSenhaIgual = "A senha nova é igual à atual.";
     public const string MsgSenhasDiferentes = "As duas senhas novas não são iguais.";

@@ -46,9 +46,9 @@ internal sealed class TextoMemoria : IRepositorioTexto
 }
 
 /// <summary>
-/// A história 6 no núcleo, contra o processador simulado: a trava das memórias, o gerente de
-/// memórias, a cópia antes com o "aplicado pela metade" e o link de canais. As linhas da matriz
-/// de <c>6-memorias-link-copia-antes.md</c>.
+/// A história 6 no núcleo, contra o processador simulado: a trava das memórias, o carregar das
+/// memórias do aparelho, a cópia antes com o "aplicado pela metade" e o link de canais. Desde a
+/// história 8c, o salvar (240) e o nome (23N) não saem do app.
 /// </summary>
 public sealed class MemoriasTestes : IDisposable
 {
@@ -98,7 +98,7 @@ public sealed class MemoriasTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo, as escritas de áudio e os comandos 240, 241 e 23N permitidos.
+    /// catálogo, as escritas de áudio e o 241; nenhum 240 nem 23N (história 8c).
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
@@ -161,36 +161,25 @@ public sealed class MemoriasTestes : IDisposable
     // ----------------------------------------------------------------- trava
 
     [Theory]
-    [InlineData("*240*0*", TipoComandoMemoria.Salvar, 0, null)]
-    [InlineData("*240*2*", TipoComandoMemoria.Salvar, 2, null)]
-    [InlineData("*241*1*", TipoComandoMemoria.Carregar, 1, null)]
-    [InlineData("*231*FILME*", TipoComandoMemoria.Nomear, 0, "FILME")]
-    [InlineData("*232*MUSICA ORIG2*", TipoComandoMemoria.Nomear, 1, "MUSICA ORIG2")]
-    [InlineData("*233*A_B 12*", TipoComandoMemoria.Nomear, 2, "A_B 12")]
-    public void A_forma_exata_dos_comandos_de_memoria(string quadro, TipoComandoMemoria tipo, int memoria, string? nome)
+    [InlineData("*241*0*", 0)]
+    [InlineData("*241*1*", 1)]
+    [InlineData("*241*2*", 2)]
+    public void A_forma_exata_do_carregar(string quadro, int memoria)
     {
-        Assert.Equal(new ComandoMemoria(tipo, memoria, nome), Catalogo.ComandoDeMemoria(quadro));
+        Assert.Equal(new ComandoMemoria(TipoComandoMemoria.Carregar, memoria), Catalogo.ComandoDeMemoria(quadro));
     }
 
     [Theory]
-    [InlineData("*240*5*")]
-    [InlineData("*240*3*")]
+    [InlineData("*241*3*")]
     [InlineData("*241*-1*")]
     [InlineData("*241*0")]
     [InlineData("241*0*")]
-    [InlineData("*240*0**")]
-    [InlineData("*240*0*\n")]
-    [InlineData("*230*FILME*")]
-    [InlineData("*234*FILME*")]
-    [InlineData("*231*filme*")]
-    [InlineData("*231* FILME*")]
-    [InlineData("*231*   *")]
-    [InlineData("*231**")]
-    [InlineData("*231*TREZE LETRASX*")]
-    [InlineData("*232*MUSICA ORIG 2*")] // 13 caracteres
-    [InlineData("*231*MÚSICA*")]
-    [InlineData("*231*MUSICA#1*")]
-    [InlineData("231*FILME")]
+    [InlineData("*241*0**")]
+    [InlineData("*241*0*\n")]
+    [InlineData("*240*0*")] // o salvar não é comando deste app (história 8c)
+    [InlineData("*240*2*")]
+    [InlineData("*231*FILME*")] // nem o nome
+    [InlineData("*232*MUSICA ORIG2*")]
     public void Fora_da_forma_exata_nao_e_comando_de_memoria(string quadro) =>
         Assert.Null(Catalogo.ComandoDeMemoria(quadro));
 
@@ -212,8 +201,6 @@ public sealed class MemoriasTestes : IDisposable
         Assert.Equal(esperado, Catalogo.NormalizarNomeMemoria(digitado));
 
     [Theory]
-    [InlineData("*240*1*", Chave.SalvarMemoria)]
-    [InlineData("*232*NOVO*", Chave.SalvarMemoria)]
     [InlineData("*241*0*", Chave.CarregarMemoria)]
     public async Task Trava_com_a_chave_desligada_recusa_antes_do_BLE_com_o_motivo_no_log(string quadro, Chave chave)
     {
@@ -229,30 +216,52 @@ public sealed class MemoriasTestes : IDisposable
         Assert.Contains(_log.Linhas, l => l.Contains($"✗ {quadro}") && l.Contains(Sessao.MotivoChaveDesligada));
     }
 
-    [Fact]
-    public async Task Trava_240_5_e_recusado_antes_do_BLE_mesmo_com_a_chave_ligada()
+    /// <summary>Critério de aceite da 8c: o 240 e o 23N nunca saem, em qualquer forma, com as chaves ligadas.</summary>
+    [Theory]
+    [InlineData("*240*0*")]
+    [InlineData("*240*1*")]
+    [InlineData("*240*5*")]
+    [InlineData("240*0*")]
+    [InlineData("#240#0#")]
+    [InlineData("*231*FILME*")]
+    [InlineData("*232*MUSICA ORIG2*")]
+    [InlineData("*233*X*")]
+    [InlineData("*231*filme*")]
+    [InlineData("*231* FILME*")]
+    [InlineData("233*X")]
+    public async Task Trava_240_e_23N_sao_recusados_em_qualquer_forma_como_nao_liberados(string quadro)
     {
         await Conectar();
-        Assert.True(_chaves.Ligada(Chave.SalvarMemoria));
         var antes = _simulador.Escritas.Count;
 
-        var r = await _sessao.EnviarAsync("*240*5*");
+        var r = await _sessao.EnviarAsync(quadro);
+
+        Assert.False(r.Enviado);
+        Assert.Equal(Sessao.MotivoNaoLiberado, r.Motivo);
+        Assert.Equal(antes, _simulador.Escritas.Count);
+        Assert.Contains(_log.Linhas, l => l.Contains($"✗ {quadro}") && l.Contains(Sessao.MotivoNaoLiberado));
+    }
+
+    [Fact]
+    public async Task Trava_241_fora_do_formato_continua_memoria_fora_do_formato()
+    {
+        await Conectar();
+        var antes = _simulador.Escritas.Count;
+
+        var r = await _sessao.EnviarAsync("*241*5*");
 
         Assert.False(r.Enviado);
         Assert.Equal(Sessao.MotivoMemoriaForaDoFormato, r.Motivo);
         Assert.Equal(antes, _simulador.Escritas.Count);
-        Assert.Contains(_log.Linhas, l => l.Contains("✗ *240*5*") && l.Contains(Sessao.MotivoMemoriaForaDoFormato));
     }
 
     [Fact]
-    public async Task Trava_com_a_chave_de_salvar_desligada_carregar_ainda_passa_e_vice_versa()
+    public async Task Trava_240_sem_conexao_tambem_e_nao_liberado()
     {
-        await Conectar();
-        await _chaves.DefinirAsync(Chave.SalvarMemoria, false, OrigemComando.Tela);
+        await _chaves.Carregada;
 
-        Assert.True((await _sessao.EnviarAsync("*241*0*")).Enviado);
-        Assert.False((await _sessao.EnviarAsync("*240*0*")).Enviado);
-        await Andar(TimeSpan.FromMilliseconds(200));
+        Assert.Equal(Sessao.MotivoNaoLiberado, (await _sessao.EnviarAsync("*240*0*")).Motivo);
+        Assert.Empty(_simulador.Escritas);
     }
 
     [Fact]
@@ -262,8 +271,9 @@ public sealed class MemoriasTestes : IDisposable
         await Conectar();
         Assert.True(_sessao.SoLeitura);
 
-        foreach (var q in new[] { "*240*0*", "*241*0*", "*231*X*" })
-            Assert.Equal(Sessao.MotivoSoLeitura, (await _sessao.EnviarAsync(q)).Motivo);
+        Assert.Equal(Sessao.MotivoSoLeitura, (await _sessao.EnviarAsync("*241*0*")).Motivo);
+        foreach (var q in new[] { "*240*0*", "*231*X*" })
+            Assert.Equal(Sessao.MotivoNaoLiberado, (await _sessao.EnviarAsync(q)).Motivo);
         var r = await Rodar(_memorias.CarregarAsync(2));
         Assert.False(r.Ok);
         Assert.Equal(0, EscritasDe("*241*"));
@@ -275,171 +285,11 @@ public sealed class MemoriasTestes : IDisposable
         await _chaves.Carregada;
 
         Assert.Equal(Sessao.MotivoSemConexao, (await _sessao.EnviarAsync("*241*0*")).Motivo);
-        var r = await _memorias.SalvarAsync(0, "X");
+        var r = await _memorias.CarregarAsync(0);
         Assert.False(r.Ok);
         Assert.Equal(Sessao.MotivoSemConexao, r.Motivo);
         Assert.Empty(_simulador.Escritas);
         Assert.Equal(0, _guardadoCopia.Gravacoes);
-    }
-
-    // ----------------------------------------------------------------- salvar
-
-    [Fact]
-    public async Task Salvar_na_memoria_2_envia_o_240_e_depois_o_nome_e_com_a_resposta_diz_salva()
-    {
-        await Conectar();
-        Assert.True((await Rodar(_escritor.EscreverAsync(Ganho, 0, -3.0m))).Ok);
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await Rodar(_memorias.SalvarAsync(1, "musica orig2"));
-
-        Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal("Memória 2 salva", r.Mensagem);
-        Assert.Equal("Memória 2 salva", _memorias.Aviso);
-        var escritas = EscritasDesde(inicio);
-        Assert.Equal(["*240*1*", "*232*MUSICA ORIG2*", "#232#"], escritas);
-        Assert.Equal(_simulador.EstadoMarco1(), _simulador.Memoria(1));
-        Assert.Equal("-3.0", _simulador.Memoria(1)[("081", 0)]);
-        Assert.Equal("MUSICA ORIG2", _simulador.Valor("232"));
-        Assert.Equal("MUSICA ORIG2", _memorias.Nome(1)); // o nome relido
-        Assert.Equal(1, _memorias.EmUso);
-
-        // A cópia antes ficou guardada, sem a marca (a operação terminou).
-        var copia = CopiaAntes.DeJson(_guardadoCopia.Texto!)!;
-        Assert.Null(copia.Operacao);
-        Assert.Contains(copia.Valores, v => v is { Codigo: "081", Indice: 0, NoFio: "-3.0" });
-        Assert.Null(_copia.PelaMetade);
-    }
-
-    [Fact]
-    public async Task Salvar_sem_resposta_ao_240_diz_enviada_e_nao_marca_em_uso()
-    {
-        await Conectar();
-        _simulador.Silenciar.Add("*240*1*"); // o aparelho salva, mas não responde
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await Rodar(_memorias.SalvarAsync(1, "MUSICA ORIG2"));
-
-        Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal("Memória 2 enviada (o aparelho não confirma o salvar)", r.Mensagem);
-        Assert.Equal(["*240*1*", "*232*MUSICA ORIG2*", "#232#"], EscritasDesde(inicio));
-        Assert.Equal("MUSICA ORIG2", _memorias.Nome(1)); // o nome relido
-        Assert.Null(_memorias.EmUso);
-        Assert.Null(CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao);
-    }
-
-    [Fact]
-    public async Task Salvar_espera_a_resposta_do_240_com_folga_alem_dos_1_17_s_medidos()
-    {
-        await Conectar();
-        _simulador.AtrasoAckMemoria = TimeSpan.FromMilliseconds(2900);
-
-        var r = await Rodar(_memorias.SalvarAsync(1, "MUSICA ORIG2"));
-
-        Assert.Equal("Memória 2 salva", r.Mensagem);
-        Assert.Equal(1, _memorias.EmUso);
-    }
-
-    [Fact]
-    public async Task Salvar_sem_conseguir_anotar_a_etapa_nada_sai()
-    {
-        await Conectar();
-        // A cópia antes grava; a etapa (antes do 240) não.
-        _guardadoCopia.FalharAPartirDaTentativa = _guardadoCopia.Tentativas + 2;
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await Rodar(_memorias.SalvarAsync(1, "MUSICA ORIG2"));
-
-        Assert.False(r.Ok);
-        Assert.Equal(GerenteMemorias.MsgNaoGuardouEtapa, r.Motivo);
-        Assert.Equal(inicio, _simulador.Escritas.Count);
-        Assert.False(_copia.EmAndamento);
-        Assert.Null(_copia.MotivoBloqueio());
-    }
-
-    [Theory]
-    [InlineData("música#1")]
-    [InlineData("TREZE LETRASX")]
-    [InlineData("MUSICA ORIG 2")] // 13 caracteres: a regra é de 1 a 12 (decisão do Denis em 21/10)
-    [InlineData("   ")]
-    public async Task Salvar_com_nome_invalido_e_recusado_e_nada_sai(string nome)
-    {
-        await Conectar();
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await _memorias.SalvarAsync(1, nome);
-
-        Assert.False(r.Ok);
-        Assert.Equal("Use até 12 letras, números, espaço ou _", r.Motivo);
-        Assert.Equal(inicio, _simulador.Escritas.Count);
-        Assert.Equal(0, _guardadoCopia.Gravacoes);
-    }
-
-    [Fact]
-    public async Task Salvar_com_a_chave_desligada_nada_sai_nem_a_copia()
-    {
-        await Conectar();
-        await _chaves.DefinirAsync(Chave.SalvarMemoria, false, OrigemComando.Tela);
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await _memorias.SalvarAsync(1, "NOVO");
-
-        Assert.False(r.Ok);
-        Assert.Equal(Sessao.MotivoChaveDesligada, r.Motivo);
-        Assert.Equal(inicio, _simulador.Escritas.Count);
-        Assert.Equal(0, _guardadoCopia.Gravacoes);
-    }
-
-    [Fact]
-    public async Task Salvar_sem_conseguir_guardar_a_copia_nada_sai()
-    {
-        await Conectar();
-        _guardadoCopia.FalharAoGravar = true;
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await _memorias.SalvarAsync(1, "NOVO");
-
-        Assert.False(r.Ok);
-        Assert.Equal(CopiaAntes.MsgNaoGuardou, r.Motivo);
-        Assert.Equal(inicio, _simulador.Escritas.Count);
-    }
-
-    /// <summary>
-    /// A conexão cai no meio do salvar: ao receber o 240 (sem aplicar), logo depois dele, ou
-    /// logo depois do nome. Em todos, o 240 pode ter saído; o app não tem como ler o conteúdo da
-    /// memória sem carregá-la, então diz "pode não ter sido salva".
-    /// </summary>
-    [Theory]
-    [InlineData(true, 1)]  // cai ao receber o 240
-    [InlineData(false, 1)] // o 240 é aplicado e a conexão cai
-    [InlineData(false, 2)] // o 240 e o nome são aplicados e a conexão cai
-    public async Task Queda_no_salvar_ao_reconectar_diz_que_a_memoria_2_pode_nao_ter_sido_salva(bool aoReceber, int depois)
-    {
-        await Conectar();
-        var alvo = _simulador.Escritas.Count + depois;
-        if (aoReceber)
-            _simulador.CairNaEscrita = alvo;
-        else
-            _simulador.CairDepoisDaEscrita = alvo;
-
-        var r = await Rodar(_memorias.SalvarAsync(1, "MUSICA ORIG2"));
-
-        Assert.False(r.Ok);
-        Assert.Equal(GerenteMemorias.MsgCaiuSalvar, r.Mensagem);
-        Assert.Equal("*240*1*", _simulador.Escritas.First(e => e.StartsWith("*24", StringComparison.Ordinal)));
-        Assert.Equal(EstadoSessao.Desconectado, _sessao.Estado);
-        // A etapa foi anotada antes de o 240 sair: a marca diz que ele pode ter saído.
-        Assert.Equal(GerenteMemorias.EtapaSalvar, CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao!.Etapa);
-
-        var inicio = _simulador.Escritas.Count;
-        await Conectar();
-        await Esperar(() => _memorias.Aviso == GerenteMemorias.MsgPodeNaoSalva(1));
-
-        Assert.Equal("A memória 2 pode não ter sido salva; carregue-a para conferir", _memorias.Aviso);
-        Assert.Null(_copia.PelaMetade); // o salvar não fica "pela metade"
-        Assert.Null(CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao);
-        Assert.Null(_memorias.EmUso);
-        Assert.All(EscritasDesde(inicio), e => Assert.True(Catalogo.EhLeitura(e) || Senha.IsMatch(e), e)); // só a leitura da conexão nova
     }
 
     // ----------------------------------------------------------------- carregar
@@ -618,13 +468,11 @@ public sealed class MemoriasTestes : IDisposable
         var escrita = await Rodar(_escritor.EscreverAsync(Ganho, 0, -1.0m));
         var link = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
         var carregar = await Rodar(_memorias.CarregarAsync(0));
-        var salvar = await Rodar(_memorias.SalvarAsync(0, "NOVO"));
 
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, escrita.Motivo);
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, link.Motivo);
         Assert.False(_link.Ligado(ParCanais.Saidas12));
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, carregar.Motivo);
-        Assert.Equal(CopiaAntes.MsgPelaMetadePendente, salvar.Motivo);
         Assert.Equal(inicio, _simulador.Escritas.Count);
         Assert.NotNull(_copia.PelaMetade);
     }
@@ -672,13 +520,13 @@ public sealed class MemoriasTestes : IDisposable
     }
 
     [Theory]
-    [InlineData(GerenteMemorias.TipoSalvar, "x")]
-    [InlineData(GerenteMemorias.TipoSalvar, "7")]
     [InlineData(GerenteMemorias.TipoCarregar, "x")]
+    [InlineData(GerenteMemorias.TipoCarregar, "7")]
+    [InlineData("salvar-memoria", "1")] // a marca de um salvar de antes da 8c: fica pela metade, sem refazer
     public async Task Marca_com_alvo_que_nao_e_memoria_fica_pela_metade_sem_memoria_0(string tipo, string alvo)
     {
         var copia = await ReabrirCom(new Copia(DateTimeOffset.UnixEpoch, [new ValorCopiado("081", 0, "+10.0")],
-            new OperacaoPendente(tipo, alvo, "Operação estranha", "X", GerenteMemorias.EtapaSalvar)));
+            new OperacaoPendente(tipo, alvo, "Operação estranha", "X", "240")));
 
         await Conectar();
         await Esperar(() => copia.PelaMetade is not null);
@@ -787,39 +635,6 @@ public sealed class MemoriasTestes : IDisposable
         await Esperar(() => copia.PelaMetade is not null);
 
         Assert.Equal("Carregar a memória 3 (FILME)", copia.PelaMetade!.Descricao);
-    }
-
-    // ----------------------------------------------------------------- renomear
-
-    [Fact]
-    public async Task Renomear_envia_so_o_nome_e_confere_relendo()
-    {
-        await Conectar();
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await Rodar(_memorias.RenomearAsync(0, "cinema"));
-
-        Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal(["*231*CINEMA*", "#231#"], EscritasDesde(inicio));
-        Assert.Equal("CINEMA", _memorias.Nome(0));
-        Assert.Equal(0, _guardadoCopia.Gravacoes); // renomear não mexe no som: sem cópia
-    }
-
-    [Fact]
-    public async Task Renomear_nao_aceita_o_eco_atrasado_da_escrita_como_releitura()
-    {
-        await Conectar();
-        // A releitura não responde; chega atrasado um texto na forma de escrita (*231*CINEMA*),
-        // que o Analisar leria como #231#CINEMA#.
-        _simulador.Silenciar.Add("#231#");
-        _simulador.EcosDiferentes["*231*CINEMA*"] = "*231*CINEMA*";
-        _simulador.AtrasoEco = TimeSpan.FromSeconds(1);
-
-        var r = await Rodar(_memorias.RenomearAsync(0, "cinema"));
-
-        Assert.False(r.Ok);
-        Assert.Equal(GerenteMemorias.MsgNomeNaoConfirmado, r.Motivo);
-        Assert.Equal("SPL", _memorias.Nome(0)); // o espelho não aceitou o eco como leitura
     }
 
     // ----------------------------------------------------------------- link

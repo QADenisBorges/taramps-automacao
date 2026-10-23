@@ -12,7 +12,7 @@ public enum Chave
     TrocaSenha,
     Gerador,
     CarregarMemoria,
-    SalvarMemoria,
+    AplicarMemoriaCelular,
     RemoteOut,
     BluetoothAudio,
     NomeProduto,
@@ -35,7 +35,6 @@ public enum OrigemComando
 public enum ConfirmacaoIa
 {
     Sempre,
-    AoSobrescrever,
     Nunca,
 
     /// <summary>A chave da própria IA: não há pedido da IA para confirmar.</summary>
@@ -98,10 +97,11 @@ public static class ChavesPadrao
             "Uma senha perdida tranca o aparelho."),
         new(Chave.Gerador, "gerador", "Gerador: tom fixo e sweep", "200–202, 210–213", false, ConfirmacaoIa.Sempre,
             "Um tom forte pode queimar o tweeter ou o sub."),
-        new(Chave.CarregarMemoria, "carregar-memoria", "Carregar memória", "*241*n*", true, ConfirmacaoIa.Sempre,
+        // O id "carregar-memoria" fica: é o que está guardado no celular desde a história 6.
+        new(Chave.CarregarMemoria, "carregar-memoria", "Carregar memória do aparelho", "*241*n*", true, ConfirmacaoIa.Sempre,
             "Troca todo o som de uma vez."),
-        new(Chave.SalvarMemoria, "salvar-memoria", "Salvar memória", "*240*n* + 23N", true, ConfirmacaoIa.AoSobrescrever,
-            "Apaga a memória anterior."),
+        new(Chave.AplicarMemoriaCelular, "aplicar-memoria-celular", "Aplicar memória do celular", "vários (MAPA §4)", true, ConfirmacaoIa.Sempre,
+            "Troca todo o som de uma vez."),
         new(Chave.RemoteOut, "remote-out", "Remote out (módulo)", "*252*0/1*", true, ConfirmacaoIa.Sempre,
             "Liga ou corta o som de repente."),
         new(Chave.BluetoothAudio, "bluetooth-audio", "Bluetooth de áudio", "251", true, ConfirmacaoIa.Nunca, null),
@@ -245,7 +245,8 @@ public sealed class Chaves : IChaves
 
     /// <summary>
     /// Lê o JSON guardado. Ilegível, sem o <c>formato</c> 1, ou uma chave que falta: fica o
-    /// padrão. Chamar com a trava.
+    /// padrão. Um id que o app não conhece mais (o <c>salvar-memoria</c>, que saiu na história 8c)
+    /// é ignorado. Chamar com a trava.
     /// </summary>
     private void Aplicar(string json)
     {

@@ -34,6 +34,11 @@ public sealed class ChavesViewModelTestes : IDisposable
 
         Assert.Equal(11, _vm.Itens.Count);
         Assert.Equal(ChavesPadrao.Todas.Select(d => d.Nome), _vm.Itens.Select(i => i.Nome));
+        // História 8c: "Carregar memória do aparelho" e "Aplicar memória do celular"; o "Salvar memória" saiu.
+        Assert.Contains("Carregar memória do aparelho", _vm.Itens.Select(i => i.Nome));
+        Assert.Contains("Aplicar memória do celular", _vm.Itens.Select(i => i.Nome));
+        Assert.DoesNotContain(_vm.Itens, i => i.Nome.Contains("Salvar", StringComparison.Ordinal));
+        Assert.True(_vm.Item(Chave.AplicarMemoriaCelular).Ligada);
         Assert.False(_vm.Item(Chave.Gerador).Ligada);
         Assert.Equal("Desligada", _vm.Item(Chave.Gerador).TextoEstado);
         Assert.True(_vm.Item(Chave.AjustesAudio).Ligada);

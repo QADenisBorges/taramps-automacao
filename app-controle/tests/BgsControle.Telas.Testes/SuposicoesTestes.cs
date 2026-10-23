@@ -115,7 +115,8 @@ public sealed class SuposicoesTestes
 
         Assert.Contains("estado/log-ble/2026-10-20_1322-memoria.log", md);
         Assert.Contains(Suposicoes.Ack241, Suposicoes.Todas.Keys);
-        Assert.DoesNotContain(Suposicoes.Todas.Keys, id => id.Contains("240") && id != Suposicoes.Ack240Salva);
+        // O app não salva memórias do aparelho desde a história 8c: nenhuma suposição sobre o 240.
+        Assert.DoesNotContain(Suposicoes.Todas.Keys, id => id.Contains("240"));
         Assert.Equal(TimeSpan.FromMilliseconds(1170), ProcessadorSimulado.AtrasoAckSalvarReal);
     }
 }

@@ -7,18 +7,12 @@ public sealed record EscritaAudio(Parametro Parametro, int? Indice, string NoFio
 
 public enum TipoComandoMemoria
 {
-    /// <summary><c>*240*n*</c>.</summary>
-    Salvar,
-
-    /// <summary><c>*241*n*</c>.</summary>
+    /// <summary><c>*241*n*</c>: o único comando de memória que sai deste app (história 8c).</summary>
     Carregar,
-
-    /// <summary><c>*23N*NOME*</c>.</summary>
-    Nomear,
 }
 
-/// <summary>Um comando de memória reconhecido pela trava: o tipo, a memória (0 a 2) e o nome, no <c>23N</c>.</summary>
-public sealed record ComandoMemoria(TipoComandoMemoria Tipo, int Memoria, string? Nome);
+/// <summary>Um comando de memória reconhecido pela trava: o tipo e a memória (0 a 2). O nome não é usado desde a história 8c.</summary>
+public sealed record ComandoMemoria(TipoComandoMemoria Tipo, int Memoria);
 
 /// <summary>Um comando do gerador reconhecido pela trava: o parâmetro (200–202, 210–213) e o valor.</summary>
 public sealed record ComandoGerador(Parametro Parametro, decimal Valor)
@@ -232,31 +226,26 @@ public static class Catalogo
     /// <summary>As 3 memórias do DSP: <c>n</c> de 0 a 2 no fio; a memória 1 é o <c>n</c> 0 e o nome 231.</summary>
     public const int Memorias = 3;
 
+    /// <summary>
+    /// O salvar do aparelho (<c>*240*n*</c>). Só para a trava recusar: desde a história 8c, salvar e
+    /// renomear as memórias do aparelho ficam no app da Taramps.
+    /// </summary>
     public const string CodigoSalvarMemoria = "240";
+
     public const string CodigoCarregarMemoria = "241";
 
-    // Suposição MEMORIA-N-NOME (história 12): o formato *23N*NOME* e "memória 1 = n 0 = nome 231".
-    private static readonly System.Text.RegularExpressions.Regex QuadroSalvarOuCarregar =
-        new(@"^\*(240|241)\*([0-2])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
-    private static readonly System.Text.RegularExpressions.Regex QuadroNomeMemoria =
-        new(@"^\*23([1-3])\*([A-Z0-9 _]{1,12})\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    // Suposição MEMORIA-N-NOME (história 12): "memória 1 = n 0 = nome 231".
+    private static readonly System.Text.RegularExpressions.Regex QuadroCarregar =
+        new(@"^\*241\*([0-2])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private static readonly System.Text.RegularExpressions.Regex NomeMemoriaValido =
         new(@"^[A-Z0-9 _]{1,12}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-    /// <summary>O código do nome da memória <paramref name="n"/> (0 a 2): 231, 232 ou 233.</summary>
+    /// <summary>O código do nome da memória <paramref name="n"/> (0 a 2): 231, 232 ou 233. Só leitura neste app.</summary>
     public static string CodigoNomeMemoria(int n)
     {
         ValidarMemoria(n);
         return $"23{n + 1}";
-    }
-
-    /// <summary><c>*240*n*</c>: salva o estado atual na memória n (0 a 2).</summary>
-    public static string SalvarMemoria(int n)
-    {
-        ValidarMemoria(n);
-        return $"*{CodigoSalvarMemoria}*{n}*";
     }
 
     /// <summary><c>*241*n*</c>: carrega a memória n (0 a 2).</summary>
@@ -266,19 +255,11 @@ public static class Catalogo
         return $"*{CodigoCarregarMemoria}*{n}*";
     }
 
-    /// <summary><c>*23N*NOME*</c>, com o nome já normalizado (<see cref="NormalizarNomeMemoria"/>).</summary>
-    public static string NomearMemoria(int n, string nome)
-    {
-        ValidarMemoria(n);
-        if (NormalizarNomeMemoria(nome) is not { } normalizado || normalizado != nome)
-            throw new ArgumentException("O nome tem de 1 a 12 caracteres: A–Z, 0–9, espaço ou _.", nameof(nome));
-        return $"*{CodigoNomeMemoria(n)}*{nome}*";
-    }
-
     /// <summary>
-    /// O nome de memória como vai no fio: sem espaços nas pontas e em maiúsculas, de 1 a 12
-    /// caracteres entre A–Z, 0–9, espaço e <c>_</c>. Fora disso, null (nada sai).
-    /// Suposição REGRA-NOMES: a regra de nomes da Taramps vale também para as memórias.
+    /// Um nome como o aparelho o aceita: sem espaços nas pontas e em maiúsculas, de 1 a 12
+    /// caracteres entre A–Z, 0–9, espaço e <c>_</c>. Fora disso, null (nada sai). Vale para o nome
+    /// do produto (<see cref="NormalizarNomeProduto"/>).
+    /// Suposição REGRA-NOMES: a regra de nomes da Taramps vale para o nome do produto.
     /// </summary>
     public static string? NormalizarNomeMemoria(string? digitado)
     {
@@ -289,26 +270,14 @@ public static class Catalogo
     }
 
     /// <summary>
-    /// Se o quadro é exatamente <c>*240*n*</c>, <c>*241*n*</c> (n = 0 a 2) ou <c>*23N*NOME*</c>
-    /// (N = 1 a 3, nome normalizado), devolve o comando; senão null. É a regra da trava para as
-    /// memórias: <c>*240*5*</c>, <c>*241*0</c>, <c>*231*filme*</c> e <c>*231* FILME*</c> não passam.
+    /// Se o quadro é exatamente <c>*241*n*</c> (n = 0 a 2), devolve o comando; senão null. É a
+    /// regra da trava para as memórias: <c>*241*3*</c> e <c>*241*0</c> não passam. O <c>*240*</c> e o
+    /// <c>*23N*</c> não são comandos deste app (a trava os recusa em qualquer forma).
     /// </summary>
-    public static ComandoMemoria? ComandoDeMemoria(string quadro)
-    {
-        if (QuadroSalvarOuCarregar.Match(quadro) is { Success: true } m)
-        {
-            var n = m.Groups[2].Value[0] - '0';
-            return new ComandoMemoria(m.Groups[1].Value == CodigoSalvarMemoria ? TipoComandoMemoria.Salvar : TipoComandoMemoria.Carregar, n, null);
-        }
-        if (QuadroNomeMemoria.Match(quadro) is { Success: true } nome)
-        {
-            var texto = nome.Groups[2].Value;
-            if (NormalizarNomeMemoria(texto) != texto)
-                return null; // espaço nas pontas ou só espaços
-            return new ComandoMemoria(TipoComandoMemoria.Nomear, nome.Groups[1].Value[0] - '1', texto);
-        }
-        return null;
-    }
+    public static ComandoMemoria? ComandoDeMemoria(string quadro) =>
+        QuadroCarregar.Match(quadro) is { Success: true } m
+            ? new ComandoMemoria(TipoComandoMemoria.Carregar, m.Groups[1].Value[0] - '0')
+            : null;
 
     // ------------------------------------------------------------------ gerador (MAPA §4 e §5)
 

@@ -19,13 +19,14 @@ internal sealed class RedeFalsa : IRedeLocal
 /// <summary>
 /// A história 9b nas telas, contra o processador simulado: a tela IA pela rede (fechada, pareando
 /// com o código, pareado, erro, Revogar, modo do toque, cliente sumido) e a folha "A IA pede para …",
-/// mais o critério de aceite de ponta a ponta (estado, ganho da saída 3 e memória 2 com o toque).
+/// mais o critério de aceite de ponta a ponta (estado, ganho da saída 3 e carregar a memória 2 com o
+/// toque; desde a história 8c a IA não salva).
 /// </summary>
 public sealed class IaPelaRedeViewModelTestes : IDisposable
 {
     private static readonly IPAddress Casa = IPAddress.Parse("192.168.0.10");
 
-    private readonly Bancada _b = new(usoCompartilhado: true);
+    private readonly Bancada _b = new(usoCompartilhado: true, setups: true);
     private readonly Pareamento _pareamento;
     private readonly PedidosConfirmacao _confirmacoes;
     private readonly PortaComandos _porta;
@@ -61,7 +62,7 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
 
     private PortaComandos NovaPorta(int numero) =>
         new(_b.Sessao, _b.Chaves, Uso, Historico, _pareamento, _confirmacoes, new RedeFalsa(), _b.Estado, _b.Escritor,
-            _b.Memorias, _b.Gerador, _b.Comandos, _b.Monitor, _b.Log, _b.Relogio, numero);
+            _b.Memorias, _b.Setups!, _b.Gerador, _b.Comandos, _b.Monitor, _b.Log, _b.Relogio, numero);
 
     private async Task Conectar()
     {
@@ -102,7 +103,7 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
     // ----------------------------------------------------------------- critério de aceite
 
     [Fact]
-    public async Task Cliente_pareado_le_o_estado_muda_o_ganho_da_saida_3_e_salva_a_memoria_2_com_o_toque()
+    public async Task Cliente_pareado_le_o_estado_muda_o_ganho_da_saida_3_e_carrega_a_memoria_2_com_o_toque()
     {
         await Conectar();
         await LigarPorta();
@@ -121,17 +122,19 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("+2,0 dB", controle.TextoValor);
 
-        var salvar = Pedir("POST", "/memoria/salvar", """{"memoria":2}""", chave);
+        var carregar = Pedir("POST", "/memoria/carregar", """{"memoria":2}""", chave);
         await Apoio.Esperar(() => _confirmacoes.Atual is not null);
         await _b.Tela.EsvaziarAsync();
         Assert.True(_folha.FolhaAberta);
         await _folha.Confirmar.ExecutarAsync();
-        await _b.Rodar(salvar);
-        Assert.True(Ok(await salvar));
+        await _b.Rodar(carregar);
+        Assert.True(Ok(await carregar));
+        Assert.Equal(404, (await Pedir("POST", "/memoria/salvar", """{"memoria":2}""", chave)).Status);
 
         var daIa = Historico.Entradas.Where(e => e.Origem == OrigemComando.Ia && e.Enviado).Select(e => e.Tipo).ToArray();
         Assert.Contains(TipoComando.AjusteAudio, daIa);
-        Assert.Contains(TipoComando.SalvarMemoria, daIa);
+        Assert.Contains(TipoComando.CarregarMemoria, daIa);
+        Assert.DoesNotContain(TipoComando.SalvarMemoria, daIa);
         using var h = _b.CriarHistoricoViewModel();
         await _b.Tela.EsvaziarAsync();
         Assert.Contains(h.Linhas, l => l.Origem == "IA");

@@ -10,8 +10,12 @@ public enum TipoComando
 {
     /// <summary>Um ajuste de áudio do Marco 1 (MAPA §4).</summary>
     AjusteAudio,
+
+    /// <summary>Não sai mais do app (história 8c); fica para ler o <c>historico.json</c> antigo.</summary>
     SalvarMemoria,
     CarregarMemoria,
+
+    /// <summary>Não sai mais do app (história 8c); fica para ler o <c>historico.json</c> antigo.</summary>
     NomearMemoria,
 
     /// <summary>Um parâmetro do gerador ou o liga/desliga (200–202, 210–213).</summary>
@@ -59,18 +63,7 @@ public sealed record ComandoNaPorta(TipoComando Tipo, Endereco? Endereco, string
             return new(TipoComando.AjusteAudio, new Endereco(audio.Parametro.Codigo, audio.Indice), audio.NoFio);
 
         if (Catalogo.ComandoDeMemoria(quadro) is { } memoria)
-        {
-            return memoria.Tipo switch
-            {
-                TipoComandoMemoria.Salvar => new(TipoComando.SalvarMemoria,
-                    new Endereco(Catalogo.CodigoSalvarMemoria, null), Texto(memoria.Memoria)),
-                TipoComandoMemoria.Carregar => new(TipoComando.CarregarMemoria,
-                    new Endereco(Catalogo.CodigoCarregarMemoria, null), Texto(memoria.Memoria)),
-                TipoComandoMemoria.Nomear => new(TipoComando.NomearMemoria,
-                    new Endereco(Catalogo.CodigoNomeMemoria(memoria.Memoria), null), memoria.Nome),
-                _ => throw new UnreachableException($"Comando de memória sem tipo no histórico: {memoria.Tipo}"),
-            };
-        }
+            return new(TipoComando.CarregarMemoria, new Endereco(Catalogo.CodigoCarregarMemoria, null), Texto(memoria.Memoria));
 
         if (Catalogo.ComandoDeGerador(quadro) is { } gerador)
         {

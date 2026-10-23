@@ -44,10 +44,9 @@ item no aparelho real e marca o resultado.
 | QUEDA-APOS-ERRO | A senha certa dentro da janela cancela a queda de 29 s; um segundo `ERRO` não reinicia o prazo. | `Processar`, senha | |
 | VOLTIMETRO-CRLF | O órfão `ERRO 0` do voltímetro chega com `\r\n`. | `Processar`, leitura | |
 | CLIP-ESPONTANEO | O clip espontâneo (`#150#bits#`) tem o formato da leitura; o período e o gatilho não foram medidos. | `EmitirClip` | |
-| MEMORIA-N-NOME | O nome da memória vai como `*23N*NOME*`, e a memória 1 é o `n` 0 do 240/241 e o nome 231 (a 2 é `n` 1 e 232; a 3 é `n` 2 e 233). | `QuadroMemoria`; `Catalogo.ComandoDeMemoria` | |
-| REGRA-NOMES | A regra de nomes da Taramps vale para as memórias: de 1 a 12 caracteres, A–Z, 0–9, espaço e `_`, em maiúsculas. | `Catalogo.NormalizarNomeMemoria` | |
+| MEMORIA-N-NOME | O nome da memória é lido em `#23N#` (resposta `23N#NOME`), e a memória 1 é o `n` 0 do 241 e o nome 231 (a 2 é `n` 1 e 232; a 3 é `n` 2 e 233). O app não escreve o nome (história 8c). | `QuadroMemoria`; `Catalogo.ComandoDeMemoria` | |
+| REGRA-NOMES | A regra de nomes da Taramps (de 1 a 12 caracteres, A–Z, 0–9, espaço e `_`, em maiúsculas) vale para o nome do produto (`*002*NOME*`), como valia para as memórias no app da Taramps. | `Catalogo.NormalizarNomeMemoria`; `Catalogo.NormalizarNomeProduto` | |
 | CARREGAR-SEM-NOMES | Carregar (`*241*n*`) troca os 84 valores do Marco 1 e não mexe nos nomes 23N; o nome é do aparelho, não da memória. | `Processar`, memórias | |
-| ACK-240-SALVA | A resposta `#240#n#` quer dizer que a memória foi gravada (o app diz "Memória N salva"; sem ela, "enviada"). Não há como ler o conteúdo de uma memória sem carregá-la: numa queda no meio, o app só diz "pode não ter sido salva". | `GerenteMemorias` | |
 | LINK-PARAMETROS | O link copia e repete os parâmetros de canal do Marco 1 menos o roteamento, como o app da Taramps (`BVM:16189`); o comportamento na tela é conferido na história 10. | `LinkCanais.Parametros` | |
 | SENHA-ERRADA-DESAUTENTICA | Uma senha errada com a sessão já autenticada tira a autenticação: leituras e escritas voltam a ser ignoradas até a senha certa. | `Processar`, senha | |
 | FILA-UNICA | As respostas com atraso saem de uma fila única, na ordem em que foram geradas: cada uma espera o seu atraso e a anterior (um eco de 85 ms seguido de uma leitura de 25 ms chega antes dela). | `Enviar` | |

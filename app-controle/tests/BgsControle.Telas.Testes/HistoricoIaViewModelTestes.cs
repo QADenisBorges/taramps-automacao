@@ -153,9 +153,7 @@ public sealed class HistoricoIaViewModelTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("*240*1*", "Salvar na memória 2")]
-    [InlineData("*241*2*", "Carregar a memória 3")]
-    [InlineData("*231*FILME*", "Nome da memória 1 · FILME")]
+    [InlineData("*241*2*", "Carregar a memória 3")] // o 240 e o 23N não saem do app desde a história 8c
     [InlineData("*252*1*", "Remote out · ligado")]
     [InlineData("*252*0*", "Remote out · desligado")]
     [InlineData("*251*1*", "Bluetooth de áudio · ligado")]

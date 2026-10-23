@@ -441,11 +441,13 @@ public sealed class EscritaTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("*240*5*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*240*5*", Sessao.MotivoNaoLiberado)] // o 240 e o 23N não saem deste app (história 8c)
+    [InlineData("*240*0*", Sessao.MotivoNaoLiberado)]
     [InlineData("*241*3*", Sessao.MotivoMemoriaForaDoFormato)]
     [InlineData("*241*0", Sessao.MotivoMemoriaForaDoFormato)]
-    [InlineData("*231*filme*", Sessao.MotivoMemoriaForaDoFormato)]
-    [InlineData("*231* FILME*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*231*filme*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*231*FILME*", Sessao.MotivoNaoLiberado)]
+    [InlineData("*231* FILME*", Sessao.MotivoNaoLiberado)]
     [InlineData("*234*FILME*", Sessao.MotivoEscritaForaDoCatalogo)]
     [InlineData("*202*1*", Sessao.MotivoChaveDesligada)] // a chave "Gerador" vem desligada (história 7a)
     [InlineData("*200*-20.0*", Sessao.MotivoChaveDesligada)]
@@ -504,9 +506,9 @@ public sealed class EscritaTestes : IDisposable
 
             var r = await _sessao.EnviarAsync(quadro);
 
-            // Os nomes das memórias (23N) passam com a chave "Salvar memória" (história 6); o
-            // *202*0* (desligar o gerador) passa sem a chave (história 7a); o 251 e o 252 passam
-            // com as chaves "Bluetooth de áudio" e "Remote out", ligadas por padrão (história 7b).
+            // Os nomes das memórias (23N) nunca passam (história 8c); o *202*0* (desligar o
+            // gerador) passa sem a chave (história 7a); o 251 e o 252 passam com as chaves
+            // "Bluetooth de áudio" e "Remote out", ligadas por padrão (história 7b).
             var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null || quadro == Catalogo.DesligarGerador
                         || Catalogo.ComandoDeAparelho(quadro) is not null;
             Assert.True(r.Enviado == passa, $"{quadro}: {r.Motivo}");
@@ -570,13 +572,19 @@ public sealed class EscritaTestes : IDisposable
         Assert.Equal(Enum.GetValues<Chave>(), _chaves.Definicoes.Select(d => d.Chave));
         foreach (var c in new[] { Chave.ResetFabrica, Chave.IaPelaRede, Chave.ResetAudio, Chave.TrocaSenha, Chave.Gerador })
             Assert.False(_chaves.Ligada(c), c.ToString());
-        foreach (var c in new[] { Chave.CarregarMemoria, Chave.SalvarMemoria, Chave.RemoteOut, Chave.BluetoothAudio, Chave.NomeProduto, Chave.AjustesAudio })
+        foreach (var c in new[] { Chave.CarregarMemoria, Chave.AplicarMemoriaCelular, Chave.RemoteOut, Chave.BluetoothAudio, Chave.NomeProduto, Chave.AjustesAudio })
             Assert.True(_chaves.Ligada(c), c.ToString());
         Assert.Equal("Um tom forte pode queimar o tweeter ou o sub.", ChavesPadrao.De(Chave.Gerador).Risco);
         Assert.Equal("Apaga a senha e as 3 memórias.", ChavesPadrao.De(Chave.ResetFabrica).Risco);
         Assert.Equal("Deixa a IA comandar o som pela rede.", ChavesPadrao.De(Chave.IaPelaRede).Risco);
         Assert.Null(ChavesPadrao.De(Chave.AjustesAudio).Risco);
-        Assert.Equal(ConfirmacaoIa.AoSobrescrever, ChavesPadrao.De(Chave.SalvarMemoria).ConfirmacaoIa);
+        Assert.Equal("Carregar memória do aparelho", ChavesPadrao.De(Chave.CarregarMemoria).Nome);
+        Assert.Equal("carregar-memoria", ChavesPadrao.De(Chave.CarregarMemoria).Id); // o id guardado não muda
+        Assert.Equal("Aplicar memória do celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Nome);
+        Assert.Equal("aplicar-memoria-celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Id);
+        Assert.Equal(ConfirmacaoIa.Sempre, ChavesPadrao.De(Chave.AplicarMemoriaCelular).ConfirmacaoIa);
+        Assert.Equal("Troca todo o som de uma vez.", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Risco);
+        Assert.DoesNotContain(ChavesPadrao.Todas, d => d.Nome.Contains("Salvar", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -706,6 +714,24 @@ public sealed class EscritaTestes : IDisposable
 
         Assert.True(chaves.Ligada(Chave.Gerador));
         Assert.False(chaves.Ligada(Chave.AjustesAudio));
+    }
+
+    /// <summary>
+    /// História 8c: o JSON de antes tem o id "salvar-memoria", que saiu; ele é ignorado, o
+    /// "carregar-memoria" guardado continua valendo e a chave nova vem no padrão (ligada).
+    /// </summary>
+    [Fact]
+    public async Task Guardado_com_o_id_que_saiu_ignora_o_id_e_le_os_outros()
+    {
+        var chaves = new Chaves(new RepositorioMemoria
+        {
+            Json = "{\"formato\": 1, \"chaves\": {\"salvar-memoria\": false, \"carregar-memoria\": false, \"desconhecida\": true}}",
+        });
+        await chaves.Carregada;
+
+        Assert.False(chaves.Ligada(Chave.CarregarMemoria));
+        Assert.True(chaves.Ligada(Chave.AplicarMemoriaCelular));
+        Assert.Equal(11, chaves.Definicoes.Count);
     }
 
     // ----------------------------------------------------------------- booleanos e preset

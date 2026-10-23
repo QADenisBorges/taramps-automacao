@@ -9,6 +9,7 @@ using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 using BgsControle.Telas;
 using Microsoft.Extensions.Logging;
 
@@ -79,6 +80,21 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LogBle>()));
 
+        // História 8c: os Setups e as memórias do celular (conferência ao conectar, aplicar, Salvar por
+        // camadas), em setups.json, e a marca do mudo da dúvida em setup-mudo.json.
+        builder.Services.AddSingleton(sp => new GerenteSetups(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<LeituraAutomatica>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<LinkCanais>(),
+            sp.GetRequiredService<GerenteMemorias>(),
+            sp.GetRequiredService<IChaves>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetups),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetupMudo),
+            sp.GetRequiredService<LogBle>()));
+
         // História 8: os presets no celular (guardar, aplicar, renomear, apagar), com o aplicar pela
         // cópia antes. O conhecimento herdado (CAP-6) vem embutido no núcleo: não há o que registrar.
         builder.Services.AddSingleton(sp => new GerentePresets(
@@ -122,6 +138,8 @@ public static class MauiProgram
         // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
         builder.Services.AddSingleton<ChavesViewModel>();
+        builder.Services.AddSingleton<SalvarViewModel>();
+        builder.Services.AddSingleton<SetupViewModel>();
         builder.Services.AddSingleton<MemoriasViewModel>();
         builder.Services.AddSingleton<LinkViewModel>();
         builder.Services.AddSingleton<PresetsViewModel>();
@@ -159,6 +177,9 @@ public static class MauiProgram
         app.Services.GetRequiredService<Escritor>();
         app.Services.GetRequiredService<LinkCanais>();
         app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
+        // Os Setups cedo: a conferência roda na primeira leitura de cada conexão, e os tipos
+        // "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam registrados na CopiaAntes.
+        app.Services.GetRequiredService<GerenteSetups>();
         // Os presets cedo: o tipo "aplicar-preset" precisa estar registrado na CopiaAntes antes da primeira leitura.
         app.Services.GetRequiredService<GerentePresets>();
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.

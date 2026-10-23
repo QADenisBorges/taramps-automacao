@@ -7,6 +7,7 @@ using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo.Porta;
@@ -29,11 +30,13 @@ public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, 
 /// pareado (folha recusada ou sem resposta, firmware, pedido esperando) também entram. O PARAR IA
 /// revoga o cliente na hora.</item>
 /// <item><b>Risco pede confirmação</b> (<see cref="PedidosConfirmacao"/>): as operações com
-/// <see cref="ConfirmacaoIa.Sempre"/> e o salvar memória. Antes da folha, o
-/// <see cref="Sessao.Conferir"/> do primeiro quadro recusa na hora.</item>
+/// <see cref="ConfirmacaoIa.Sempre"/>. Antes da folha, o <see cref="Sessao.Conferir"/> do primeiro
+/// quadro recusa na hora.</item>
 /// </list>
-/// Com firmware diferente de R003, só os GET respondem. Um cliente que passa 30 s sem pedidos com
-/// a IA ativa termina a tarefa ("A IA perdeu a conexão.").
+/// Com firmware diferente de R003, só os GET respondem. Com o Setup em dúvida (ou trocando, ou
+/// ainda sem conferir nesta conexão), todo POST de um cliente pareado é recusado com 409 "Setup em
+/// dúvida; escolha na tela." (CAP-16). A IA não salva: a porta não tem comando de salvar. Um
+/// cliente que passa 30 s sem pedidos com a IA ativa termina a tarefa ("A IA perdeu a conexão.").
 /// </summary>
 public sealed class PortaComandos : IDisposable
 {
@@ -65,6 +68,7 @@ public sealed class PortaComandos : IDisposable
     private readonly EstadoAparelho _estado;
     private readonly Escritor _escritor;
     private readonly GerenteMemorias _memorias;
+    private readonly GerenteSetups _setups;
     private readonly GeradorSinal _gerador;
     private readonly ComandosAparelho _aparelho;
     private readonly MonitorAparelho _monitor;
@@ -97,6 +101,7 @@ public sealed class PortaComandos : IDisposable
         EstadoAparelho estado,
         Escritor escritor,
         GerenteMemorias memorias,
+        GerenteSetups setups,
         GeradorSinal gerador,
         ComandosAparelho aparelho,
         MonitorAparelho monitor,
@@ -114,6 +119,7 @@ public sealed class PortaComandos : IDisposable
         _estado = estado;
         _escritor = escritor;
         _memorias = memorias;
+        _setups = setups;
         _gerador = gerador;
         _aparelho = aparelho;
         _monitor = monitor;
@@ -457,7 +463,6 @@ public sealed class PortaComandos : IDisposable
         Func<CorpoPedido, Operacao>? montar = (pedido.Metodo, pedido.Caminho) switch
         {
             ("POST", "/ajuste") => Ajuste,
-            ("POST", "/memoria/salvar") => SalvarMemoria,
             ("POST", "/memoria/carregar") => CarregarMemoria,
             ("POST", "/gerador/tom") => Tom,
             ("POST", "/gerador/sweep") => Sweep,
@@ -473,7 +478,12 @@ public sealed class PortaComandos : IDisposable
         };
         if (montar is null)
             return Recusa(404, MsgCaminho);
-        return await RodarAsync(montar(CorpoPedido.Ler(pedido.Corpo)));
+        var op = montar(CorpoPedido.Ler(pedido.Corpo));
+        // A dúvida do Setup bloqueia a IA (regra 5): nenhum POST até o Denis escolher na tela. O
+        // parar do gerador fica de fora: desligar o tom nunca é travado.
+        if (pedido.Metodo == "POST" && pedido.Caminho != "/gerador/parar" && _setups.MotivoBloqueioIa is { } duvida)
+            return RecusaDaPorta(op, duvida);
+        return await RodarAsync(op);
     }
 
     /// <summary>Firmware, a confirmação na tela e a operação, tudo como IA.</summary>
@@ -532,8 +542,7 @@ public sealed class PortaComandos : IDisposable
     /// </summary>
     private sealed record Operacao(ComandoNaPorta? Comando, string? Quadro, PedidoConfirmacao? Confirmacao, Func<Task<RespostaPorta>> Executar);
 
-    private static bool Confirma(Chave chave) =>
-        ChavesPadrao.De(chave).ConfirmacaoIa is ConfirmacaoIa.Sempre or ConfirmacaoIa.AoSobrescrever;
+    private static bool Confirma(Chave chave) => ChavesPadrao.De(chave).ConfirmacaoIa == ConfirmacaoIa.Sempre;
 
     private static PedidoConfirmacao? Folha(Chave chave, string titulo, string botao) =>
         Confirma(chave) ? new PedidoConfirmacao(titulo, ChavesPadrao.De(chave).Risco, botao) : null;
@@ -601,25 +610,6 @@ public sealed class PortaComandos : IDisposable
     }
 
     private string AlvoMemoria(int n) => _memorias.Nome(n) is { Length: > 0 } nome ? nome : $"memória {n + 1}";
-
-    private Operacao SalvarMemoria(CorpoPedido corpo)
-    {
-        var n = Memoria(corpo);
-        var digitado = corpo.TextoOpcional("nome") ?? _memorias.Nome(n);
-        var nome = Catalogo.NormalizarNomeMemoria(digitado)
-                   ?? throw new PedidoInvalidoException(GerenteMemorias.MsgNomeInvalido);
-        var quadro = Catalogo.SalvarMemoria(n);
-        var alvo = AlvoMemoria(n);
-        // As 3 memórias sempre existem: salvar é sempre sobrescrever.
-        var titulo = nome == _memorias.Nome(n)
-            ? $"A IA pede para salvar sobre a {alvo}"
-            : $"A IA pede para salvar sobre a {alvo}, com o nome {nome}";
-        return new Operacao(ComandoNaPorta.Ler(quadro), quadro, Folha(Chave.SalvarMemoria, titulo, $"Salvar sobre a {alvo}"), async () =>
-        {
-            var r = await _memorias.SalvarAsync(n, nome);
-            return r.Ok ? Feito(r.Mensagem) : Recusa(409, r.Mensagem ?? r.Motivo ?? "falhou");
-        });
-    }
 
     private Operacao CarregarMemoria(CorpoPedido corpo)
     {
@@ -755,6 +745,20 @@ public sealed class PortaComandos : IDisposable
         for (var n = 0; n < Catalogo.Memorias; n++)
             w.WriteStringValue(_memorias.Nome(n));
         w.WriteEndArray();
+        w.WriteEndObject();
+
+        var setup = _setups.SetupEmUso;
+        w.WriteStartObject("setup");
+        w.WriteString("nome", setup?.Nome);
+        w.WriteBoolean("duvida", _setups.MotivoBloqueioIa is not null);
+        w.WriteString("estado", _setups.Estado switch
+        {
+            EstadoConferencia.Confere => "confere",
+            EstadoConferencia.SomDiferente => "som-diferente",
+            EstadoConferencia.Duvida => "duvida",
+            EstadoConferencia.Trocando => "trocando",
+            _ => "nenhum",
+        });
         w.WriteEndObject();
 
         w.WriteStartObject("ia");
@@ -955,13 +959,12 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos está na tela IA pela rede do celular. Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, a memória em uso e os nomes, a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, a memória do aparelho em uso e os nomes, o Setup (nome em uso ou null, duvida), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada e cada comando da tela enviado). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
-        POST /memoria/salvar {"memoria":1,"nome":"FILME"}: memória de 1 a 3; sem nome, fica o atual. Pede o toque do usuário na tela.
-        POST /memoria/carregar {"memoria":1}: pede o toque do usuário na tela.
+        POST /memoria/carregar {"memoria":1}: carrega a memória do aparelho de 1 a 3. Pede o toque do usuário na tela.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na tela. O gerador desliga sozinho em 30 s.
         POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque.
         POST /gerador/parar: desliga o gerador. Não pede o toque nem a chave do gerador, e a pausa da IA não o trava; com firmware diferente do R003, recusa como todo POST.
@@ -973,6 +976,8 @@ public sealed class PortaComandos : IDisposable
         POST /tarefa {"frase":"IA ajustando o EQ da FILME"}: a faixa da tela mostra a frase; a IA fica ativa.
         DELETE /tarefa: a IA terminou; os controles da tela destravam.
 
+        A IA não salva nem renomeia memórias: a porta não tem esse comando.
+        Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
         Com firmware diferente do R003, só os GET respondem.

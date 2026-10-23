@@ -8,6 +8,7 @@ using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
 using BgsControle.Simulador;
 
@@ -33,7 +34,11 @@ internal sealed class Bancada
     /// História 9a: o histórico e o uso compartilhado na porta, guardados em <see cref="ArquivosUso"/>
     /// (à parte, para não mexer nas contagens de gravação dos outros testes).
     /// </param>
-    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false)
+    /// <param name="setups">
+    /// História 8c: os Setups e as memórias do celular (a conferência roda em cada conexão), guardados
+    /// em <see cref="Arquivos"/>. Fora disso, nenhuma conferência mexe no mute dos outros testes.
+    /// </param>
+    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false, bool setups = false)
     {
         // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
         // a senha e as leituras respondem na hora; os ecos e os acks seguem no relógio falso.
@@ -60,6 +65,12 @@ internal sealed class Bancada
         // História 8: os presets no celular, guardados nos arquivos falsos.
         Presets = new GerentePresets(Sessao, Estado, Escritor, Leitura, Copia,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPresets), Log, Relogio);
+        if (setups)
+        {
+            Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Memorias, Chaves,
+                new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetups),
+                new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetupMudo), Log, Relogio);
+        }
         // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
         Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
         // História 7b: a monitoração e os comandos de aparelho.
@@ -93,7 +104,15 @@ internal sealed class Bancada
     public LinkCanais Link { get; }
     public GerenteMemorias Memorias { get; }
 
-    public MemoriasViewModel CriarMemoriasViewModel() => new(Memorias, Copia, Sessao, Chaves, Estado, Tela, Relogio);
+    /// <summary>Os Setups (só com <c>setups: true</c>).</summary>
+    public GerenteSetups? Setups { get; }
+
+    public SalvarViewModel CriarSalvarViewModel() => new(Setups!, Estado, Link, Tela, Relogio);
+
+    public SetupViewModel CriarSetupViewModel() => new(Setups!, Sessao, Tela, Relogio);
+
+    public MemoriasViewModel CriarMemoriasViewModel(SalvarViewModel? salvar = null) =>
+        new(Setups!, Memorias, Copia, Sessao, Chaves, Estado, salvar ?? CriarSalvarViewModel(), Tela, Relogio);
 
     public LinkViewModel CriarLinkViewModel() => new(Link, Sessao, Chaves, Estado, Tela, Relogio);
 
@@ -120,9 +139,21 @@ internal sealed class Bancada
         await Copia.Carregada;
         await Link.Carregada;
         await Presets.Carregada;
+        if (Setups is not null)
+            await Setups.Carregada;
         await Sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, Sessao.Estado);
         await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento);
+        if (Setups is not null)
+        {
+            // A conferência pode mutar (os ecos andam no relógio falso).
+            for (var i = 0; i < 3000 && !Setups.Conferido; i++)
+            {
+                Relogio.Avancar(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(1);
+            }
+            Assert.True(Setups.Conferido, "a conferência do Setup não terminou");
+        }
         await Tela.EsvaziarAsync();
     }
 
@@ -155,14 +186,17 @@ internal sealed class Bancada
         Simulador.Escritas.Count(e => e.StartsWith(prefixo, StringComparison.Ordinal));
 
     /// <summary>
-    /// Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo, os
-    /// comandos 240, 241 e 23N permitidos e o <c>*202*0*</c> (o gerador desliga por segurança
-    /// quando uma leitura não traz o 202: história 7a, regra 2).
+    /// Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo, o
+    /// 241 e o <c>*202*0*</c> (o gerador desliga por segurança quando uma leitura não traz o 202:
+    /// história 7a, regra 2). Nenhum 240 nem 23N (história 8c).
     /// </summary>
-    public void ConferirSoAudio() =>
+    public void ConferirSoAudio()
+    {
+        Assert.DoesNotContain(Simulador.Escritas, e => e.StartsWith("*240*", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
         Assert.All(Simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
                         || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador, e));
+    }
 }
 
 /// <summary>O controle de um parâmetro contra o processador simulado (história 5).</summary>

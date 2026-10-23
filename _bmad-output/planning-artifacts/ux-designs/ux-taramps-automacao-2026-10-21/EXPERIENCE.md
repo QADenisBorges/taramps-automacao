@@ -131,7 +131,7 @@ Ao conectar, depois da senha e da leitura completa, o app **confere o Setup** (C
 | Calibração não bate | **Muta** e abre a tela **Setup em dúvida**. |
 | Os 4 canais ainda mutados por uma dúvida que não terminou | Volta à tela **Setup em dúvida** (estado **Dúvida interrompida**). |
 
-[NOTE FOR UX] No aparelho, o equilíbrio L/R vem somado ao caráter (ganho e limitador finais). Falta decidir, na 8c, como a conferência o separa.
+**O equilíbrio L/R na conferência** (decisão da história 8c): no aparelho, o equilíbrio vem somado ao caráter (ganho e limitador finais), e não há como lê-lo à parte. Por isso a calibração confere **sem o equilíbrio**; o equilíbrio entra na comparação do **caráter** (o final lido contra a memória ativa mais o equilíbrio do Setup). Se ele mudou, o caso cai em **Som diferente da memória ativa** (sem mutar), com **Reaplicar**.
 
 **O mudo da dúvida** é o mute do aparelho nos **4 canais** (MAPA, comando `100`). Ele fica no aparelho até o Denis decidir, mesmo se o app fechar ou a conexão cair. Sem o celular, o mudo sai pelo app da Taramps. Durante a dúvida, **a IA fica bloqueada**.
 

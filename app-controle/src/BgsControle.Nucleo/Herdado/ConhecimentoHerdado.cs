@@ -3,6 +3,7 @@ using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Presets;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Nucleo.Herdado;
 
@@ -16,9 +17,11 @@ public sealed record NotaMemoriaHerdada(int Numero, string NomeNoPrototipo, stri
 public sealed record SecaoHerdada(string Titulo, IReadOnlyList<string> Linhas);
 
 /// <summary>
-/// O conhecimento que os protótipos deixaram (CAP-6), embutido no app: as notas das 3 memórias, o
-/// preset herdado FILME (a leitura de 18/10) e as seções de texto de <c>conhecimento-herdado.md</c>.
-/// Está sempre presente: não depende de arquivo do usuário nem de digitar nada.
+/// O conhecimento que os protótipos deixaram (CAP-6), embutido no app: as notas das 3 memórias do
+/// aparelho, a leitura da FILME de 18/10 (o preset herdado FILME, até a história 8d, e a mesma
+/// leitura dividida em três camadas: o Setup "Casa 2.1", a memória FILME e as 15 bandas do
+/// "Cinema") e as seções de texto de <c>conhecimento-herdado.md</c>. Está sempre presente: não
+/// depende de arquivo do usuário nem de digitar nada.
 /// </summary>
 public static class ConhecimentoHerdado
 {
@@ -30,7 +33,41 @@ public static class ConhecimentoHerdado
     /// <summary>O recurso embutido: as respostas cruas da leitura completa de 18/10/2026.</summary>
     internal const string RecursoFilme = "leitura-2026-10-18_2145.json";
 
+    /// <summary>O id fixo do Setup herdado "Casa 2.1".</summary>
+    public const string IdSetupCasa = "herdado-setup-casa-2-1";
+
+    public const string NomeSetupCasa = "Casa 2.1";
+
+    /// <summary>O id fixo da memória do celular herdada FILME (no Setup "Casa 2.1").</summary>
+    public const string IdMemoriaFilme = "herdado-memoria-filme";
+
+    public const string NomeMemoriaFilme = "FILME";
+
+    /// <summary>O nome do preset de 15 bandas herdado (a 8d o cria a partir de <see cref="BandasCinema"/>).</summary>
+    public const string NomeCinema = "Cinema";
+
+    /// <summary>O equilíbrio do Casa 2.1: a JBL R (saída 2) 3 dB abaixo no ganho e no limiter.</summary>
+    public static Equilibrio EquilibrioCasa { get; } = new(0m, 0m, -3.0m, -3.0m);
+
+    public const string NotaSetupCasa =
+        "A calibração da FILME de 18/10: atrasos L 0, R 100 cm, sub 80 cm; fase do sub 180°; JBL com corte LR24 em 150 Hz; "
+        + "sub com passa-alta BT24 em 40 Hz e passa-baixa LR24 em 150 Hz; rotas 1 = B e 2 = A; equilíbrio: R −3 dB no ganho e no limiter.";
+
+    public const string NotaMemoriaFilme =
+        "O caráter da FILME de 18/10: ganhos L +10, R +10 (no aparelho, +7 com o equilíbrio), sub +6; limiter JBL −15, sub −12; "
+        + "ataque 50 ms, liberação 200 ms; EQ de saída JBL 2 kHz +2,5 (Q 0,7) e sub 45 Hz +3 (Q 0,7).";
+
+    public const string NotaCinema =
+        "As 15 bandas da FILME de 18/10: 160 Hz +1, 400 Hz −1, 4 kHz −1, 6,3 kHz −2, 10 kHz +2, 16 kHz +2; o resto 0.";
+
     private static readonly Lazy<Preset> Filme = new(LerFilme);
+    private static readonly Lazy<Setup> Casa = new(() => new Setup(
+        IdSetupCasa, NomeSetupCasa, PresetFilme.Quando, Da(Camada.Calibracao), EquilibrioCasa,
+        Link12: false, Link34: false, Herdado: true, Nota: NotaSetupCasa));
+    private static readonly Lazy<MemoriaCelular> MemoriaFilmeHerdada = new(() => new MemoriaCelular(
+        IdMemoriaFilme, IdSetupCasa, NomeMemoriaFilme, PresetFilme.Quando, Camadas.Separar(Da(Camada.Carater), EquilibrioCasa),
+        Herdado: true, Nota: NotaMemoriaFilme));
+    private static readonly Lazy<IReadOnlyList<ValorCopiado>> Cinema = new(() => Da(Camada.Bandas));
 
     private static readonly IReadOnlyList<NotaMemoriaHerdada> Notas =
     [
@@ -55,6 +92,22 @@ public static class ConhecimentoHerdado
 
     /// <summary>Os presets herdados, que vêm sempre primeiro na lista e não mudam.</summary>
     public static IReadOnlyList<Preset> Presets => [PresetFilme];
+
+    /// <summary>O Setup herdado "Casa 2.1": a calibração da leitura de 18/10, o equilíbrio R −3 e o link desligado.</summary>
+    public static Setup SetupCasa => Casa.Value;
+
+    /// <summary>A memória do celular herdada FILME: o caráter da leitura de 18/10 sem o equilíbrio (R +10 e −15).</summary>
+    public static MemoriaCelular MemoriaFilme => MemoriaFilmeHerdada.Value;
+
+    /// <summary>As 15 bandas e o preset de EQ do aparelho da leitura de 18/10: o "Cinema" (para a história 8d).</summary>
+    public static IReadOnlyList<ValorCopiado> BandasCinema => Cinema.Value;
+
+    /// <summary>Os valores da leitura de 18/10 na camada, na ordem da leitura.</summary>
+    private static IReadOnlyList<ValorCopiado> Da(Camada camada)
+    {
+        var codigos = Camadas.Consultas(camada).Select(c => (c.Parametro.Codigo, c.Indice)).ToHashSet();
+        return PresetFilme.Valores.Where(v => codigos.Contains((v.Codigo, v.Indice))).ToArray();
+    }
 
     /// <summary>As seções de texto, em português, na ordem do arquivo de conhecimento herdado.</summary>
     public static IReadOnlyList<SecaoHerdada> Secoes { get; } =
@@ -84,6 +137,14 @@ public static class ConhecimentoHerdado
             "FILME, EQ global: 160 Hz +1, 400 Hz −1, 4 kHz −1, 6,3 kHz −2, 10 kHz +2, 16 kHz +2.",
             "FILME, sub: fase 180°, passa-alta 40 Hz BT24, passa-baixa 150 Hz LR24. JBL: corte LR24 em 150 Hz.",
             "O nome que o aparelho tem hoje pode ser outro; o selo vale pela posição da memória.",
+        ]),
+        new("A FILME em três camadas",
+        [
+            "A leitura de 18/10 entra no app dividida em três: o Setup \"Casa 2.1\" (a calibração), a memória FILME (o caráter) e o preset \"Cinema\" (as 15 bandas).",
+            "Casa 2.1: atrasos L 0, R 100 cm, sub 80 cm; fase do sub 180°; JBL com corte LR24 em 150 Hz; sub com passa-alta BT24 em 40 Hz e passa-baixa LR24 em 150 Hz; rotas 1 = B e 2 = A; equilíbrio: R −3 dB no ganho e no limiter.",
+            "FILME: ganhos L +10, sub +6; limiter JBL −15, sub −12; ataque 50 ms, liberação 200 ms; EQ de saída JBL 2 kHz +2,5 (Q 0,7) e sub 45 Hz +3 (Q 0,7).",
+            "Cinema: 160 Hz +1, 400 Hz −1, 4 kHz −1, 6,3 kHz −2, 10 kHz +2, 16 kHz +2; o resto 0.",
+            "Ganho e limiter finais = valor da memória + equilíbrio do Setup: a R fica com ganho +7 e limiter −18, como na leitura.",
         ]),
         new("Presets",
         [

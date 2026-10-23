@@ -46,6 +46,18 @@ a senha nova (as duas senhas entram na máscara do log). O `MonitorAparelho` só
 voltímetro (`#005#v#`) e o clip (`#150#bits#`, `#111#v#`); cada clip fica aceso 3 s. Os
 ViewModels são o `AparelhoViewModel` e o `MonitoracaoViewModel`.
 
+Desde a história 8c, o app **não salva nem renomeia** as 3 memórias do aparelho: a trava recusa
+o `*240*` e o `*23N*` em qualquer forma ("comando não liberado nesta versão do app"); o
+`GerenteMemorias` só lê os nomes e carrega (`*241*n*`, chave "Carregar memória do aparelho"). O
+`GerenteSetups` (núcleo `Setups/`) guarda os **Setups** (calibração, equilíbrio L/R e link) e as
+**memórias do celular** (caráter) em `setups.json`, começando pelo herdado: o Setup "Casa 2.1" e a
+memória FILME, a leitura de 18/10 dividida em camadas (`Camadas`). Na primeira leitura de cada
+conexão ele confere a calibração com a do último Setup usado: se não bate, guarda a marca em
+`setup-mudo.json`, muta os 4 canais e espera a escolha (Escolher, Criar Setup novo, Seguir sem
+Setup); a porta da IA recusa todo POST até lá. Aplicar memória, escolher Setup e o "Manter a
+calibração" do Salvar passam pela cópia antes (chave "Aplicar memória do celular"). Os
+ViewModels são o `SetupViewModel`, o `MemoriasViewModel` e o `SalvarViewModel`.
+
 ## Projetos
 
 | Projeto | O que é |

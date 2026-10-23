@@ -55,10 +55,12 @@ public sealed class PresetsViewModelTestes : IDisposable
     // ----------------------------------------------------------------- primeira abertura
 
     [Fact]
-    public void Primeira_abertura_o_FILME_herdado_as_notas_e_as_secoes_estao_la_sem_arquivo_e_sem_digitar_nada()
+    public async Task Primeira_abertura_o_FILME_herdado_as_notas_e_as_secoes_estao_la_sem_arquivo_e_sem_digitar_nada()
     {
+        var b = new Bancada(setups: true);
+        await b.Setups!.Carregada;
         var herdado = new HerdadoViewModel();
-        var memorias = _b.CriarMemoriasViewModel();
+        using var memorias = b.CriarMemoriasViewModel();
 
         // Presets: o FILME herdado primeiro, com selo e nota; nenhum próprio.
         var filme = Assert.Single(_vm.Itens);
@@ -68,29 +70,37 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.Contains("definitiva", filme.Nota);
         Assert.Equal("Guarde o som atual como preset.", _vm.TextoVazio);
 
-        // Memórias: a nota e o selo das 3, pela posição.
-        Assert.All(memorias.Memorias, m => Assert.Equal("HERDADO", m.Selo));
-        Assert.Contains("Aprovada", memorias.Memoria(1).NotaHerdada);
-        Assert.Contains("MUSICA ORIG", memorias.Memoria(2).NotaHerdada);
-        Assert.Contains("precisa ser refeita", memorias.Memoria(2).NotaHerdada);
-        Assert.Contains("definitiva", memorias.Memoria(3).NotaHerdada);
+        // Memórias do celular: a FILME herdada do Casa 2.1, com selo e nota (história 8c).
+        var cartao = Assert.Single(memorias.Cartoes);
+        Assert.Equal("FILME", cartao.Nome);
+        Assert.Equal("HERDADO", cartao.Selo);
+        Assert.Contains("caráter", cartao.Nota);
+        Assert.Equal("Memórias do Casa 2.1", memorias.TituloCelular);
+
+        // Do aparelho: a nota das 3, pela posição, sem selo.
+        Assert.Contains("Aprovada", memorias.Aparelho(1).NotaHerdada);
+        Assert.Contains("MUSICA ORIG", memorias.Aparelho(2).NotaHerdada);
+        Assert.Contains("precisa ser refeita", memorias.Aparelho(2).NotaHerdada);
+        Assert.Contains("definitiva", memorias.Aparelho(3).NotaHerdada);
 
         // As seções de texto.
         Assert.Equal("HERDADO", herdado.Selo);
-        Assert.Equal(7, herdado.Secoes.Count);
+        Assert.Equal(8, herdado.Secoes.Count);
         Assert.NotNull(herdado.Secao("Cuidados com o app da Taramps"));
+        Assert.NotNull(herdado.Secao("A FILME em três camadas"));
         Assert.Equal("MUSICA HIGH", herdado.NotaMemoria(1)!.NomeNoPrototipo);
 
-        Assert.Empty(_b.Simulador.Escritas);
-        Assert.Null(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
-        memorias.Dispose();
+        Assert.Empty(b.Simulador.Escritas);
+        Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
+        Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
     }
 
     [Fact]
-    public async Task Tocar_no_selo_mostra_a_nota_da_memoria_e_nao_manda_nada()
+    public async Task Tocar_na_nota_mostra_a_nota_da_memoria_e_nao_manda_nada()
     {
-        var memorias = _b.CriarMemoriasViewModel();
-        var cartao = memorias.Memoria(2);
+        var b = new Bancada(setups: true);
+        using var memorias = b.CriarMemoriasViewModel();
+        var cartao = memorias.Aparelho(2);
         Assert.False(cartao.NotaVisivel);
 
         await cartao.AlternarNota.ExecutarAsync();
@@ -98,20 +108,19 @@ public sealed class PresetsViewModelTestes : IDisposable
         await cartao.AlternarNota.ExecutarAsync();
         Assert.False(cartao.NotaVisivel);
 
-        Assert.Empty(_b.Simulador.Escritas);
-        memorias.Dispose();
+        Assert.Empty(b.Simulador.Escritas);
     }
 
     [Fact]
-    public async Task O_selo_vale_pela_posicao_mesmo_com_o_nome_de_hoje_diferente()
+    public async Task A_nota_vale_pela_posicao_mesmo_com_o_nome_de_hoje_diferente()
     {
-        var memorias = _b.CriarMemoriasViewModel();
-        await _b.Conectar();
+        var b = new Bancada(setups: true);
+        using var memorias = b.CriarMemoriasViewModel();
+        await b.Conectar();
 
-        Assert.Equal(["SPL", "MUSICA ORIG", "FILME"], memorias.Memorias.Select(m => m.Nome));
-        Assert.Contains("MUSICA HIGH", memorias.Memoria(1).NotaHerdada); // o nome do protótipo, não o de hoje
-        Assert.Equal("HERDADO", memorias.Memoria(1).Selo);
-        memorias.Dispose();
+        Assert.Equal(["SPL", "MUSICA ORIG", "FILME"], memorias.DoAparelho.Select(m => m.Nome));
+        Assert.Contains("MUSICA HIGH", memorias.Aparelho(1).NotaHerdada); // o nome do protótipo, não o de hoje
+        b.ConferirSoAudio();
     }
 
     // ----------------------------------------------------------------- guardar o som atual

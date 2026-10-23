@@ -3,23 +3,112 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>O cartão de uma memória na tela Memórias.</summary>
-public sealed class CartaoMemoriaViewModel : TelaBase
+/// <summary>O cartão de uma memória do celular na tela Memórias: nome, EM USO, selo HERDADO, Aplicar, Renomear e Apagar.</summary>
+public sealed class CartaoMemoriaCelularViewModel : TelaBase
+{
+    private string _nome;
+    private bool _emUso;
+    private bool _notaVisivel;
+
+    internal CartaoMemoriaCelularViewModel(MemoriaCelular memoria, MemoriasViewModel tela, IDespachante despachante, TimeProvider relogio)
+        : base(despachante, relogio)
+    {
+        Id = memoria.Id;
+        _nome = memoria.Nome;
+        Herdado = memoria.Herdado;
+        Nota = memoria.Nota;
+        Aplicar = new Comando(() => tela.AplicarAsync(Id));
+        Renomear = new Comando(() => tela.AbrirRenomear(Id));
+        Apagar = new Comando(() => tela.AbrirApagar(Id));
+        AlternarNota = new Comando(() =>
+        {
+            NotaVisivel = !NotaVisivel;
+        });
+    }
+
+    public string Id { get; }
+
+    public string Nome
+    {
+        get => _nome;
+        internal set
+        {
+            if (_nome == value)
+                return;
+            _nome = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>É a memória em uso (selo EM USO). Apagar fica travado nela.</summary>
+    public bool EmUso
+    {
+        get => _emUso;
+        internal set
+        {
+            if (_emUso == value)
+                return;
+            _emUso = value;
+            Avisar();
+            Avisar(nameof(SeloEmUso));
+            Avisar(nameof(MotivoTravaApagar));
+        }
+    }
+
+    /// <summary>"EM USO" na que toca, ou null.</summary>
+    public string? SeloEmUso => EmUso ? MemoriasViewModel.TextoEmUso : null;
+
+    /// <summary>"Esta memória está em uso." na que toca, ou null.</summary>
+    public string? MotivoTravaApagar => EmUso ? GerenteSetups.MsgMemoriaEmUso : null;
+
+    public bool Herdado { get; }
+
+    /// <summary>O selo HERDADO (a FILME de 18/10), ou null.</summary>
+    public string? Selo => Herdado ? HerdadoViewModel.TextoSelo : null;
+
+    public string? Nota { get; }
+
+    /// <summary>A nota herdada está à mostra (tocar no selo).</summary>
+    public bool NotaVisivel
+    {
+        get => _notaVisivel;
+        private set
+        {
+            if (_notaVisivel == value)
+                return;
+            _notaVisivel = value;
+            Avisar();
+        }
+    }
+
+    public Comando AlternarNota { get; }
+
+    /// <summary>Aplica, sem confirmação (cópia antes, escreve, relê).</summary>
+    public Comando Aplicar { get; }
+
+    /// <summary>Abre o campo do nome (vale no ✓). Não manda nada ao aparelho.</summary>
+    public Comando Renomear { get; }
+
+    /// <summary>Abre a folha "Apagar a X?". Na memória em uso, mostra o motivo.</summary>
+    public Comando Apagar { get; }
+}
+
+/// <summary>Uma das 3 memórias do aparelho, na seção "Do aparelho": o nome lido e só Carregar.</summary>
+public sealed class CartaoMemoriaAparelhoViewModel : TelaBase
 {
     private string _nome = MemoriasViewModel.SemNome;
     private bool _emUso;
     private bool _notaVisivel;
 
-    internal CartaoMemoriaViewModel(int indice, MemoriasViewModel tela, IDespachante despachante, TimeProvider relogio)
+    internal CartaoMemoriaAparelhoViewModel(int indice, MemoriasViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Indice = indice;
         Carregar = new Comando(() => tela.CarregarAsync(indice));
-        SalvarAqui = new Comando(() => tela.AbrirSalvar(indice));
-        Renomear = new Comando(() => tela.AbrirRenomear(indice));
         AlternarNota = new Comando(() =>
         {
             NotaVisivel = !NotaVisivel;
@@ -32,7 +121,8 @@ public sealed class CartaoMemoriaViewModel : TelaBase
     /// <summary>A memória na tela (1 a 3).</summary>
     public int Numero => Indice + 1;
 
-    public string Titulo => $"Memória {Numero}";
+    /// <summary>"Memória 2 do aparelho".</summary>
+    public string Titulo => $"Memória {Numero} do aparelho";
 
     /// <summary>O nome lido do aparelho, ou "—" antes da leitura.</summary>
     public string Nome
@@ -47,7 +137,7 @@ public sealed class CartaoMemoriaViewModel : TelaBase
         }
     }
 
-    /// <summary>É a memória em uso (a última carregada ou salva pelo app).</summary>
+    /// <summary>Carregada por este app nesta conexão (o cartão do Início diz "Memória 2 do aparelho (app da Taramps)").</summary>
     public bool EmUso
     {
         get => _emUso;
@@ -60,27 +150,15 @@ public sealed class CartaoMemoriaViewModel : TelaBase
         }
     }
 
-    /// <summary>Carrega direto, sem confirmação (a cópia antes é guardada).</summary>
+    /// <summary>Carrega (<c>241</c>), sem confirmação, com a cópia antes e a releitura.</summary>
     public Comando Carregar { get; }
 
-    /// <summary>Abre a folha de sobrescrever, com o nome editável.</summary>
-    public Comando SalvarAqui { get; }
-
-    /// <summary>Abre o campo do nome.</summary>
-    public Comando Renomear { get; }
-
-    // ------------------------------------------------------------------ conhecimento herdado (CAP-6)
-
-    /// <summary>A nota herdada desta posição (o nome do protótipo e o que se sabe dela), sempre presente.</summary>
+    /// <summary>A nota herdada desta posição (o nome do protótipo e o que se sabe), sempre presente. Sem selo.</summary>
     public NotaMemoriaHerdada? Herdada => ConhecimentoHerdado.NotaMemoria(Numero);
-
-    /// <summary>O selo HERDADO: a memória tem conhecimento herdado (pela posição, não pelo nome de hoje).</summary>
-    public string? Selo => Herdada is null ? null : HerdadoViewModel.TextoSelo;
 
     /// <summary>"MUSICA ORIG: Versão antiga, precisa ser refeita…", ou null.</summary>
     public string? NotaHerdada => Herdada is { } n ? $"{n.NomeNoPrototipo}: {n.Texto}" : null;
 
-    /// <summary>A nota está à mostra (tocar no selo).</summary>
     public bool NotaVisivel
     {
         get => _notaVisivel;
@@ -93,73 +171,90 @@ public sealed class CartaoMemoriaViewModel : TelaBase
         }
     }
 
-    /// <summary>Tocar no selo mostra ou esconde a nota herdada. Não manda nada ao aparelho.</summary>
+    /// <summary>Mostra ou esconde a nota herdada. Não manda nada ao aparelho.</summary>
     public Comando AlternarNota { get; }
 }
 
 /// <summary>
-/// A tela Memórias (Configurações › Memórias): as 3 memórias com os nomes lidos e a que está em
-/// uso. "Carregar" age direto; "Salvar aqui" abre a folha "Salvar sobre a MUSICA ORIG? A versão
-/// atual some.", com o nome editável, Confirmar ou Cancelar; "Renomear" envia só o nome. Cada ação
-/// fica travada, com o motivo, sem conexão, em modo só leitura ou com a chave desligada. Depois de
-/// uma queda no meio de um carregar, mostra "aplicado pela metade" com Terminar e Voltar à cópia.
+/// A tela Memórias (Configurações › Memórias, EXPERIENCE): os cartões das memórias do celular do
+/// Setup em uso (Aplicar, Renomear, Apagar; selo EM USO e HERDADO), "Criar memória do som atual" (que
+/// abre a folha do Salvar quando o som em uso não é de uma memória do celular) e a seção "Do
+/// aparelho", com as 3 memórias do processador pelos nomes lidos e só Carregar. Sem Setup, as
+/// memórias do celular ficam travadas com "Escolha um Setup para usar as memórias do celular.".
+/// Depois de uma queda no meio de um aplicar ou carregar, mostra "aplicado pela metade" com
+/// Terminar e Voltar à cópia.
 /// </summary>
 public sealed class MemoriasViewModel : TelaBase, IDisposable
 {
     public const string SemNome = "—";
-    public const string AvisoSobrescrever = "A versão atual some.";
+    public const string TextoEmUso = "EM USO";
+    public const string TextoNenhuma = "Nenhuma memória";
+    public const string TextoCriar = "Criar memória do som atual";
+    public const string TituloAparelho = "Do aparelho";
+    public const string LembreteAparelho = "Salvar e renomear estas memórias só no app da Taramps.";
+    public const string AvisoApagar = "A memória e a playlist dela somem.";
     public const string TextoCancelar = "Cancelar";
-    public const string TextoSalvando = "Salvando…";
-    public const string TextoRenomear = "Renomear";
     public const string TituloPelaMetade = "Aplicado pela metade";
     public const string TextoTerminar = "Terminar";
     public const string TextoVoltar = "Voltar à cópia";
     public const string MsgEmAndamento = "Uma operação está em andamento";
     public const string MsgVoltou = "O som voltou à cópia.";
 
-    private readonly GerenteMemorias _gerente;
+    private readonly GerenteSetups _setups;
+    private readonly GerenteMemorias _memorias;
     private readonly CopiaAntes _copia;
     private readonly Sessao _sessao;
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
+    private readonly SalvarViewModel _salvar;
 
+    private IReadOnlyList<CartaoMemoriaCelularViewModel> _cartoes = [];
     private string? _mensagem;
-    private string? _ultimoAvisoGerente;
-    private int? _folha;
-    private string _nomeFolha = "";
-    private string? _erroFolha;
-    private bool _salvando;
-    private int? _renomear;
+    private string? _ultimoAvisoMemorias;
+    private bool _criarAberto;
+    private string _nomeNova = "";
+    private string? _erroNova;
+    private string? _renomear;
     private string _nomeRenomear = "";
     private string? _erroRenomear;
+    private string? _apagar;
     private bool _agindo;
 
     public MemoriasViewModel(
-        GerenteMemorias gerente,
+        GerenteSetups setups,
+        GerenteMemorias memorias,
         CopiaAntes copia,
         Sessao sessao,
         IChaves chaves,
         EstadoAparelho estado,
+        SalvarViewModel salvar,
         IDespachante despachante,
         TimeProvider relogio)
         : base(despachante, relogio)
     {
-        _gerente = gerente;
+        _setups = setups;
+        _memorias = memorias;
         _copia = copia;
         _sessao = sessao;
         _chaves = chaves;
         _estado = estado;
-        Memorias = Enumerable.Range(0, Catalogo.Memorias).Select(n => new CartaoMemoriaViewModel(n, this, despachante, relogio)).ToList();
+        _salvar = salvar;
+        DoAparelho = Enumerable.Range(0, Catalogo.Memorias).Select(n => new CartaoMemoriaAparelhoViewModel(n, this, despachante, relogio)).ToList();
 
-        ConfirmarFolha = new Comando(ConfirmarSalvarAsync);
-        CancelarFolha = new Comando(FecharFolha);
+        AbrirCriar = new Comando(AbrirCriarAsync);
+        ConfirmarCriar = new Comando(ConfirmarCriarAsync);
+        CancelarCriar = new Comando(FecharCriar);
         ConfirmarRenomear = new Comando(ConfirmarRenomearAsync);
         CancelarRenomear = new Comando(FecharRenomear);
+        ConfirmarApagar = new Comando(ConfirmarApagarAsync);
+        CancelarApagar = new Comando(FecharApagar);
+        Reaplicar = new Comando(ReaplicarAsync);
         Terminar = new Comando(TerminarAsync);
         VoltarACopia = new Comando(VoltarAsync);
 
-        _ultimoAvisoGerente = _gerente.Aviso;
-        _gerente.Mudou += AoMudarAlgo;
+        _ultimoAvisoMemorias = _memorias.Aviso;
+        _setups.Mudou += AoMudarAlgo;
+        _memorias.Mudou += AoMudarAlgo;
         _copia.Mudou += AoMudarAlgo;
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
@@ -168,11 +263,34 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         Atualizar();
     }
 
-    public IReadOnlyList<CartaoMemoriaViewModel> Memorias { get; }
+    // ------------------------------------------------------------------ as memórias do celular
 
-    public CartaoMemoriaViewModel Memoria(int numero) => Memorias[numero - 1];
+    /// <summary>O Setup das memórias da lista: o em uso ou, sem ele, o último usado (só para mostrar).</summary>
+    private Setup? SetupDaLista => _setups.SetupEmUso ?? _setups.Setup(_setups.UltimoSetup);
 
-    /// <summary>A última frase: "Memória 2 salva", "Chave desligada", "Use até 12 letras…".</summary>
+    /// <summary>"Memórias do Casa 2.1", ou null.</summary>
+    public string? TituloCelular => SetupDaLista is { } s ? $"Memórias do {s.Nome}" : null;
+
+    /// <summary>Os cartões das memórias do celular do Setup (na ordem em que foram criadas).</summary>
+    public IReadOnlyList<CartaoMemoriaCelularViewModel> Cartoes => _cartoes;
+
+    /// <summary>O cartão pelo nome (sem distinguir maiúsculas), ou null.</summary>
+    public CartaoMemoriaCelularViewModel? Cartao(string nome) =>
+        _cartoes.FirstOrDefault(c => string.Equals(c.Nome, nome, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>"Nenhuma memória" quando o Setup não tem memórias; senão null.</summary>
+    public string? TextoVazio => _cartoes.Count == 0 ? TextoNenhuma : null;
+
+    /// <summary>"Som diferente da FILME" quando o caráter lido difere da memória ativa; senão null.</summary>
+    public string? AvisoSomDiferente =>
+        _setups.Estado == EstadoConferencia.SomDiferente && _setups.Ativa(_setups.SetupEmUso?.Id) is { } ativa
+            ? GerenteSetups.MsgSomDiferente(ativa.Nome)
+            : null;
+
+    /// <summary>Reaplica a memória ativa (o botão do aviso "Som diferente").</summary>
+    public Comando Reaplicar { get; }
+
+    /// <summary>A última frase: "Memória MUSICA ORIG criada no Casa 2.1.", "Chave desligada"…</summary>
     public string? Mensagem
     {
         get => _mensagem;
@@ -185,21 +303,37 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         }
     }
 
+    public bool Ocupado => _agindo || _setups.Ocupado || _memorias.Ocupado || _copia.EmAndamento;
+
     // ------------------------------------------------------------------ travas
 
-    /// <summary>Por que "Carregar" está travado, ou null.</summary>
-    public string? MotivoTravaCarregar => MotivoTrava(Chave.CarregarMemoria);
+    /// <summary>Por que as memórias do celular não podem ser usadas agora (sem Setup, dúvida), ou null.</summary>
+    public string? MotivoTravaCelular
+    {
+        get
+        {
+            if (_setups.EmEscolha)
+                return GerenteSetups.MsgDuvida;
+            if (_setups.SetupEmUso is null)
+                return GerenteSetups.MsgSemSetup;
+            return null;
+        }
+    }
 
-    /// <summary>Por que "Salvar aqui" e "Renomear" estão travados, ou null.</summary>
-    public string? MotivoTravaSalvar => MotivoTrava(Chave.SalvarMemoria);
+    /// <summary>Por que "Aplicar" está travado, ou null.</summary>
+    public string? MotivoTravaAplicar => MotivoTravaCelular ?? MotivoTravaAparelho(Chave.AplicarMemoriaCelular);
 
+    /// <summary>Por que "Criar memória do som atual" está travado, ou null. Não precisa de chave.</summary>
+    public string? MotivoTravaCriar => MotivoTravaCelular ?? MotivoTravaLeitura();
+
+    /// <summary>Por que "Carregar" (do aparelho) está travado, ou null.</summary>
+    public string? MotivoTravaCarregar => _setups.EmEscolha ? GerenteSetups.MsgDuvida : MotivoTravaAparelho(Chave.CarregarMemoria);
+
+    public bool PodeAplicar => MotivoTravaAplicar is null;
+    public bool PodeCriar => MotivoTravaCriar is null;
     public bool PodeCarregar => MotivoTravaCarregar is null;
-    public bool PodeSalvar => MotivoTravaSalvar is null;
 
-    /// <summary>Uma operação de memória (ou o Voltar à cópia) está andando.</summary>
-    public bool Ocupado => _agindo || _gerente.Ocupado || _copia.EmAndamento;
-
-    private string? MotivoTrava(Chave chave)
+    private string? MotivoTravaAparelho(Chave chave)
     {
         if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
             return ControleParametroViewModel.MsgSemConexao;
@@ -207,6 +341,17 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
             return ControleParametroViewModel.MsgSoLeitura;
         if (!_chaves.Ligada(chave))
             return ControleParametroViewModel.MsgChaveDesligada;
+        if (MotivoTravaLeitura() is { } leitura)
+            return leitura;
+        if (_copia.PelaMetade is not null)
+            return CopiaAntes.MsgPelaMetadePendente;
+        return null;
+    }
+
+    private string? MotivoTravaLeitura()
+    {
+        if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
+            return ControleParametroViewModel.MsgSemConexao;
         if (_estado.Lendo)
             return ControleParametroViewModel.MsgLendo;
         if (!_estado.Pronto)
@@ -216,9 +361,30 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         return null;
     }
 
-    // ------------------------------------------------------------------ carregar
+    // ------------------------------------------------------------------ aplicar e carregar
 
-    /// <summary>Carregar: age direto, sem confirmação. Travado, nada sai e o motivo aparece.</summary>
+    /// <summary>Aplicar: age direto, sem confirmação. Travado, nada sai e o motivo aparece.</summary>
+    public async Task AplicarAsync(string id)
+    {
+        if (MotivoTravaAplicar is { } motivo)
+        {
+            Mensagem = motivo;
+            return;
+        }
+        await Agir(async () => (await _setups.AplicarAsync(id)).Mensagem);
+    }
+
+    private async Task ReaplicarAsync()
+    {
+        if (MotivoTravaAplicar is { } motivo)
+        {
+            Mensagem = motivo;
+            return;
+        }
+        await Agir(async () => (await _setups.ReaplicarAsync()).Mensagem);
+    }
+
+    /// <summary>Carregar uma memória do aparelho: age direto, sem confirmação.</summary>
     public async Task CarregarAsync(int indice)
     {
         if (MotivoTravaCarregar is { } motivo)
@@ -226,144 +392,109 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
             Mensagem = motivo;
             return;
         }
-        await Agir(async () =>
-        {
-            var r = await _gerente.CarregarAsync(indice);
-            return r.Mensagem;
-        });
+        await Agir(async () => (await _memorias.CarregarAsync(indice)).Mensagem);
     }
 
-    // ------------------------------------------------------------------ folha de sobrescrever
+    // ------------------------------------------------------------------ criar memória do som atual
 
-    public bool FolhaAberta => _folha is not null;
+    public bool CriarAberto => _criarAberto;
 
-    /// <summary>"Salvar sobre a MUSICA ORIG?"</summary>
-    public string? FolhaTitulo => _folha is { } n ? $"Salvar sobre a {Alvo(n)}?" : null;
-
-    /// <summary>"A versão atual some."</summary>
-    public string? FolhaAviso => _folha is null ? null : AvisoSobrescrever;
-
-    /// <summary>O botão branco: "Salvar sobre a MUSICA ORIG", ou "Salvando…" até o fim do salvar.</summary>
-    public string? TextoConfirmarFolha => _folha is not { } n ? null : _salvando ? TextoSalvando : $"Salvar sobre a {Alvo(n)}";
-
-    public bool Salvando => _salvando;
-
-    /// <summary>O nome editável (vai em maiúsculas).</summary>
-    public string NomeFolha
+    public string NomeNova
     {
-        get => _nomeFolha;
+        get => _nomeNova;
         set
         {
-            if (_nomeFolha == value)
+            if (_nomeNova == value)
                 return;
-            _nomeFolha = value;
+            _nomeNova = value;
             Avisar();
         }
     }
 
-    /// <summary>"Use até 12 letras, números, espaço ou _", ou null.</summary>
-    public string? ErroFolha
+    public string? ErroNova
     {
-        get => _erroFolha;
+        get => _erroNova;
         private set
         {
-            if (_erroFolha == value)
+            if (_erroNova == value)
                 return;
-            _erroFolha = value;
+            _erroNova = value;
             Avisar();
         }
     }
 
     /// <summary>
-    /// O botão branco: salva (240 e depois o nome). "Memória 2 salva" com a resposta ao 240;
-    /// "Memória 2 enviada (o aparelho não confirma o salvar)" sem ela. Se falhar, a folha fica
-    /// aberta com o erro e o nome digitado.
+    /// "Criar memória do som atual": abre o campo do nome. Com uma memória do aparelho (ou o som do
+    /// aparelho) em uso, abre a folha do Salvar (a memória nova sai de lá). Travado, só o motivo.
     /// </summary>
-    public Comando ConfirmarFolha { get; }
+    public Comando AbrirCriar { get; }
 
-    /// <summary>O botão contornado, o véu ou Voltar: nada sai.</summary>
-    public Comando CancelarFolha { get; }
+    /// <summary>O ✓ do nome: cria a memória, que vira a em uso.</summary>
+    public Comando ConfirmarCriar { get; }
 
-    /// <summary>"Salvar aqui": abre a folha de sobrescrever com o nome atual. Travado, só o motivo.</summary>
-    public void AbrirSalvar(int indice)
+    public Comando CancelarCriar { get; }
+
+    private async Task AbrirCriarAsync()
     {
-        if (MotivoTravaSalvar is { } motivo)
+        if (MotivoTravaCriar is { } motivo)
         {
             Mensagem = motivo;
             return;
         }
+        if (_setups.EmUso.Tipo is TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho)
+        {
+            await _salvar.Abrir.ExecutarAsync();
+            return;
+        }
         FecharRenomear();
-        _folha = indice;
-        NomeFolha = _gerente.Nome(indice) ?? "";
-        ErroFolha = null;
+        FecharApagar();
+        _criarAberto = true;
+        NomeNova = "";
+        ErroNova = null;
         Mensagem = null;
-        AvisarFolha();
+        Avisar(nameof(CriarAberto));
     }
 
-    private async Task ConfirmarSalvarAsync()
+    private async Task ConfirmarCriarAsync()
     {
-        if (_folha is not { } n || _salvando)
+        if (!_criarAberto)
             return;
-        if (Catalogo.NormalizarNomeMemoria(NomeFolha) is not { } nome)
-        {
-            ErroFolha = GerenteMemorias.MsgNomeInvalido; // a folha fica aberta; nada sai
-            return;
-        }
-        if (MotivoTravaSalvar is { } motivo)
-        {
-            ErroFolha = motivo;
-            return;
-        }
-        ErroFolha = null;
-        _salvando = true;
-        AvisarFolha();
-        ResultadoMemoria? resultado = null;
+        ResultadoSetup? resultado = null;
         await Agir(async () =>
         {
-            resultado = await _gerente.SalvarAsync(n, nome);
+            resultado = await _setups.CriarMemoriaAsync(NomeNova);
             return resultado.Mensagem;
         }, depois: () =>
         {
-            _salvando = false;
             if (resultado is { Ok: true })
-                FecharFolha();
+                FecharCriar();
             else
-            {
-                // A folha fica aberta, com o nome digitado e o erro, para tentar de novo.
-                _erroFolha = resultado?.Mensagem ?? resultado?.Motivo ?? "Não salvou.";
-                Avisar(nameof(ErroFolha));
-                AvisarFolha();
-            }
+                _erroNova = resultado?.Mensagem; // o campo fica, com o nome digitado
+            Avisar(nameof(ErroNova));
         });
+        if (resultado is { PedeFolhaSalvar: true })
+        {
+            NaTela(FecharCriar);
+            await _salvar.Abrir.ExecutarAsync();
+        }
     }
 
-    private void FecharFolha()
+    private void FecharCriar()
     {
-        if (_salvando)
-            return; // o salvar já saiu: a folha fecha quando ele termina
-        _folha = null;
-        _nomeFolha = "";
-        _erroFolha = null;
-        Avisar(nameof(NomeFolha));
-        Avisar(nameof(ErroFolha));
-        AvisarFolha();
-    }
-
-    private void AvisarFolha()
-    {
-        Avisar(nameof(FolhaAberta));
-        Avisar(nameof(FolhaTitulo));
-        Avisar(nameof(FolhaAviso));
-        Avisar(nameof(TextoConfirmarFolha));
-        Avisar(nameof(Salvando));
+        _criarAberto = false;
+        _nomeNova = "";
+        _erroNova = null;
+        Avisar(nameof(CriarAberto));
+        Avisar(nameof(NomeNova));
+        Avisar(nameof(ErroNova));
     }
 
     // ------------------------------------------------------------------ renomear
 
     public bool RenomearAberto => _renomear is not null;
 
-    /// <summary>"Renomear a memória 2".</summary>
-    public string? RenomearTitulo => _renomear is { } n ? $"{TextoRenomear} a memória {n + 1}" : null;
+    /// <summary>"Renomear a FILME".</summary>
+    public string? RenomearTitulo => _renomear is { } id && _setups.Memoria(id) is { } m ? $"Renomear a {m.Nome}" : null;
 
     public string NomeRenomear
     {
@@ -389,53 +520,41 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>Envia só o nome.</summary>
     public Comando ConfirmarRenomear { get; }
 
     public Comando CancelarRenomear { get; }
 
-    /// <summary>"Renomear": abre o campo do nome. Travado, só o motivo.</summary>
-    public void AbrirRenomear(int indice)
+    /// <summary>"Renomear": abre o campo com o nome atual. Não manda nada ao aparelho.</summary>
+    public void AbrirRenomear(string id)
     {
-        if (MotivoTravaSalvar is { } motivo)
-        {
-            Mensagem = motivo;
+        if (_setups.Memoria(id) is not { } memoria)
             return;
-        }
-        FecharFolha();
-        _renomear = indice;
-        NomeRenomear = _gerente.Nome(indice) ?? "";
+        FecharCriar();
+        FecharApagar();
+        _renomear = id;
+        NomeRenomear = memoria.Nome;
         ErroRenomear = null;
         Mensagem = null;
-        AvisarRenomear();
+        Avisar(nameof(RenomearAberto));
+        Avisar(nameof(RenomearTitulo));
     }
 
     private async Task ConfirmarRenomearAsync()
     {
-        if (_renomear is not { } n)
+        if (_renomear is not { } id)
             return;
-        if (Catalogo.NormalizarNomeMemoria(NomeRenomear) is not { } nome)
-        {
-            ErroRenomear = GerenteMemorias.MsgNomeInvalido;
-            return;
-        }
-        if (MotivoTravaSalvar is { } motivo)
-        {
-            ErroRenomear = motivo;
-            return;
-        }
-        ErroRenomear = null;
-        ResultadoMemoria? resultado = null;
+        ResultadoSetup? resultado = null;
         await Agir(async () =>
         {
-            resultado = await _gerente.RenomearAsync(n, nome);
+            resultado = await _setups.RenomearMemoriaAsync(id, NomeRenomear);
             return resultado.Mensagem;
         }, depois: () =>
         {
             if (resultado is { Ok: true })
                 FecharRenomear();
             else
-                ErroRenomear = resultado?.Mensagem ?? resultado?.Motivo; // o campo fica, com o nome digitado
+                _erroRenomear = resultado?.Mensagem;
+            Avisar(nameof(ErroRenomear));
         });
     }
 
@@ -444,23 +563,81 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         _renomear = null;
         _nomeRenomear = "";
         _erroRenomear = null;
-        Avisar(nameof(NomeRenomear));
-        Avisar(nameof(ErroRenomear));
-        AvisarRenomear();
-    }
-
-    private void AvisarRenomear()
-    {
         Avisar(nameof(RenomearAberto));
         Avisar(nameof(RenomearTitulo));
+        Avisar(nameof(NomeRenomear));
+        Avisar(nameof(ErroRenomear));
     }
+
+    // ------------------------------------------------------------------ apagar
+
+    public bool ApagarAberto => _apagar is not null;
+
+    /// <summary>"Apagar a MUSICA ORIG?"</summary>
+    public string? ApagarTitulo => _apagar is { } id && _setups.Memoria(id) is { } m ? $"Apagar a {m.Nome}?" : null;
+
+    /// <summary>"A memória e a playlist dela somem."</summary>
+    public string? ApagarAviso => ApagarAberto ? AvisoApagar : null;
+
+    public Comando ConfirmarApagar { get; }
+
+    public Comando CancelarApagar { get; }
+
+    /// <summary>"Apagar": abre a folha. Na memória em uso, só o motivo ("Esta memória está em uso.").</summary>
+    public void AbrirApagar(string id)
+    {
+        if (_setups.Memoria(id) is null)
+            return;
+        if (_setups.EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso && uso.IdMemoria == id)
+        {
+            Mensagem = GerenteSetups.MsgMemoriaEmUso;
+            return;
+        }
+        FecharCriar();
+        FecharRenomear();
+        _apagar = id;
+        Mensagem = null;
+        AvisarApagar();
+    }
+
+    private async Task ConfirmarApagarAsync()
+    {
+        if (_apagar is not { } id)
+            return;
+        ResultadoSetup? resultado = null;
+        await Agir(async () =>
+        {
+            resultado = await _setups.ApagarMemoriaAsync(id);
+            return resultado.Mensagem;
+        }, depois: FecharApagar);
+    }
+
+    private void FecharApagar()
+    {
+        _apagar = null;
+        AvisarApagar();
+    }
+
+    private void AvisarApagar()
+    {
+        Avisar(nameof(ApagarAberto));
+        Avisar(nameof(ApagarTitulo));
+        Avisar(nameof(ApagarAviso));
+    }
+
+    // ------------------------------------------------------------------ do aparelho
+
+    /// <summary>As 3 memórias do processador, pelos nomes lidos: só Carregar.</summary>
+    public IReadOnlyList<CartaoMemoriaAparelhoViewModel> DoAparelho { get; }
+
+    /// <summary>A memória do aparelho pela posição na tela (1 a 3).</summary>
+    public CartaoMemoriaAparelhoViewModel Aparelho(int numero) => DoAparelho[numero - 1];
 
     // ------------------------------------------------------------------ aplicado pela metade
 
-    /// <summary>A folha "Aplicado pela metade" está aberta.</summary>
     public bool PelaMetade => _copia.PelaMetade is not null;
 
-    /// <summary>"Carregar a memória 3 (FILME) caiu no meio."</summary>
+    /// <summary>"Aplicar a memória FILME caiu no meio."</summary>
     public string? TextoPelaMetade => _copia.PelaMetade is { } op ? $"{op.Descricao} caiu no meio." : null;
 
     /// <summary>O botão branco: refaz a operação.</summary>
@@ -473,10 +650,12 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     {
         if (!PelaMetade)
             return;
+        // O aviso é do gerente dono da operação que caiu (o carregar é do GerenteMemorias; os outros, dos Setups).
+        var doAparelho = _copia.PelaMetade?.Tipo == GerenteMemorias.TipoCarregar;
         await Agir(async () =>
         {
             var r = await _copia.TerminarAsync();
-            return r.Ok ? _gerente.Aviso : r.Motivo;
+            return r.Ok ? (doAparelho ? _memorias.Aviso : _setups.Aviso) : r.Motivo;
         });
     }
 
@@ -502,7 +681,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     private async Task Agir(Func<Task<string?>> acao, Action? depois = null)
     {
         _agindo = true;
-        Atualizar();
+        NaTela(() => Avisar(nameof(Ocupado)));
         string? frase;
         try
         {
@@ -519,7 +698,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
             {
                 _agindo = false;
                 depois?.Invoke();
-                _ultimoAvisoGerente = _gerente.Aviso;
+                _ultimoAvisoMemorias = _memorias.Aviso;
                 Mensagem = frase;
                 Atualizar();
             }
@@ -531,8 +710,6 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         await feito.Task;
     }
 
-    private string Alvo(int n) => _gerente.Nome(n) is { Length: > 0 } nome ? nome : $"memória {n + 1}";
-
     private static string? Frase(string? motivo) =>
         string.IsNullOrEmpty(motivo) ? null : char.ToUpperInvariant(motivo[0]) + motivo[1..];
 
@@ -540,7 +717,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
 
     private void AoMudarChave(Chave chave)
     {
-        if (chave is Chave.CarregarMemoria or Chave.SalvarMemoria or Chave.AjustesAudio)
+        if (chave is Chave.CarregarMemoria or Chave.AplicarMemoriaCelular or Chave.AjustesAudio)
             NaTela(Atualizar);
     }
 
@@ -552,35 +729,57 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
 
     private void Atualizar()
     {
-        var emUso = _gerente.EmUso;
-        foreach (var m in Memorias)
+        var setup = SetupDaLista;
+        var memorias = _setups.MemoriasDe(setup?.Id);
+        var emUso = _setups.EmUso;
+        var porId = _cartoes.ToDictionary(c => c.Id);
+        var novos = memorias.Select(m => porId.GetValueOrDefault(m.Id) ?? new CartaoMemoriaCelularViewModel(m, this, Despachante, Relogio)).ToArray();
+        foreach (var (cartao, memoria) in novos.Zip(memorias))
         {
-            m.Nome = _gerente.Nome(m.Indice) is { Length: > 0 } nome ? nome : SemNome;
-            m.EmUso = emUso == m.Indice;
+            cartao.Nome = memoria.Nome;
+            cartao.EmUso = emUso.Tipo == TipoSomEmUso.MemoriaCelular && emUso.IdMemoria == memoria.Id;
+        }
+        var mudouLista = !novos.SequenceEqual(_cartoes);
+        _cartoes = novos;
+
+        foreach (var m in DoAparelho)
+        {
+            m.Nome = _memorias.Nome(m.Indice) is { Length: > 0 } nome ? nome : SemNome;
+            m.EmUso = emUso.Tipo == TipoSomEmUso.MemoriaAparelho && emUso.MemoriaAparelho == m.Indice;
         }
 
-        // Um aviso novo do núcleo (o resultado de um salvar que caiu, por exemplo) aparece.
-        var aviso = _gerente.Aviso;
-        if (aviso != _ultimoAvisoGerente)
+        // Um aviso novo do carregar (o resultado de um Terminar, por exemplo) aparece.
+        var aviso = _memorias.Aviso;
+        if (aviso != _ultimoAvisoMemorias)
         {
-            _ultimoAvisoGerente = aviso;
+            _ultimoAvisoMemorias = aviso;
             if (aviso is not null)
                 Mensagem = aviso;
         }
 
+        if (mudouLista)
+            Avisar(nameof(Cartoes));
+        Avisar(nameof(TituloCelular));
+        Avisar(nameof(TextoVazio));
+        Avisar(nameof(AvisoSomDiferente));
+        Avisar(nameof(MotivoTravaCelular));
+        Avisar(nameof(MotivoTravaAplicar));
+        Avisar(nameof(MotivoTravaCriar));
         Avisar(nameof(MotivoTravaCarregar));
-        Avisar(nameof(MotivoTravaSalvar));
+        Avisar(nameof(PodeAplicar));
+        Avisar(nameof(PodeCriar));
         Avisar(nameof(PodeCarregar));
-        Avisar(nameof(PodeSalvar));
         Avisar(nameof(Ocupado));
         Avisar(nameof(PelaMetade));
         Avisar(nameof(TextoPelaMetade));
-        AvisarFolha();
+        Avisar(nameof(RenomearTitulo));
+        Avisar(nameof(ApagarTitulo));
     }
 
     public void Dispose()
     {
-        _gerente.Mudou -= AoMudarAlgo;
+        _setups.Mudou -= AoMudarAlgo;
+        _memorias.Mudou -= AoMudarAlgo;
         _copia.Mudou -= AoMudarAlgo;
         _sessao.Mudou -= AoMudarAlgo;
         _chaves.Mudou -= AoMudarChave;

@@ -1,0 +1,1986 @@
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Herdado;
+using BgsControle.Nucleo.Leitura;
+using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Presets;
+using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Uso;
+
+namespace BgsControle.Nucleo.Setups;
+
+/// <summary>O uso das memórias de um Setup: as usadas por último (a primeira é a ativa) e os 3 botões fixos.</summary>
+public sealed record UsoDoSetup(IReadOnlyList<string> Recentes, IReadOnlyList<string?> Botoes)
+{
+    public static UsoDoSetup Vazio { get; } = new([], [null, null, null]);
+}
+
+/// <summary>O que fica em <c>setups.json</c>: os Setups, as memórias do celular, o último Setup usado e o uso de cada Setup.</summary>
+public sealed record DadosSetups(
+    IReadOnlyList<Setup> Setups,
+    IReadOnlyList<MemoriaCelular> Memorias,
+    string? UltimoSetup,
+    IReadOnlyDictionary<string, UsoDoSetup> Uso)
+{
+    public UsoDoSetup UsoDe(string idSetup) => Uso.GetValueOrDefault(idSetup) ?? UsoDoSetup.Vazio;
+}
+
+/// <summary>
+/// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5). Guarda tudo em
+/// <c>setups.json</c> (formato 1) e a marca do mudo da dúvida em <c>setup-mudo.json</c>; sem
+/// arquivo (ou com ele estragado), começa com o herdado: o Setup "Casa 2.1" e a memória FILME.
+/// <list type="bullet">
+/// <item><b>Conferência:</b> na primeira leitura completa de cada conexão nova (depois da regra 2 do
+/// gerador), compara a calibração lida com a do último Setup usado. Bate: "Setup confere", ou "som
+/// diferente" se só o caráter difere da memória ativa (sem mutar). Não bate: guarda a marca, muta os
+/// 4 canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
+/// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.</item>
+/// <item><b>Aplicar</b> uma memória, <b>escolher</b> um Setup e o <b>Manter a calibração</b> do Salvar
+/// passam pela <see cref="CopiaAntes"/> (regra 3): escrevem só o que difere, relêem e conferem.</item>
+/// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho.</item>
+/// <item>O <b>Salvar</b> leva cada mudança para a camada dona dela (<see cref="Camadas"/>).</item>
+/// </list>
+/// Uma operação por vez. O ganho e o limiter finais das saídas 1 e 2 são a memória mais o
+/// equilíbrio do Setup (<see cref="Camadas.Somar"/>).
+/// </summary>
+public sealed class GerenteSetups
+{
+    public const int Formato = 1;
+
+    /// <summary>Os tipos registrados na <see cref="CopiaAntes"/>. O alvo da marca é o id da memória ou do Setup.</summary>
+    public const string TipoAplicarMemoria = "aplicar-memoria-celular";
+
+    public const string TipoAplicarSetup = "aplicar-setup";
+    public const string TipoManterCalibracao = "manter-calibracao";
+
+    public const int QuantosBotoes = 3;
+
+    public const string MsgDuvida = "Setup em dúvida; escolha na tela.";
+    public const string MsgSemSetup = "Escolha um Setup para usar as memórias do celular.";
+    public const string MsgSemSetupSalvar = "Escolha um Setup para salvar.";
+    public const string MsgNadaParaSalvar = "Nada para salvar.";
+    public const string MsgOcupado = "Uma operação de Setup ou de memória já está em andamento.";
+    public const string MsgNaoGuardou = "Não consegui guardar no celular.";
+    public const string MsgNaoGuardouMarca = "não consegui guardar a marca do mudo no celular";
+    public const string MsgSetupNaoExiste = "O Setup não existe mais.";
+    public const string MsgMemoriaNaoExiste = "A memória não existe mais.";
+    public const string MsgNaoExisteTerminar = "Não existe mais; use Voltar à cópia.";
+    public const string MsgMemoriaEmUso = "Esta memória está em uso.";
+    public const string MsgSetupEmUso = "Este Setup está em uso.";
+    public const string MsgSetupHerdado = "O Setup herdado não se apaga.";
+    public const string MsgNomeRepetidoSetup = "Já existe um Setup com esse nome.";
+    public const string MsgSoNaEscolha = "Isso só se faz na tela de escolha do Setup.";
+    public const string MsgOutroSetup = "A memória é de outro Setup.";
+    public const string MsgPedeFolha = "Este som não é de uma memória do celular. Toque em Salvar para guardá-lo.";
+    public const string MsgEscolha = "Escolha manter ou atualizar a calibração.";
+    public const string MsgSemConexao = "Sem conexão com o aparelho.";
+    public const string MsgEquilibrioSaida = "O equilíbrio é só das saídas 1 e 2.";
+    public const string MsgEquilibrioFaixa = "Fora da faixa: −12,0 a +12,0 dB";
+    public const string MsgCaiu = "A conexão caiu no meio. Ao reconectar, o app mostra o que ficou.";
+    public const string MsgSemMudo = "O som não estava mutado.";
+
+    public static string MsgNomeRepetidoMemoria(string setup) => $"Já existe uma memória com esse nome no {setup}.";
+
+    public static string MsgCriada(string nome, string setup) => $"Memória {nome} criada no {setup}.";
+
+    public static string MsgAplicada(string nome) => $"Memória {nome} aplicada.";
+
+    public static string MsgAplicadaDiferente(string nome, int n) => n == 1
+        ? $"Memória {nome} aplicada, mas 1 ajuste ficou diferente."
+        : $"Memória {nome} aplicada, mas {n} ajustes ficaram diferentes.";
+
+    public static string MsgFicaramDiferentes(int n) => n == 1 ? "1 ajuste ficou diferente." : $"{n} ajustes ficaram diferentes.";
+
+    public static string MsgLinkNaoGuardado(string motivo) => $"O link do Setup não foi guardado: {motivo}";
+
+    public static string MsgSomDiferente(string nome) => $"Som diferente da {nome}";
+
+    public static string MsgSetupEscolhido(string nome) => $"Setup {nome} em uso.";
+
+    public static string MsgSetupCriado(string nome) => $"Setup {nome} criado, ainda sem memórias.";
+
+    public const string MsgSeguiuSemSetup = "Seguindo sem Setup. As memórias do celular ficam travadas até escolher um Setup.";
+
+    public static string MsgContinuaMutado(string motivo) => $"O som continua mutado: {motivo}";
+
+    public static string MsgNaoMutou(string motivo) => $"O som não foi mutado: {motivo}";
+
+    public static string MsgNoLimite(string setup) => $"No limite da faixa com o equilíbrio do {setup}.";
+
+    public static string MsgIncompleta(int n) => n == 1
+        ? "A leitura está incompleta (1 ajuste sem valor)."
+        : $"A leitura está incompleta ({n} ajustes sem valor).";
+
+    public static string MsgNaoEscritos(int n, string? motivo) => n == 1
+        ? $"1 ajuste não foi escrito: {motivo}"
+        : $"{n} ajustes não foram escritos: {motivo}";
+
+    public static string MsgRenomeado(string nome) => $"Agora se chama {nome}.";
+
+    public static string MsgSetupApagado(string nome) => $"Setup {nome} apagado.";
+
+    public static string MsgMemoriaApagada(string nome) => $"Memória {nome} apagada.";
+
+    private static readonly Parametro Mute = Catalogo.ParametroDe(Camadas.CodigoMute)!;
+    private static readonly CultureInfo Fio = CultureInfo.InvariantCulture;
+
+    private readonly Sessao _sessao;
+    private readonly EstadoAparelho _estado;
+    private readonly Escritor _escritor;
+    private readonly LeituraAutomatica _leitura;
+    private readonly CopiaAntes _copia;
+    private readonly LinkCanais _link;
+    private readonly IChaves _chaves;
+    private readonly IRepositorioTexto _repositorio;
+    private readonly IRepositorioTexto _repositorioMudo;
+    private readonly LogBle _log;
+    private readonly TimeProvider _relogio;
+
+    private readonly object _trava = new();
+    private readonly SemaphoreSlim _operacao = new(1, 1);
+    private readonly SemaphoreSlim _gravacao = new(1, 1);
+
+    private DadosSetups _dados = Herdados();
+    private MarcaMudo? _marca;
+    private EstadoConferencia _situacao = EstadoConferencia.Nenhuma;
+    private string? _setupEmUso;
+    private SomEmUso _emUso = SomEmUso.Nenhum;
+    private string? _referencia;
+    private IReadOnlyList<DiferencaCalibracao> _diferencas = [];
+    private string? _motivoMudo;
+    private string? _aviso;
+    private Equilibrio? _pendente;
+    private Antes? _antes;
+    private bool _aberta;
+    private bool _conferiu;
+    private bool _conferindo;
+
+    public GerenteSetups(
+        Sessao sessao,
+        EstadoAparelho estado,
+        Escritor escritor,
+        LeituraAutomatica leitura,
+        CopiaAntes copia,
+        LinkCanais link,
+        GerenteMemorias memorias,
+        IChaves chaves,
+        IRepositorioTexto repositorio,
+        IRepositorioTexto repositorioMudo,
+        LogBle log,
+        TimeProvider? relogio = null)
+    {
+        _sessao = sessao;
+        _estado = estado;
+        _escritor = escritor;
+        _leitura = leitura;
+        _copia = copia;
+        _link = link;
+        _chaves = chaves;
+        _repositorio = repositorio;
+        _repositorioMudo = repositorioMudo;
+        _log = log;
+        _relogio = relogio ?? TimeProvider.System;
+        _aberta = SessaoAberta;
+
+        _sessao.Mudou += AoMudarSessao;
+        // Depois do espelho (criado antes): quando este aviso chega, o espelho já é a leitura nova.
+        _leitura.Terminou += AoTerminarLeitura;
+        memorias.Carregou += AoCarregar;
+        memorias.Bloqueio = () => EmEscolha ? MsgDuvida : null;
+
+        // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
+        _copia.Registrar(TipoAplicarMemoria,
+            _ => Task.FromResult(Retomada.PelaMetade),
+            async op => ParaCopia(await AplicarMemoriaComTravaAsync(op.Alvo, TipoAplicarMemoria, refazendo: true)));
+        _copia.Registrar(TipoManterCalibracao,
+            _ => Task.FromResult(Retomada.PelaMetade),
+            async op => ParaCopia(await AplicarMemoriaComTravaAsync(op.Alvo, TipoManterCalibracao, refazendo: true)));
+        _copia.Registrar(TipoAplicarSetup,
+            _ => Task.FromResult(Retomada.PelaMetade),
+            async op => ParaCopia(await EscolherInternoAsync(op.Alvo, refazendo: true)));
+
+        Carregada = Task.Run(CarregarAsync);
+    }
+
+    /// <summary>Completa quando <c>setups.json</c> e <c>setup-mudo.json</c> foram lidos.</summary>
+    public Task Carregada { get; }
+
+    /// <summary>Os Setups, as memórias, a conferência ou o som em uso mudaram. Pode chegar em qualquer thread.</summary>
+    public event Action? Mudou;
+
+    // ------------------------------------------------------------------ o que está guardado
+
+    public DadosSetups Dados
+    {
+        get
+        {
+            lock (_trava)
+                return _dados;
+        }
+    }
+
+    /// <summary>Os Setups, na ordem em que foram criados (o herdado primeiro).</summary>
+    public IReadOnlyList<Setup> Setups => Dados.Setups;
+
+    public Setup? Setup(string? id) => id is null ? null : Dados.Setups.FirstOrDefault(s => s.Id == id);
+
+    public MemoriaCelular? Memoria(string? id) => id is null ? null : Dados.Memorias.FirstOrDefault(m => m.Id == id);
+
+    /// <summary>As memórias do Setup, na ordem em que foram criadas.</summary>
+    public IReadOnlyList<MemoriaCelular> MemoriasDe(string? idSetup) =>
+        idSetup is null ? [] : Dados.Memorias.Where(m => m.IdSetup == idSetup).ToArray();
+
+    /// <summary>O último Setup usado (a referência da próxima conferência).</summary>
+    public string? UltimoSetup => Dados.UltimoSetup;
+
+    /// <summary>A memória ativa do Setup: a última memória do celular usada nele, ou null.</summary>
+    public MemoriaCelular? Ativa(string? idSetup)
+    {
+        var dados = Dados;
+        return idSetup is null ? null : AtivaEm(dados, idSetup);
+    }
+
+    /// <summary>Os 3 botões do Setup, cada um com a memória ou null (vaga vazia). Não mudam de lugar.</summary>
+    public IReadOnlyList<MemoriaCelular?> Botoes(string? idSetup)
+    {
+        var dados = Dados;
+        if (idSetup is null)
+            return [null, null, null];
+        return dados.UsoDe(idSetup).Botoes.Select(id => dados.Memorias.FirstOrDefault(m => m.Id == id)).ToArray();
+    }
+
+    // ------------------------------------------------------------------ o que está acontecendo
+
+    public EstadoConferencia Estado
+    {
+        get
+        {
+            lock (_trava)
+                return _situacao;
+        }
+    }
+
+    /// <summary>O Setup em uso, ou null (sem conferir ainda, em dúvida, ou seguindo sem Setup).</summary>
+    public Setup? SetupEmUso
+    {
+        get
+        {
+            lock (_trava)
+                return _setupEmUso is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id) : null;
+        }
+    }
+
+    /// <summary>O que o app sabe que está tocando.</summary>
+    public SomEmUso EmUso
+    {
+        get
+        {
+            lock (_trava)
+                return _emUso;
+        }
+    }
+
+    /// <summary>Na dúvida ou na troca: o Setup que era a referência (o "Casa 2.1" da frase), ou null.</summary>
+    public Setup? Referencia
+    {
+        get
+        {
+            lock (_trava)
+                return _referencia is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id) : null;
+        }
+    }
+
+    /// <summary>As diferenças de calibração da dúvida (ou da troca), para "O que não bate".</summary>
+    public IReadOnlyList<DiferencaCalibracao> Diferencas
+    {
+        get
+        {
+            lock (_trava)
+                return _diferencas;
+        }
+    }
+
+    /// <summary>A marca do mudo guardada no celular, ou null.</summary>
+    public MarcaMudo? Marca
+    {
+        get
+        {
+            lock (_trava)
+                return _marca;
+        }
+    }
+
+    /// <summary>O mudo da dúvida está no aparelho (a marca existe).</summary>
+    public bool Mutado => Marca is not null;
+
+    /// <summary>Por que o mudo da dúvida não foi posto ("O som não foi mutado: chave desligada"), ou null.</summary>
+    public string? MotivoMudo
+    {
+        get
+        {
+            lock (_trava)
+                return _motivoMudo;
+        }
+    }
+
+    /// <summary>A frase da última operação, ou null.</summary>
+    public string? Aviso
+    {
+        get
+        {
+            lock (_trava)
+                return _aviso;
+        }
+    }
+
+    /// <summary>Uma operação anda (ou a conferência).</summary>
+    public bool Ocupado
+    {
+        get
+        {
+            lock (_trava)
+                return _conferindo || _operacao.CurrentCount == 0;
+        }
+    }
+
+    /// <summary>A conferência desta conexão terminou.</summary>
+    public bool Conferido
+    {
+        get
+        {
+            lock (_trava)
+                return _conferiu && !_conferindo;
+        }
+    }
+
+    /// <summary>Na tela de escolha: Setup em dúvida ou trocando de Setup.</summary>
+    public bool EmEscolha => Estado is EstadoConferencia.Duvida or EstadoConferencia.Trocando;
+
+    /// <summary>
+    /// Por que a IA não pode mandar nada agora, ou null: a dúvida, a troca, ou a conferência desta
+    /// conexão que ainda não terminou (nada toca antes de conferir o Setup).
+    /// </summary>
+    public string? MotivoBloqueioIa
+    {
+        get
+        {
+            lock (_trava)
+            {
+                if (_situacao is EstadoConferencia.Duvida or EstadoConferencia.Trocando)
+                    return MsgDuvida;
+                if (_aberta && (!_conferiu || _conferindo))
+                    return MsgDuvida;
+                return null;
+            }
+        }
+    }
+
+    /// <summary>O equilíbrio mexido e ainda não salvo (do Setup em uso), ou null.</summary>
+    public Equilibrio? EquilibrioPendente
+    {
+        get
+        {
+            lock (_trava)
+                return _pendente;
+        }
+    }
+
+    /// <summary>O equilíbrio que vale agora no Setup em uso: o pendente, ou o guardado; zero sem Setup.</summary>
+    public Equilibrio EquilibrioEfetivo
+    {
+        get
+        {
+            lock (_trava)
+                return _pendente ?? (_setupEmUso is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id)?.Equilibrio : null) ?? Equilibrio.Zero;
+        }
+    }
+
+    // ------------------------------------------------------------------ nomes
+
+    /// <summary>A regra dos presets: de 1 a 24 letras, números, espaço, <c>_</c> ou <c>-</c> (null = não vale).</summary>
+    public static string? NomeValido(string? digitado) => GerentePresets.NomeValido(digitado);
+
+    // ------------------------------------------------------------------ conferência
+
+    private void AoMudarSessao()
+    {
+        var aberta = SessaoAberta;
+        bool caiu;
+        lock (_trava)
+        {
+            caiu = _aberta && !aberta;
+            _aberta = aberta;
+            if (!aberta)
+                _conferiu = false;
+            if (caiu)
+            {
+                _situacao = EstadoConferencia.Nenhuma;
+                _setupEmUso = null; // a conferência da conexão nova decide de novo
+                _emUso = SomEmUso.Nenhum;
+                _diferencas = [];
+                _referencia = null;
+                _pendente = null;
+                _antes = null;
+                _motivoMudo = null;
+            }
+        }
+        if (caiu)
+            Notificar();
+    }
+
+    private void AoTerminarLeitura(Retrato retrato)
+    {
+        if (!retrato.Completo || !SessaoAberta)
+            return;
+        lock (_trava)
+        {
+            if (_conferiu)
+                return;
+            _conferiu = true;
+            _conferindo = true;
+        }
+        Notificar();
+        _ = Task.Run(ConferirSeguroAsync);
+    }
+
+    private async Task ConferirSeguroAsync()
+    {
+        var conferiu = false;
+        try
+        {
+            conferiu = await ConferirAsync();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"setup: falha na conferência ({e.GetType().Name})");
+        }
+        finally
+        {
+            lock (_trava)
+            {
+                _conferindo = false;
+                // Não conferiu: a próxima leitura completa desta conexão tenta de novo (a IA segue bloqueada).
+                if (!conferiu)
+                    _conferiu = false;
+            }
+            Notificar();
+        }
+    }
+
+    /// <summary>A conferência da regra 5, na primeira leitura completa da conexão. False = não conferiu (sem leitura).</summary>
+    private async Task<bool> ConferirAsync()
+    {
+        await Carregada;
+        await _operacao.WaitAsync();
+        try
+        {
+            if (!SessaoAberta || !_estado.Pronto)
+                return false;
+            var espelho = _estado.Copiar();
+            var dados = Dados;
+            var referencia = ReferenciaEm(dados);
+
+            // Dúvida interrompida: a marca guardada e os 4 canais lidos mutados.
+            if (Marca is { } marca)
+            {
+                if (TodosMutados(espelho))
+                {
+                    var alvo = dados.Setups.FirstOrDefault(s => s.Id == marca.IdSetup) ?? referencia;
+                    var diferencas = alvo is null ? [] : DiferencasDeCalibracao(alvo, espelho);
+                    lock (_trava)
+                    {
+                        _situacao = EstadoConferencia.Duvida;
+                        _referencia = alvo?.Id;
+                        _diferencas = diferencas;
+                        _setupEmUso = null;
+                        _emUso = SomEmUso.SomDoAparelho;
+                        _motivoMudo = null;
+                        _antes = null;
+                    }
+                    _log.Evento("setup: dúvida interrompida; o aparelho continua mutado");
+                    return true;
+                }
+                // O mudo saiu por fora (o app da Taramps): a marca não vale mais.
+                _log.Evento("setup: a marca do mudo ficou, mas o aparelho não está mutado; confere normal");
+                await GravarMarcaAsync(null);
+            }
+
+            if (referencia is null)
+            {
+                lock (_trava)
+                {
+                    _situacao = EstadoConferencia.Nenhuma;
+                    _setupEmUso = null;
+                    _emUso = SomEmUso.SomDoAparelho;
+                }
+                return true;
+            }
+
+            var lista = DiferencasDeCalibracao(referencia, espelho);
+            if (lista.Count == 0)
+            {
+                var ativa = AtivaEm(dados, referencia.Id);
+                var situacao = EstadoConferencia.Confere;
+                var emUso = SomEmUso.Nenhum;
+                if (ativa is not null)
+                {
+                    var bate = Camadas.Diferentes(Camadas.Compor(ativa.Carater, referencia.Equilibrio), espelho).Count == 0;
+                    situacao = bate ? EstadoConferencia.Confere : EstadoConferencia.SomDiferente;
+                    emUso = bate ? SomEmUso.DoCelular(ativa.Id) : SomEmUso.SomDoAparelho;
+                }
+                lock (_trava)
+                {
+                    _situacao = situacao;
+                    _setupEmUso = referencia.Id;
+                    _emUso = emUso;
+                    _diferencas = [];
+                    _referencia = null;
+                    _motivoMudo = null;
+                }
+                _log.Evento(situacao == EstadoConferencia.Confere
+                    ? $"setup: {referencia.Nome} confere"
+                    : $"setup: {referencia.Nome} confere; o caráter difere da {ativa!.Nome}");
+                return true;
+            }
+
+            // A calibração não bate: muta (como o app, não como a tela nem a IA) e pede a escolha.
+            string? motivo;
+            using (Origem.Como(OrigemComando.App))
+                motivo = await MutarAsync(referencia.Id, espelho);
+            lock (_trava)
+            {
+                _situacao = EstadoConferencia.Duvida;
+                _referencia = referencia.Id;
+                _diferencas = lista;
+                _setupEmUso = null;
+                _emUso = SomEmUso.SomDoAparelho;
+                _motivoMudo = motivo is null ? null : MsgNaoMutou(motivo);
+                _antes = null;
+            }
+            _log.Evento($"setup: em dúvida ({lista.Count} diferenças de calibração com o {referencia.Nome})"
+                        + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
+            return true;
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Guarda a marca (o mute anterior e a referência) e muta os 4 canais. Devolve o motivo se não
+    /// mutou (chave, só leitura, marca não guardada, escrita que falhou), ou null.
+    /// </summary>
+    private async Task<string?> MutarAsync(string? idReferencia, IReadOnlyDictionary<Endereco, Valor> espelho)
+    {
+        var quadro = Mute.CodificarEscrita(0, 1m);
+        if (_sessao.Conferir(quadro) is { } recusa)
+        {
+            _log.Recusado(quadro, recusa);
+            return recusa;
+        }
+        var anterior = Enumerable.Range(0, Parametro.Canais)
+            .Select(c => espelho.TryGetValue(new Endereco(Camadas.CodigoMute, c), out var v) && v.Ligado == true ? "1" : "0")
+            .ToArray();
+        if (!await GravarMarcaAsync(new MarcaMudo(idReferencia, anterior, _relogio.GetLocalNow())))
+            return MsgNaoGuardouMarca;
+
+        string? motivo = null;
+        for (var c = 0; c < Parametro.Canais; c++)
+        {
+            if (espelho.TryGetValue(new Endereco(Camadas.CodigoMute, c), out var v) && v.Ligado == true)
+                continue;
+            var r = await _escritor.EscreverAsync(Mute, c, 1m, espelhar: false, daCopia: true);
+            if (!r.Ok || r.Diferente)
+                motivo ??= r.Motivo ?? $"a saída {c + 1} ficou com som";
+        }
+        return motivo;
+    }
+
+    /// <summary>
+    /// Desfaz o mudo da dúvida: escreve de volta o mute anterior da marca (só onde difere) e apaga
+    /// a marca. Sem marca, nada. Devolve o motivo se não desmutou (a marca fica), ou null.
+    /// </summary>
+    private async Task<string?> DesmutarAsync()
+    {
+        if (Marca is not { } marca)
+            return null;
+        string? motivo = null;
+        for (var c = 0; c < Parametro.Canais; c++)
+        {
+            var antes = c < marca.MuteAnterior.Count && marca.MuteAnterior[c] == "1" ? 1m : 0m;
+            if (_estado.Valor(Camadas.CodigoMute, c) is { Numero: { } agora } && (agora != 0 ? 1m : 0m) == antes)
+                continue;
+            var r = await _escritor.EscreverAsync(Mute, c, antes, espelhar: false, daCopia: true);
+            if (!r.Ok || r.Diferente)
+                motivo ??= r.Motivo ?? $"a saída {c + 1} não voltou";
+        }
+        if (motivo is null)
+            await GravarMarcaAsync(null);
+        else
+            _log.Evento($"setup: não desmutou ({motivo}); a marca fica");
+        return motivo;
+    }
+
+    private static bool TodosMutados(IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        Enumerable.Range(0, Parametro.Canais).All(c =>
+            espelho.TryGetValue(new Endereco(Camadas.CodigoMute, c), out var v) && v.Ligado == true);
+
+    /// <summary>A calibração lida contra a do Setup: uma linha por valor diferente (ou sem leitura).</summary>
+    private static IReadOnlyList<DiferencaCalibracao> DiferencasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        Camadas.Diferentes(setup.Calibracao, espelho)
+            .Select(v => new DiferencaCalibracao(v.Codigo, v.Indice, Camadas.Rotulo(v.Codigo, v.Indice),
+                Camadas.Exibir(v.Codigo, v.NoFio),
+                Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio)))
+            .ToArray();
+
+    // ------------------------------------------------------------------ escolher, criar, seguir, trocar
+
+    /// <summary>
+    /// Escolher o Setup (na dúvida ou na troca): cópia antes, escreve a calibração dele e a memória
+    /// ativa (com o equilíbrio), relê, põe o link dele, desmuta para o mute anterior e apaga a marca.
+    /// Passa pela chave "Aplicar memória do celular".
+    /// </summary>
+    public Task<ResultadoSetup> EscolherAsync(string idSetup) => EscolherInternoAsync(idSetup, refazendo: false);
+
+    private async Task<ResultadoSetup> EscolherInternoAsync(string idSetup, bool refazendo)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            var setup = Setup(idSetup);
+            if (setup is null)
+                return Terminar(ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgSetupNaoExiste));
+            if (!refazendo)
+            {
+                if (!EmEscolha)
+                    return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
+                if (!_chaves.Ligada(Chave.AplicarMemoriaCelular))
+                    return Terminar(ResultadoSetup.Falha(Sessao.MotivoChaveDesligada));
+            }
+
+            var ativa = Ativa(setup.Id);
+            var alvo = Alvo(setup, ativa);
+            var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
+            var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
+            if (!aplicado.Ok)
+                return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
+
+            var (falhou, link) = await FecharEscolhaAsync(setup, ativa, aplicado.Iniciou);
+            if (falhou is not null)
+                return Terminar(ResultadoSetup.Falha(MsgContinuaMutado(falhou)));
+            var frase = MsgSetupEscolhido(setup.Nome);
+            if (aplicado.Restam > 0)
+                frase += $" {MsgFicaramDiferentes(aplicado.Restam)}";
+            if (link is not null)
+                frase += $" {MsgLinkNaoGuardado(link)}";
+            _log.Evento($"setup: {setup.Nome} escolhido");
+            return Terminar(ResultadoSetup.Feito(frase));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Depois de a calibração (e a memória ativa) estar no aparelho: o link do Setup, o desmutar, a
+    /// marca da cópia concluída, o Setup em uso. Devolve o motivo se não desmutou (fica pela metade)
+    /// e o motivo se o link do Setup não foi guardado.
+    /// </summary>
+    private async Task<(string? Desmutar, string? Link)> FecharEscolhaAsync(Setup setup, MemoriaCelular? ativa, bool iniciou)
+    {
+        var link = await _link.DefinirEstadoAsync(setup.Link12, setup.Link34);
+        var desmutar = await DesmutarAsync();
+        if (desmutar is not null)
+        {
+            if (iniciou)
+            {
+                if (SessaoAberta)
+                    _copia.MarcarPelaMetade();
+                else
+                    _copia.Interromper();
+            }
+            return (desmutar, link);
+        }
+        if (iniciou)
+            await _copia.ConcluirAsync();
+        lock (_trava)
+        {
+            _situacao = EstadoConferencia.Confere;
+            _setupEmUso = setup.Id;
+            _emUso = ativa is null ? SomEmUso.Nenhum : SomEmUso.DoCelular(ativa.Id);
+            _diferencas = [];
+            _referencia = null;
+            _motivoMudo = null;
+            _antes = null;
+            _pendente = null;
+        }
+        await GravarUsoAsync(d => d with { UltimoSetup = setup.Id });
+        return (null, link);
+    }
+
+    /// <summary>
+    /// Criar Setup novo (na dúvida ou na troca): nasce com a calibração lida, equilíbrio 0 e o link de
+    /// agora; fica em uso, sem memórias; desmuta. Não manda nada ao aparelho além do desmutar.
+    /// </summary>
+    public async Task<ResultadoSetup> CriarSetupAsync(string? nomeDigitado)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (!EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
+            if (NomeValido(nomeDigitado) is not { } nome)
+                return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
+            if (Dados.Setups.Any(s => MesmoNome(s.Nome, nome)))
+                return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoSetup));
+            if (!_estado.Pronto || _estado.Lendo)
+                return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
+            var (calibracao, faltam) = Camadas.Tirar(_estado.Copiar(), Camada.Calibracao);
+            if (faltam > 0)
+                return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
+
+            await _link.Carregada;
+            var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), calibracao, Equilibrio.Zero,
+                _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34));
+            var dados = Dados;
+            var novos = dados with
+            {
+                Setups = [.. dados.Setups, setup],
+                UltimoSetup = setup.Id,
+                Uso = Com(dados.Uso, setup.Id, UsoDoSetup.Vazio),
+            };
+            if (!await GravarAsync(novos))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+
+            var desmutar = await DesmutarAsync();
+            lock (_trava)
+            {
+                _situacao = EstadoConferencia.Confere;
+                _setupEmUso = setup.Id;
+                _emUso = SomEmUso.Nenhum;
+                _diferencas = [];
+                _referencia = null;
+                _motivoMudo = null;
+                _antes = null;
+                _pendente = null;
+            }
+            _log.Evento($"setup: {nome} criado com a calibração do aparelho");
+            var frase = MsgSetupCriado(nome);
+            if (desmutar is not null)
+                frase += $" {MsgContinuaMutado(desmutar)}";
+            return Terminar(ResultadoSetup.Feito(frase));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Seguir sem Setup (na dúvida ou na troca): desmuta sem aplicar nada; as memórias do celular ficam travadas.</summary>
+    public async Task<ResultadoSetup> SeguirSemSetupAsync()
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (!EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
+            var desmutar = await DesmutarAsync();
+            lock (_trava)
+            {
+                _situacao = EstadoConferencia.Nenhuma;
+                _setupEmUso = null;
+                _emUso = SomEmUso.SomDoAparelho;
+                _diferencas = [];
+                _referencia = null;
+                _motivoMudo = null;
+                _antes = null;
+                _pendente = null;
+            }
+            _log.Evento("setup: seguindo sem Setup");
+            return Terminar(desmutar is null
+                ? ResultadoSetup.Feito(MsgSeguiuSemSetup)
+                : ResultadoSetup.Feito($"{MsgSeguiuSemSetup} {MsgContinuaMutado(desmutar)}"));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Tocar no Setup com o app conectado: guarda a marca, muta e abre "Trocar de Setup".</summary>
+    public async Task<ResultadoSetup> TrocarAsync()
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgDuvida));
+            if (!SessaoAberta)
+                return Terminar(ResultadoSetup.Falha(MsgSemConexao));
+            if (!_estado.Pronto || _estado.Lendo)
+                return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
+            var espelho = _estado.Copiar();
+            Antes antes;
+            Setup? referencia;
+            lock (_trava)
+            {
+                antes = new Antes(_situacao, _setupEmUso, _emUso);
+                referencia = _setupEmUso is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id) : null;
+            }
+            var motivo = await MutarAsync(referencia?.Id, espelho);
+            var lista = referencia is null ? [] : DiferencasDeCalibracao(referencia, espelho);
+            lock (_trava)
+            {
+                _situacao = EstadoConferencia.Trocando;
+                _referencia = referencia?.Id;
+                _diferencas = lista;
+                _motivoMudo = motivo is null ? null : MsgNaoMutou(motivo);
+                _antes = antes;
+            }
+            _log.Evento("setup: trocando de Setup" + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
+            return Terminar(ResultadoSetup.Feito(null));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Desistir da troca (‹ ou Voltar): desmuta e volta ao estado de antes, sem aplicar nada.</summary>
+    public async Task<ResultadoSetup> DesistirAsync()
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            Antes? antes;
+            lock (_trava)
+                antes = _situacao == EstadoConferencia.Trocando ? _antes : null;
+            if (antes is null)
+                return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
+            var desmutar = await DesmutarAsync();
+            lock (_trava)
+            {
+                _situacao = antes.Situacao;
+                _setupEmUso = antes.SetupEmUso;
+                _emUso = antes.EmUso;
+                _diferencas = [];
+                _referencia = null;
+                _motivoMudo = null;
+                _antes = null;
+            }
+            return Terminar(desmutar is null ? ResultadoSetup.Feito(null) : ResultadoSetup.Feito(MsgContinuaMutado(desmutar)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    // ------------------------------------------------------------------ Setups: renomear e apagar
+
+    public async Task<ResultadoSetup> RenomearSetupAsync(string id, string? nomeDigitado)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Setup(id) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (NomeValido(nomeDigitado) is not { } nome)
+                return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
+            if (Dados.Setups.Any(s => s.Id != id && MesmoNome(s.Nome, nome)))
+                return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoSetup));
+            var dados = Dados;
+            if (!await GravarAsync(dados with { Setups = dados.Setups.Select(s => s.Id == id ? s with { Nome = nome } : s).ToArray() }))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"setup: {setup.Nome} renomeado para {nome}");
+            return Terminar(ResultadoSetup.Feito(MsgRenomeado(nome)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Apaga um Setup, com as memórias dele. O Setup em uso e o herdado não se apagam.</summary>
+    public async Task<ResultadoSetup> ApagarSetupAsync(string id)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Setup(id) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (setup.Herdado)
+                return Terminar(ResultadoSetup.Falha(MsgSetupHerdado));
+            if (SetupEmUso?.Id == id)
+                return Terminar(ResultadoSetup.Falha(MsgSetupEmUso));
+            var dados = Dados;
+            var uso = new Dictionary<string, UsoDoSetup>(dados.Uso);
+            uso.Remove(id);
+            var novos = new DadosSetups(
+                dados.Setups.Where(s => s.Id != id).ToArray(),
+                dados.Memorias.Where(m => m.IdSetup != id).ToArray(),
+                dados.UltimoSetup == id ? null : dados.UltimoSetup,
+                uso);
+            if (!await GravarAsync(novos))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"setup: {setup.Nome} apagado");
+            return Terminar(ResultadoSetup.Feito(MsgSetupApagado(setup.Nome)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    // ------------------------------------------------------------------ memórias do celular
+
+    /// <summary>
+    /// Criar memória do som atual, no Setup em uso: guarda o caráter lido menos o equilíbrio. Vira a
+    /// memória em uso e a ativa e entra nos botões. Com uma memória do aparelho (ou o som do aparelho)
+    /// em uso, não cria: o caminho é a folha do Salvar.
+    /// </summary>
+    public async Task<ResultadoSetup> CriarMemoriaAsync(string? nomeDigitado)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgDuvida));
+            if (SetupEmUso is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSemSetup));
+            if (EmUso.Tipo is TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho)
+                return Terminar(new ResultadoSetup(false, MsgPedeFolha, MsgPedeFolha, PedeFolhaSalvar: true));
+            if (!_estado.Pronto || _estado.Lendo)
+                return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
+            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), EquilibrioEfetivo);
+            if (memoria is null)
+                return Terminar(ResultadoSetup.Falha(motivo!));
+
+            var dados = Dados;
+            var novos = dados with
+            {
+                Memorias = [.. dados.Memorias, memoria],
+                Uso = Com(dados.Uso, setup.Id, Usar(dados.UsoDe(setup.Id), memoria.Id)),
+            };
+            if (!await GravarAsync(novos))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            lock (_trava)
+            {
+                _emUso = SomEmUso.DoCelular(memoria.Id);
+                if (_situacao == EstadoConferencia.SomDiferente)
+                    _situacao = EstadoConferencia.Confere;
+            }
+            _log.Evento($"memória {memoria.Nome} criada no {setup.Nome}");
+            return Terminar(ResultadoSetup.Feito(MsgCriada(memoria.Nome, setup.Nome)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Aplica a memória do celular (do Setup em uso): cópia antes, escreve a calibração do Setup e o
+    /// caráter da memória somado ao equilíbrio (só o que difere), relê e confere. As bandas, o mute e
+    /// os extras não entram. Passa pela chave "Aplicar memória do celular".
+    /// </summary>
+    public Task<ResultadoSetup> AplicarAsync(string idMemoria) => AplicarMemoriaComTravaAsync(idMemoria, TipoAplicarMemoria, refazendo: false);
+
+    /// <summary>Reaplicar a memória ativa do Setup em uso ("Som diferente da FILME").</summary>
+    public Task<ResultadoSetup> ReaplicarAsync()
+    {
+        var ativa = Ativa(SetupEmUso?.Id);
+        if (ativa is null)
+            return Task.FromResult(Terminar(ResultadoSetup.Falha(SetupEmUso is null ? MsgSemSetup : MsgMemoriaNaoExiste)));
+        return AplicarAsync(ativa.Id);
+    }
+
+    private async Task<ResultadoSetup> AplicarMemoriaComTravaAsync(string idMemoria, string tipo, bool refazendo)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            return Terminar(await AplicarMemoriaAsync(idMemoria, tipo, refazendo));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Aplica a memória. Chamar com a operação.</summary>
+    private async Task<ResultadoSetup> AplicarMemoriaAsync(string idMemoria, string tipo, bool refazendo)
+    {
+        var memoria = Memoria(idMemoria);
+        if (memoria is null)
+            return ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgMemoriaNaoExiste);
+        if (!refazendo)
+        {
+            if (EmEscolha)
+                return ResultadoSetup.Falha(MsgDuvida);
+            if (SetupEmUso is not { } emUso)
+                return ResultadoSetup.Falha(MsgSemSetup);
+            if (memoria.IdSetup != emUso.Id)
+                return ResultadoSetup.Falha(MsgOutroSetup);
+            if (tipo == TipoAplicarMemoria && !_chaves.Ligada(Chave.AplicarMemoriaCelular))
+                return ResultadoSetup.Falha(Sessao.MotivoChaveDesligada);
+        }
+        if (Setup(memoria.IdSetup) is not { } setup)
+            return ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgSetupNaoExiste);
+
+        var descricao = tipo == TipoManterCalibracao
+            ? $"Reaplicar a calibração do {setup.Nome} com a {memoria.Nome}"
+            : $"Aplicar a memória {memoria.Nome}";
+        var op = new OperacaoPendente(tipo, memoria.Id, descricao, memoria.Nome);
+        var aplicado = await AplicarAlvoAsync(Alvo(setup, memoria), op, refazendo);
+        if (!aplicado.Ok)
+            return ResultadoSetup.Falha(aplicado.Motivo!);
+
+        string? link;
+        if (Marca is not null)
+        {
+            // Um Terminar com a dúvida aberta: a calibração do Setup está no aparelho; a dúvida fecha.
+            (var falhou, link) = await FecharEscolhaAsync(setup, memoria, aplicado.Iniciou);
+            if (falhou is not null)
+                return ResultadoSetup.Falha(MsgContinuaMutado(falhou));
+        }
+        else
+        {
+            if (aplicado.Iniciou)
+                await _copia.ConcluirAsync();
+            link = await _link.DefinirEstadoAsync(setup.Link12, setup.Link34);
+        }
+
+        lock (_trava)
+        {
+            _situacao = EstadoConferencia.Confere;
+            _setupEmUso = setup.Id;
+            _emUso = SomEmUso.DoCelular(memoria.Id);
+            _pendente = null;
+        }
+        await GravarUsoAsync(d => d with { Uso = Com(d.Uso, setup.Id, Usar(d.UsoDe(setup.Id), memoria.Id)) });
+        _log.Evento($"memória {memoria.Nome} aplicada");
+        var frase = aplicado.Restam == 0 ? MsgAplicada(memoria.Nome) : MsgAplicadaDiferente(memoria.Nome, aplicado.Restam);
+        if (link is not null)
+            frase += $" {MsgLinkNaoGuardado(link)}";
+        return ResultadoSetup.Feito(frase);
+    }
+
+    public async Task<ResultadoSetup> RenomearMemoriaAsync(string id, string? nomeDigitado)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Memoria(id) is not { } memoria)
+                return Terminar(ResultadoSetup.Falha(MsgMemoriaNaoExiste));
+            if (NomeValido(nomeDigitado) is not { } nome)
+                return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
+            var dados = Dados;
+            if (dados.Memorias.Any(m => m.IdSetup == memoria.IdSetup && m.Id != id && MesmoNome(m.Nome, nome)))
+                return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoMemoria(Setup(memoria.IdSetup)?.Nome ?? "")));
+            if (!await GravarAsync(dados with { Memorias = dados.Memorias.Select(m => m.Id == id ? m with { Nome = nome } : m).ToArray() }))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"memória {memoria.Nome} renomeada para {nome}");
+            return Terminar(ResultadoSetup.Feito(MsgRenomeado(nome)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Apaga a memória do celular (e a playlist dela, na história 8d). A memória em uso não se apaga.</summary>
+    public async Task<ResultadoSetup> ApagarMemoriaAsync(string id)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Memoria(id) is not { } memoria)
+                return Terminar(ResultadoSetup.Falha(MsgMemoriaNaoExiste));
+            if (EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso && uso.IdMemoria == id)
+                return Terminar(ResultadoSetup.Falha(MsgMemoriaEmUso));
+            var dados = Dados;
+            var novos = dados with
+            {
+                Memorias = dados.Memorias.Where(m => m.Id != id).ToArray(),
+                Uso = Com(dados.Uso, memoria.IdSetup, Remover(dados.UsoDe(memoria.IdSetup), id)),
+            };
+            if (!await GravarAsync(novos))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"memória {memoria.Nome} apagada");
+            return Terminar(ResultadoSetup.Feito(MsgMemoriaApagada(memoria.Nome)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    // ------------------------------------------------------------------ equilíbrio
+
+    /// <summary>
+    /// Mexe no equilíbrio L/R do Setup em uso (saída 0 = JBL L, 1 = JBL R; ganho ou limiter): escreve
+    /// o valor final (a parte da memória mais o equilíbrio novo, presa à faixa) e guarda o equilíbrio
+    /// como pendente até o Salvar. O limiter em OFF fica OFF (só o equilíbrio muda).
+    /// </summary>
+    public async Task<ResultadoSetup> AjustarEquilibrioAsync(int saida, bool limiter, decimal valor)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (!SessaoAberta)
+                return Terminar(ResultadoSetup.Falha(MsgSemConexao));
+            if (EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgDuvida));
+            if (SetupEmUso is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSemSetup));
+            if (saida is not (0 or 1))
+                return Terminar(ResultadoSetup.Falha(MsgEquilibrioSaida));
+            if (valor is < Camadas.EquilibrioMinimo or > Camadas.EquilibrioMaximo || decimal.Round(valor, 1) != valor)
+                return Terminar(ResultadoSetup.Falha(MsgEquilibrioFaixa));
+
+            var codigo = limiter ? Camadas.CodigoLimiter : Camadas.CodigoGanho;
+            if (_estado.Valor(codigo, saida) is not { } lido)
+                return Terminar(ResultadoSetup.Falha(Escritor.MsgSemLeitura));
+            var atual = EquilibrioEfetivo;
+            var novo = atual.Com(saida, limiter, valor);
+            string? aviso = null;
+            if (!(limiter && lido.Numero == Camadas.LimiterOff))
+            {
+                var parte = Camadas.Subtrair(codigo, saida, lido.NoFio, atual);
+                var final = Camadas.Numero(Camadas.Somar(codigo, saida, parte, novo))!.Value;
+                if (Camadas.Numero(parte)!.Value + valor != final)
+                    aviso = MsgNoLimite(setup.Nome);
+                var r = await _escritor.EscreverAsync(Catalogo.ParametroDe(codigo)!, saida, final);
+                if (!r.Ok)
+                    return Terminar(ResultadoSetup.Falha(r.Motivo ?? Sessao.MotivoFalhaEscrita));
+                aviso ??= r.Aviso;
+            }
+            lock (_trava)
+            {
+                if (_setupEmUso == setup.Id)
+                    _pendente = novo == setup.Equilibrio ? null : novo;
+            }
+            return Terminar(ResultadoSetup.Feito(aviso));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    // ------------------------------------------------------------------ Salvar por camadas
+
+    /// <summary>A folha do Salvar agora: o que mudou em cada camada, as perguntas e a trava.</summary>
+    public FolhaSalvar PrepararSalvar()
+    {
+        if (EmEscolha)
+            return FolhaSalvar.Travada(MsgDuvida);
+        if (SetupEmUso is not { } setup)
+            return FolhaSalvar.Travada(MsgSemSetupSalvar);
+        if (!SessaoAberta || !_estado.Pronto || _estado.Lendo)
+            return FolhaSalvar.Travada(SessaoAberta ? (_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura) : MsgSemConexao, setup.Nome);
+
+        var espelho = _estado.Copiar();
+        var equilibrio = EquilibrioEfetivo;
+        var calibracao = MudancasDeCalibracao(setup, espelho, equilibrio);
+        var linhas = new List<LinhaSalvar>();
+        var emUso = EmUso;
+        switch (emUso.Tipo)
+        {
+            case TipoSomEmUso.MemoriaCelular when Memoria(emUso.IdMemoria) is { } memoria:
+            {
+                var carater = MudancasDeCarater(memoria, espelho, setup.Equilibrio, equilibrio);
+                if (calibracao.Count > 0)
+                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
+                if (carater.Count > 0)
+                    linhas.Add(new LinhaSalvar(Camada.Carater, $"Caráter → memória {memoria.Nome}", carater));
+                if (linhas.Count == 0)
+                    return FolhaSalvar.Travada(MsgNadaParaSalvar, setup.Nome);
+                return new FolhaSalvar(null, linhas, PedeNome: false, PerguntaCalibracao: false, setup.Nome, []);
+            }
+            case TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho:
+            {
+                linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
+                if (calibracao.Count > 0)
+                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração do aparelho × Setup {setup.Nome}", calibracao));
+                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: calibracao.Count > 0, setup.Nome,
+                    DiferencasDeCalibracao(setup, espelho));
+            }
+            default:
+            {
+                // Setup sem memórias: a calibração vai para o Setup; o caráter, para uma memória nova.
+                if (calibracao.Count > 0)
+                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
+                linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
+                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: false, setup.Nome, []);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Salva o que a folha mostra, cada mudança na sua camada. Só o <see cref="EscolhaCalibracao.Manter"/>
+    /// manda algo ao aparelho: guarda a memória nova e reaplica a calibração do Setup, com cópia antes.
+    /// </summary>
+    public async Task<ResultadoSetup> SalvarAsync(EscolhaCalibracao escolha, string? nomeMemoriaNova)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            var folha = PrepararSalvar();
+            if (folha.Trava is { } trava)
+                return Terminar(ResultadoSetup.Falha(trava));
+            if (!folha.PerguntaCalibracao)
+                escolha = EscolhaCalibracao.Nenhuma; // uma escolha velha não vale quando a folha não pergunta
+            else if (escolha == EscolhaCalibracao.Nenhuma)
+                return Terminar(ResultadoSetup.Falha(MsgEscolha));
+            // Manter reaplica a calibração pelo BLE: a chave vale antes de guardar qualquer coisa.
+            if (escolha == EscolhaCalibracao.Manter && !_chaves.Ligada(Chave.AplicarMemoriaCelular))
+                return Terminar(ResultadoSetup.Falha(Sessao.MotivoChaveDesligada));
+
+            var setup = SetupEmUso!;
+            var espelho = _estado.Copiar();
+            var equilibrio = EquilibrioEfetivo;
+            var calibracaoMudou = MudancasDeCalibracao(setup, espelho, equilibrio).Count > 0;
+            var dados = Dados;
+            var emUso = EmUso;
+            var partes = new List<string>();
+
+            MemoriaCelular? nova = null;
+            if (folha.PedeNome)
+            {
+                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, equilibrio);
+                if (memoria is null)
+                    return Terminar(ResultadoSetup.Falha(motivo!));
+                nova = memoria;
+            }
+
+            var atualizarSetup = calibracaoMudou && escolha != EscolhaCalibracao.Manter;
+            var setupNovo = setup;
+            if (atualizarSetup)
+            {
+                var (calibracao, faltam) = Camadas.Tirar(espelho, Camada.Calibracao);
+                if (faltam > 0)
+                    return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
+                await _link.Carregada;
+                setupNovo = setup with
+                {
+                    Calibracao = calibracao,
+                    Equilibrio = equilibrio,
+                    Link12 = _link.Ligado(ParCanais.Saidas12),
+                    Link34 = _link.Ligado(ParCanais.Saidas34),
+                    Quando = _relogio.GetLocalNow(),
+                };
+                partes.Add($"calibração no {setup.Nome}");
+            }
+
+            var memorias = dados.Memorias.ToList();
+            var uso = dados.UsoDe(setup.Id);
+            string? idEmUso = null;
+            if (nova is not null)
+            {
+                memorias.Add(nova);
+                uso = Usar(uso, nova.Id);
+                idEmUso = nova.Id;
+                partes.Add($"caráter na {nova.Nome}");
+            }
+            else if (emUso.Tipo == TipoSomEmUso.MemoriaCelular && Memoria(emUso.IdMemoria) is { } memoria
+                     && MudancasDeCarater(memoria, espelho, setup.Equilibrio, equilibrio).Count > 0)
+            {
+                var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
+                if (faltam > 0)
+                    return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
+                var atualizada = memoria with { Carater = Camadas.Separar(carater, equilibrio), Quando = _relogio.GetLocalNow() };
+                memorias = memorias.Select(m => m.Id == memoria.Id ? atualizada : m).ToList();
+                partes.Add($"caráter na {memoria.Nome}");
+            }
+
+            var novos = dados with
+            {
+                Setups = dados.Setups.Select(s => s.Id == setup.Id ? setupNovo : s).ToArray(),
+                Memorias = memorias,
+                Uso = Com(dados.Uso, setup.Id, uso),
+            };
+            if (!await GravarAsync(novos))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            lock (_trava)
+            {
+                if (atualizarSetup || escolha == EscolhaCalibracao.Manter)
+                    _pendente = null;
+                if (idEmUso is not null)
+                    _emUso = SomEmUso.DoCelular(idEmUso);
+                if (_situacao == EstadoConferencia.SomDiferente)
+                    _situacao = EstadoConferencia.Confere;
+            }
+            var frase = $"Salvo: {string.Join(", ", partes)}.";
+            _log.Evento($"setup: {frase}");
+
+            if (escolha == EscolhaCalibracao.Manter && calibracaoMudou && nova is not null)
+            {
+                // Manter: a calibração do Setup volta ao aparelho, com a memória nova por cima.
+                // A memória já está guardada: o Salvar valeu mesmo se a calibração não voltar (o
+                // "aplicado pela metade" da cópia cuida do resto).
+                var r = await AplicarMemoriaAsync(nova.Id, TipoManterCalibracao, refazendo: false);
+                return Terminar(ResultadoSetup.Feito(r.Ok
+                    ? $"{frase} Calibração do {setup.Nome} reaplicada."
+                    : $"{frase} A calibração do {setup.Nome} não voltou: {r.Motivo}"));
+            }
+            return Terminar(ResultadoSetup.Feito(frase));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>A calibração do aparelho contra a do Setup, mais o link e o equilíbrio pendente.</summary>
+    private List<MudancaSalvar> MudancasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
+    {
+        var lista = Camadas.Diferentes(setup.Calibracao, espelho)
+            .Select(v => new MudancaSalvar(Camadas.Rotulo(v.Codigo, v.Indice), Camadas.Exibir(v.Codigo, v.NoFio),
+                Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio)))
+            .ToList();
+        foreach (var (par, antes) in new[] { (ParCanais.Saidas12, setup.Link12), (ParCanais.Saidas34, setup.Link34) })
+        {
+            var agora = _link.Ligado(par);
+            if (agora != antes)
+                lista.Add(new MudancaSalvar($"Link {LinkCanais.Rotulo(par)}", antes ? "ligado" : "desligado", agora ? "ligado" : "desligado"));
+        }
+        for (var saida = 0; saida <= 1; saida++)
+        {
+            foreach (var limiter in new[] { false, true })
+            {
+                var antes = setup.Equilibrio.Valor(saida, limiter);
+                var agora = equilibrio.Valor(saida, limiter);
+                if (antes != agora)
+                    lista.Add(new MudancaSalvar($"Equilíbrio da saída {saida + 1} · {(limiter ? "limitador" : "ganho")}",
+                        Camadas.ExibirDb(antes), Camadas.ExibirDb(agora)));
+            }
+        }
+        return lista;
+    }
+
+    /// <summary>
+    /// O caráter da memória contra o lido (a parte da memória: o lido menos o equilíbrio de agora). O
+    /// antes e o depois são o valor da tela, o final no aparelho.
+    /// </summary>
+    private static List<MudancaSalvar> MudancasDeCarater(MemoriaCelular memoria, IReadOnlyDictionary<Endereco, Valor> espelho,
+        Equilibrio guardado, Equilibrio efetivo)
+    {
+        var lista = new List<MudancaSalvar>();
+        foreach (var v in memoria.Carater)
+        {
+            var lido = espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio;
+            var parte = lido is null ? null : Camadas.Subtrair(v.Codigo, v.Indice, lido, efetivo);
+            if (parte is not null && Camadas.Iguais(v.Codigo, parte, v.NoFio))
+                continue;
+            lista.Add(new MudancaSalvar(Camadas.Rotulo(v.Codigo, v.Indice),
+                Camadas.Exibir(v.Codigo, Camadas.Somar(v.Codigo, v.Indice, v.NoFio, guardado)),
+                Camadas.Exibir(v.Codigo, lido)));
+        }
+        return lista;
+    }
+
+    /// <summary>Uma memória nova com o caráter lido (menos o equilíbrio), ou o motivo de não poder.</summary>
+    private (MemoriaCelular? Memoria, string? Motivo) NovaMemoria(Setup setup, string? nomeDigitado,
+        IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
+    {
+        if (NomeValido(nomeDigitado) is not { } nome)
+            return (null, GerentePresets.MsgNomeInvalido);
+        if (Dados.Memorias.Any(m => m.IdSetup == setup.Id && MesmoNome(m.Nome, nome)))
+            return (null, MsgNomeRepetidoMemoria(setup.Nome));
+        var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
+        if (faltam > 0)
+            return (null, MsgIncompleta(faltam));
+        return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(),
+            Camadas.Separar(carater, equilibrio)), null);
+    }
+
+    // ------------------------------------------------------------------ memória do aparelho
+
+    private void AoCarregar(int n)
+    {
+        lock (_trava)
+        {
+            _emUso = SomEmUso.DoAparelho(n);
+            _pendente = null;
+            if (_situacao == EstadoConferencia.SomDiferente)
+                _situacao = EstadoConferencia.Confere;
+        }
+        Notificar();
+    }
+
+    // ------------------------------------------------------------------ aplicar (a regra 3)
+
+    private sealed record Aplicado(bool Ok, string? Motivo, bool Iniciou, int Restam)
+    {
+        public static Aplicado Falha(string motivo) => new(false, motivo, false, 0);
+    }
+
+    /// <summary>A calibração do Setup e, se há, o caráter da memória somado ao equilíbrio do Setup.</summary>
+    private static IReadOnlyList<ValorCopiado> Alvo(Setup setup, MemoriaCelular? memoria) =>
+        memoria is null ? setup.Calibracao : [.. setup.Calibracao, .. Camadas.Compor(memoria.Carater, setup.Equilibrio)];
+
+    /// <summary>
+    /// Escreve o alvo com a cópia antes: só o que difere, uma escrita por vez, e relê tudo. Em caso de
+    /// sucesso, a marca da cópia continua (quem chamou conclui, ou deixa pela metade); com
+    /// <see cref="Aplicado.Iniciou"/> falso, não havia o que escrever e nenhuma marca começou.
+    /// </summary>
+    private async Task<Aplicado> AplicarAlvoAsync(IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
+    {
+        if (!SessaoAberta)
+            return Aplicado.Falha(Sessao.MotivoSemConexao);
+        if (_estado.Lendo)
+            return Aplicado.Falha(Escritor.MsgLendo);
+        if (!_estado.Pronto)
+            return Aplicado.Falha(Escritor.MsgSemLeitura);
+        if (!refazendo && _copia.MotivoBloqueio() is { } bloqueio)
+            return Aplicado.Falha(bloqueio);
+
+        var copiaAlvo = new Copia(_relogio.GetLocalNow(), alvo, null);
+        var (escritas, ilegiveis) = CopiaAntes.Diferencas(copiaAlvo, _estado.Copiar());
+        if (ilegiveis > 0)
+            return Aplicado.Falha(CopiaAntes.MsgCopiaIlegivel(ilegiveis));
+        if (escritas.Count == 0)
+            return new Aplicado(true, null, Iniciou: refazendo, Restam: 0); // no Terminar, a marca sai no fim
+
+        if (_sessao.Conferir(escritas[0].Quadro) is { } motivo)
+        {
+            _log.Recusado(escritas[0].Quadro, motivo);
+            return Aplicado.Falha(motivo);
+        }
+        var copia = await _copia.IniciarAsync(op, manterCopia: refazendo);
+        if (!copia.Ok)
+            return Aplicado.Falha(copia.Motivo!);
+
+        _log.Evento($"{op.Descricao}: {escritas.Count} ajustes diferentes");
+        var falhas = 0;
+        string? ultimo = null;
+        foreach (var e in escritas)
+        {
+            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
+            if (!r.Ok || r.Diferente)
+            {
+                falhas++;
+                ultimo = r.Motivo ?? $"o aparelho ficou em {r.Valor?.NoFio}";
+            }
+        }
+        if (falhas > 0)
+        {
+            if (SessaoAberta)
+                _copia.MarcarPelaMetade();
+            else
+                _copia.Interromper();
+            return Aplicado.Falha(SessaoAberta ? MsgNaoEscritos(falhas, ultimo) : MsgCaiu);
+        }
+
+        var retrato = await _leitura.LerNovaAsync();
+        if (retrato is not { Completo: true })
+        {
+            if (!SessaoAberta)
+            {
+                _copia.Interromper();
+                return Aplicado.Falha(MsgCaiu);
+            }
+            _copia.MarcarPelaMetade();
+            return Aplicado.Falha(GerenteMemorias.MsgLeituraParou);
+        }
+        var (restam, _) = CopiaAntes.Diferencas(copiaAlvo, _estado.Copiar());
+        return new Aplicado(true, null, Iniciou: true, Restam: restam.Count);
+    }
+
+    // ------------------------------------------------------------------ uso das memórias (os 3 botões)
+
+    /// <summary>
+    /// A memória foi usada: vai para o começo das usadas por último. Se ela não está nos botões, entra
+    /// numa vaga vazia ou no lugar da usada há mais tempo; os outros botões não mudam de lugar.
+    /// </summary>
+    public static UsoDoSetup Usar(UsoDoSetup uso, string idMemoria)
+    {
+        var botoes = Normalizar(uso.Botoes);
+        if (!botoes.Contains(idMemoria))
+        {
+            var vaga = botoes.IndexOf(null);
+            if (vaga < 0)
+            {
+                var antiga = -1;
+                vaga = 0;
+                for (var i = 0; i < botoes.Count; i++)
+                {
+                    var posicao = uso.Recentes.ToList().IndexOf(botoes[i]!);
+                    var idade = posicao < 0 ? int.MaxValue : posicao;
+                    if (idade > antiga)
+                    {
+                        antiga = idade;
+                        vaga = i;
+                    }
+                }
+            }
+            botoes[vaga] = idMemoria;
+        }
+        return new UsoDoSetup([idMemoria, .. uso.Recentes.Where(r => r != idMemoria)], botoes);
+    }
+
+    /// <summary>A memória sumiu: sai das usadas; a vaga dela nos botões fica com a usada por último fora dos botões, ou vazia.</summary>
+    public static UsoDoSetup Remover(UsoDoSetup uso, string idMemoria)
+    {
+        var recentes = uso.Recentes.Where(r => r != idMemoria).ToArray();
+        var botoes = Normalizar(uso.Botoes);
+        var vaga = botoes.IndexOf(idMemoria);
+        if (vaga >= 0)
+            botoes[vaga] = recentes.FirstOrDefault(r => !botoes.Contains(r));
+        return new UsoDoSetup(recentes, botoes);
+    }
+
+    private static List<string?> Normalizar(IReadOnlyList<string?> botoes)
+    {
+        var lista = botoes.Take(QuantosBotoes).ToList();
+        while (lista.Count < QuantosBotoes)
+            lista.Add(null);
+        return lista;
+    }
+
+    private static IReadOnlyDictionary<string, UsoDoSetup> Com(IReadOnlyDictionary<string, UsoDoSetup> uso, string idSetup, UsoDoSetup novo) =>
+        new Dictionary<string, UsoDoSetup>(uso) { [idSetup] = novo };
+
+    private static MemoriaCelular? AtivaEm(DadosSetups dados, string idSetup)
+    {
+        foreach (var id in dados.UsoDe(idSetup).Recentes)
+        {
+            if (dados.Memorias.FirstOrDefault(m => m.Id == id && m.IdSetup == idSetup) is { } m)
+                return m;
+        }
+        return null;
+    }
+
+    /// <summary>A referência da conferência: o último Setup usado; no primeiro uso, o Casa 2.1.</summary>
+    private static Setup? ReferenciaEm(DadosSetups dados) =>
+        dados.Setups.FirstOrDefault(s => s.Id == dados.UltimoSetup)
+        ?? dados.Setups.FirstOrDefault(s => s.Id == ConhecimentoHerdado.IdSetupCasa)
+        ?? dados.Setups.FirstOrDefault();
+
+    private static bool MesmoNome(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+    // ------------------------------------------------------------------ guardado
+
+    /// <summary>O que vem dos protótipos (CAP-6): o Casa 2.1 com a FILME, ativa e no primeiro botão.</summary>
+    public static DadosSetups Herdados() => new(
+        [ConhecimentoHerdado.SetupCasa],
+        [ConhecimentoHerdado.MemoriaFilme],
+        ConhecimentoHerdado.IdSetupCasa,
+        new Dictionary<string, UsoDoSetup>
+        {
+            [ConhecimentoHerdado.IdSetupCasa] = new([ConhecimentoHerdado.IdMemoriaFilme], [ConhecimentoHerdado.IdMemoriaFilme, null, null]),
+        });
+
+    /// <summary>Grava os dados (com duas tentativas); só se gravou eles passam a valer.</summary>
+    private async Task<bool> GravarAsync(DadosSetups novos)
+    {
+        await _gravacao.WaitAsync();
+        try
+        {
+            if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
+            {
+                _log.Evento("não consegui guardar os Setups no celular");
+                return false;
+            }
+            lock (_trava)
+                _dados = novos;
+        }
+        finally
+        {
+            _gravacao.Release();
+        }
+        Notificar();
+        return true;
+    }
+
+    /// <summary>Muda o uso (último Setup, usadas, botões): vale na hora, mesmo se não gravar (fica só o log).</summary>
+    private async Task GravarUsoAsync(Func<DadosSetups, DadosSetups> mudar)
+    {
+        await _gravacao.WaitAsync();
+        try
+        {
+            DadosSetups novos;
+            lock (_trava)
+            {
+                novos = mudar(_dados);
+                _dados = novos;
+            }
+            if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
+                _log.Evento("não consegui guardar o uso das memórias no celular");
+        }
+        finally
+        {
+            _gravacao.Release();
+        }
+        Notificar();
+    }
+
+    private async Task<bool> GravarMarcaAsync(MarcaMudo? marca)
+    {
+        var gravou = await Gravacao.GravarAsync(_repositorioMudo, MarcaParaJson(marca));
+        if (!gravou)
+        {
+            _log.Evento(marca is null ? "não consegui apagar a marca do mudo no celular" : "não consegui guardar a marca do mudo no celular");
+            if (marca is not null)
+                return false;
+        }
+        lock (_trava)
+            _marca = marca;
+        Notificar();
+        return true;
+    }
+
+    private async Task CarregarAsync()
+    {
+        DadosSetups? lidos = null;
+        if (await Gravacao.LerAsync(_repositorio) is { } json)
+        {
+            try
+            {
+                lidos = DeJson(json);
+            }
+            catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
+            {
+                // Arquivo estragado: volta ao herdado, sem erro.
+            }
+            if (lidos is null)
+                _log.Evento("setups.json ilegível: voltei ao herdado (Casa 2.1 e FILME)");
+        }
+        MarcaMudo? marca = null;
+        if (await Gravacao.LerAsync(_repositorioMudo) is { } textoMarca)
+        {
+            try
+            {
+                marca = MarcaDeJson(textoMarca);
+            }
+            catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
+            {
+                // Sem marca legível: a conferência decide pelo que ler.
+            }
+        }
+        lock (_trava)
+        {
+            if (lidos is not null)
+                _dados = lidos;
+            _marca ??= marca;
+        }
+        Notificar();
+    }
+
+    /// <summary>O JSON do <c>setups.json</c> (formato 1).</summary>
+    public static string ParaJson(DadosSetups dados)
+    {
+        using var fluxo = new MemoryStream();
+        using (var w = NovoEscritor(fluxo))
+        {
+            w.WriteStartObject();
+            w.WriteNumber("formato", Formato);
+            if (dados.UltimoSetup is { } ultimo)
+                w.WriteString("ultimoSetup", ultimo);
+            else
+                w.WriteNull("ultimoSetup");
+            w.WriteStartArray("setups");
+            foreach (var s in dados.Setups)
+            {
+                w.WriteStartObject();
+                w.WriteString("id", s.Id);
+                w.WriteString("nome", s.Nome);
+                w.WriteString("quando", s.Quando.ToString("O", Fio));
+                w.WriteStartObject("equilibrio");
+                w.WriteNumber("ganho1", s.Equilibrio.Ganho1);
+                w.WriteNumber("limiter1", s.Equilibrio.Limiter1);
+                w.WriteNumber("ganho2", s.Equilibrio.Ganho2);
+                w.WriteNumber("limiter2", s.Equilibrio.Limiter2);
+                w.WriteEndObject();
+                w.WriteBoolean("link12", s.Link12);
+                w.WriteBoolean("link34", s.Link34);
+                EscreverValores(w, "calibracao", s.Calibracao);
+                var uso = dados.UsoDe(s.Id);
+                w.WriteStartArray("recentes");
+                foreach (var r in uso.Recentes)
+                    w.WriteStringValue(r);
+                w.WriteEndArray();
+                w.WriteStartArray("botoes");
+                foreach (var b in Normalizar(uso.Botoes))
+                {
+                    if (b is null)
+                        w.WriteNullValue();
+                    else
+                        w.WriteStringValue(b);
+                }
+                w.WriteEndArray();
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+            w.WriteStartArray("memorias");
+            foreach (var m in dados.Memorias)
+            {
+                w.WriteStartObject();
+                w.WriteString("id", m.Id);
+                w.WriteString("setup", m.IdSetup);
+                w.WriteString("nome", m.Nome);
+                w.WriteString("quando", m.Quando.ToString("O", Fio));
+                EscreverValores(w, "carater", m.Carater);
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+            w.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(fluxo.ToArray());
+    }
+
+    /// <summary>
+    /// Lê o <c>setups.json</c>. Fora do formato 1, sem nenhum Setup válido ou com outra forma: null
+    /// (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória de
+    /// um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo id.
+    /// </summary>
+    public static DadosSetups? DeJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var raiz = doc.RootElement;
+        if (raiz.ValueKind != JsonValueKind.Object
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != Formato
+            || !raiz.TryGetProperty("setups", out var setupsJson) || setupsJson.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var setups = new List<Setup>();
+        var usos = new Dictionary<string, (List<string> Recentes, List<string?> Botoes)>();
+        foreach (var item in setupsJson.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object || Texto(item, "id") is not { Length: > 0 } id
+                || setups.Any(s => s.Id == id) || NomeGuardado(Texto(item, "nome"), id) is not { } nome
+                || setups.Any(s => MesmoNome(s.Nome, nome)))
+                continue;
+            var eq = Equilibrio.Zero;
+            if (item.TryGetProperty("equilibrio", out var e) && e.ValueKind == JsonValueKind.Object)
+            {
+                eq = new Equilibrio(NumeroEq(e, "ganho1"), NumeroEq(e, "limiter1"), NumeroEq(e, "ganho2"), NumeroEq(e, "limiter2"));
+            }
+            var herdado = id == ConhecimentoHerdado.IdSetupCasa;
+            setups.Add(new Setup(id, nome, Quando(item), LerValores(item, "calibracao", Camada.Calibracao), eq,
+                Booleano(item, "link12"), Booleano(item, "link34"), herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null));
+            usos[id] = (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
+        }
+        if (setups.Count == 0)
+            return null;
+
+        var memorias = new List<MemoriaCelular>();
+        if (raiz.TryGetProperty("memorias", out var memoriasJson) && memoriasJson.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in memoriasJson.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object || Texto(item, "id") is not { Length: > 0 } id
+                    || memorias.Any(m => m.Id == id) || Texto(item, "setup") is not { } idSetup
+                    || setups.All(s => s.Id != idSetup) || NomeValido(Texto(item, "nome")) is not { } nome
+                    || memorias.Any(m => m.IdSetup == idSetup && MesmoNome(m.Nome, nome)))
+                    continue;
+                var herdada = id == ConhecimentoHerdado.IdMemoriaFilme;
+                memorias.Add(new MemoriaCelular(id, idSetup, nome, Quando(item), LerValores(item, "carater", Camada.Carater),
+                    herdada, herdada ? ConhecimentoHerdado.NotaMemoriaFilme : null));
+            }
+        }
+
+        var uso = new Dictionary<string, UsoDoSetup>();
+        foreach (var s in setups)
+        {
+            var dele = memorias.Where(m => m.IdSetup == s.Id).Select(m => m.Id).ToHashSet();
+            var (recentes, botoes) = usos[s.Id];
+            var validos = recentes.Where(dele.Contains).Distinct().ToArray();
+            var vistos = new HashSet<string>();
+            var fixos = Normalizar(botoes).Select(b => b is not null && dele.Contains(b) && vistos.Add(b) ? b : null).ToArray();
+            uso[s.Id] = new UsoDoSetup(validos, fixos);
+        }
+
+        var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
+        return new DadosSetups(setups, memorias, ultimo, uso);
+    }
+
+    /// <summary>O JSON do <c>setup-mudo.json</c>: a marca, ou <c>"marca": null</c> quando não há.</summary>
+    public static string MarcaParaJson(MarcaMudo? marca)
+    {
+        using var fluxo = new MemoryStream();
+        using (var w = NovoEscritor(fluxo))
+        {
+            w.WriteStartObject();
+            w.WriteNumber("formato", Formato);
+            if (marca is null)
+            {
+                w.WriteNull("marca");
+            }
+            else
+            {
+                w.WriteStartObject("marca");
+                if (marca.IdSetup is { } id)
+                    w.WriteString("setup", id);
+                else
+                    w.WriteNull("setup");
+                w.WriteStartArray("muteAnterior");
+                foreach (var m in marca.MuteAnterior)
+                    w.WriteStringValue(m);
+                w.WriteEndArray();
+                w.WriteString("quando", marca.Quando.ToString("O", Fio));
+                w.WriteEndObject();
+            }
+            w.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(fluxo.ToArray());
+    }
+
+    /// <summary>Lê a marca do mudo; null se não há (ou fora do formato).</summary>
+    public static MarcaMudo? MarcaDeJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var raiz = doc.RootElement;
+        if (raiz.ValueKind != JsonValueKind.Object
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato != Formato
+            || !raiz.TryGetProperty("marca", out var m) || m.ValueKind != JsonValueKind.Object
+            || !m.TryGetProperty("muteAnterior", out var anterior) || anterior.ValueKind != JsonValueKind.Array)
+            return null;
+        var mutes = anterior.EnumerateArray().Select(v => v.ValueKind == JsonValueKind.String ? v.GetString()! : "0").ToList();
+        while (mutes.Count < Parametro.Canais)
+            mutes.Add("0");
+        return new MarcaMudo(Texto(m, "setup"), mutes.Take(Parametro.Canais).ToArray(), Quando(m));
+    }
+
+    private static void EscreverValores(Utf8JsonWriter w, string nome, IEnumerable<ValorCopiado> valores)
+    {
+        w.WriteStartArray(nome);
+        foreach (var v in valores)
+        {
+            w.WriteStartObject();
+            w.WriteString("codigo", v.Codigo);
+            if (v.Indice is { } i)
+                w.WriteNumber("indice", i);
+            w.WriteString("noFio", v.NoFio);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
+    /// <summary>Os valores guardados, só os da camada e sem repetir, na ordem da leitura.</summary>
+    private static IReadOnlyList<ValorCopiado> LerValores(JsonElement item, string nome, Camada camada)
+    {
+        var lidos = new Dictionary<(string, int?), ValorCopiado>();
+        if (item.TryGetProperty(nome, out var vs) && vs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var v in vs.EnumerateArray())
+            {
+                if (v.ValueKind != JsonValueKind.Object || Texto(v, "codigo") is not { } codigo || Texto(v, "noFio") is not { } noFio)
+                    continue;
+                int? indice = v.TryGetProperty("indice", out var i) && i.TryGetInt32(out var n) ? n : null;
+                lidos.TryAdd((codigo, indice), new ValorCopiado(codigo, indice, noFio));
+            }
+        }
+        return Camadas.Consultas(camada)
+            .Select(c => lidos.GetValueOrDefault((c.Parametro.Codigo, c.Indice)))
+            .OfType<ValorCopiado>()
+            .ToArray();
+    }
+
+    /// <summary>
+    /// O nome guardado, se vale: a regra dos presets, ou o nome de fábrica do herdado ("Casa 2.1"
+    /// tem um ponto, que a regra não deixa digitar).
+    /// </summary>
+    private static string? NomeGuardado(string? nome, string id) =>
+        NomeValido(nome) ?? (id == ConhecimentoHerdado.IdSetupCasa && nome == ConhecimentoHerdado.NomeSetupCasa ? nome : null);
+
+    private static List<string?> Ids(JsonElement item, string nome)
+    {
+        var lista = new List<string?>();
+        if (item.TryGetProperty(nome, out var a) && a.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var v in a.EnumerateArray())
+                lista.Add(v.ValueKind == JsonValueKind.String ? v.GetString() : null);
+        }
+        return lista;
+    }
+
+    private static decimal NumeroEq(JsonElement o, string nome)
+    {
+        if (!o.TryGetProperty(nome, out var p) || !p.TryGetDecimal(out var v))
+            return 0m;
+        v = decimal.Round(v, 1);
+        return Math.Clamp(v, Camadas.EquilibrioMinimo, Camadas.EquilibrioMaximo);
+    }
+
+    private static bool Booleano(JsonElement o, string nome) =>
+        o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.True;
+
+    private static DateTimeOffset Quando(JsonElement o) =>
+        Texto(o, "quando") is { } q && DateTimeOffset.TryParse(q, Fio, DateTimeStyles.RoundtripKind, out var d) ? d : DateTimeOffset.MinValue;
+
+    private static string? Texto(JsonElement o, string nome) =>
+        o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+
+    private static Utf8JsonWriter NovoEscritor(Stream fluxo) => new(fluxo, new JsonWriterOptions
+    {
+        Indented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    });
+
+    // ------------------------------------------------------------------ apoio
+
+    private bool SessaoAberta => _sessao.Estado == EstadoSessao.Conectado && _sessao.SegurandoConexao;
+
+    private static ResultadoCopia ParaCopia(ResultadoSetup r) =>
+        r.Ok ? ResultadoCopia.Sucesso : ResultadoCopia.Falha(r.Mensagem ?? r.Motivo ?? "falhou");
+
+    /// <summary>Guarda a frase do resultado como aviso e devolve o resultado.</summary>
+    private ResultadoSetup Terminar(ResultadoSetup r)
+    {
+        lock (_trava)
+            _aviso = r.Mensagem;
+        if (!r.Ok)
+            _log.Evento($"setup: {r.Mensagem ?? r.Motivo}");
+        Notificar();
+        return r;
+    }
+
+    private void Notificar()
+    {
+        try
+        {
+            Mudou?.Invoke();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha no aviso dos Setups ({e.GetType().Name})");
+        }
+    }
+
+    /// <summary>O estado de antes de tocar no Setup, para o Desistir.</summary>
+    private sealed record Antes(EstadoConferencia Situacao, string? SetupEmUso, SomEmUso EmUso);
+}

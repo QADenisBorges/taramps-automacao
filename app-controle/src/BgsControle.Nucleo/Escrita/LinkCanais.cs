@@ -196,6 +196,34 @@ public sealed class LinkCanais
         }
     }
 
+    /// <summary>
+    /// Põe o estado do link de um Setup (história 8c), sem copiar a saída mestre: quem aplicou o
+    /// Setup já escreveu as duas saídas. Não manda nada ao aparelho. Devolve o motivo, se não
+    /// conseguiu guardar algum par, ou null.
+    /// </summary>
+    internal async Task<string?> DefinirEstadoAsync(bool link12, bool link34)
+    {
+        await Carregada;
+        await _operacao.WaitAsync();
+        try
+        {
+            string? motivo = null;
+            foreach (var (par, ligado) in new[] { (ParCanais.Saidas12, link12), (ParCanais.Saidas34, link34) })
+            {
+                if (Ligado(par) == ligado)
+                    continue;
+                var r = await DefinirAsync(par, ligado);
+                if (!r.Ok || r.Motivo is not null)
+                    motivo ??= r.Motivo;
+            }
+            return motivo;
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
     /// <summary>O canal que repete a escrita deste, ou null (o escritor pergunta a cada escrita confirmada).</summary>
     internal int? Espelho(Parametro parametro, int? indice)
     {

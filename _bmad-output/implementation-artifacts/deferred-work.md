@@ -78,3 +78,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
   summary: O MauiProgram ainda não cria o Historico (historico.json) nem o UsoCompartilhado (uso-ia.json), não os passa à Sessao, e ninguém chama Historico.GravarAgoraAsync ao sair do app.
   evidence: A spec da 9a deixa o MauiProgram para a história 11 (Never). Até lá, o app real não tem histórico nem trava, e uma entrada dos últimos 2 s se perde ao fechar o app.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8c-setup-e-memoria-no-celular.md`
+  summary: Com o link 1–2 ligado e um equilíbrio L/R diferente de 0, o link copia o valor final da saída 1 (mestre) para a saída 2 e perde o equilíbrio na outra saída (o ganho e o limiter da JBL R ficam iguais aos da JBL L, sem os −3 dB do Casa 2.1).
+  evidence: O `LinkCanais` repete na outra saída o valor que o aparelho confirmou na mestre (`Escritor.EspelharAsync`), sem saber do equilíbrio do Setup; o `GerenteSetups.AjustarEquilibrioAsync` escreve pelo caminho público (com o link). Conferir na história 10, junto do Ajuste da JBL L e da JBL R e do link 1–2 nas abas: somar o equilíbrio da outra saída na cópia do link, ou não copiar o 081 e o 071 com equilíbrio.

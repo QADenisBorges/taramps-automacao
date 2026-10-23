@@ -180,14 +180,18 @@ public sealed class AparelhoTestes : IDisposable
     }
 
     [Fact]
-    public async Task Com_as_chaves_ligadas_os_resets_e_a_senha_passam_e_nenhum_comando_conhecido_fica_nao_liberado()
+    public async Task Com_as_chaves_ligadas_os_resets_e_a_senha_passam_e_so_o_240_e_o_23N_ficam_nao_liberados()
     {
         await Conectar(Chave.ResetFabrica, Chave.ResetAudio, Chave.TrocaSenha);
 
         Assert.Null(_sessao.Conferir("*004*"));
         Assert.Null(_sessao.Conferir("*242*"));
         Assert.Null(_sessao.Conferir("*001*AB12*CD34*"));
-        foreach (var codigo in Catalogo.Todos.Select(p => p.Codigo).Concat(Catalogo.CodigosDoAparelho))
+        // História 8c: salvar (240) e renomear (23N) as memórias do aparelho só no app da Taramps.
+        string[] naoLiberados = ["240", "231", "232", "233"];
+        foreach (var codigo in naoLiberados)
+            Assert.Equal(Sessao.MotivoNaoLiberado, _sessao.Conferir($"*{codigo}*1*"));
+        foreach (var codigo in Catalogo.Todos.Select(p => p.Codigo).Concat(Catalogo.CodigosDoAparelho).Except(naoLiberados))
         {
             foreach (var quadro in new[] { $"*{codigo}*", $"*{codigo}*1*", $"*{codigo}*X*Y*" })
                 Assert.NotEqual(Sessao.MotivoNaoLiberado, _sessao.Conferir(quadro));
