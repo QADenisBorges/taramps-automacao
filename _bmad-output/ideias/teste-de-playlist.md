@@ -1,13 +1,13 @@
 ---
 title: 'Ideia: teste de playlist'
 created: '2026-10-22'
-status: 'pendente: forjar a ideia (bmad-forge-idea)'
+status: 'forjada em 22/10/2026: ver _bmad-output/forge/teste-de-playlist/forged-idea.md'
 origem: 'Denis, sessão da história 8b'
 ---
 
 # Ideia: teste de playlist
 
-> **Pendente:** passar pelo `/bmad-forge-idea` (forjar ideia) antes de virar spec ou história. Pedido do Denis em 22/10/2026.
+> **Forjada em 22/10/2026.** O resultado, que amplia esta nota, está em `_bmad-output/forge/teste-de-playlist/forged-idea.md`.
 
 ## O que o Denis pediu
 

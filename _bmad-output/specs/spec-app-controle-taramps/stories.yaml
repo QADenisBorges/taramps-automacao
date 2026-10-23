@@ -105,12 +105,56 @@
   invoke_dev_with: >-
     As cinco travas de porta-de-comandos.md. A senha do processador nunca
     trafega pela porta.
+# Proposta de mudança de 23/10/2026 (planning-artifacts/sprint-change-proposal-2026-10-23.md):
+# o app não edita as memórias do processador (só lê os nomes e carrega), ganha
+# Setups, memórias no celular e preset só de 15 bandas. Entram 3b, 8c e 8d antes da 10.
+# Ordem: 3b → 8c → 8d → 10 → 11 → 12.
+- id: "3b"
+  title: UX — Setup e memórias no celular
+  description: >-
+    Revisa o EXPERIENCE.md e o DESIGN.md para o Setup (escolha e conferência
+    ao conectar), as memórias no celular em quantidade livre, o "Do aparelho"
+    só para carregar, o preset de 15 bandas, o Player preso à memória do
+    celular, os fluxos 1 e 4 refeitos e o fluxo novo de levar o processador
+    para o carro (CAP-4, CAP-5, CAP-15, CAP-16).
+  invoke_dev_with: >-
+    Use a skill bmad-ux, de forma interativa com o Denis. A lista do que
+    revisar está na seção 4.6 da proposta de mudança de 23/10. Primeira
+    pergunta: com memórias em quantidade livre, os 3 botões do Início deixam
+    de caber.
+- id: "8c"
+  title: Setup e memória no celular
+  description: >-
+    Setups (nome e calibração, escolha ao conectar, conferência com a última
+    aplicação, mutar e pedir confirmação na dúvida, reaplicar a memória ativa
+    se o processador perdeu o estado); memórias no celular (criar, aplicar,
+    renomear, apagar), com ganho e limiter finais = memória + equilíbrio do
+    Setup; carregar memória do aparelho continua e o salvar e o renomear no
+    aparelho saem do código; a FILME herdada dividida em Setup, memória e
+    preset (CAP-4, CAP-6, CAP-11, CAP-16).
+  invoke_dev_with: >-
+    Reaproveita a CopiaAntes, o Escritor e a releitura das histórias 5 e 6;
+    nada é desfeito. Chaves novas em chaves-de-acesso.md e regra 5 de
+    failure-modes.md. Divisão da FILME em conhecimento-herdado.md. Testado
+    contra o ProcessadorSimulado, com um teste garantindo que nenhum 240 ou
+    23N sai do app.
+- id: "8d"
+  title: Preset de 15 bandas e playlist da memória do celular
+  description: >-
+    O preset passa a ser só o EQ de 15 bandas, aplicado por cima da memória;
+    a playlist fica presa ao id da memória do celular, com migração do
+    playlists.json antigo (por posição); a porta da IA ganha "aplicar
+    memória" (CAP-5, CAP-12, CAP-15).
+  invoke_dev_with: >-
+    Depende da 8c. O preset herdado é o "Cinema" de conhecimento-herdado.md.
+    A migração das playlists por posição precisa de uma regra para quando a
+    memória do celular correspondente não existir.
 - id: "10"
-  title: Telas, parte 1 — leitura, ajustes, link e memórias
+  title: Telas, parte 1 — leitura, ajustes, link, Setups e memórias
   description: >-
     XAML e navegação das telas de leitura e de ajuste por canal e globais,
-    link e memórias, seguindo o DESIGN.md e o EXPERIENCE.md (CAP-2, CAP-3,
-    CAP-4, CAP-14).
+    link, Setups e memórias, seguindo o DESIGN.md e o EXPERIENCE.md (CAP-2,
+    CAP-3, CAP-4, CAP-14, CAP-16).
 - id: "11"
   title: Telas, parte 2 — gerador, monitoração, aparelho, chaves, presets, IA e histórico
   description: >-
@@ -120,10 +164,15 @@
   title: Integração e testes no aparelho real
   description: >-
     Liga tudo no PRO 2.4BT: confere a lista de suposições do simulador, a
-    paridade nas 3 memórias e os testes 1, 2 e 3 do sinal de sucesso.
+    paridade do estado atual e depois de aplicar a FILME herdada, se o
+    processador guarda o estado ao vivo ao ser desligado (se não guardar,
+    confere a reaplicação ao conectar) e os testes 1 a 4 do sinal de sucesso.
   done_checkpoint: true
   invoke_dev_with: >-
     Precisa do celular e do processador. Voltímetro contra o multímetro;
     gerador só com o RCA dos módulos desconectado; Wi-Fi real; reset de
     fábrica testado só na recusa, a menos que o Denis decida outra coisa.
     Cuidados de conhecimento-herdado.md para o app da Taramps.
+# Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
+# playlist, teste a seco, teto por preset), a partir de
+# _bmad-output/forge/teste-de-playlist/forged-idea.md.

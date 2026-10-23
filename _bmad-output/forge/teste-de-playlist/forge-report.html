@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge: Memórias de Rendimento</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2a2420;--muted:#6b6058;--line:#e2d8c8;--seal:#9b1c1c;--seal2:#c0392b;--ok:#2f6b3a;--warn:#8a5a00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1815;--card:#24201c;--ink:#efe7dc;--muted:#a99d90;--line:#3a332c;--seal:#d0453a;--seal2:#e0675d;--ok:#7fc08a;--warn:#e0b45a}}
+:root[data-theme="dark"]{--bg:#1b1815;--card:#24201c;--ink:#efe7dc;--muted:#a99d90;--line:#3a332c;--seal:#d0453a;--seal2:#e0675d;--ok:#7fc08a;--warn:#e0b45a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:20px}
+header .t{flex:1;min-width:240px}
+h1{font-size:1.8rem;margin:0 0 6px}
+h2{font-size:1.2rem;margin:32px 0 10px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.sub{color:var(--muted);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+ul{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.tag{display:inline-block;font:600 .75rem/1 system-ui,sans-serif;padding:4px 7px;border-radius:5px;border:1px solid currentColor}
+.ok{color:var(--ok)}.warn{color:var(--warn)}
+.cast{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.cast div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.92rem}
+.cast b{display:block}
+.cast i{color:var(--muted)}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <svg width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="Selo HARDENED">
+    <defs><radialGradient id="g" cx="40%" cy="35%"><stop offset="0" stop-color="var(--seal2)"/><stop offset="1" stop-color="var(--seal)"/></radialGradient></defs>
+    <path d="M75 6 C92 4 104 14 116 20 C130 28 142 40 143 58 C145 76 140 90 132 104 C122 120 108 136 88 141 C70 146 52 142 38 133 C22 122 10 106 7 88 C4 70 8 52 18 38 C30 20 52 8 75 6Z" fill="url(#g)"/>
+    <circle cx="75" cy="75" r="50" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="75" y="70" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="#fff" letter-spacing="1.5">HARDENED</text>
+    <text x="75" y="90" text-anchor="middle" font-family="Georgia,serif" font-size="10" fill="#fff" fill-opacity=".9">22 · 10 · 2026</text>
+  </svg>
+  <div class="t">
+    <h1>Setup, memórias de rendimento e teste de playlist</h1>
+    <p class="sub">Forge do Denis com o documento de referência, contra o app BGS Controle. A ideia saiu forjada e pronta para virar plano.</p>
+  </div>
+</header>
+
+<h2>Resultado</h2>
+<div class="card">
+  <p>A ideia começou como "testar a playlist para usar a folga que sobra" e saiu como um modelo completo: <b>Setup → Memória → Preset</b>. O limite físico é calculado pelo Setup, há quatro níveis de rendimento, e no Alto e no Extra a playlist é obrigatória, com análise, teste a seco e clip de fiscal.</p>
+  <p><span class="tag ok">Próximo passo</span> Rodar o <code>bmad-correct-course</code> antes da história 10. A spec do Rendimento vem depois da história 12.</p>
+</div>
+
+<h2>Decisões travadas</h2>
+<div class="card"><ul>
+  <li><b>Vários Setups, um processador.</b> Ao conectar, o Denis escolhe. O app confere com o estado lido (e a localização como ajuda). Se houver dúvida, muta e pede confirmação.</li>
+  <li><b>As memórias do processador saem do app.</b> A memória agora vive no celular e é aplicada ao vivo.</li>
+  <li><b>Três camadas:</b> Setup = calibração; Memória = caráter (compressor, EQ de saída, sub); Preset = só as 15 bandas.</li>
+  <li><b>Limite físico calculado:</b> o menor entre térmico, excursão e corte do amplificador, convertido pelo ganho do módulo medido. Dado desconhecido entra conservador e marcado como estimado.</li>
+  <li><b>O limiter sempre segura excursão e amplificador</b>, em todos os níveis.</li>
+  <li><b>Quatro níveis:</b> Baixo e Médio (qualidade, qualquer fonte, pior caso); Alto e Extra (SPL, só playlist auditada). O Extra passa só do térmico, por tempo, e depois o BT fica travado no descanso.</li>
+  <li><b>Um parâmetro para todas as músicas</b> e um teto por preset.</li>
+  <li><b>Otimizar na playlist:</b> análise digital em segundo plano, depois teste a seco com o módulo desligado só nos trechos fortes (~7 min em vez de ~80).</li>
+  <li><b>"Quem está pesando":</b> quantos dB cada música tira do ajuste.</li>
+  <li><b>Sem retrabalho:</b> regras para o físico, receita para começar, A/B para o gosto e perfil de ouvinte salvo.</li>
+</ul></div>
+
+<h2>Rejeitado, e por quê</h2>
+<div class="card wrap"><table>
+<tr><th>Opção</th><th>Motivo</th></tr>
+<tr><td>Setup só do 2.1</td><td>O mesmo processador vai para o carro.</td></tr>
+<tr><td>Preset com o som completo ou mexendo em crossover</td><td>Trocar o gosto desfaria a calibração.</td></tr>
+<tr><td>Teto pelo limiter da memória</td><td>Na FILME o limiter é compressor de propósito.</td></tr>
+<tr><td>Teto único pelo pior preset</td><td>Prende todos os presets ao mais pesado.</td></tr>
+<tr><td>Playlist subindo o volume no Baixo/Médio</td><td>Esses níveis são de qualidade, não de SPL.</td></tr>
+<tr><td>Teste a seco da playlist inteira</td><td>~80 min, porque o A2DP não acelera; os trechos fortes bastam.</td></tr>
+<tr><td>IA ajustando livre</td><td>Gerou os 11 V sem explicação na JBL.</td></tr>
+</table></div>
+
+<h2>Pontos fracos que sobreviveram</h2>
+<div class="card"><ul>
+  <li><span class="tag warn">Medir</span> O que os bits de clip <code>150</code>/<code>111</code> marcam de fato.</li>
+  <li><span class="tag warn">Medir</span> O nível do BT com o player do app (−13 dB foi só com o YouTube Music).</li>
+  <li><span class="tag warn">Medir</span> Se o <code>251</code> desliga o A2DP e o que o voltímetro <code>005</code> mede.</li>
+  <li><span class="tag warn">Spec</span> O valor conservador para Xmax e Fb desconhecidos: não existe número universal.</li>
+  <li><span class="tag warn">Spec</span> As regras de revalidação, o tempo e o descanso do Extra e as margens de cada nível.</li>
+  <li><span class="tag warn">Fora do controle</span> O app oficial da Taramps pode religar o A2DP durante o descanso, e o RCA não é detectável.</li>
+  <li><span class="tag warn">Impacto</span> Tirar as memórias do processador mexe nas histórias 6, 8, 8b e 9b (21 arquivos).</li>
+</ul></div>
+
+<h2>Quem forjou</h2>
+<div class="cast">
+  <div><b>🏗️ Winston</b><i>Arquiteto</i><br>Separou as camadas e pôs a proteção no aparelho.</div>
+  <div><b>😤 Grumbal</b><i>Adversário</i><br>Achou o sub do carro, o YouTube a 0 dBFS e o cone que não espera.</div>
+  <div><b>📊 Mary</b><i>Analista</i><br>Mostrou que a sobra vinha da playlist, não da caixa.</div>
+  <div><b>📋 John</b><i>PM</i><br>Viu o retrabalho nos 11 V e na história 10.</div>
+  <div><b>🎨 Sally</b><i>UX</i><br>Protegeu a calibração da troca de preset.</div>
+  <div><b>🔧 Rui</b><i>Instalador automotivo (convidado)</i><br>Mostrou que só o calor perdoa o tempo.</div>
+  <div><b>🎧 Lia</b><i>Usuária comum (convidada)</i><br>Pediu menos nomes e Spotify no dia a dia.</div>
+  <div><b>🎛️ Téo</b><i>Técnico de PA (convidado)</i><br>Mostrou que gosto se acha ouvindo, não descrevendo.</div>
+</div>
+</main>
+</body>
+</html>
