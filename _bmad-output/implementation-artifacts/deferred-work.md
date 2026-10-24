@@ -120,6 +120,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
   summary: A memória 1 do aparelho se chama SPL (salva em 20/10), mas o conhecimento herdado (conhecimento-herdado.md e ConhecimentoHerdado.cs) ainda a descreve como MUSICA HIGH.
   evidence: A leitura de 24/10 deu `231#SPL`, e carregar o `n` 0 trouxe a SPL (JBL com passa-alta em 200 Hz). Atualizar a nota da memória 1 é decisão do Denis.
+  status: resolvido em 24/10, por decisão do Denis ("memória 1 é SPL"). A nota herdada da memória 1 passou a ser a SPL, com os valores da seção 12.8 de memoria-spl.md e da leitura de 24/10, em conhecimento-herdado.md e em ConhecimentoHerdado.cs.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
   summary: Antes de conectar, o Início mostra "Sem Setup", e só depois da conexão aparece o Casa 2.1.

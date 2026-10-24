@@ -88,7 +88,7 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.Equal("Memórias do Casa 2.1", memorias.TituloCelular);
 
         // Do aparelho: a nota das 3, pela posição, sem selo.
-        Assert.Contains("Aprovada", memorias.Aparelho(1).NotaHerdada);
+        Assert.Contains("máximo seguro", memorias.Aparelho(1).NotaHerdada);
         Assert.Contains("MUSICA ORIG", memorias.Aparelho(2).NotaHerdada);
         Assert.Contains("precisa ser refeita", memorias.Aparelho(2).NotaHerdada);
         Assert.Contains("definitiva", memorias.Aparelho(3).NotaHerdada);
@@ -99,7 +99,7 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.NotNull(herdado.Secao("Cuidados com o app da Taramps"));
         Assert.NotNull(herdado.Secao("Os equipamentos do Casa 2.1")); // história 8e
         Assert.NotNull(herdado.Secao("A FILME em três camadas"));
-        Assert.Equal("MUSICA HIGH", herdado.NotaMemoria(1)!.NomeNoPrototipo);
+        Assert.Equal("SPL", herdado.NotaMemoria(1)!.NomeNoPrototipo);
 
         Assert.Empty(_b.Simulador.Escritas);
         Assert.Null(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
@@ -125,10 +125,11 @@ public sealed class PresetsViewModelTestes : IDisposable
     public async Task A_nota_vale_pela_posicao_mesmo_com_o_nome_de_hoje_diferente()
     {
         using var memorias = _b.CriarMemoriasViewModel();
+        _b.Simulador.Definir("231", null, "OUTRA");
         await _b.Conectar();
 
-        Assert.Equal(["SPL", "MUSICA ORIG", "FILME"], memorias.DoAparelho.Select(m => m.Nome));
-        Assert.Contains("MUSICA HIGH", memorias.Aparelho(1).NotaHerdada); // o nome do protótipo, não o de hoje
+        Assert.Equal(["OUTRA", "MUSICA ORIG", "FILME"], memorias.DoAparelho.Select(m => m.Nome));
+        Assert.Contains("SPL", memorias.Aparelho(1).NotaHerdada); // o nome do protótipo, não o de hoje
     }
 
     [Fact]

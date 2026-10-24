@@ -34,7 +34,7 @@ public sealed record DadosPlaylists(IReadOnlyDictionary<string, IReadOnlyList<Fa
 /// arquivo foi gravado. O app guarda só a URI de cada música; ele não copia o arquivo.
 /// <list type="bullet">
 /// <item><b>Migração</b> do formato 1 (3 listas pela posição da memória do aparelho): cada playlist não
-/// vazia vira uma <see cref="PlaylistPendente"/> com o nome do protótipo daquela posição (MUSICA HIGH,
+/// vazia vira uma <see cref="PlaylistPendente"/> com o nome do protótipo daquela posição (SPL,
 /// MUSICA ORIG, FILME); as vazias somem.</item>
 /// <item><b>Adoção</b> (<see cref="AdotarAsync"/>): quem conhece as memórias (o <c>GerenteSetups</c>)
 /// passa a lista delas na ordem de busca; cada pendente vai para a primeira com o mesmo nome (sem

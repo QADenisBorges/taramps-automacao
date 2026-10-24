@@ -212,7 +212,7 @@ public sealed class PresetsTestes : IDisposable
     }
 
     [Theory]
-    [InlineData(1, "MUSICA HIGH", "Aprovada")]
+    [InlineData(1, "SPL", "máximo seguro")]
     [InlineData(2, "MUSICA ORIG", "precisa ser refeita")]
     [InlineData(3, "FILME", "definitiva")]
     public void As_notas_das_3_memorias_vem_pela_posicao(int numero, string nomeNoPrototipo, string trecho)

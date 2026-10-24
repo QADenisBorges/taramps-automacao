@@ -222,7 +222,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.Equal("Memória 2 do aparelho", _vm.Aparelho(2).Titulo);
         Assert.Equal("Do aparelho", MemoriasViewModel.TituloAparelho);
         Assert.Equal("Salvar e renomear estas memórias só no app da Taramps.", MemoriasViewModel.LembreteAparelho);
-        Assert.Contains("MUSICA HIGH", _vm.Aparelho(1).NotaHerdada); // a nota vale pela posição
+        Assert.Contains("SPL", _vm.Aparelho(1).NotaHerdada); // a nota vale pela posição
     }
 
     [Fact]

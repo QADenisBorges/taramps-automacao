@@ -119,8 +119,10 @@ public static class ConhecimentoHerdado
 
     private static readonly IReadOnlyList<NotaMemoriaHerdada> Notas =
     [
-        new(1, "MUSICA HIGH",
-            "Aprovada. JBL +2, sub −1,4, EQ plano, ataque 10 ms, limitadores −11 (JBL) e −9 (sub)."),
+        new(1, "SPL",
+            "Salva em 20/10: o máximo seguro de cada falante pelo BT a 100 %. JBL +6 com passa-alta LR24 em 200 Hz e limitador −7 "
+            + "(ataque 5 ms); sub +2,6 com passa-alta BT24 em 40 Hz, passa-baixa LR24 em 200 Hz e limitador −9 (ataque 10 ms); "
+            + "liberação 200 ms, fase e atrasos 0, EQ plano. Medido: 17,7 V nas JBL e 27,5 V no sub."),
         new(2, "MUSICA ORIG",
             "Versão antiga, precisa ser refeita: ganhos −5/−10, limitadores −11/−6. É o teste 1 do sinal de sucesso."),
         new(3, "FILME",
@@ -186,7 +188,7 @@ public static class ConhecimentoHerdado
         ]),
         new("As 3 memórias",
         [
-            "Memória 1, MUSICA HIGH: JBL +2, sub −1,4, EQ plano, ataque 10 ms, limitadores −11 (JBL) e −9 (sub). Aprovada.",
+            "Memória 1, SPL (salva em 20/10): o máximo seguro de cada falante pelo BT a 100 %. JBL +6 com passa-alta LR24 em 200 Hz e limitador −7 (ataque 5 ms); sub +2,6 com passa-baixa LR24 em 200 Hz e limitador −9 (ataque 10 ms); EQ plano. Medido: 17,7 V nas JBL e 27,5 V no sub.",
             "Memória 2, MUSICA ORIG: ainda é a versão antiga (ganhos −5/−10, limitadores −11/−6). Precisa ser refeita, e esse é o teste 1 do sinal de sucesso.",
             "Memória 3, FILME: a versão definitiva, retratada na leitura de 18/10 (2026-10-18_2145).",
             "FILME, atrasos: L 0, R 100 cm, sub 80 cm. Ganhos: L +10, R +7, sub +6. Limitadores: −15 / −18 / −12, com liberação de 200 ms.",
