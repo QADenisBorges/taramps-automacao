@@ -2,8 +2,9 @@
 <!--
     A tela Setup (EXPERIENCE, Information Architecture e "Equipamentos e saídas"; DESIGN, linha-de-equipamento
     e folha-de-equipamento): Configurações › Setups › tocar num Setup. O nome com o selo HERDADO, as saídas que
-    o Setup dá (na cor do canal mestre), a lista de equipamentos e "Adicionar equipamento". O alto da tela fica
-    livre para o esquema do Setup (história 10b). A folha de equipamento sobe de baixo; nada vai pelo BLE.
+    o Setup dá (na cor do canal mestre), a lista de equipamentos e "Adicionar equipamento". No alto, o esquema do
+    Setup (história 10b; DESIGN, esquema-do-setup), posto pelo código no LugarDoEsquema. A folha de equipamento
+    sobe de baixo; nada vai pelo BLE.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -53,8 +54,8 @@
 
             <ScrollView Grid.Row="1">
                 <VerticalStackLayout Padding="16,4,16,24" Spacing="12">
-                    <!-- O lugar do esquema do Setup (história 10b): vazio nesta versão. -->
-                    <ContentView x:Name="LugarDoEsquema" />
+                    <!-- O esquema do Setup (história 10b): a EsquemaView entra aqui pelo código, com 280 de altura mínima. -->
+                    <ContentView x:Name="LugarDoEsquema" MinimumHeightRequest="280" />
 
                     <!-- As saídas que o Setup dá. -->
                     <Label Style="{StaticResource tipo-rotulo}" Text="SAÍDAS" />

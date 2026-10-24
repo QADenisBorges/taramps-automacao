@@ -14,4 +14,9 @@
     <ProjectReference Include="..\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- História 10b: os testes montam cenas com peças sobrepostas (o construtor interno da CenaSetup). -->
+    <InternalsVisibleTo Include="BgsControle.Telas.Testes" />
+  </ItemGroup>
+
 </Project>

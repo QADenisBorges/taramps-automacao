@@ -152,6 +152,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<SalvarViewModel>();
         builder.Services.AddSingleton<SetupViewModel>();
         builder.Services.AddSingleton<EquipamentosViewModel>(); // história 8e (a tela Setup é da história 10)
+        builder.Services.AddSingleton<EsquemaViewModel>(); // história 10b: o esquema do Setup mostrado pela lista
         builder.Services.AddSingleton<MemoriasViewModel>();
         builder.Services.AddSingleton<LinkViewModel>();
         builder.Services.AddSingleton<PresetsViewModel>();
