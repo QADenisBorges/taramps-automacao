@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A casca (DESIGN, barra-inferior, topo-do-app; EXPERIENCE, Information Architecture): o topo com a marca, a
+    pílula de status e a engrenagem (no Início, em duas linhas, com o seletor de Setup), os destinos Início ·
+    Mesa · Áudio (trocar não perde o estado de cada um) e a barra inferior. A lista de memórias ("…") sobe por
+    cima como folha.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             xmlns:t="clr-namespace:BgsControle.App.Telas"
+             xmlns:r="clr-namespace:BgsControle.App.Recursos"
+             x:Class="BgsControle.App.Telas.CascaPage"
+             x:DataType="telas:CascaViewModel"
+             NavigationPage.HasNavigationBar="False"
+             Title="BGS Controle">
+    <ContentPage.Resources>
+        <Style x:Key="pilula-nav" TargetType="Button" BasedOn="{StaticResource botao-base}">
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{StaticResource apoio}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="r:Tipo.Peso" Value="600" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+            <!-- Topo: marca, (pílula fora do Início) e engrenagem. -->
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Padding="16,6,16,0" HeightRequest="44">
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-marca-forte}" Text="BGS" />
+                    <Label Style="{StaticResource tipo-marca}" Text="Controle" />
+                </HorizontalStackLayout>
+                <c:PilulaView Grid.Column="1" IsVisible="{Binding NoInicio, Converter={StaticResource Inverso}}" />
+                <Button Grid.Column="2" Style="{StaticResource engrenagem}" Command="{Binding AbrirConfiguracoes}" />
+            </Grid>
+
+            <!-- No Início, a segunda linha: o seletor de Setup e a pílula. -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Padding="16,2,16,0" IsVisible="{Binding NoInicio}">
+                <Border BackgroundColor="{StaticResource sup-1}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12" Padding="12,0" HeightRequest="44" HorizontalOptions="Start">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Inicio.SeletorRotulo}" VerticalTextAlignment="Center"
+                               IsVisible="{Binding Inicio.SeletorRotulo, Converter={StaticResource TemTexto}}" />
+                        <Label Style="{StaticResource tipo-botao-medio}" Text="{Binding Inicio.SeletorNome}" VerticalTextAlignment="Center"
+                               LineBreakMode="TailTruncation" MaximumWidthRequest="170" />
+                        <Label Text="›" TextColor="{StaticResource apagado}" FontSize="20" VerticalTextAlignment="Center" />
+                    </HorizontalStackLayout>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding Inicio.TrocarSetup}" />
+                    </Border.GestureRecognizers>
+                </Border>
+                <c:PilulaView Grid.Column="1" />
+            </Grid>
+
+            <!-- Os destinos: os três ficam vivos; só um aparece. -->
+            <Grid Grid.Row="2">
+                <ContentView IsVisible="{Binding NoInicio}">
+                    <t:InicioView BindingContext="{Binding Inicio}" />
+                </ContentView>
+                <ContentView IsVisible="{Binding NaMesa}">
+                    <t:MesaView BindingContext="{Binding Mesa}" />
+                </ContentView>
+                <ContentView IsVisible="{Binding NoAudio}">
+                    <t:AudioView BindingContext="{Binding Audio}" />
+                </ContentView>
+            </Grid>
+
+            <!-- A barra inferior. -->
+            <VerticalStackLayout Grid.Row="3">
+                <BoxView HeightRequest="1" Color="{StaticResource sup-3}" />
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Padding="16,14" HeightRequest="72">
+                    <Button Style="{StaticResource pilula-nav}" Text="Início" Command="{Binding IrInicio}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding NoInicio}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    <Button Grid.Column="1" Style="{StaticResource pilula-nav}" Text="Mesa" Command="{Binding IrMesa}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding NaMesa}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    <Button Grid.Column="2" Style="{StaticResource pilula-nav}" Text="Áudio" Command="{Binding IrAudio}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding NoAudio}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                </Grid>
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- A lista de memórias do "…" (Início e Mesa). -->
+        <c:FolhaView Aberta="{Binding Memorias.ListaAberta}" Fechar="{Binding Memorias.FecharLista}">
+            <c:ListaMemoriasView BindingContext="{Binding Memorias}" />
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

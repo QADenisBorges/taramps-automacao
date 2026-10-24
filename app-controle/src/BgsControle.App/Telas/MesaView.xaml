@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A Mesa (DESIGN, Layout › Mesa; canal-da-mesa, master): no topo, MEMÓRIA EM USO e os mesmos botões de
+    memória do Início; um canal por saída do Setup, em colunas iguais (nome na cor, campo do ganho, fader vertical, resumo,
+    Ajustar) e o MASTER embaixo. A faixa de monitoração e os chips são da próxima versão.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.MesaView"
+             x:DataType="telas:MesaViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Padding="16,8,16,12" RowSpacing="12">
+
+        <VerticalStackLayout Spacing="6">
+            <HorizontalStackLayout Spacing="8">
+                <Label Style="{StaticResource tipo-rotulo}" Text="{Binding RotuloMemoria}" VerticalTextAlignment="Center" />
+                <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding NomeMemoria}" VerticalTextAlignment="Center" />
+            </HorizontalStackLayout>
+            <c:BotoesMemoriaView BindingContext="{Binding Memorias}" />
+        </VerticalStackLayout>
+
+        <!-- Os canais: uma coluna por saída do Setup em uso (1 a 4), de larguras iguais. -->
+        <FlexLayout Grid.Row="1" Direction="Row" AlignItems="Stretch" Margin="-4,0" BindableLayout.ItemsSource="{Binding Canais}">
+            <BindableLayout.ItemTemplate>
+                <DataTemplate x:DataType="telas:CanalMesaViewModel">
+                    <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 22"
+                            FlexLayout.Grow="1" FlexLayout.Basis="0" Margin="4,0">
+                        <Grid RowDefinitions="4,Auto,Auto,Auto,*,Auto,Auto,Auto" RowSpacing="6">
+                            <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                            <VerticalStackLayout Grid.Row="1" Padding="8,8,8,0" Spacing="2">
+                                <Label Style="{StaticResource tipo-nome-canal}" Text="{Binding Nome}" HorizontalTextAlignment="Center"
+                                       TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                <Label Style="{StaticResource tipo-escala}" Text="{Binding Subtitulo}" HorizontalTextAlignment="Center" />
+                            </VerticalStackLayout>
+                            <!-- O campo do ganho: tocar no número vira campo. -->
+                            <Border Grid.Row="2" Style="{StaticResource campo-numerico}" Margin="6,0" MinimumWidthRequest="0"
+                                    BindingContext="{Binding Ganho}">
+                                <Grid x:DataType="telas:ControleParametroViewModel">
+                                    <Label Style="{StaticResource tipo-valor-canal}" FontSize="20" Text="{Binding TextoValor}"
+                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                    <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0"
+                                             Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding TocarNoValor}" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Border>
+                            <c:CampoEdicaoView Grid.Row="3" Margin="6,0" BindingContext="{Binding Ganho}" />
+                            <ContentView Grid.Row="4" BindingContext="{Binding Ganho}">
+                                <c:FaderView x:DataType="telas:ControleParametroViewModel" Vertical="True" MinimumHeightRequest="160"
+                                             Minimo="{Binding Minimo}" Maximo="{Binding Maximo}" Valor="{Binding ValorFader}"
+                                             Travado="{Binding Travado}" Cor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                                             ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                            </ContentView>
+                            <VerticalStackLayout Grid.Row="5" Margin="6,0" Spacing="2">
+                                <Label Style="{StaticResource tipo-escala}" Text="{Binding Resumo}" HorizontalTextAlignment="Center" />
+                                <!-- Por que o fader não mexe ("Sem conexão", "Chave desligada") e o que o aparelho respondeu. -->
+                                <Label Style="{StaticResource tipo-escala}" TextColor="{StaticResource apoio}" HorizontalTextAlignment="Center"
+                                       Text="{Binding Ganho.MotivoTrava}" IsVisible="{Binding Ganho.MotivoTrava, Converter={StaticResource TemTexto}}" />
+                                <Label Style="{StaticResource tipo-escala}" TextColor="{StaticResource apoio}" HorizontalTextAlignment="Center"
+                                       Text="{Binding Ganho.Aviso}" IsVisible="{Binding Ganho.Aviso, Converter={StaticResource TemTexto}}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Row="6" Style="{StaticResource tipo-escala}" TextColor="{StaticResource erro-texto}" Margin="6,0"
+                                   HorizontalTextAlignment="Center" Text="{Binding AvisoSaida}"
+                                   IsVisible="{Binding AvisoSaida, Converter={StaticResource TemTexto}}" />
+                            <Button Grid.Row="7" Style="{StaticResource botao-pequeno}" Text="Ajustar" Margin="8,0,8,8"
+                                    TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" Command="{Binding Ajustar}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </BindableLayout.ItemTemplate>
+        </FlexLayout>
+
+        <!-- O MASTER: todas as saídas, −80,0 a 0,0 dB. -->
+        <Border Grid.Row="2" BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 22"
+                Padding="14,8" BindingContext="{Binding Master}">
+            <VerticalStackLayout x:DataType="telas:ControleParametroViewModel" Spacing="4">
+                <Grid ColumnDefinitions="*,*,100" ColumnSpacing="10" MinimumHeightRequest="60">
+                    <Label Style="{StaticResource tipo-nome-canal}" Text="MASTER" VerticalTextAlignment="Center" />
+                    <c:FaderView Grid.Column="1" HeightRequest="44" Minimo="{Binding Minimo}" Maximo="{Binding Maximo}"
+                                 Valor="{Binding ValorFader}" Travado="{Binding Travado}"
+                                 ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                    <Border Grid.Column="2" Style="{StaticResource campo-numerico}" MinimumWidthRequest="100">
+                        <Grid>
+                            <Label Style="{StaticResource tipo-valor-campo}" FontSize="18" Text="{Binding TextoValor}"
+                                   HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+                            <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0" Color="{StaticResource texto}" />
+                        </Grid>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TocarNoValor}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                </Grid>
+                <Label Style="{StaticResource tipo-escala}" Text="todas as saídas · −80 · −40 · 0" />
+                <c:CampoEdicaoView />
+                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTrava}"
+                       IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding Aviso}"
+                       IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentView>

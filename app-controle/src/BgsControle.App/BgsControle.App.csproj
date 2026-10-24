@@ -25,7 +25,17 @@
 
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#1F3A5F" />
-    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1F3A5F" BaseSize="128,128" />
+    <!-- O splash no preto de palco (DESIGN, colors.palco), sem o azul antigo. -->
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#000000" BaseSize="128,128" />
+  </ItemGroup>
+
+  <!--
+    História 10: no Debug o XAML é inflado em tempo de execução (o padrão do .NET 10), mas o XamlC também
+    confere cada página (só validação, sem mexer no assembly). Assim um binding sem x:DataType, ou com um
+    caminho que não existe, vira aviso já no build do Debug.
+  -->
+  <ItemGroup>
+    <MauiXaml Update="**\*.xaml" Inflator="Runtime,XamlC" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,7 +7,20 @@ namespace BgsControle.Telas;
 /// Uma linha da folha do Salvar: "Calibração → Setup Casa 2.1" e o que mudou, com o antes e o depois.
 /// <see cref="Selo"/> é o HERDADO da linha das 15 bandas de um preset herdado.
 /// </summary>
-public sealed record LinhaSalvarViewModel(string Titulo, IReadOnlyList<string> Mudancas, string? Selo = null);
+public sealed record LinhaSalvarViewModel(string Titulo, IReadOnlyList<string> Mudancas, string? Selo = null)
+{
+    /// <summary>As mudanças em pedaços, para a tela pintar o valor novo na cor da saída dona.</summary>
+    public IReadOnlyList<MudancaSalvarViewModel> Itens { get; init; } = [];
+}
+
+/// <summary>
+/// Uma mudança da folha do Salvar em pedaços (DESIGN, folha-do-salvar): "Atraso do Sub: 80 cm → " em
+/// apoio e o valor novo ("85 cm") em peso 700 na cor da saída dona (o canal mestre, ou null).
+/// </summary>
+public sealed record MudancaSalvarViewModel(string Antes, string Novo, int? Canal)
+{
+    public static MudancaSalvarViewModel De(MudancaSalvar m) => new($"{m.Rotulo}: {m.Antes} → ", m.Depois, m.Canal);
+}
 
 /// <summary>
 /// A folha do Salvar por camadas (EXPERIENCE, "Salvar por camadas", mock da 3b, quadro 3): "Salvar o
@@ -80,10 +93,13 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     public string? Subtitulo => Aberta ? SubtituloFolha : null;
 
-    /// <summary>Uma por camada: "Calibração → Setup Casa 2.1" com "Atraso da saída 3: 80 → 85 cm".</summary>
+    /// <summary>Uma por camada: "Calibração → Setup Casa 2.1" com "Atraso do Sub: 80 cm → 85 cm".</summary>
     public IReadOnlyList<LinhaSalvarViewModel> Linhas =>
         _folha?.Linhas.Select(l => new LinhaSalvarViewModel(l.Titulo, l.Mudancas.Select(m => m.Linha).ToArray(),
-            l.Herdado ? HerdadoViewModel.TextoSelo : null)).ToArray() ?? [];
+            l.Herdado ? HerdadoViewModel.TextoSelo : null)
+        {
+            Itens = l.Mudancas.Select(MudancaSalvarViewModel.De).ToArray(),
+        }).ToArray() ?? [];
 
     /// <summary>A calibração do aparelho difere da do Setup: Manter ou Atualizar.</summary>
     public bool Pergunta => _folha?.PerguntaCalibracao == true;

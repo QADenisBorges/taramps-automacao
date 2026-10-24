@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha "Aplicado pela metade" (EXPERIENCE, State Patterns): ao reconectar com a marca de uma operação que
+    caiu no meio (aplicar memória, aplicar preset, carregar memória do aparelho, reaplicar a calibração), sobe
+    por cima de tudo com Terminar (branco) e Voltar à cópia (contornado). A lógica é a da tela Memórias.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
+             x:Class="BgsControle.App.Telas.PelaMetadePage"
+             x:DataType="telas:MemoriasViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource veu}">
+    <Grid>
+        <Border VerticalOptions="End" BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" Padding="16,10,16,24">
+            <Border.StrokeShape>
+                <shapes:RoundRectangle CornerRadius="26,26,0,0" />
+            </Border.StrokeShape>
+            <VerticalStackLayout Spacing="12">
+                <BoxView WidthRequest="40" HeightRequest="4" CornerRadius="2" Color="{StaticResource sup-2}" HorizontalOptions="Center" />
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{x:Static telas:MemoriasViewModel.TituloPelaMetade}" />
+                <Label Style="{StaticResource tipo-corpo}" Text="{Binding TextoPelaMetade}" />
+                <Label Style="{StaticResource tipo-apoio}"
+                       Text="Terminar faz de novo o que faltou. Voltar à cópia escreve de volta o que estava antes." />
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                       IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:MemoriasViewModel.TextoTerminar}"
+                        Command="{Binding Terminar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:MemoriasViewModel.TextoVoltar}"
+                        Command="{Binding VoltarACopia}" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

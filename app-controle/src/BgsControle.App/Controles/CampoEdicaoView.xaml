@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O campo numérico enquanto se escreve (DESIGN, campo-numerico ativo; EXPERIENCE, Campo numérico): o
+    teclado numérico do Android, o valor só vale no ✓ do teclado, fora da faixa é recusado com a faixa ao
+    lado, e fechar o teclado sem ✓ descarta.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.CampoEdicaoView"
+             x:DataType="telas:ICampoEditavel"
+             IsVisible="{Binding EditandoCampo}">
+    <VerticalStackLayout Spacing="6">
+        <Border BackgroundColor="{StaticResource campo}" StrokeThickness="2"
+                Stroke="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                StrokeShape="RoundRectangle 12" Padding="10,0">
+            <Entry x:Name="Campo" Style="{StaticResource entrada}" BackgroundColor="Transparent"
+                   Text="{Binding TextoCampo}" Keyboard="Numeric" ReturnType="Done"
+                   ReturnCommand="{Binding Confirmar}" HorizontalTextAlignment="End"
+                   FontSize="22" Unfocused="AoSair" />
+        </Border>
+        <Label Style="{StaticResource tipo-detalhe}"
+               Text="{Binding TextoValor, StringFormat='Toque em ✓ para aplicar. Até lá, o som continua em {0}.'}" />
+        <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroCampo}"
+               IsVisible="{Binding ErroCampo, Converter={StaticResource TemTexto}}" />
+        <Button Style="{StaticResource botao-contornado-pequeno}" Text="Cancelar" HorizontalOptions="Start"
+                Command="{Binding FecharCampo}" />
+    </VerticalStackLayout>
+</ContentView>

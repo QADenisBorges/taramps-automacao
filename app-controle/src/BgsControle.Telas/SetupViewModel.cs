@@ -3,6 +3,13 @@ using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
+/// <summary>Uma linha do que não bate: o nome do ajuste pela saída do Setup, o valor no Setup e no aparelho, e o canal mestre da saída dona (a cor; null quando não é de uma saída).</summary>
+public sealed record LinhaDiferencaViewModel(string Rotulo, string NoSetup, string NoAparelho, string NomeSetup, int? Canal)
+{
+    /// <summary>"80 cm no Casa 2.1, 0 cm no aparelho".</summary>
+    public string Detalhe => $"{NoSetup} no {NomeSetup}, {NoAparelho} no aparelho";
+}
+
 /// <summary>Uma linha da lista de Setups: nome, selo HERDADO, em uso, e o toque que escolhe.</summary>
 public sealed class ItemSetupViewModel
 {
@@ -158,6 +165,26 @@ public sealed class SetupViewModel : TelaBase, IDisposable
             return Aberta ? _setups.Diferencas.Select(d => d.Linha(nome)).ToArray() : [];
         }
     }
+
+    /// <summary>
+    /// A lista do que não bate em duas linhas, com a saída dona (a barra na cor dela): "Atraso do Sub"
+    /// e "80 cm no Casa 2.1, 0 cm no aparelho".
+    /// </summary>
+    public IReadOnlyList<LinhaDiferencaViewModel> LinhasDiferenca
+    {
+        get
+        {
+            if (!Aberta)
+                return [];
+            var nome = _setups.Referencia?.Nome ?? "Setup";
+            return _setups.Diferencas
+                .Select(d => new LinhaDiferencaViewModel(d.Rotulo, d.NoSetup, d.NoAparelho, nome, d.Canal))
+                .ToArray();
+        }
+    }
+
+    /// <summary>Há diferenças para listar (senão a lista e o rótulo somem).</summary>
+    public bool TemDiferencas => Aberta && _setups.Diferencas.Count > 0;
 
     /// <summary>Os Setups para escolher, o herdado primeiro.</summary>
     public IReadOnlyList<ItemSetupViewModel> Setups => _itens;
@@ -344,6 +371,8 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         Avisar(nameof(FaixaMudo));
         Avisar(nameof(MotivoMudo));
         Avisar(nameof(Diferencas));
+        Avisar(nameof(LinhasDiferenca));
+        Avisar(nameof(TemDiferencas));
         Avisar(nameof(ListaAberta));
         Avisar(nameof(Ocupado));
     }

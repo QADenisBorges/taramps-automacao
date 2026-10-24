@@ -62,6 +62,32 @@ public sealed class ArquiteturaTestes
             a => a.Name!.StartsWith("Microsoft.Maui", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// História 10: toda página, todo controle e todo DataTemplate do app dizem o x:DataType (bindings
+    /// compilados), e as cores das telas vêm dos recursos com os nomes dos tokens, nunca de valores soltos.
+    /// </summary>
+    [Fact]
+    public void Todo_XAML_do_app_tem_x_DataType_e_nenhuma_cor_solta()
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2009/xaml";
+        var app = Path.Combine(Raiz().FullName, "src", "BgsControle.App");
+        var arquivos = Directory.GetFiles(app, "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .ToList();
+        Assert.Contains(arquivos, f => Path.GetFileName(f) == "CascaPage.xaml");
+
+        var corSolta = new System.Text.RegularExpressions.Regex("=\"#[0-9A-Fa-f]{3,8}\"");
+        foreach (var arquivo in arquivos.Where(f => Path.GetFileName(f) != "App.xaml"))
+        {
+            var xml = XDocument.Load(arquivo);
+            Assert.True(xml.Root!.Attribute(x + "DataType") is not null, $"{Path.GetFileName(arquivo)} sem x:DataType na raiz");
+            Assert.All(xml.Descendants().Where(e => e.Name.LocalName == "DataTemplate"),
+                t => Assert.True(t.Attribute(x + "DataType") is not null, $"DataTemplate sem x:DataType em {Path.GetFileName(arquivo)}"));
+            Assert.DoesNotMatch(corSolta, File.ReadAllText(arquivo));
+        }
+    }
+
     [Fact]
     public void O_simulador_nao_esta_em_src()
     {

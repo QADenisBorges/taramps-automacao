@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Setup em dúvida / Trocar de Setup (EXPERIENCE, Conectar e Setup; DESIGN, Layout; mock da 3b, quadro 2):
+    sobe sozinha por cima de tudo, sem barra. Na dúvida, sem ‹ nem engrenagem: só se sai por um dos três
+    botões (o Voltar do Android não fecha). Na troca, o cabeçalho de tela cheia com ‹, que desiste e desmuta.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.SetupEscolhaPage"
+             x:DataType="telas:SetupViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid>
+        <Grid RowDefinitions="Auto,*,Auto" Padding="16,6,16,16">
+
+            <!-- Topo: na dúvida, a marca e a pílula; na troca, ‹ e o título. -->
+            <Grid ColumnDefinitions="*,Auto" HeightRequest="44" IsVisible="{Binding PodeDesistir, Converter={StaticResource Inverso}}">
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-marca-forte}" Text="BGS" />
+                    <Label Style="{StaticResource tipo-marca}" Text="Controle" />
+                </HorizontalStackLayout>
+                <c:PilulaView x:Name="Pilula" Grid.Column="1" />
+            </Grid>
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" IsVisible="{Binding PodeDesistir}">
+                <Button Style="{StaticResource botao-voltar}" Command="{Binding Desistir}" />
+                <Label Grid.Column="1" Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" VerticalTextAlignment="Center" />
+            </Grid>
+
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Spacing="12" Padding="0,12">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}"
+                           IsVisible="{Binding PodeDesistir, Converter={StaticResource Inverso}}" />
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding Frase}"
+                           IsVisible="{Binding Frase, Converter={StaticResource TemTexto}}" />
+
+                    <!-- A faixa do som mutado: proteção, não erro (não é vermelha). -->
+                    <Border IsVisible="{Binding FaixaMudo, Converter={StaticResource TemTexto}}"
+                            BackgroundColor="{StaticResource sup-1}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 14" Padding="14,0" MinimumHeightRequest="52">
+                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                            <Label Text="🔇" TextColor="{StaticResource texto}" FontSize="16" VerticalTextAlignment="Center" />
+                            <Label Style="{StaticResource tipo-corpo}" VerticalTextAlignment="Center">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Som mutado" FontAttributes="Bold" TextColor="{StaticResource texto}" />
+                                        <Span Text=" até você escolher." TextColor="{StaticResource apoio}" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </HorizontalStackLayout>
+                    </Border>
+                    <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding MotivoMudo}"
+                           IsVisible="{Binding MotivoMudo, Converter={StaticResource TemTexto}}" />
+
+                    <!-- O que não bate (só leitura). -->
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding TemDiferencas}">
+                        <Label Style="{StaticResource tipo-rotulo}" Text="O QUE NÃO BATE" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" Text="lido agora no aparelho" />
+                    </Grid>
+                    <Border IsVisible="{Binding TemDiferencas}" Style="{StaticResource cartao}" Padding="0">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding LinhasDiferenca}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:LinhaDiferencaViewModel">
+                                    <Grid ColumnDefinitions="4,*" MinimumHeightRequest="60">
+                                        <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}, ConverterParameter=apoio}" />
+                                        <VerticalStackLayout Grid.Column="1" Padding="14,10" Spacing="2">
+                                            <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Rotulo}" />
+                                            <Label Style="{StaticResource tipo-apoio}" Text="{Binding Detalhe}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- No pé, os três botões, cada um com a dica embaixo. -->
+            <VerticalStackLayout Grid.Row="2" Spacing="6">
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:SetupViewModel.TextoEscolher}" Command="{Binding AbrirLista}" />
+                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                       Text="{x:Static telas:SetupViewModel.FraseEscolher}" />
+                <Button Style="{StaticResource botao-medio}" Text="{x:Static telas:SetupViewModel.TextoCriar}" Command="{Binding AbrirCriar}" Margin="0,6,0,0" />
+                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                       Text="{x:Static telas:SetupViewModel.FraseCriar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:SetupViewModel.TextoSeguir}" Command="{Binding SeguirSemSetup}" Margin="0,6,0,0" />
+                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                       Text="{x:Static telas:SetupViewModel.FraseSeguir}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- A lista de Setups. -->
+        <c:FolhaView Aberta="{Binding ListaAberta}" Fechar="{Binding FecharLista}">
+            <VerticalStackLayout Spacing="8">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="Escolher o Setup" />
+                <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding Setups}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:ItemSetupViewModel">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="14,8" MinimumHeightRequest="52"
+                                    BackgroundColor="{StaticResource sup-2}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}" VerticalTextAlignment="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding EmUso}" Value="True">
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <Border Grid.Column="1" IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                                            StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center">
+                                        <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
+                                               VerticalTextAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding EmUso}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Escolher}" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                       IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding FecharLista}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+
+        <!-- Criar Setup novo: o nome. -->
+        <c:FolhaView Aberta="{Binding CriarAberto}" Fechar="{Binding CancelarCriar}">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="Criar Setup novo" />
+                <Label Style="{StaticResource tipo-corpo}" TextColor="{StaticResource apoio}"
+                       Text="O Setup nasce com a calibração que está no aparelho, ainda sem memórias." />
+                <Entry x:Name="CampoNome" Style="{StaticResource entrada}" Text="{Binding NomeNovo}" MaxLength="24"
+                       Placeholder="Carro" ReturnType="Done" ReturnCommand="{Binding ConfirmarCriar}" />
+                <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroNome}"
+                       IsVisible="{Binding ErroNome, Converter={StaticResource TemTexto}}" />
+                <Button Style="{StaticResource botao-principal}" Text="Criar Setup" Command="{Binding ConfirmarCriar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding CancelarCriar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

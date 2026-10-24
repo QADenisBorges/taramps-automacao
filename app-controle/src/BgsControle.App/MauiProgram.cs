@@ -1,4 +1,6 @@
 using BgsControle.App.Plataforma;
+using BgsControle.App.Recursos;
+using BgsControle.App.Telas;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Enlace;
@@ -22,6 +24,8 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
+        // O peso da letra (200 a 800) e os números tabulares do DESIGN.md.
+        Tipo.Registrar();
 
         // Sem provedores de log: nada da sessão vai ao logcat.
         builder.Logging.ClearProviders();
@@ -175,7 +179,26 @@ public static class MauiProgram
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<GerenteMemorias>(),
             sp.GetRequiredService<GeradorSinal>()));
-        builder.Services.AddSingleton<MainPage>();
+
+        // História 10: a casca e as telas (Início, Mesa, Áudio, telas de função, Ajuste da saída, Setup em dúvida,
+        // Configurações › Setups e › Memórias). Singletons: assinam o núcleo; as páginas também, uma de cada.
+        builder.Services.AddSingleton<INavegacao, NavegacaoMaui>();
+        builder.Services.AddSingleton<BotoesMemoriaViewModel>();
+        builder.Services.AddSingleton<InicioViewModel>();
+        builder.Services.AddSingleton<MesaViewModel>();
+        builder.Services.AddSingleton<AudioViewModel>();
+        builder.Services.AddSingleton<CascaViewModel>();
+        builder.Services.AddSingleton<SetupsViewModel>();
+        builder.Services.AddSingleton<ConfiguracoesViewModel>();
+        builder.Services.AddSingleton<AjustesSaida>();
+        builder.Services.AddSingleton<CascaPage>();
+        builder.Services.AddSingleton<SetupEscolhaPage>();
+        builder.Services.AddSingleton<PelaMetadePage>();
+        builder.Services.AddSingleton<ConfiguracoesPage>();
+        builder.Services.AddSingleton<SetupsPage>();
+        builder.Services.AddSingleton<SetupPage>();
+        builder.Services.AddSingleton<MemoriasPage>();
+        builder.Services.AddSingleton<ConexaoPage>();
 
         var app = builder.Build();
         // Criados já: o espelho, a cópia antes e o gerador precisam ver a primeira leitura (a

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O Ajuste da saída (EXPERIENCE, Ajuste da saída; DESIGN, botao-giratorio, avancado): cabeçalho com ‹ e o
+    nome da saída na cor dela; o ganho no giratório, com − e + grandes; à vista o passa-alta, o passa-baixa e o
+    limitador; em Avançado o atraso, a fase, o equilíbrio L/R do Setup (só JBL L e JBL R), o EQ de saída, o
+    ataque, a liberação, o Auto e o mute. O Salvar fica fixo no pé.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.AjusteSaidaPage"
+             x:DataType="telas:AjusteSaidaViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <ContentPage.Resources>
+        <DataTemplate x:Key="ItemControle" x:DataType="telas:ItemControleViewModel">
+            <ContentView IsVisible="{Binding Visivel}">
+                <c:ParametroView BindingContext="{Binding Controle}" />
+            </ContentView>
+        </DataTemplate>
+    </ContentPage.Resources>
+    <Grid>
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- Cabeçalho de tela cheia, com o nome da saída na cor dela. -->
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Command="{Binding Voltar}" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-saida}" Text="{Binding Titulo}"
+                           TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Subtitulo}" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource erro-texto}" Text="{Binding AvisoSaida}"
+                           IsVisible="{Binding AvisoSaida, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="10">
+
+                    <!-- O ganho no giratório (sempre aberto). -->
+                    <VerticalStackLayout BindingContext="{Binding Ganho}" Spacing="6">
+                        <Grid x:DataType="telas:ControleParametroViewModel" HeightRequest="226" WidthRequest="226" HorizontalOptions="Center">
+                            <c:GiratorioView Minimo="{Binding Minimo}" Maximo="{Binding Maximo}" Valor="{Binding ValorFader}"
+                                             Travado="{Binding Travado}" Cor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                                             ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="0">
+                                <Label Style="{StaticResource tipo-rotulo}" Text="GANHO" HorizontalTextAlignment="Center" />
+                                <Label Style="{StaticResource tipo-valor-giratorio}" Text="{Binding TextoNumero}" HorizontalTextAlignment="Center"
+                                       TextDecorations="Underline" />
+                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Unidade}" HorizontalTextAlignment="Center" />
+                                <VerticalStackLayout.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding TocarNoValor}" />
+                                </VerticalStackLayout.GestureRecognizers>
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Grid x:DataType="telas:ControleParametroViewModel" ColumnDefinitions="72,*,72" ColumnSpacing="10">
+                            <c:BotaoSegurar Style="{StaticResource botao-passo-grande}" Text="−"
+                                            BorderColor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                                            ComandoApertar="{Binding ApertarMenos}" ComandoSoltar="{Binding SoltarPasso}" />
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="Gire o botão ou toque em − e +" />
+                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="Toque no número para escrever" />
+                            </VerticalStackLayout>
+                            <c:BotaoSegurar Grid.Column="2" Style="{StaticResource botao-passo-grande}" Text="+"
+                                            BorderColor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                                            ComandoApertar="{Binding ApertarMais}" ComandoSoltar="{Binding SoltarPasso}" />
+                        </Grid>
+                        <c:CampoEdicaoView />
+                        <Label x:DataType="telas:ControleParametroViewModel" Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                               Text="{Binding MotivoTrava}" IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+                        <Label x:DataType="telas:ControleParametroViewModel" Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                               TextColor="{StaticResource texto}" Text="{Binding Aviso}"
+                               IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                    </VerticalStackLayout>
+
+                    <!-- À vista: passa-alta, passa-baixa e limitador. -->
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Vista}"
+                                         BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
+
+                    <!-- Avançado. -->
+                    <Border StrokeShape="RoundRectangle 18" Stroke="{StaticResource sup-2}" StrokeThickness="1" Padding="14,0">
+                        <VerticalStackLayout>
+                            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+                                <VerticalStackLayout VerticalOptions="Center">
+                                    <Label Style="{StaticResource tipo-rotulo}" Text="AVANÇADO" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="Atraso, fase, equilíbrio, EQ de saída, ataque e liberação" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="1" Text="{Binding IndicadorAvancado}" TextColor="{StaticResource apoio}" FontSize="18"
+                                       VerticalTextAlignment="Center" />
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding AlternarAvancado}" />
+                                </Grid.GestureRecognizers>
+                            </Grid>
+                            <VerticalStackLayout IsVisible="{Binding AvancadoAberto}" Spacing="10" Padding="0,0,0,14">
+                                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding AvancadoInicio}"
+                                                     BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
+
+                                <!-- O equilíbrio L/R do Setup (JBL L e JBL R). -->
+                                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Equilibrio}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="telas:ControleEquilibrioViewModel">
+                                            <Border Style="{StaticResource cartao}" Padding="14,12">
+                                                <VerticalStackLayout Spacing="10">
+                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                        <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}" />
+                                                            <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaEPasso}" />
+                                                        </VerticalStackLayout>
+                                                        <Border Grid.Column="1" Style="{StaticResource campo-numerico}">
+                                                            <Grid>
+                                                                <Label Style="{StaticResource tipo-valor-campo}" Text="{Binding TextoValor}"
+                                                                       HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+                                                                <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0"
+                                                                         Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                                            </Grid>
+                                                            <Border.GestureRecognizers>
+                                                                <TapGestureRecognizer Command="{Binding TocarNoValor}" />
+                                                            </Border.GestureRecognizers>
+                                                        </Border>
+                                                    </Grid>
+                                                    <c:CampoEdicaoView />
+                                                    <Grid ColumnDefinitions="48,*,48" ColumnSpacing="8">
+                                                        <c:BotaoSegurar Style="{StaticResource botao-passo}" Text="−"
+                                                                        ComandoApertar="{Binding ApertarMenos}" ComandoSoltar="{Binding SoltarPasso}" />
+                                                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
+                                                               VerticalTextAlignment="Center" Text="Somado ao valor da memória" />
+                                                        <c:BotaoSegurar Grid.Column="2" Style="{StaticResource botao-passo}" Text="+"
+                                                                        ComandoApertar="{Binding ApertarMais}" ComandoSoltar="{Binding SoltarPasso}" />
+                                                    </Grid>
+                                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTrava}"
+                                                           IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+                                                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Aviso}"
+                                                           IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                                                </VerticalStackLayout>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+
+                                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding AvancadoFim}"
+                                                     BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding AvancadoAberto}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource lista-aberta}" />
+                                <Setter Property="Stroke" Value="{StaticResource campo-borda}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                    </Border>
+
+                    <!-- O lembrete. -->
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Ellipse WidthRequest="8" HeightRequest="8" VerticalOptions="Center"
+                                 Fill="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" Text="{Binding Lembrete}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <c:SalvarPeView Grid.Row="2" BindingContext="{Binding Salvar}" />
+        </Grid>
+
+        <c:SalvarFolhaView BindingContext="{Binding Salvar}" />
+    </Grid>
+</ContentPage>

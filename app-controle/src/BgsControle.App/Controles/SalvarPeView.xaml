@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O botão Salvar fixo no pé do Ajuste e das telas de função (EXPERIENCE, Salvar por camadas): um só Salvar,
+    que abre a folha. Travado ("Nada para salvar.", "Escolha um Setup para salvar."), diz por quê.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.SalvarPeView"
+             x:DataType="telas:SalvarViewModel">
+    <VerticalStackLayout Spacing="4" Padding="16,0,16,12" BackgroundColor="{StaticResource palco}">
+        <BoxView HeightRequest="1" Color="{StaticResource sup-3}" Margin="-16,0,-16,8" />
+        <Button Style="{StaticResource botao-principal}" Text="Salvar" Command="{Binding Abrir}" IsEnabled="{Binding PodeSalvar}" />
+        <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="{Binding MotivoTrava}"
+               IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+        <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" TextColor="{StaticResource texto}"
+               Text="{Binding Mensagem}" IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+    </VerticalStackLayout>
+</ContentView>

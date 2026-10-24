@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A tela Setup (EXPERIENCE, Information Architecture e "Equipamentos e saídas"; DESIGN, linha-de-equipamento
+    e folha-de-equipamento): Configurações › Setups › tocar num Setup. O nome com o selo HERDADO, as saídas que
+    o Setup dá (na cor do canal mestre), a lista de equipamentos e "Adicionar equipamento". O alto da tela fica
+    livre para o esquema do Setup (história 10b). A folha de equipamento sobe de baixo; nada vai pelo BLE.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.SetupPage"
+             x:DataType="telas:EquipamentosViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <ContentPage.Resources>
+        <!-- Uma pílula de escolha (a escolhida em branco, com o texto preto). -->
+        <DataTemplate x:Key="pilula" x:DataType="telas:EscolhaViewModel">
+            <Border Margin="0,0,6,6" Padding="12,0" MinimumHeightRequest="44" StrokeShape="RoundRectangle 12"
+                    Stroke="{StaticResource sup-2}" StrokeThickness="1" BackgroundColor="Transparent">
+                <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding Rotulo}" VerticalTextAlignment="Center">
+                    <Label.Triggers>
+                        <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        </DataTrigger>
+                    </Label.Triggers>
+                </Label>
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Escolhida}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding Escolher}" />
+                </Border.GestureRecognizers>
+            </Border>
+        </DataTemplate>
+    </ContentPage.Resources>
+
+    <Grid>
+        <Grid RowDefinitions="Auto,*">
+            <!-- Cabeçalho de tela cheia: ‹, o nome do Setup e o selo HERDADO. -->
+            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Setup" />
+                </VerticalStackLayout>
+                <Border Grid.Column="2" IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}" Stroke="{StaticResource campo-borda}"
+                        StrokeThickness="1" StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}" VerticalTextAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,4,16,24" Spacing="12">
+                    <!-- O lugar do esquema do Setup (história 10b): vazio nesta versão. -->
+                    <ContentView x:Name="LugarDoEsquema" />
+
+                    <!-- As saídas que o Setup dá. -->
+                    <Label Style="{StaticResource tipo-rotulo}" Text="SAÍDAS" />
+                    <Border Style="{StaticResource cartao}" Padding="0">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding SaidasTela}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:SaidaTela">
+                                    <Grid ColumnDefinitions="4,*" MinimumHeightRequest="52">
+                                        <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                        <VerticalStackLayout Grid.Column="1" Padding="14,8" Spacing="2" VerticalOptions="Center">
+                                            <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}"
+                                                   TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding Rotulo}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource erro-texto}" Text="{Binding Aviso}"
+                                                   IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Os equipamentos. -->
+                    <Label Style="{StaticResource tipo-rotulo}" Text="EQUIPAMENTOS" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-apoio}" TextColor="{StaticResource apoio}" Text="{Binding TextoVazio}"
+                           IsVisible="{Binding TextoVazio, Converter={StaticResource TemTexto}}" />
+                    <Border Style="{StaticResource cartao}" Padding="0" IsVisible="{Binding Itens, Converter={StaticResource TemTexto}}">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Itens}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:ItemEquipamentoViewModel">
+                                    <Grid ColumnDefinitions="4,*,Auto" MinimumHeightRequest="60">
+                                        <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}, ConverterParameter=sup-2}" />
+                                        <VerticalStackLayout Grid.Column="1" Padding="14,10" Spacing="2">
+                                            <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding Detalhe}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Modelo}">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding Generico}" Value="True">
+                                                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="2" Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Margin="0,0,14,0"
+                                               Text="{Binding Funcao}" VerticalTextAlignment="Center" />
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Editar}" />
+                                        </Grid.GestureRecognizers>
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                    <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:EquipamentosViewModel.TextoAdicionar}"
+                            Command="{Binding Adicionar}" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}"
+                           Text="Equipamentos ficam só no celular: nada vai ao aparelho." />
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- A folha de equipamento. -->
+        <c:FolhaView Aberta="{Binding FolhaAberta}" Fechar="{Binding Cancelar}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding TituloFolha}" />
+
+                <!-- Grupo: linhas de escolha. -->
+                <Label Style="{StaticResource tipo-rotulo}" Text="GRUPO" />
+                <Border Style="{StaticResource cartao}" Padding="0" BackgroundColor="{StaticResource palco}">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding GruposTela}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:EscolhaViewModel">
+                                <Border StrokeThickness="0" BackgroundColor="Transparent" Padding="14,8" MinimumHeightRequest="52"
+                                        StrokeShape="RoundRectangle 14">
+                                    <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                        <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Rotulo}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                                                    <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding Detalhe}">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                                                    <Setter Property="TextColor" Value="{StaticResource sobre-escolhido-apoio}" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </VerticalStackLayout>
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding Escolhida}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Escolher}" />
+                                    </Border.GestureRecognizers>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Categoria: pílulas, com "Outra…" para escrever. -->
+                <Label Style="{StaticResource tipo-rotulo}" Text="CATEGORIA" />
+                <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding CategoriasTela}" BindableLayout.ItemTemplate="{StaticResource pilula}" />
+                <Entry Style="{StaticResource entrada}" Text="{Binding Categoria}" Placeholder="Escreva a categoria" MaxLength="32"
+                       IsVisible="{Binding CategoriaLivre}" />
+
+                <Label Style="{StaticResource tipo-rotulo}" Text="NOME" />
+                <Entry Style="{StaticResource entrada}" Text="{Binding Nome}" MaxLength="32" />
+
+                <Label Style="{StaticResource tipo-rotulo}" Text="MODELO" />
+                <Entry Style="{StaticResource entrada}" Text="{Binding Modelo}" Placeholder="{Binding DicaModelo}" MaxLength="32" />
+
+                <!-- Função acústica (só para quem toca): a sugerida primeiro. -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraFuncao}">
+                    <Label Style="{StaticResource tipo-rotulo}" Text="FUNÇÃO ACÚSTICA" />
+                    <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding FuncoesTela}" BindableLayout.ItemTemplate="{StaticResource pilula}" />
+                </VerticalStackLayout>
+
+                <!-- Onde está ligado. -->
+                <Label Style="{StaticResource tipo-rotulo}" Text="ONDE ESTÁ LIGADO" />
+
+                <!-- Grupo 2: os canais do módulo. -->
+                <Grid ColumnDefinitions="*,48,48,48" ColumnSpacing="8" IsVisible="{Binding MostraCanaisModulo}">
+                    <Label Style="{StaticResource tipo-linha-titulo}" Text="Canais do módulo" VerticalTextAlignment="Center" />
+                    <Button Grid.Column="1" Style="{StaticResource botao-passo}" Text="−" Command="{Binding TirarEntrada}" />
+                    <Label Grid.Column="2" Style="{StaticResource tipo-valor-campo}" Text="{Binding NumeroCanais}"
+                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                    <Button Grid.Column="3" Style="{StaticResource botao-passo}" Text="+" Command="{Binding AdicionarEntrada}" />
+                </Grid>
+
+                <!-- Grupos 1, 2, 3 e 4: cada entrada (ou canal do módulo) com a fonte. -->
+                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Entradas}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:EntradaViewModel">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding Rotulo}" />
+                                <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding FontesTela}" BindableLayout.ItemTemplate="{StaticResource pilula}" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding MostraEntradas}">
+                    <Button Style="{StaticResource botao-contornado-pequeno}" Text="Mais uma entrada" Command="{Binding AdicionarEntrada}" />
+                    <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Tirar a última" Command="{Binding TirarEntrada}" />
+                </Grid>
+
+                <!-- Grupo 2: os bridges, como pílulas que ligam e desligam. -->
+                <FlexLayout Wrap="Wrap" IsVisible="{Binding MostraCanaisModulo}" BindableLayout.ItemsSource="{Binding Bridges}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:BridgeViewModel">
+                            <Border Margin="0,0,6,6" Padding="12,0" MinimumHeightRequest="44" StrokeShape="RoundRectangle 12"
+                                    Stroke="{StaticResource sup-2}" StrokeThickness="1" BackgroundColor="Transparent">
+                                <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding Rotulo}" VerticalTextAlignment="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding Ligado}" Value="True">
+                                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding Ligado}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Alternar}" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </FlexLayout>
+
+                <!-- Alto-falante passivo: a saída ou o bridge do módulo. -->
+                <VerticalStackLayout Spacing="6" IsVisible="{Binding MostraLigado}">
+                    <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding LigadoTela}" BindableLayout.ItemTemplate="{StaticResource pilula}" />
+                    <Label Style="{StaticResource tipo-apoio}" TextColor="{StaticResource apoio}" Text="{Binding FraseSemModulo}"
+                           IsVisible="{Binding FraseSemModulo, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+
+                <!-- Dados técnicos: Avançado, recolhido; todos opcionais. -->
+                <Border BackgroundColor="{StaticResource lista-aberta}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 18" Padding="14,0">
+                    <VerticalStackLayout Spacing="10" Padding="0,0,0,10">
+                        <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-rotulo}" Text="DADOS TÉCNICOS" />
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Todos opcionais" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Style="{StaticResource tipo-titulo-parametro}" Text="{Binding IndicadorDados}" VerticalTextAlignment="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding AlternarDados}" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <VerticalStackLayout Spacing="8" IsVisible="{Binding DadosAbertos}">
+                            <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraDadosAltoFalante}">
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Diâmetro (pol.)" />
+                                <Entry Style="{StaticResource entrada}" Text="{Binding Diametro}" Keyboard="Numeric" />
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Impedância (Ω)" />
+                                <Entry Style="{StaticResource entrada}" Text="{Binding Impedancia}" Keyboard="Numeric" />
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Sensibilidade (dB)" />
+                                <Entry Style="{StaticResource entrada}" Text="{Binding Sensibilidade}" Keyboard="Numeric" />
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Faixa de frequência (Hz): início e fim" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Entry Style="{StaticResource entrada}" Text="{Binding FaixaMinima}" Keyboard="Numeric" />
+                                    <Entry Grid.Column="1" Style="{StaticResource entrada}" Text="{Binding FaixaMaxima}" Keyboard="Numeric" />
+                                </Grid>
+                            </VerticalStackLayout>
+                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Potência RMS (W)" />
+                            <Entry Style="{StaticResource entrada}" Text="{Binding PotenciaRms}" Keyboard="Numeric" />
+                            <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraGanho}">
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Ganho do amplificador (×)" />
+                                <Entry Style="{StaticResource entrada}" Text="{Binding Ganho}" Keyboard="Numeric" />
+                            </VerticalStackLayout>
+                            <!-- Caixa ativa: as vias de dentro. -->
+                            <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraVias}">
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Vias de dentro: descrição e diâmetro (pol.)" />
+                                <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Vias}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="telas:ViaViewModel">
+                                            <Grid ColumnDefinitions="*,90" ColumnSpacing="8">
+                                                <Entry Style="{StaticResource entrada}" Text="{Binding Descricao}" MaxLength="120" />
+                                                <Entry Grid.Column="1" Style="{StaticResource entrada}" Text="{Binding Diametro}" Keyboard="Numeric" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Style="{StaticResource botao-contornado-pequeno}" Text="Mais uma via" Command="{Binding AdicionarVia}" />
+                                    <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Tirar a última" Command="{Binding TirarVia}" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding Erro}" IsVisible="{Binding Erro, Converter={StaticResource TemTexto}}" />
+                <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
+                <Button Style="{StaticResource botao-principal}" Text="✓ Guardar" Command="{Binding Confirmar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:EquipamentosViewModel.TextoCancelar}" Command="{Binding Cancelar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:EquipamentosViewModel.TextoTirar}" Command="{Binding Tirar}"
+                        TextColor="{StaticResource erro-texto}" IsVisible="{Binding Nova, Converter={StaticResource Inverso}}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+
+        <!-- Tirar: confirmação, com o aviso dos alto-falantes ou das fontes. -->
+        <c:FolhaView Aberta="{Binding TirarAberto}" Fechar="{Binding CancelarTirar}">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding ConfirmacaoTirar}" />
+                <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 14" Padding="14,10" IsVisible="{Binding AvisoTirar, Converter={StaticResource TemTexto}}">
+                    <Label Style="{StaticResource tipo-texto-risco}" Text="{Binding AvisoTirar}" />
+                </Border>
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:EquipamentosViewModel.TextoTirar}" Command="{Binding ConfirmarTirar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:EquipamentosViewModel.TextoCancelar}" Command="{Binding CancelarTirar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

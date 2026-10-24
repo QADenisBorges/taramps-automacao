@@ -9,6 +9,45 @@ namespace BgsControle.Telas;
 /// <param name="Texto">A rota no fio (<c>a</c>, <c>b</c>, <c>a+b</c>).</param>
 public sealed record OpcaoValor(string Rotulo, decimal? Numero, string? Texto);
 
+/// <summary>Uma linha da grade de opções (até 4).</summary>
+public sealed record LinhaOpcoes(IReadOnlyList<ItemOpcaoViewModel> Itens);
+
+/// <summary>Uma opção na tela (lista recolhida aberta ou par de botões): o rótulo, se é a escolhida (em branco) e o toque.</summary>
+public sealed class ItemOpcaoViewModel : TelaBase
+{
+    private bool _escolhida;
+
+    internal ItemOpcaoViewModel(OpcaoValor opcao, int indice, ControleParametroViewModel controle, IDespachante despachante, TimeProvider relogio)
+        : base(despachante, relogio)
+    {
+        Opcao = opcao;
+        Coluna = indice % ControleParametroViewModel.ColunasOpcoes;
+        Escolher = new Comando(() => controle.EscolherOpcao.ExecutarAsync(opcao));
+    }
+
+    public OpcaoValor Opcao { get; }
+
+    /// <summary>A coluna na grade de opções (0 a 3).</summary>
+    public int Coluna { get; }
+
+    public string Rotulo => Opcao.Rotulo;
+
+    public bool Escolhida
+    {
+        get => _escolhida;
+        internal set
+        {
+            if (_escolhida == value)
+                return;
+            _escolhida = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>Aplica na hora; a lista recolhe.</summary>
+    public Comando Escolher { get; }
+}
+
 /// <summary>
 /// Um grupo de controles em que só um fica aberto por vez: abrir um recolhe o anterior.
 /// </summary>
@@ -51,7 +90,7 @@ public sealed class GrupoControles
 /// aparelho, fica travado e diz por quê.</item>
 /// </list>
 /// </summary>
-public sealed class ControleParametroViewModel : TelaBase, IDisposable
+public sealed class ControleParametroViewModel : TelaBase, ICampoEditavel, IDisposable
 {
     public const string MsgSemConexao = "Sem conexão";
     public const string MsgSoLeitura = "Modo só leitura";
@@ -107,11 +146,13 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
         Escritor escritor,
         IDespachante despachante,
         TimeProvider relogio,
-        GrupoControles? grupo = null)
+        GrupoControles? grupo = null,
+        string? titulo = null)
         : base(despachante, relogio)
     {
         Parametro = parametro;
         Indice = indice;
+        Titulo = titulo ?? TextosParametro.Titulo(parametro.Codigo, indice);
         _sessao = sessao;
         _chaves = chaves;
         _estado = estado;
@@ -119,6 +160,8 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
         _grupo = grupo;
         _endereco = new Endereco(parametro.Codigo, indice);
         Opcoes = MontarOpcoes(parametro);
+        ItensOpcao = Opcoes.Select((o, i) => new ItemOpcaoViewModel(o, i, this, despachante, relogio)).ToArray();
+        LinhasOpcao = ItensOpcao.Chunk(ColunasOpcoes).Select(l => new LinhaOpcoes(l)).ToArray();
 
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
@@ -138,12 +181,89 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
         Confirmar = new Comando(ConfirmarCampo);
         FecharCampo = new Comando(DescartarCampo);
         AlternarOff = new Comando(AlternarLimitadorOff);
+        EscolherOpcao = new ComandoCom<OpcaoValor>(async o =>
+        {
+            await Escolher(o);
+            if (EhLista)
+                Recolher();
+        });
+        ArrastarPara = new ComandoCom<double>(v => Arrastando((decimal)v));
+        SoltarFader = new Comando(Soltou);
+        ApertarMais = new Comando(() => ComecarSegurar(+1));
+        ApertarMenos = new Comando(() => ComecarSegurar(-1));
+        SoltarPasso = new Comando(PararSegurar);
+        MarcarOpcoes();
+    }
+
+    private void MarcarOpcoes()
+    {
+        var escolhida = OpcaoEscolhida;
+        foreach (var i in ItensOpcao)
+            i.Escolhida = i.Opcao == escolhida;
     }
 
     public Parametro Parametro { get; }
     public int? Indice { get; }
 
     public string Nome => Parametro.Nome;
+
+    /// <summary>O título por extenso na tela ("Passa-alta", "Equilíbrio…"), sem a sigla técnica.</summary>
+    public string Titulo { get; }
+
+    /// <summary>
+    /// O canal do controle (0 a 3), que é o mestre da saída dona e dá a cor dela; null para um global
+    /// (MASTER, EQ de entrada, bandas).
+    /// </summary>
+    public int? Canal => Parametro.Escopo == Escopo.Canal ? Indice : null;
+
+    /// <summary>Escolha em lista recolhida (tipo do filtro, rota, preset de EQ): mostra só o escolhido.</summary>
+    public bool EhLista => EhEscolha && Parametro.Tipo is not (TipoValor.Fase or TipoValor.Booleano);
+
+    /// <summary>Escolha em par de botões, sempre à vista (fase 0°/180°, liga/desliga).</summary>
+    public bool EhPar => EhEscolha && !EhLista;
+
+    /// <summary>O fader em escala logarítmica (frequências e Q).</summary>
+    public bool Logaritmico => Parametro.Tipo is TipoValor.Hertz or TipoValor.Q;
+
+    /// <summary>O começo e o fim do fader.</summary>
+    public double Minimo => (double)(Parametro.Minimo ?? 0m);
+
+    public double Maximo => (double)(Parametro.Maximo ?? 1m);
+
+    /// <summary>A posição do fader: o valor mostrado, ou o início da faixa (OFF, sem leitura).</summary>
+    public double ValorFader => !EmOff && ValorMostrado is { } v ? Math.Clamp((double)v, Minimo, Maximo) : Minimo;
+
+    /// <summary>"Butterworth · 24 dB por oitava" no tipo do filtro; vazio nas outras escolhas.</summary>
+    public string DescricaoOpcao
+    {
+        get
+        {
+            if (Parametro.Codigo is not ("042" or "043") || OpcaoEscolhida is not { } o)
+                return "";
+            if (o.Numero == 0)
+                return "Desligado";
+            var familia = o.Rotulo.StartsWith("LR", StringComparison.Ordinal) ? "Linkwitz-Riley" : "Butterworth";
+            return $"{familia} · {o.Rotulo[2..]} dB por oitava";
+        }
+    }
+
+    /// <summary>Uma opção da lista ou do par: aplica na hora; a lista recolhe.</summary>
+    public ComandoCom<OpcaoValor> EscolherOpcao { get; }
+
+    /// <summary>O fader está nesta posição.</summary>
+    public ComandoCom<double> ArrastarPara { get; }
+
+    /// <summary>O dedo soltou o fader.</summary>
+    public Comando SoltarFader { get; }
+
+    /// <summary>O dedo desceu em + (um passo já; segurando, repete).</summary>
+    public Comando ApertarMais { get; }
+
+    /// <summary>O dedo desceu em − (um passo já; segurando, repete).</summary>
+    public Comando ApertarMenos { get; }
+
+    /// <summary>O dedo subiu de − ou +.</summary>
+    public Comando SoltarPasso { get; }
 
     /// <summary>"saída 2", "banda 160 Hz" ou "—".</summary>
     public string Onde => Parametro.Onde(Indice);
@@ -168,6 +288,20 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
     public IReadOnlyList<OpcaoValor> Opcoes { get; }
 
     public bool EhEscolha => Opcoes.Count > 0;
+
+    /// <summary>As opções para a tela, com a escolhida marcada.</summary>
+    public IReadOnlyList<ItemOpcaoViewModel> ItensOpcao { get; }
+
+    /// <summary>A grade de opções da lista recolhida aberta: linhas de <see cref="ColunasOpcoes"/>.</summary>
+    public const int ColunasOpcoes = 4;
+
+    public IReadOnlyList<LinhaOpcoes> LinhasOpcao { get; }
+
+    /// <summary>A lista recolhida aberta mostra a grade de opções.</summary>
+    public bool MostrarOpcoes => EhLista && Expandido;
+
+    /// <summary>O fader e os − e + aparecem: um número com o controle aberto.</summary>
+    public bool MostrarFader => TemPasso && Expandido;
 
     /// <summary>Número com − e + e campo (ganho, frequência, Q, atraso, limitador…).</summary>
     public bool TemPasso => !EhEscolha;
@@ -200,6 +334,22 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
             return ValorMostrado is { } v ? FormatoValor.ComUnidade(Parametro, v) : "—";
         }
     }
+
+    /// <summary>O número sem a unidade ("+10,0", "OFF", "—"), para o giratório.</summary>
+    public string TextoNumero
+    {
+        get
+        {
+            if (EmOff)
+                return "OFF";
+            if (_localNumero is null && _localTexto is null && ValorAparelho is { } va && (va.Rotulo is not null || va.ForaDaFaixa))
+                return va.Exibicao;
+            return ValorMostrado is { } v ? FormatoValor.Numero(Parametro, v) : "—";
+        }
+    }
+
+    /// <summary>A unidade ao lado do número ("dB"), vazia no Q e nas escolhas.</summary>
+    public string Unidade => EhEscolha || Parametro.Tipo == TipoValor.Q ? "" : Parametro.Unidade ?? "";
 
     public OpcaoValor? OpcaoEscolhida
     {
@@ -263,6 +413,8 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
             _expandido = value;
             Avisar();
             Avisar(nameof(IndicadorExpandir));
+            Avisar(nameof(MostrarOpcoes));
+            Avisar(nameof(MostrarFader));
         }
     }
 
@@ -676,7 +828,11 @@ public sealed class ControleParametroViewModel : TelaBase, IDisposable
         Avisar(nameof(ValorMostrado));
         Avisar(nameof(EmOff));
         Avisar(nameof(TextoValor));
+        Avisar(nameof(TextoNumero));
         Avisar(nameof(OpcaoEscolhida));
+        Avisar(nameof(DescricaoOpcao));
+        Avisar(nameof(ValorFader));
+        MarcarOpcoes();
         Avisar(nameof(MotivoTrava));
         Avisar(nameof(Travado));
     }
@@ -710,6 +866,10 @@ public sealed class FabricaControles(
     IDespachante despachante,
     TimeProvider relogio)
 {
-    public ControleParametroViewModel Criar(Parametro parametro, int? indice, GrupoControles? grupo = null) =>
-        new(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo);
+    public ControleParametroViewModel Criar(Parametro parametro, int? indice, GrupoControles? grupo = null, string? titulo = null) =>
+        new(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo, titulo);
+
+    /// <summary>O controle pelo código do catálogo.</summary>
+    public ControleParametroViewModel Criar(string codigo, int? indice, GrupoControles? grupo = null, string? titulo = null) =>
+        Criar(Catalogo.ParametroDe(codigo) ?? throw new ArgumentException($"O {codigo} não está no catálogo.", nameof(codigo)), indice, grupo, titulo);
 }

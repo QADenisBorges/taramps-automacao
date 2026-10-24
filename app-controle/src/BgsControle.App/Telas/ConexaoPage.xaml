@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A tela de conexão (tocar na pílula de status): o estado com o indicador de ocupado, Conectar e as caixas
+    da senha quando desconectado, Desconectar, Esquecer a senha, a leitura completa com Ler de novo e o registro
+    do BLE (com a senha sempre mascarada). Tudo o que a tela de conexão da história 1 fazia, também desconectado,
+    no visual novo.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.ConexaoPage"
+             x:DataType="telas:ConexaoViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12" Padding="16,8">
+            <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label Style="{StaticResource tipo-titulo-tela}" Text="Conexão" />
+                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Resumo}" />
+            </VerticalStackLayout>
+            <!-- Procurando, conectando ou mandando a senha: o indicador de ocupado. -->
+            <ActivityIndicator Grid.Column="2" IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}"
+                               HeightRequest="28" WidthRequest="28" VerticalOptions="Center" />
+        </Grid>
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,8" Spacing="12">
+                <Border IsVisible="{Binding SoLeitura}" BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}"
+                        StrokeThickness="1" StrokeShape="RoundRectangle 14" Padding="14,10">
+                    <Label Style="{StaticResource tipo-texto-risco}" Text="{Binding Aviso}" />
+                </Border>
+                <Label Style="{StaticResource tipo-apoio}" Text="{Binding Mensagem}" IsVisible="{Binding TemMensagem}" />
+
+                <!-- As caixas da senha: um campo escondido por cima das 4 caixas; cada caractere vira •. -->
+                <VerticalStackLayout Spacing="10" IsVisible="{Binding PedindoSenha}">
+                    <Label Style="{StaticResource tipo-rotulo}" Text="SENHA DO PROCESSADOR" />
+                    <Grid HeightRequest="64">
+                        <HorizontalStackLayout Spacing="10" HorizontalOptions="Start" BindableLayout.ItemsSource="{Binding Caixas}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:CaixaSenha">
+                                    <Border WidthRequest="56" HeightRequest="64" BackgroundColor="{StaticResource campo}"
+                                            StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                        <Grid>
+                                            <Label Style="{StaticResource tipo-valor-canal}" Text="{Binding Texto}"
+                                                   HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                            <BoxView HeightRequest="2" VerticalOptions="End" Margin="10,0,10,8" Color="{StaticResource apagado}" />
+                                        </Grid>
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding Atual}" Value="True">
+                                                <Setter Property="Stroke" Value="{StaticResource texto}" />
+                                                <Setter Property="StrokeThickness" Value="2" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                        <Entry x:Name="CampoSenha" Opacity="0.02" Text="{Binding SenhaDigitada}"
+                               IsPassword="True" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                               MaxLength="4" ReturnType="Send" ReturnCommand="{Binding EnviarSenha}"
+                               Completed="AoEnviarSenha" />
+                    </Grid>
+                    <Button Style="{StaticResource botao-principal}" Text="Enviar a senha" Command="{Binding EnviarSenha}" Clicked="AoEnviarSenha" />
+                </VerticalStackLayout>
+
+                <Button Style="{StaticResource botao-principal}" Text="Conectar" Command="{Binding Conectar}" IsVisible="{Binding PodeConectar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{Binding TextoDesconectar}" Command="{Binding Desconectar}"
+                        IsVisible="{Binding PodeDesconectar}" />
+
+                <Border Style="{StaticResource cartao}" IsVisible="{Binding MostrarLeitura}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Style="{StaticResource tipo-rotulo}" Text="LEITURA DO APARELHO" />
+                        <Label Style="{StaticResource tipo-leitura-ganho}" Text="{Binding PlacarMarco1}" />
+                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding PlacarExtras}" />
+                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding ResumoLeitura}" />
+                        <ActivityIndicator IsRunning="{Binding LendoAgora}" IsVisible="{Binding LendoAgora}" HorizontalOptions="Start" HeightRequest="24" />
+                        <Button Style="{StaticResource botao-pequeno}" Text="Ler de novo" Command="{Binding LerDeNovo}"
+                                IsVisible="{Binding PodeLerDeNovo}" HorizontalOptions="Start" />
+                    </VerticalStackLayout>
+                </Border>
+                <Label Style="{StaticResource tipo-escala}" FontFamily="monospace" Text="{Binding ListaLeitura}" IsVisible="{Binding MostrarLeitura}" />
+
+                <Button Style="{StaticResource botao-secundario}" Text="Esquecer a senha" Command="{Binding EsquecerSenha}"
+                        TextColor="{StaticResource erro-texto}" />
+
+                <Button Style="{StaticResource botao-contornado-pequeno}" Text="{Binding TextoBotaoRegistro}" Command="{Binding AlternarRegistro}"
+                        HorizontalOptions="Start" />
+                <Border BackgroundColor="{StaticResource registro-fundo}" Stroke="{StaticResource sup-3}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 18" Padding="12" IsVisible="{Binding RegistroVisivel}">
+                    <Label Style="{StaticResource tipo-escala}" FontFamily="monospace" TextColor="{StaticResource apoio}" Text="{Binding Registro}" />
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

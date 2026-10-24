@@ -1,3 +1,4 @@
+using BgsControle.App.Telas;
 using BgsControle.Nucleo.Gerador;
 
 namespace BgsControle.App;
@@ -10,12 +11,16 @@ public partial class App : Application
     {
         InitializeComponent();
         _servicos = servicos;
+        // Só tema escuro (DESIGN, Colors): o app não muda com o tema claro do Android.
+        UserAppTheme = AppTheme.Dark;
     }
 
-    // A página é criada aqui, depois do InitializeComponent: as cores do App.xaml já existem.
+    // A casca é criada aqui, depois do InitializeComponent: os tokens do App.xaml já existem.
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var janela = new Window(_servicos.GetRequiredService<MainPage>()) { Title = "BGS Controle" };
+        var raiz = new NavigationPage(_servicos.GetRequiredService<CascaPage>());
+        NavigationPage.SetHasNavigationBar(raiz, false);
+        var janela = new Window(raiz) { Title = "BGS Controle" };
         // Ao sair do app (segundo plano) ou fechá-lo, o gerador desliga (failure-modes, regra 1).
         janela.Stopped += (_, _) => DesligarGerador();
         janela.Destroying += (_, _) => DesligarGerador();

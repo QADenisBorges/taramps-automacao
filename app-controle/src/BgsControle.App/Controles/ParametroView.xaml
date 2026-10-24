@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O controle de parâmetro (DESIGN, controle-de-parametro, lista-recolhida, par-de-botoes, botao-off;
+    EXPERIENCE, Controles de valor). Um número vem recolhido (nome, faixa e passo, e o valor no campo); aberto,
+    − · fader · + e, no limitador, OFF. O tipo do filtro, a rota e o preset de EQ são listas recolhidas; a
+    fase e os liga/desliga são pares de botões, sempre à vista. A lógica é toda da ControleParametroViewModel.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Controles.ParametroView"
+             x:DataType="telas:ControleParametroViewModel">
+    <Border Style="{StaticResource cartao}" Padding="14,12">
+        <VerticalStackLayout Spacing="10">
+
+            <!-- A linha de cima: nome, faixa e passo; à direita, o valor (número ou o escolhido). -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" MinimumHeightRequest="44">
+                <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                    <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}" />
+                    <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaEPasso}" IsVisible="{Binding TemPasso}" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoOpcao}"
+                           IsVisible="{Binding DescricaoOpcao, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+
+                <HorizontalStackLayout Grid.Column="1" Spacing="4" IsVisible="{Binding TemPasso}" VerticalOptions="Center">
+                    <Border Style="{StaticResource campo-numerico}">
+                        <Grid>
+                            <Label Style="{StaticResource tipo-valor-campo}" Text="{Binding TextoValor}"
+                                   HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
+                            <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0"
+                                     Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                        </Grid>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding TocarNoValor}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                    <Button Style="{StaticResource botao-pequeno}" BackgroundColor="Transparent" WidthRequest="44" Padding="0"
+                            TextColor="{StaticResource apoio}" FontSize="18"
+                            Text="{Binding IndicadorExpandir}" Command="{Binding AlternarExpandido}" />
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Grid.Column="1" Spacing="6" IsVisible="{Binding EhLista}" VerticalOptions="Center">
+                    <Border BackgroundColor="{StaticResource texto}" StrokeThickness="0" StrokeShape="RoundRectangle 11"
+                            Padding="12,0" MinimumHeightRequest="36" VerticalOptions="Center">
+                        <Label Style="{StaticResource tipo-botao-pequeno}" TextColor="{StaticResource sobre-escolhido}"
+                               Text="{Binding TextoValor}" VerticalTextAlignment="Center" />
+                    </Border>
+                    <Label Text="{Binding IndicadorExpandir}" TextColor="{StaticResource apoio}" FontSize="18"
+                           VerticalTextAlignment="Center" WidthRequest="24" />
+                    <HorizontalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding AlternarExpandido}" />
+                    </HorizontalStackLayout.GestureRecognizers>
+                </HorizontalStackLayout>
+            </Grid>
+
+            <!-- Escrevendo: o campo ativo, que vale no ✓. -->
+            <c:CampoEdicaoView />
+
+            <!-- Aberto: − · fader · + (e OFF no limitador). -->
+            <Grid IsVisible="{Binding MostrarFader}" ColumnDefinitions="48,*,48,Auto" ColumnSpacing="8">
+                <c:BotaoSegurar Style="{StaticResource botao-passo}" Text="−"
+                                ComandoApertar="{Binding ApertarMenos}" ComandoSoltar="{Binding SoltarPasso}" />
+                <c:FaderView Grid.Column="1" HeightRequest="48"
+                             Minimo="{Binding Minimo}" Maximo="{Binding Maximo}" Valor="{Binding ValorFader}"
+                             Logaritmico="{Binding Logaritmico}" Travado="{Binding Travado}"
+                             Cor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                             ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                <c:BotaoSegurar Grid.Column="2" Style="{StaticResource botao-passo}" Text="+"
+                                ComandoApertar="{Binding ApertarMais}" ComandoSoltar="{Binding SoltarPasso}" />
+                <Button Grid.Column="3" Style="{StaticResource botao-pequeno}" Text="OFF" WidthRequest="56"
+                        IsVisible="{Binding TemOff}" Command="{Binding AlternarOff}">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding EmOff}" Value="True">
+                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Grid>
+
+            <!-- Lista recolhida aberta: a grade de opções, o escolhido em branco. -->
+            <Border IsVisible="{Binding MostrarOpcoes}" BackgroundColor="{StaticResource lista-aberta}"
+                    Stroke="{StaticResource campo-borda}" StrokeThickness="1" StrokeShape="RoundRectangle 14" Padding="6">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding LinhasOpcao}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:LinhaOpcoes">
+                            <Grid ColumnDefinitions="*,*,*,*" BindableLayout.ItemsSource="{Binding Itens}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="telas:ItemOpcaoViewModel">
+                                        <Button Grid.Column="{Binding Coluna}" Style="{StaticResource botao-pequeno}" Margin="3" Padding="2,0"
+                                                CornerRadius="10" BackgroundColor="Transparent" BorderColor="{StaticResource sup-2}" BorderWidth="1"
+                                                Text="{Binding Rotulo}" Command="{Binding Escolher}">
+                                            <Button.Triggers>
+                                                <DataTrigger TargetType="Button" Binding="{Binding Escolhida}" Value="True">
+                                                    <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                    <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                </DataTrigger>
+                                            </Button.Triggers>
+                                        </Button>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Par de botões: fase 0°/180°, liga/desliga. -->
+            <FlexLayout IsVisible="{Binding EhPar}" JustifyContent="SpaceBetween" BindableLayout.ItemsSource="{Binding ItensOpcao}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="telas:ItemOpcaoViewModel">
+                        <Button Style="{StaticResource botao-pequeno}" FlexLayout.Grow="1" FlexLayout.Basis="0" Margin="0,0,6,0"
+                                BackgroundColor="Transparent" BorderColor="{StaticResource sup-2}" BorderWidth="1"
+                                Text="{Binding Rotulo}" Command="{Binding Escolher}">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" Binding="{Binding Escolhida}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                    <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </FlexLayout>
+
+            <!-- Por que travou, ou o que o aparelho fez ("O aparelho ficou em −2,9 dB"). -->
+            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTrava}"
+                   IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Aviso}"
+                   IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

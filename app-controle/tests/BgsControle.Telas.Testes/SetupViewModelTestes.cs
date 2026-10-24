@@ -55,7 +55,7 @@ public sealed class SetupViewModelTestes : IDisposable
         Assert.Equal("Setup em dúvida", _vm.Titulo);
         Assert.Equal("O aparelho não está como o Casa 2.1 deixou da última vez.", _vm.Frase);
         Assert.Equal("Som mutado até você escolher.", _vm.FaixaMudo);
-        Assert.Equal(["Atraso da saída 3: 80 cm no Casa 2.1, 0 cm no aparelho"], _vm.Diferencas);
+        Assert.Equal(["Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho"], _vm.Diferencas);
         Assert.False(_vm.PodeDesistir);
         Assert.Equal("Sem Setup ›", _vm.Seletor);
         Assert.Equal("O QUE NÃO BATE", SetupViewModel.RotuloDiferencas);

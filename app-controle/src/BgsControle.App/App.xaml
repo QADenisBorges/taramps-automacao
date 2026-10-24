@@ -1,12 +1,320 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    Os tokens do DESIGN.md (ux-taramps-automacao-2026-10-21): cores pelos nomes dos tokens, a tipografia
+    (estilos "tipo-…"; o peso real vem de r:Tipo.Peso, com o Roboto do sistema) e os componentes. Só tema
+    escuro. As páginas usam só estes recursos, nunca cores soltas.
+-->
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:r="clr-namespace:BgsControle.App.Recursos"
              x:Class="BgsControle.App.App">
     <Application.Resources>
         <ResourceDictionary>
-            <Color x:Key="Primaria">#1F3A5F</Color>
-            <Color x:Key="Alerta">#B3261E</Color>
-            <Color x:Key="FundoAlerta">#FDE7E4</Color>
+
+            <!-- ============================================================ cores (DESIGN, colors) -->
+            <Color x:Key="palco">#000000</Color>
+            <Color x:Key="sup-1">#1C1C1E</Color>
+            <Color x:Key="sup-2">#2C2C2E</Color>
+            <Color x:Key="sup-3">#232325</Color>
+            <Color x:Key="lista-aberta">#151517</Color>
+            <Color x:Key="registro-fundo">#0E0E10</Color>
+            <Color x:Key="texto">#F5F5F7</Color>
+            <Color x:Key="apoio">#A1A1A6</Color>
+            <Color x:Key="apagado">#85858A</Color>
+            <Color x:Key="sobre-escolhido">#000000</Color>
+            <Color x:Key="sobre-escolhido-apoio">#55555A</Color>
+            <!-- Uma luz por canal do processador; uma saída que é um par com link usa a do mestre. -->
+            <Color x:Key="canal-1">#7EAEFF</Color>
+            <Color x:Key="canal-2">#C495FF</Color>
+            <Color x:Key="canal-3">#FFCD94</Color>
+            <Color x:Key="canal-4">#8FE3CF</Color>
+            <!-- Os nomes antigos de canal-1 a canal-3. -->
+            <Color x:Key="saida-l">#7EAEFF</Color>
+            <Color x:Key="saida-r">#C495FF</Color>
+            <Color x:Key="saida-sub">#FFCD94</Color>
+            <Color x:Key="saida-sub-fundo">#241D13</Color>
+            <Color x:Key="ok">#30D158</Color>
+            <Color x:Key="parar">#FF453A</Color>
+            <Color x:Key="erro-texto">#FF8A82</Color>
+            <Color x:Key="risco-fundo">#2A1414</Color>
+            <!-- No MAUI a transparência vem antes: #AARRGGBB. -->
+            <Color x:Key="risco-borda">#73FF453A</Color>
+            <Color x:Key="veu">#A8000000</Color>
+            <Color x:Key="capa-a">#3C3C41</Color>
+            <Color x:Key="capa-b">#26262A</Color>
+            <Color x:Key="capa-borda">#4C4C52</Color>
+            <Color x:Key="campo">#0B0B0C</Color>
+            <Color x:Key="campo-borda">#3A3A3D</Color>
+
+            <!-- ============================================================ conversores -->
+            <r:CorDaSaida x:Key="CorDaSaida" />
+            <r:Inverso x:Key="Inverso" />
+            <r:TemTexto x:Key="TemTexto" />
+            <r:TamanhoDoNome x:Key="TamanhoDoNome" />
+
+            <!-- ============================================================ tipografia (DESIGN, typography) -->
+            <Style x:Key="tipo-base" TargetType="Label">
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="r:Tipo.Peso" Value="400" />
+            </Style>
+            <Style x:Key="tipo-marca" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="200" />
+            </Style>
+            <Style x:Key="tipo-marca-forte" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="CharacterSpacing" Value="0.4" />
+            </Style>
+            <Style x:Key="tipo-memoria-hero" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="60" />
+                <Setter Property="r:Tipo.Peso" Value="200" />
+                <Setter Property="LineHeight" Value="1" />
+                <Setter Property="LineBreakMode" Value="WordWrap" />
+            </Style>
+            <Style x:Key="tipo-estado-hero" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="44" />
+                <Setter Property="r:Tipo.Peso" Value="200" />
+                <Setter Property="LineHeight" Value="1.2" />
+            </Style>
+            <Style x:Key="tipo-memoria-lista" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="36" />
+                <Setter Property="r:Tipo.Peso" Value="200" />
+                <Setter Property="LineHeight" Value="1.2" />
+                <Setter Property="LineBreakMode" Value="WordWrap" />
+            </Style>
+            <Style x:Key="tipo-leitura-ganho" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="32" />
+                <Setter Property="r:Tipo.Peso" Value="200" />
+            </Style>
+            <Style x:Key="tipo-valor-giratorio" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="44" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-valor-canal" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="24" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-valor-campo" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-titulo-saida" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="30" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-titulo-tela" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-titulo-folha" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-nome-saida" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+            </Style>
+            <Style x:Key="tipo-ajustar-saida" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+            </Style>
+            <Style x:Key="tipo-nome-canal" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="CharacterSpacing" Value="0.6" />
+            </Style>
+            <Style x:Key="tipo-titulo-parametro" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+            </Style>
+            <Style x:Key="tipo-linha-titulo" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+            </Style>
+            <Style x:Key="tipo-botao-medio" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-botao-pequeno" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-passo" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="26" />
+                <Setter Property="r:Tipo.Peso" Value="500" />
+            </Style>
+            <Style x:Key="tipo-texto-risco" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+            </Style>
+            <Style x:Key="tipo-texto-erro" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="TextColor" Value="{StaticResource erro-texto}" />
+            </Style>
+            <Style x:Key="tipo-corpo" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="LineHeight" Value="1.5" />
+            </Style>
+            <Style x:Key="tipo-apoio" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="LineHeight" Value="1.45" />
+                <Setter Property="TextColor" Value="{StaticResource apoio}" />
+            </Style>
+            <Style x:Key="tipo-detalhe" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="LineHeight" Value="1.5" />
+                <Setter Property="TextColor" Value="{StaticResource apoio}" />
+            </Style>
+            <Style x:Key="tipo-rotulo" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="CharacterSpacing" Value="1.3" />
+                <Setter Property="TextColor" Value="{StaticResource apagado}" />
+            </Style>
+            <Style x:Key="tipo-escala" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="TextColor" Value="{StaticResource apagado}" />
+            </Style>
+
+            <!-- ============================================================ botões (DESIGN, components) -->
+            <Style x:Key="botao-base" TargetType="Button">
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="BorderWidth" Value="0" />
+                <Setter Property="Shadow" Value="{x:Null}" />
+            </Style>
+            <Style x:Key="botao-principal" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="56" />
+                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="EstadosPrincipal">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                                    <Setter Property="TextColor" Value="{StaticResource apoio}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+            <Style x:Key="botao-secundario" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="52" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BorderColor" Value="{StaticResource campo-borda}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+            </Style>
+            <Style x:Key="botao-medio" TargetType="Button" BasedOn="{StaticResource botao-secundario}">
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="botao-pequeno" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+            <Style x:Key="botao-contornado-pequeno" TargetType="Button" BasedOn="{StaticResource botao-pequeno}">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BorderColor" Value="{StaticResource campo-borda}" />
+                <Setter Property="BorderWidth" Value="1" />
+            </Style>
+            <Style x:Key="botao-passo" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="WidthRequest" Value="48" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                <Setter Property="BorderColor" Value="{StaticResource campo-borda}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="FontSize" Value="26" />
+                <Setter Property="r:Tipo.Peso" Value="500" />
+            </Style>
+            <Style x:Key="botao-passo-grande" TargetType="Button" BasedOn="{StaticResource botao-passo}">
+                <Setter Property="HeightRequest" Value="72" />
+                <Setter Property="WidthRequest" Value="72" />
+                <Setter Property="BorderWidth" Value="2" />
+                <Setter Property="CornerRadius" Value="22" />
+                <Setter Property="FontSize" Value="36" />
+            </Style>
+            <Style x:Key="botao-voltar" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="WidthRequest" Value="48" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Text" Value="‹" />
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-1}" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="FontSize" Value="28" />
+                <Setter Property="r:Tipo.Peso" Value="500" />
+            </Style>
+            <Style x:Key="engrenagem" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="WidthRequest" Value="44" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Text" Value="⚙" />
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-1}" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="r:Tipo.Peso" Value="400" />
+            </Style>
+
+            <!-- ============================================================ superfícies -->
+            <Style x:Key="cartao" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{StaticResource sup-1}" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="StrokeShape" Value="RoundRectangle 18" />
+                <Setter Property="Padding" Value="16" />
+            </Style>
+            <Style x:Key="cartao-grande" TargetType="Border" BasedOn="{StaticResource cartao}">
+                <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+                <Setter Property="Padding" Value="18" />
+            </Style>
+            <Style x:Key="campo-numerico" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{StaticResource campo}" />
+                <Setter Property="Stroke" Value="{StaticResource campo-borda}" />
+                <Setter Property="StrokeThickness" Value="1" />
+                <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+                <Setter Property="MinimumHeightRequest" Value="44" />
+                <Setter Property="MinimumWidthRequest" Value="112" />
+                <Setter Property="Padding" Value="10,0" />
+            </Style>
+            <Style x:Key="entrada" TargetType="Entry">
+                <Setter Property="BackgroundColor" Value="{StaticResource campo}" />
+                <Setter Property="TextColor" Value="{StaticResource texto}" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource apagado}" />
+                <Setter Property="FontSize" Value="17" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="MinimumHeightRequest" Value="44" />
+            </Style>
+            <Style TargetType="ActivityIndicator">
+                <Setter Property="Color" Value="{StaticResource apoio}" />
+            </Style>
+            <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
+                <Setter Property="BackgroundColor" Value="{StaticResource palco}" />
+            </Style>
+            <Style TargetType="NavigationPage" ApplyToDerivedTypes="True">
+                <Setter Property="BackgroundColor" Value="{StaticResource palco}" />
+                <Setter Property="BarBackgroundColor" Value="{StaticResource palco}" />
+                <Setter Property="BarTextColor" Value="{StaticResource texto}" />
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

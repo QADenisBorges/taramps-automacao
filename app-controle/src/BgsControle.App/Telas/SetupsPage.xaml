@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › Setups (EXPERIENCE, Information Architecture): os Setups, o selo HERDADO no Casa 2.1,
+    tocar num Setup abre a tela Setup, Renomear (vale no ✓) e Apagar com a folha. O Setup em uso e o herdado não se apagam e dizem por quê.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.SetupsPage"
+             x:DataType="telas:SetupsViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid>
+        <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Command="{Binding Voltar}" />
+                <Label Grid.Column="1" Style="{StaticResource tipo-titulo-tela}" Text="Setups" VerticalTextAlignment="Center" />
+            </Grid>
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="10">
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoLembrete}" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Linhas}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:LinhaSetupViewModel">
+                                <Border Style="{StaticResource cartao-grande}">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <!-- Tocar no Setup abre a tela Setup (os equipamentos). -->
+                                            <VerticalStackLayout>
+                                                <Label Style="{StaticResource tipo-memoria-lista}" FontSize="28" Text="{Binding Nome}" />
+                                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Detalhe}" />
+                                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="Equipamentos ›" />
+                                                <VerticalStackLayout.GestureRecognizers>
+                                                    <TapGestureRecognizer Command="{Binding Abrir}" />
+                                                </VerticalStackLayout.GestureRecognizers>
+                                            </VerticalStackLayout>
+                                            <Border Grid.Column="1" IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}"
+                                                    StrokeThickness="1" StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0"
+                                                    VerticalOptions="Start">
+                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
+                                                       VerticalTextAlignment="Center" />
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer Command="{Binding AlternarNota}" />
+                                                </Border.GestureRecognizers>
+                                            </Border>
+                                        </Grid>
+                                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding Nota}" IsVisible="{Binding NotaVisivel}" />
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                            <Button Style="{StaticResource botao-contornado-pequeno}" Text="Renomear" Command="{Binding Renomear}" />
+                                            <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Apagar" Command="{Binding Apagar}">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding PodeApagar}" Value="False">
+                                                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                                                        <Setter Property="BorderColor" Value="Transparent" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                        </Grid>
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaApagar}"
+                                               IsVisible="{Binding MotivoTravaApagar, Converter={StaticResource TemTexto}}" />
+                                    </VerticalStackLayout>
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding EmUso}" Value="True">
+                                            <Setter Property="Stroke" Value="{StaticResource texto}" />
+                                            <Setter Property="StrokeThickness" Value="2" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- Renomear. -->
+        <c:FolhaView Aberta="{Binding RenomearAberto}" Fechar="{Binding CancelarRenomear}">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding RenomearTitulo}" />
+                <Entry Style="{StaticResource entrada}" Text="{Binding NomeRenomear}" MaxLength="24"
+                       ReturnType="Done" ReturnCommand="{Binding ConfirmarRenomear}" />
+                <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroRenomear}"
+                       IsVisible="{Binding ErroRenomear, Converter={StaticResource TemTexto}}" />
+                <Button Style="{StaticResource botao-principal}" Text="Renomear" Command="{Binding ConfirmarRenomear}" />
+                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding CancelarRenomear}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+
+        <!-- Apagar. -->
+        <c:FolhaView Aberta="{Binding ApagarAberto}" Fechar="{Binding CancelarApagar}">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding ApagarTitulo}" />
+                <Label Style="{StaticResource tipo-corpo}" Text="{Binding ApagarAvisoTexto}" />
+                <Button Style="{StaticResource botao-principal}" Text="Apagar o Setup" Command="{Binding ConfirmarApagar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding CancelarApagar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

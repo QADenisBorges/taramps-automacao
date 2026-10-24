@@ -289,6 +289,17 @@ public static class Ligacoes
     /// <summary>"CH1", "CH3 + CH4" (canais 0 a 3).</summary>
     public static string RotuloCanais(IEnumerable<int> canais) => string.Join(" + ", canais.Select(c => $"CH{c + 1}"));
 
+    /// <summary>
+    /// O nome de cada saída na tela (história 10), na mesma ordem: o nome da saída, e, quando duas
+    /// saídas têm o mesmo nome (o Sub em CH3 e em CH4 com o Link 3–4 desligado), o nome com os canais
+    /// ("Sub · CH3", "Sub · CH4"), para a tela nunca mostrar dois iguais.
+    /// </summary>
+    public static IReadOnlyList<string> NomesNaTela(IReadOnlyList<SaidaApp> saidas) =>
+        saidas.Select(s => s.Nome != s.Rotulo && saidas.Count(o => string.Equals(o.Nome, s.Nome, StringComparison.Ordinal)) > 1
+                ? $"{s.Nome} · {s.Rotulo}"
+                : s.Nome)
+            .ToArray();
+
     /// <summary>"A", "A e B", "A, B e C".</summary>
     public static string Lista(IReadOnlyList<string> nomes) => nomes.Count switch
     {

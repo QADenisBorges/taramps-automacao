@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações (a engrenagem; DESIGN, linha-de-configuracao): nesta versão, as linhas Setups e Memórias.
+    Presets, Aparelho, Chaves de acesso, IA pela rede e Histórico entram na próxima.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.ConfiguracoesPage"
+             x:DataType="telas:ConfiguracoesViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+            <Button Style="{StaticResource botao-voltar}" Command="{Binding Voltar}" />
+            <Label Grid.Column="1" Style="{StaticResource tipo-titulo-tela}" Text="Configurações" VerticalTextAlignment="Center" />
+        </Grid>
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,8" Spacing="8">
+                <Label Style="{StaticResource tipo-rotulo}" Text="SOM" />
+                <Border Style="{StaticResource cartao}" Padding="0">
+                    <VerticalStackLayout>
+                        <Grid ColumnDefinitions="*,Auto" Padding="16,8" MinimumHeightRequest="52">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding TituloSetups}" />
+                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoSetups}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="›" TextColor="{StaticResource apagado}" FontSize="20" VerticalTextAlignment="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding AbrirSetups}" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <BoxView HeightRequest="1" Color="{StaticResource sup-3}" />
+                        <Grid ColumnDefinitions="*,Auto" Padding="16,8" MinimumHeightRequest="52">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding TituloMemorias}" />
+                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoMemorias}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="›" TextColor="{StaticResource apagado}" FontSize="20" VerticalTextAlignment="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding AbrirMemorias}" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

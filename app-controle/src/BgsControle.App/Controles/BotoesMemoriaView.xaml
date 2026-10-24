@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Os botões de memória (DESIGN, botoes-de-memoria; EXPERIENCE, Memória): as 3 memórias do celular usadas
+    por último, que não mudam de lugar, e o "…" como quarta coluna de 44 px. A em uso em branco. Sem Setup,
+    travados com o texto apagado e a frase.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:r="clr-namespace:BgsControle.App.Recursos"
+             x:Class="BgsControle.App.Controles.BotoesMemoriaView"
+             x:DataType="telas:BotoesMemoriaViewModel">
+    <ContentView.Resources>
+        <Style x:Key="botao-memoria" TargetType="Button" BasedOn="{StaticResource botao-base}">
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="BorderColor" Value="{StaticResource sup-2}" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="TextColor" Value="{StaticResource apoio}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="r:Tipo.Peso" Value="400" />
+            <Setter Property="LineBreakMode" Value="TailTruncation" />
+        </Style>
+    </ContentView.Resources>
+    <VerticalStackLayout Spacing="6">
+        <Grid ColumnDefinitions="*,*,*,44" ColumnSpacing="6">
+        <ContentView Grid.Column="0" BindingContext="{Binding Botoes[0]}">
+            <Button x:DataType="telas:BotaoMemoriaViewModel" Style="{StaticResource botao-memoria}"
+                    Text="{Binding Nome}" Command="{Binding Tocar}" IsVisible="{Binding Visivel}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding EmUso}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        <Setter Property="r:Tipo.Peso" Value="600" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding Travado}" Value="True">
+                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </ContentView>
+        <ContentView Grid.Column="1" BindingContext="{Binding Botoes[1]}">
+            <Button x:DataType="telas:BotaoMemoriaViewModel" Style="{StaticResource botao-memoria}"
+                    Text="{Binding Nome}" Command="{Binding Tocar}" IsVisible="{Binding Visivel}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding EmUso}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        <Setter Property="r:Tipo.Peso" Value="600" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding Travado}" Value="True">
+                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </ContentView>
+        <ContentView Grid.Column="2" BindingContext="{Binding Botoes[2]}">
+            <Button x:DataType="telas:BotaoMemoriaViewModel" Style="{StaticResource botao-memoria}"
+                    Text="{Binding Nome}" Command="{Binding Tocar}" IsVisible="{Binding Visivel}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding EmUso}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        <Setter Property="r:Tipo.Peso" Value="600" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Button" Binding="{Binding Travado}" Value="True">
+                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </ContentView>
+            <Button Grid.Column="3" Style="{StaticResource botao-memoria}" Text="…" Padding="0"
+                    TextColor="{StaticResource texto}" FontSize="20" r:Tipo.Peso="800"
+                    Command="{Binding AbrirLista}" />
+        </Grid>
+        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaCelular}"
+               IsVisible="{Binding TravadoCelular}" />
+        <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Aplicando}"
+               IsVisible="{Binding Esmaecido}" />
+        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Mensagem}"
+               IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+    </VerticalStackLayout>
+</ContentView>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A pílula de status (DESIGN, pilula-status): ponto de 7 px em {colors.ok} com halo (Conectado · R003),
+    {colors.apoio} (Conectando) ou {colors.apagado} (Desconectado). Tocar desconectado faz o mesmo que
+    Conectar; conectado, abre os detalhes da conexão.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.PilulaView"
+             x:DataType="telas:CascaViewModel">
+    <Border BackgroundColor="{StaticResource sup-1}" Stroke="{StaticResource sup-2}" StrokeThickness="1"
+            StrokeShape="RoundRectangle 18" Padding="12,0" MinimumHeightRequest="36" VerticalOptions="Center">
+        <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+            <Ellipse WidthRequest="7" HeightRequest="7" VerticalOptions="Center" Fill="{StaticResource apagado}">
+                <Ellipse.Triggers>
+                    <DataTrigger TargetType="Ellipse" Binding="{Binding PontoEsperando}" Value="True">
+                        <Setter Property="Fill" Value="{StaticResource apoio}" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Ellipse" Binding="{Binding PontoConectado}" Value="True">
+                        <Setter Property="Fill" Value="{StaticResource ok}" />
+                        <Setter Property="Shadow">
+                            <Shadow Brush="{StaticResource ok}" Radius="8" Opacity="0.8" Offset="0,0" />
+                        </Setter>
+                    </DataTrigger>
+                </Ellipse.Triggers>
+            </Ellipse>
+            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding TextoStatus}" VerticalTextAlignment="Center" />
+        </HorizontalStackLayout>
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Command="{Binding TocarPilula}" />
+        </Border.GestureRecognizers>
+    </Border>
+</ContentView>

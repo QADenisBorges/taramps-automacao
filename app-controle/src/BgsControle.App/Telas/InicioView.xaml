@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O Início (DESIGN, Layout › Início; mock da 3b, quadro 1): o cartão da memória em uso (rótulo, nome, chip de
+    preset, botões de memória), o rótulo SAÍDAS e os três cartões de saída. Sem conexão, o cartão de conexão com
+    Conectar e as caixas da senha. O topo em duas linhas (marca + engrenagem; seletor de Setup + pílula) é da
+    casca.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.InicioView"
+             x:DataType="telas:InicioViewModel">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,8,16,16" Spacing="12">
+
+            <!-- Só leitura: o aviso fixo. -->
+            <Border IsVisible="{Binding AvisoFixo, Converter={StaticResource TemTexto}}"
+                    BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                    StrokeShape="RoundRectangle 14" Padding="14,10">
+                <Label Style="{StaticResource tipo-texto-risco}" Text="{Binding AvisoFixo}" />
+            </Border>
+
+            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Mensagem}"
+                   IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+
+            <!-- Sem conexão: o cartão de conexão. -->
+            <Border Style="{StaticResource cartao-grande}" IsVisible="{Binding MostrarConexao}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Style="{StaticResource tipo-rotulo}" Text="PROCESSADOR" />
+                    <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding EstadoConexao}" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding HoraQueCaiu}"
+                           IsVisible="{Binding HoraQueCaiu, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding FraseConexao}" />
+                    <ActivityIndicator IsRunning="{Binding Conexao.Ocupado}" IsVisible="{Binding Conexao.Ocupado}"
+                                       HorizontalOptions="Start" HeightRequest="28" />
+
+                    <!-- As caixas da senha: um campo escondido por cima das 4 caixas; cada caractere vira •. -->
+                    <VerticalStackLayout Spacing="10" IsVisible="{Binding Conexao.PedindoSenha}">
+                        <Grid HeightRequest="64">
+                            <HorizontalStackLayout Spacing="10" HorizontalOptions="Start"
+                                                   BindableLayout.ItemsSource="{Binding Conexao.Caixas}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="telas:CaixaSenha">
+                                        <Border WidthRequest="56" HeightRequest="64" BackgroundColor="{StaticResource campo}"
+                                                StrokeShape="RoundRectangle 14" StrokeThickness="0">
+                                            <Grid>
+                                                <Label Style="{StaticResource tipo-valor-canal}" Text="{Binding Texto}"
+                                                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                                <BoxView HeightRequest="2" VerticalOptions="End" Margin="10,0,10,8"
+                                                         Color="{StaticResource apagado}" />
+                                            </Grid>
+                                            <Border.Triggers>
+                                                <DataTrigger TargetType="Border" Binding="{Binding Atual}" Value="True">
+                                                    <Setter Property="Stroke" Value="{StaticResource texto}" />
+                                                    <Setter Property="StrokeThickness" Value="2" />
+                                                </DataTrigger>
+                                            </Border.Triggers>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </HorizontalStackLayout>
+                            <Entry x:Name="CampoSenha" Opacity="0.02" Text="{Binding Conexao.SenhaDigitada}"
+                                   IsPassword="True" IsSpellCheckEnabled="False" IsTextPredictionEnabled="False"
+                                   MaxLength="4" ReturnType="Send" ReturnCommand="{Binding Conexao.EnviarSenha}"
+                                   Completed="AoEnviarSenha" />
+                        </Grid>
+                        <Button Style="{StaticResource botao-principal}" Text="Enviar a senha"
+                                Command="{Binding Conexao.EnviarSenha}" Clicked="AoEnviarSenha" />
+                    </VerticalStackLayout>
+
+                    <Button Style="{StaticResource botao-principal}" Text="Conectar" Command="{Binding Conexao.Conectar}"
+                            IsVisible="{Binding Conexao.PodeConectar}" />
+                    <Button Style="{StaticResource botao-secundario}" Text="{Binding Conexao.TextoDesconectar}"
+                            Command="{Binding Conexao.Desconectar}" IsVisible="{Binding Conexao.PodeDesconectar}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Conectado e lendo: a contagem. -->
+            <HorizontalStackLayout Spacing="8" IsVisible="{Binding TextoLendo, Converter={StaticResource TemTexto}}">
+                <ActivityIndicator IsRunning="True" HeightRequest="20" WidthRequest="20" />
+                <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoLendo}" VerticalTextAlignment="Center" />
+            </HorizontalStackLayout>
+
+            <!-- O cartão da memória em uso. -->
+            <Border Style="{StaticResource cartao-grande}" IsVisible="{Binding MostrarMemoria}">
+                <Grid>
+                    <c:ArcoView WidthRequest="180" HeightRequest="180" HorizontalOptions="End" VerticalOptions="Start"
+                                Margin="0,-90,-90,0" />
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource tipo-rotulo}" Text="MEMÓRIA EM USO" />
+                        <Label Style="{StaticResource tipo-memoria-hero}" Text="{Binding NomeMemoria}"
+                               FontSize="{Binding NomeMemoria, Converter={StaticResource TamanhoDoNome}}" />
+                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding LinhaMemoria}"
+                               IsVisible="{Binding LinhaMemoria, Converter={StaticResource TemTexto}}" />
+
+                        <!-- O chip de preset (a folha de presets é da próxima versão). -->
+                        <Border IsVisible="{Binding MostrarChip}" HorizontalOptions="Start" BackgroundColor="{StaticResource palco}"
+                                Stroke="{StaticResource campo-borda}" StrokeThickness="1" StrokeShape="RoundRectangle 22"
+                                Padding="14,0" HeightRequest="44">
+                            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-apoio}" Text="Preset:" VerticalTextAlignment="Center" />
+                                <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding NomePreset}" VerticalTextAlignment="Center" />
+                                <Label Text="▾" TextColor="{StaticResource apoio}" VerticalTextAlignment="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- Som diferente da memória ativa: o lembrete com Reaplicar. -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"
+                              IsVisible="{Binding SomDiferente, Converter={StaticResource TemTexto}}">
+                            <Ellipse WidthRequest="8" HeightRequest="8" Fill="{StaticResource apoio}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}"
+                                   Text="{Binding SomDiferente}" VerticalTextAlignment="Center" />
+                            <Button Grid.Column="2" Style="{StaticResource botao-pequeno}" Text="Reaplicar" Command="{Binding Reaplicar}" />
+                        </Grid>
+
+                        <Button Style="{StaticResource botao-medio}" Text="Criar memória do som atual"
+                                Command="{Binding CriarMemoria}" IsVisible="{Binding MostrarCriarMemoria}" />
+
+                        <c:BotoesMemoriaView BindingContext="{Binding Memorias}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- As saídas. -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                <Label Style="{StaticResource tipo-rotulo}" Text="SAÍDAS" />
+                <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" Text="Toque para ajustar" />
+            </Grid>
+            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding CartoesSaida}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="telas:CartaoSaidaViewModel">
+                        <Border Style="{StaticResource cartao}" Padding="0">
+                            <Grid ColumnDefinitions="4,*,Auto">
+                                <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}">
+                                    <BoxView.Triggers>
+                                        <DataTrigger TargetType="BoxView" Binding="{Binding Lido}" Value="False">
+                                            <Setter Property="Opacity" Value="0.4" />
+                                        </DataTrigger>
+                                    </BoxView.Triggers>
+                                </BoxView>
+                                <VerticalStackLayout Grid.Column="1" Padding="14,12" Spacing="4">
+                                    <Label Style="{StaticResource tipo-nome-saida}" Text="{Binding Nome}" TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Subtitulo}" />
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Label Style="{StaticResource tipo-leitura-ganho}" Text="{Binding Ganho}" />
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding UnidadeGanho}" VerticalTextAlignment="End"
+                                               Margin="0,0,0,6" IsVisible="{Binding Lido}" />
+                                    </HorizontalStackLayout>
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Resumo1}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Resumo2}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource erro-texto}" Text="{Binding Aviso}"
+                                           IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="2" Style="{StaticResource tipo-ajustar-saida}" Text="Ajustar ›" Margin="0,0,14,0"
+                                       VerticalTextAlignment="Center" TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Ajustar}" />
+                            </Border.GestureRecognizers>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

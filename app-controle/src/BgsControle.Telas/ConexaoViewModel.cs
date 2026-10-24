@@ -6,6 +6,9 @@ using BgsControle.Nucleo.Registro;
 
 namespace BgsControle.Telas;
 
+/// <summary>Uma caixa da senha: "•" ou vazia, e se é a atual.</summary>
+public sealed record CaixaSenha(string Texto, bool Atual);
+
 /// <summary>
 /// A tela de conexão: estado, firmware, senha, leitura completa e os pedidos ao celular. A
 /// leitura automática ao entrar em Conectado é do núcleo (<see cref="LeituraAutomatica"/>);
@@ -125,8 +128,16 @@ public sealed class ConexaoViewModel : TelaBase
                 return;
             _senhaDigitada = value;
             Avisar();
+            Avisar(nameof(Caixas));
         }
     }
+
+    /// <summary>
+    /// As 4 caixas da senha (DESIGN, caixas-da-senha): cada caractere vira • na hora, sem "mostrar"; a
+    /// caixa atual tem o contorno branco.
+    /// </summary>
+    public IReadOnlyList<CaixaSenha> Caixas =>
+        Enumerable.Range(0, 4).Select(i => new CaixaSenha(i < _senhaDigitada.Length ? "•" : "", i == Math.Min(_senhaDigitada.Length, 3))).ToArray();
 
     public bool RegistroVisivel
     {

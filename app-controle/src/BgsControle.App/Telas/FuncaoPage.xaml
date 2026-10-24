@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Uma tela de função da grade Áudio (EXPERIENCE, "O que fica à vista e o que vai para Avançado"; DESIGN,
+    abas-de-saida, avancado): cabeçalho fixo com ‹, abas de saída quando a função é por saída, os controles à
+    vista, o Avançado recolhido (no Crossover, o link 1–2 e 3–4) e o Salvar fixo no pé. Sem barra inferior.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.FuncaoPage"
+             x:DataType="telas:FuncaoViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+            <!-- Cabeçalho de tela cheia. -->
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Command="{Binding Voltar}" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Subtitulo}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- As abas de saída. -->
+            <FlexLayout Grid.Row="1" IsVisible="{Binding TemAbas}" Padding="12,0" BindableLayout.ItemsSource="{Binding Abas}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="telas:AbaSaidaViewModel">
+                        <Border FlexLayout.Grow="1" FlexLayout.Basis="0" Margin="4,0" HeightRequest="56"
+                                BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 16">
+                            <Grid RowDefinitions="4,*">
+                                <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" Padding="8,0">
+                                    <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding Nome}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                    <Label Style="{StaticResource tipo-escala}" Text="{Binding Resumo}" HorizontalTextAlignment="Center"
+                                           LineBreakMode="TailTruncation">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido-apoio}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding Escolhida}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Escolher}" />
+                            </Border.GestureRecognizers>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </FlexLayout>
+
+            <!-- O meio rola. -->
+            <ScrollView Grid.Row="2">
+                <VerticalStackLayout Padding="16,12" Spacing="10">
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding AvisoLink}"
+                           IsVisible="{Binding AvisoLink, Converter={StaticResource TemTexto}}" />
+
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Vista}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:ItemControleViewModel">
+                                <ContentView IsVisible="{Binding Visivel}">
+                                    <c:ParametroView BindingContext="{Binding Controle}" />
+                                </ContentView>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <!-- Avançado: recolhido; lembra se estava aberto. -->
+                    <Border IsVisible="{Binding TemAvancado}" StrokeShape="RoundRectangle 18" Stroke="{StaticResource sup-2}"
+                            StrokeThickness="1" Padding="14,0">
+                        <VerticalStackLayout>
+                            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+                                <Label Style="{StaticResource tipo-rotulo}" Text="AVANÇADO" VerticalTextAlignment="Center" />
+                                <Label Grid.Column="1" Text="{Binding IndicadorAvancado}" TextColor="{StaticResource apoio}" FontSize="18"
+                                       VerticalTextAlignment="Center" />
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding AlternarAvancado}" />
+                                </Grid.GestureRecognizers>
+                            </Grid>
+                            <VerticalStackLayout IsVisible="{Binding AvancadoAberto}" Spacing="10" Padding="0,0,0,14">
+                                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Avancado}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="telas:ItemControleViewModel">
+                                            <ContentView IsVisible="{Binding Visivel}">
+                                                <c:ParametroView BindingContext="{Binding Controle}" />
+                                            </ContentView>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+
+                                <!-- O link 1–2 e 3–4 (Crossover). -->
+                                <ContentView IsVisible="{Binding MostrarLink}">
+                                <VerticalStackLayout Spacing="8" BindingContext="{Binding Link}">
+                                    <VerticalStackLayout x:DataType="telas:LinkViewModel" Spacing="8"
+                                                         BindableLayout.ItemsSource="{Binding Pares}">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate x:DataType="telas:ParLinkViewModel">
+                                                <Border Style="{StaticResource cartao}" Padding="14,8">
+                                                    <VerticalStackLayout Spacing="4">
+                                                        <Grid ColumnDefinitions="*,56,56" ColumnSpacing="6" MinimumHeightRequest="44">
+                                                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Rotulo}"
+                                                                   VerticalTextAlignment="Center" />
+                                                            <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Desl."
+                                                                    Command="{Binding Desligar}">
+                                                                <Button.Triggers>
+                                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligado}" Value="False">
+                                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                                    </DataTrigger>
+                                                                </Button.Triggers>
+                                                            </Button>
+                                                            <Button Grid.Column="2" Style="{StaticResource botao-contornado-pequeno}" Text="Lig."
+                                                                    Command="{Binding Ligar}">
+                                                                <Button.Triggers>
+                                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligado}" Value="True">
+                                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                                    </DataTrigger>
+                                                                </Button.Triggers>
+                                                            </Button>
+                                                        </Grid>
+                                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding AvisoDiferenca}"
+                                                               IsVisible="{Binding AvisoDiferenca, Converter={StaticResource TemTexto}}" />
+                                                    </VerticalStackLayout>
+                                                </Border>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                    <Label x:DataType="telas:LinkViewModel" Style="{StaticResource tipo-detalhe}" Text="{Binding Mensagem}"
+                                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                                </VerticalStackLayout>
+                                </ContentView>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding AvancadoAberto}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource lista-aberta}" />
+                                <Setter Property="Stroke" Value="{StaticResource campo-borda}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                    </Border>
+
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Lembrete}" />
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <!-- O Salvar fixo no pé. -->
+            <c:SalvarPeView Grid.Row="3" BindingContext="{Binding Salvar}" />
+        </Grid>
+
+        <!-- A folha do link ("Os ajustes da saída 1 vão para a saída 2"). -->
+        <c:FolhaView Aberta="{Binding Link.FolhaAberta}" Fechar="{Binding Link.CancelarFolha}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="Ligar o link?" />
+                <Label Style="{StaticResource tipo-corpo}" Text="{Binding Link.FolhaAviso}" />
+                <Label Style="{StaticResource tipo-apoio}" Text="Depois, mexer na mestre muda o par." />
+                <Button Style="{StaticResource botao-principal}" Text="Ligar e copiar" Command="{Binding Link.ConfirmarFolha}" />
+                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding Link.CancelarFolha}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+
+        <!-- A folha do Salvar. -->
+        <c:SalvarFolhaView BindingContext="{Binding Salvar}" />
+    </Grid>
+</ContentPage>

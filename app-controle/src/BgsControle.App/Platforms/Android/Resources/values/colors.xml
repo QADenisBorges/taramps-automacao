@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#1F3A5F</color>
-    <color name="colorPrimaryDark">#14263F</color>
-    <color name="colorAccent">#3D7BD9</color>
+    <!-- Só tema escuro (DESIGN.md): a barra de status e a de navegação no preto de palco. -->
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#F5F5F7</color>
 </resources>

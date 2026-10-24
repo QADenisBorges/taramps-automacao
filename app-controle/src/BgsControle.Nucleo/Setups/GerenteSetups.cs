@@ -761,12 +761,17 @@ public sealed class GerenteSetups
         Enumerable.Range(0, Parametro.Canais).All(c =>
             espelho.TryGetValue(new Endereco(Camadas.CodigoMute, c), out var v) && v.Ligado == true);
 
-    /// <summary>A calibração lida contra a do Setup: uma linha por valor diferente (ou sem leitura).</summary>
+    /// <summary>
+    /// A calibração lida contra a do Setup: uma linha por valor diferente (ou sem leitura), pelo nome da
+    /// saída do Setup ("Atraso do Sub"); o par com link que difere igual nos dois canais é uma linha só.
+    /// </summary>
     private static IReadOnlyList<DiferencaCalibracao> DiferencasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho) =>
-        Camadas.Diferentes(setup.Calibracao, espelho)
-            .Select(v => new DiferencaCalibracao(v.Codigo, v.Indice, Camadas.Rotulo(v.Codigo, v.Indice),
-                Camadas.Exibir(v.Codigo, v.NoFio),
-                Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio)))
+        RotulosSaida.Juntar(
+                Camadas.Diferentes(setup.Calibracao, espelho)
+                    .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
+                        Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
+                Ligacoes.Saidas(setup.Equipamentos, setup.Link12, setup.Link34))
+            .Select(l => new DiferencaCalibracao(l.Codigo, l.Indice, l.Rotulo, l.Antes, l.Depois, l.Canal))
             .ToArray();
 
     // ------------------------------------------------------------------ escolher, criar, seguir, trocar
@@ -1796,52 +1801,62 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>A calibração do aparelho contra a do Setup, mais o link e o equilíbrio pendente.</summary>
+    /// <summary>
+    /// A calibração do aparelho contra a do Setup, mais o link e o equilíbrio pendente, pelo nome das
+    /// saídas em uso ("Atraso do Sub: 80 cm → 85 cm"; o par com link que muda igual é uma linha só).
+    /// </summary>
     private List<MudancaSalvar> MudancasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
     {
-        var lista = Camadas.Diferentes(setup.Calibracao, espelho)
-            .Select(v => new MudancaSalvar(Camadas.Rotulo(v.Codigo, v.Indice), Camadas.Exibir(v.Codigo, v.NoFio),
-                Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio)))
-            .ToList();
+        var saidas = SaidasEmUso;
+        var lista = Linhas(Camadas.Diferentes(setup.Calibracao, espelho)
+                .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
+                    Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
+            saidas);
         foreach (var (par, antes) in new[] { (ParCanais.Saidas12, setup.Link12), (ParCanais.Saidas34, setup.Link34) })
         {
             var agora = _link.Ligado(par);
             if (agora != antes)
                 lista.Add(new MudancaSalvar($"Link {LinkCanais.Rotulo(par)}", antes ? "ligado" : "desligado", agora ? "ligado" : "desligado"));
         }
-        for (var saida = 0; saida < Equilibrio.Canais; saida++)
+        var equilibrios = new List<DiferencaPorCanal>();
+        for (var canal = 0; canal < Equilibrio.Canais; canal++)
         {
             foreach (var limiter in new[] { false, true })
             {
-                var antes = setup.Equilibrio.Valor(saida, limiter);
-                var agora = equilibrio.Valor(saida, limiter);
+                var antes = setup.Equilibrio.Valor(canal, limiter);
+                var agora = equilibrio.Valor(canal, limiter);
                 if (antes != agora)
-                    lista.Add(new MudancaSalvar($"Equilíbrio da saída {saida + 1} · {(limiter ? "limitador" : "ganho")}",
-                        Camadas.ExibirDb(antes), Camadas.ExibirDb(agora)));
+                    equilibrios.Add(new DiferencaPorCanal(limiter ? "equilibrio-limitador" : "equilibrio-ganho", canal, canal, "Equilíbrio",
+                        Camadas.ExibirDb(antes), Camadas.ExibirDb(agora), limiter ? " · limitador" : " · ganho"));
             }
         }
+        lista.AddRange(Linhas(equilibrios, saidas));
         return lista;
     }
+
+    /// <summary>As diferenças por canal em linhas da folha do Salvar, pelo nome das saídas.</summary>
+    private static List<MudancaSalvar> Linhas(IEnumerable<DiferencaPorCanal> diferencas, IReadOnlyList<SaidaApp> saidas) =>
+        RotulosSaida.Juntar(diferencas, saidas).Select(l => new MudancaSalvar(l.Rotulo, l.Antes, l.Depois, l.Canal)).ToList();
 
     /// <summary>
     /// O caráter da memória contra o lido (a parte da memória: o lido menos o equilíbrio de agora). O
     /// antes e o depois são o valor da tela, o final no aparelho.
     /// </summary>
-    private static List<MudancaSalvar> MudancasDeCarater(MemoriaCelular memoria, IReadOnlyDictionary<Endereco, Valor> espelho,
+    private List<MudancaSalvar> MudancasDeCarater(MemoriaCelular memoria, IReadOnlyDictionary<Endereco, Valor> espelho,
         Equilibrio guardado, Equilibrio efetivo)
     {
-        var lista = new List<MudancaSalvar>();
+        var lista = new List<DiferencaPorCanal>();
         foreach (var v in memoria.Carater)
         {
             var lido = espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio;
             var parte = lido is null ? null : Camadas.Subtrair(v.Codigo, v.Indice, lido, efetivo);
             if (parte is not null && Camadas.Iguais(v.Codigo, parte, v.NoFio))
                 continue;
-            lista.Add(new MudancaSalvar(Camadas.Rotulo(v.Codigo, v.Indice),
+            lista.Add(DiferencaPorCanal.De(v.Codigo, v.Indice,
                 Camadas.Exibir(v.Codigo, Camadas.Somar(v.Codigo, v.Indice, v.NoFio, guardado)),
                 Camadas.Exibir(v.Codigo, lido)));
         }
-        return lista;
+        return Linhas(lista, SaidasEmUso);
     }
 
     /// <summary>Uma memória nova com o caráter lido (menos o equilíbrio) e o preset lembrado, ou o motivo de não poder.</summary>

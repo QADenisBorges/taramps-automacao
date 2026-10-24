@@ -15,19 +15,50 @@ public sealed record OpcaoFonte(string Rotulo, FonteSinal? Fonte);
 /// <summary>Onde um alto-falante passivo pode ficar: "Sem ligação", "canal 2 do Módulo genérico", "bridge 3+4 do Módulo genérico".</summary>
 public sealed record OpcaoLigado(string Rotulo, LigacaoAltoFalante? Ligado);
 
-/// <summary>Uma linha da lista de equipamentos de um Setup: nome, detalhe, modelo ("genérico") e função.</summary>
+/// <summary>
+/// Uma opção de escolha na tela (história 10; DESIGN, linha-de-escolha e as pílulas da folha de
+/// equipamento): o rótulo, o detalhe, se é a escolhida (em branco) e o toque que escolhe.
+/// </summary>
+public sealed class EscolhaViewModel
+{
+    internal EscolhaViewModel(string rotulo, string? detalhe, bool escolhida, Action escolher)
+    {
+        Rotulo = rotulo;
+        Detalhe = detalhe;
+        Escolhida = escolhida;
+        Escolher = new Comando(escolher);
+    }
+
+    public string Rotulo { get; }
+
+    public string? Detalhe { get; }
+
+    public bool Escolhida { get; }
+
+    public Comando Escolher { get; }
+}
+
+/// <summary>Uma linha da lista de equipamentos de um Setup: nome, detalhe, modelo ("genérico"), função e a cor do canal.</summary>
 public sealed class ItemEquipamentoViewModel
 {
-    internal ItemEquipamentoViewModel(Equipamento e, string detalhe, string? funcao, EquipamentosViewModel tela)
+    internal ItemEquipamentoViewModel(Equipamento e, string detalhe, string? funcao, int? canal, EquipamentosViewModel tela)
     {
         Id = e.Id;
         Nome = e.Nome;
         Detalhe = detalhe;
         Modelo = e.ModeloExibido;
+        Generico = string.IsNullOrWhiteSpace(e.Modelo);
         Funcao = funcao;
         Nota = e.Nota;
+        Canal = canal;
         Editar = new Comando(() => tela.AbrirEditar(Id));
     }
+
+    /// <summary>O modelo é "genérico" (a tela o mostra apagado).</summary>
+    public bool Generico { get; }
+
+    /// <summary>O primeiro canal do processador que alimenta o equipamento (0 a 3; a barra na cor dele), ou null sem ligação.</summary>
+    public int? Canal { get; }
 
     public string Id { get; }
 
@@ -85,9 +116,14 @@ public sealed class EntradaViewModel : TelaBase
                 return;
             _fonte = value;
             Avisar();
+            Avisar(nameof(FontesTela));
             _tela.AoMudarLigacao();
         }
     }
+
+    /// <summary>As fontes como pílulas, a escolhida em branco.</summary>
+    public IReadOnlyList<EscolhaViewModel> FontesTela =>
+        _opcoes.Select(o => new EscolhaViewModel(o.Rotulo, null, o == _fonte, () => Fonte = o)).ToArray();
 
     internal void TrocarOpcoes(IReadOnlyList<OpcaoFonte> opcoes)
     {
@@ -95,6 +131,7 @@ public sealed class EntradaViewModel : TelaBase
         _fonte = Achar(opcoes, _fonte.Fonte);
         Avisar(nameof(Opcoes));
         Avisar(nameof(Fonte));
+        Avisar(nameof(FontesTela));
     }
 
     private static OpcaoFonte Achar(IReadOnlyList<OpcaoFonte> opcoes, FonteSinal? fonte) =>
@@ -113,7 +150,11 @@ public sealed class BridgeViewModel : TelaBase
         _tela = tela;
         Bridge = bridge;
         _ligado = ligado;
+        Alternar = new Comando(() => Ligado = !Ligado);
     }
+
+    /// <summary>Tocar na pílula do bridge liga ou desliga.</summary>
+    public Comando Alternar { get; }
 
     public Bridge Bridge { get; }
 
@@ -242,6 +283,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     private OpcaoLigado? _ligado;
     private string? _erro;
     private bool _tirarAberto;
+    private bool _dadosAbertos;
 
     public EquipamentosViewModel(GerenteSetups setups, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -251,6 +293,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Confirmar = new Comando(ConfirmarAsync);
         Cancelar = new Comando(FecharFolha);
         Tirar = new Comando(AbrirTirar);
+        AlternarDados = new Comando(() => DadosAbertos = !DadosAbertos);
         ConfirmarTirar = new Comando(ConfirmarTirarAsync);
         CancelarTirar = new Comando(() =>
         {
@@ -303,6 +346,12 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     /// <summary>As saídas do app que este Setup dá (com o link dele).</summary>
     public IReadOnlyList<SaidaApp> Saidas => _saidas;
+
+    /// <summary>As saídas com os nomes da tela (a cor do canal mestre), para a tela Setup.</summary>
+    public IReadOnlyList<SaidaTela> SaidasTela => SaidaTela.De(_saidas);
+
+    /// <summary>"HERDADO" no Setup herdado (Casa 2.1), ou null.</summary>
+    public string? Selo => Setup?.Herdado == true ? HerdadoViewModel.TextoSelo : null;
 
     /// <summary>"Adicione os equipamentos ligados em cada canal." quando o Setup não tem nenhum; sem Setup, o pedido para escolher um.</summary>
     public string? TextoVazio => Setup is null ? MsgSemSetup : _itens.Count == 0 ? TextoVazioSetup : null;
@@ -363,6 +412,48 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     /// <summary>As categorias sugeridas do grupo e, por último, "Outra…" (escrever).</summary>
     public IReadOnlyList<string> Categorias => [.. Ligacoes.CategoriasSugeridas(_grupo), TextoOutra];
 
+    /// <summary>Os grupos em linhas de escolha (o rótulo e os exemplos), o escolhido em branco.</summary>
+    public IReadOnlyList<EscolhaViewModel> GruposTela =>
+        Grupos.Select(g => new EscolhaViewModel(g.Rotulo, g.Exemplos, g.Grupo == _grupo, () => Grupo = g.Grupo)).ToArray();
+
+    /// <summary>As categorias como pílulas: a escolhida em branco; "Outra…" em branco com o campo aberto.</summary>
+    public IReadOnlyList<EscolhaViewModel> CategoriasTela =>
+        Categorias.Select(c => new EscolhaViewModel(c, null, c == TextoOutra ? _categoriaLivre : !_categoriaLivre && c == _categoria,
+            () => EscolherCategoria(c))).ToArray();
+
+    /// <summary>As funções como pílulas (a sugerida primeiro), a que vale em branco.</summary>
+    public IReadOnlyList<EscolhaViewModel> FuncoesTela =>
+        Funcoes.Select(f => new EscolhaViewModel(f.Rotulo, null, f.Funcao == _funcao, () => Funcao = f.Funcao)).ToArray();
+
+    /// <summary>Alto-falante passivo: os lugares como pílulas, o escolhido em branco.</summary>
+    public IReadOnlyList<EscolhaViewModel> LigadoTela =>
+        _opcoesLigado.Select(o => new EscolhaViewModel(o.Rotulo, null, o == _ligado, () => Ligado = o)).ToArray();
+
+    /// <summary>Os dados técnicos (Avançado da folha) estão abertos.</summary>
+    public bool DadosAbertos
+    {
+        get => _dadosAbertos;
+        private set
+        {
+            if (_dadosAbertos == value)
+                return;
+            _dadosAbertos = value;
+            Avisar();
+            Avisar(nameof(IndicadorDados));
+        }
+    }
+
+    public string IndicadorDados => _dadosAbertos ? "⌃" : "⌄";
+
+    /// <summary>Abre e fecha os dados técnicos (vêm recolhidos).</summary>
+    public Comando AlternarDados { get; }
+
+    /// <summary>"Ganho do amplificador", "Diâmetro"… só os que valem para o grupo: o ganho só no módulo.</summary>
+    public bool MostraGanho => _grupo == GrupoEquipamento.Amplificador;
+
+    /// <summary>Os dados de alto-falante (diâmetro, impedância, sensibilidade) valem para quem toca.</summary>
+    public bool MostraDadosAltoFalante => _grupo is GrupoEquipamento.AltoFalante or GrupoEquipamento.AmplificaETocam;
+
     /// <summary>Escolhe uma categoria da lista; "Outra…" abre o campo para escrever. O nome é sugerido pela categoria.</summary>
     public void EscolherCategoria(string categoria)
     {
@@ -379,6 +470,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         }
         Avisar(nameof(CategoriaLivre));
         Avisar(nameof(Categoria));
+        Avisar(nameof(CategoriasTela));
         AtualizarSugestao();
     }
 
@@ -395,6 +487,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
                 return;
             _categoria = value;
             Avisar();
+            Avisar(nameof(CategoriasTela));
             AtualizarSugestao();
         }
     }
@@ -456,6 +549,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             _funcao = value;
             Avisar();
             Avisar(nameof(FuncaoQueVale));
+            Avisar(nameof(FuncoesTela));
         }
     }
 
@@ -538,6 +632,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
                 return;
             _ligado = value;
             Avisar();
+            Avisar(nameof(LigadoTela));
             AoMudarLigacao();
         }
     }
@@ -889,6 +984,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(FuncaoSugerida));
         Avisar(nameof(Funcoes));
         Avisar(nameof(FuncaoQueVale));
+        Avisar(nameof(FuncoesTela));
     }
 
     /// <summary>O nome sugerido pela categoria e pela posição ("Tweeter", "Tweeter 2"), só se o campo está vazio ou com a sugestão anterior.</summary>
@@ -923,7 +1019,8 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         {
             _itens = setup.Equipamentos
                 .Select(e => new ItemEquipamentoViewModel(e, Detalhe(setup, e),
-                    _setups.Funcao(setup.Id, e) is { } f ? Ligacoes.RotuloFuncao(f) : null, this))
+                    _setups.Funcao(setup.Id, e) is { } f ? Ligacoes.RotuloFuncao(f) : null,
+                    Ligacoes.CanaisQueAlimentam(setup.Equipamentos, e.Id) is { Count: > 0 } canais ? canais[0] : null, this))
                 .ToArray();
             _saidas = _setups.Saidas(setup.Id);
         }
@@ -938,10 +1035,13 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
                 _ligado = _opcoesLigado.FirstOrDefault(o => o == _ligado) ?? _opcoesLigado.FirstOrDefault(o => o.Ligado == _ligado?.Ligado) ?? _opcoesLigado.FirstOrDefault();
             Avisar(nameof(OpcoesLigado));
             Avisar(nameof(Ligado));
+            Avisar(nameof(LigadoTela));
             Avisar(nameof(FraseSemModulo));
             AtualizarSugestao();
         }
         Avisar(nameof(Setup));
+        Avisar(nameof(Selo));
+        Avisar(nameof(SaidasTela));
         Avisar(nameof(Titulo));
         Avisar(nameof(Itens));
         Avisar(nameof(Saidas));
@@ -977,6 +1077,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(Categorias));
         Avisar(nameof(CategoriaLivre));
         Avisar(nameof(Categoria));
+        Avisar(nameof(CategoriasTela));
         Avisar(nameof(Nome));
         Avisar(nameof(Modelo));
         Avisar(nameof(Funcao));
@@ -998,6 +1099,11 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     private void AvisarGrupo()
     {
+        Avisar(nameof(GruposTela));
+        Avisar(nameof(CategoriasTela));
+        Avisar(nameof(LigadoTela));
+        Avisar(nameof(MostraGanho));
+        Avisar(nameof(MostraDadosAltoFalante));
         Avisar(nameof(MostraFuncao));
         Avisar(nameof(MostraVias));
         Avisar(nameof(MostraEntradas));

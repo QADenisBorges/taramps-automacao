@@ -121,3 +121,29 @@ internal static class Apoio
         ((Action?)campo.GetValue(sessao))?.Invoke();
     }
 }
+
+/// <summary>A navegação falsa: guarda cada pedido, na ordem (história 10).</summary>
+internal sealed class NavegacaoFalsa : INavegacao
+{
+    public List<string> Pedidos { get; } = [];
+
+    /// <summary>O último pedido de "por cima": (escolha do Setup, pela metade).</summary>
+    public (bool Setup, bool Metade)? PorCima { get; private set; }
+
+    public void AbrirAjuste(int canal) => Pedidos.Add($"ajuste:CH{canal + 1}");
+    public void AbrirSetup(string idSetup) => Pedidos.Add($"setup:{idSetup}");
+    public void AbrirFuncao(FuncaoAudio funcao) => Pedidos.Add($"funcao:{funcao}");
+    public void AbrirConfiguracoes() => Pedidos.Add("configuracoes");
+    public void AbrirSetups() => Pedidos.Add("setups");
+    public void AbrirMemorias() => Pedidos.Add("memorias");
+    public void AbrirConexao() => Pedidos.Add("conexao");
+
+    public void MostrarPorCima(bool escolhaSetup, bool pelaMetade)
+    {
+        PorCima = (escolhaSetup, pelaMetade);
+        Pedidos.Add($"por-cima:{escolhaSetup}:{pelaMetade}");
+    }
+
+    public void Voltar() => Pedidos.Add("voltar");
+    public void VoltarAoInicio() => Pedidos.Add("inicio");
+}

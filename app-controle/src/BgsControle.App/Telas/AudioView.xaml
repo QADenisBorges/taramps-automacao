@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A grade Áudio (DESIGN, bloco-de-funcao; Layout › Grade Áudio): 2 × 5, na ordem do app da Taramps. Cada
+    bloco tem o ícone, o nome, o resumo do valor atual com os números na cor de cada saída e ›. O Gerador fica
+    travado até a próxima versão.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.AudioView"
+             x:DataType="telas:AudioViewModel">
+    <ScrollView>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,*" Padding="12,8,12,16"
+              BindableLayout.ItemsSource="{Binding Blocos}">
+            <BindableLayout.ItemTemplate>
+                <DataTemplate x:DataType="telas:BlocoFuncaoViewModel">
+                    <Border Grid.Row="{Binding Linha}" Grid.Column="{Binding Coluna}" Style="{StaticResource cartao}" Margin="4"
+                            Padding="12" MinimumHeightRequest="104">
+                        <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto" RowSpacing="6">
+                            <Border WidthRequest="40" HeightRequest="40" BackgroundColor="{StaticResource sup-2}" StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 12" HorizontalOptions="Start">
+                                <Label Text="≋" TextColor="{StaticResource texto}" FontSize="20"
+                                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            </Border>
+                            <Label Grid.Column="1" Text="›" TextColor="{StaticResource apagado}" FontSize="20" VerticalTextAlignment="Center" />
+                            <Label Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding Travado}" Value="True">
+                                        <Setter Property="TextColor" Value="{StaticResource apoio}" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <FlexLayout Grid.Row="2" Grid.ColumnSpan="2" Wrap="Wrap" BindableLayout.ItemsSource="{Binding Resumo}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="telas:TrechoResumo">
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Texto}"
+                                               TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}, ConverterParameter=apoio}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </FlexLayout>
+                        </Grid>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding Travado}" Value="True">
+                                <Setter Property="Opacity" Value="0.6" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Abrir}" />
+                        </Border.GestureRecognizers>
+                    </Border>
+                </DataTemplate>
+            </BindableLayout.ItemTemplate>
+        </Grid>
+    </ScrollView>
+</ContentView>

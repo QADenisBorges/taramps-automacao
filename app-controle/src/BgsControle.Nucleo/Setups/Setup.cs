@@ -112,12 +112,13 @@ public enum EstadoConferencia
 }
 
 /// <summary>Uma diferença de calibração entre o Setup e o aparelho, para a lista "O que não bate".</summary>
-/// <param name="Rotulo">"Atraso da saída 3", "Link 1–2", "Equilíbrio da saída 2 · ganho".</param>
+/// <param name="Rotulo">"Atraso do Sub", "Atraso do Sub · CH4", "Ganho do EQ de entrada" (pelo nome da saída do Setup).</param>
 /// <param name="NoSetup">O valor guardado no Setup, para a tela ("80 cm").</param>
 /// <param name="NoAparelho">O valor lido no aparelho, para a tela ("0 cm", "—").</param>
-public sealed record DiferencaCalibracao(string Codigo, int? Indice, string Rotulo, string NoSetup, string NoAparelho)
+/// <param name="Canal">O canal mestre da saída dona (0 a 3, a cor dela), ou null quando não é de uma saída.</param>
+public sealed record DiferencaCalibracao(string Codigo, int? Indice, string Rotulo, string NoSetup, string NoAparelho, int? Canal = null)
 {
-    /// <summary>"Atraso da saída 3: 80 cm no Casa 2.1, 0 cm no aparelho".</summary>
+    /// <summary>"Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho".</summary>
     public string Linha(string nomeSetup) => $"{Rotulo}: {NoSetup} no {nomeSetup}, {NoAparelho} no aparelho";
 }
 
@@ -149,8 +150,9 @@ public enum EscolhaCalibracao
     Atualizar,
 }
 
-/// <summary>Uma mudança na folha do Salvar: "Atraso da saída 3: 80 → 85 cm".</summary>
-public sealed record MudancaSalvar(string Rotulo, string Antes, string Depois)
+/// <summary>Uma mudança na folha do Salvar: "Atraso do Sub: 80 cm → 85 cm".</summary>
+/// <param name="Canal">O canal mestre da saída dona (0 a 3: o valor novo vai na cor dela), ou null.</param>
+public sealed record MudancaSalvar(string Rotulo, string Antes, string Depois, int? Canal = null)
 {
     public string Linha => $"{Rotulo}: {Antes} → {Depois}";
 }
