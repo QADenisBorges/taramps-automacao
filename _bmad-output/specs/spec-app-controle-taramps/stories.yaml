@@ -213,9 +213,13 @@
     XAML e navegação das demais telas, seguindo o DESIGN.md e o EXPERIENCE.md,
     com as saídas do Setup onde houver saídas (CAP-5, CAP-7 a CAP-13, CAP-15).
   invoke_dev_with: >-
-    Inclui a aba Player e as linhas de Configurações que a 10 deixou. Decidir
-    com o Denis o Player ao perder o BLE (item adiado da 8d: o EXPERIENCE.md
-    diz que ele continua tocando).
+    Inclui a aba Player e as linhas de Configurações que a 10 deixou.
+    Decisões do Denis de 24/10/2026: (1) quando o BLE cai, o Player continua
+    tocando a playlist da memória que estava em uso (é Bluetooth de áudio,
+    não o BLE) — corrige o item adiado da 8d; (2) sem Setup em uso (dúvida,
+    trocando de Setup, Seguir sem Setup), os links 1–2 e 3–4 ficam
+    desligados, e um Setup criado do aparelho nasce com eles desligados —
+    fecha o item adiado da 8e.
 - id: "12"
   title: Integração e testes no aparelho real
   description: >-
