@@ -365,4 +365,20 @@ public sealed class PlaylistsTestes
 
         Assert.Empty(GerentePlaylists.DeJson(repo.Texto!).PorMemoria);
     }
+
+    [Fact]
+    public async Task Uma_musica_que_sai_de_todas_as_playlists_e_solta_e_a_que_fica_em_outra_nao()
+    {
+        var g = await Novo(new TextoMemoria());
+        var soltas = new List<string>();
+        g.Soltas += u => soltas.AddRange(u);
+        Assert.True((await g.AdicionarAsync(A, [Arquivo(1), Arquivo(2)])).Ok);
+        Assert.True((await g.AdicionarAsync(B, [Arquivo(1)])).Ok);
+
+        Assert.True((await g.RemoverAsync(A, g.Playlist(A)[0].Id)).Ok); // a 1 continua na B
+        Assert.Empty(soltas);
+
+        Assert.True(await g.ApagarAsync([B]));
+        Assert.Equal([Arquivo(1).Uri], soltas);
+    }
 }

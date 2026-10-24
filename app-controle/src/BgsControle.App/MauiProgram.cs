@@ -115,9 +115,15 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPresets),
             sp.GetRequiredService<LogBle>()));
-        builder.Services.AddSingleton(sp => new GerentePlaylists(
-            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPlaylists),
-            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp =>
+        {
+            var playlists = new GerentePlaylists(
+                new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPlaylists),
+                sp.GetRequiredService<LogBle>());
+            // História 11: a música que sai de todas as playlists solta a permissão da URI no Android.
+            playlists.Soltas += SeletorMusicas.Soltar;
+            return playlists;
+        });
 
         // História 8c e 8d: os Setups e as memórias do celular (conferência ao conectar, aplicar com o preset
         // lembrado, Salvar por camadas), em setups.json, e a marca do mudo da dúvida em setup-mudo.json.

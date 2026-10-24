@@ -5,7 +5,7 @@ created: '2026-10-24'
 status: 'done'
 baseline_revision: 'f8fe5364747971acd12d62dfd29ece52721ee8c3'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-21/DESIGN.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-21/EXPERIENCE.md'
@@ -14,7 +14,21 @@ context:
   - '{project-root}/_bmad-output/specs/spec-app-controle-taramps/chaves-de-acesso.md'
 warnings:
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      As camadas por cima (IA ativa, confirmação da IA, alarme do gerador, sobre a escolha do Setup) e as peças do Android (reprodutor, seletor, foco de áudio, arrastar para ordenar) não rodaram num celular.
+    evidence: |-
+      O NavegacaoMaui e o código de Platforms/Android não têm teste automático; o build com XamlC passa. Conferir no aparelho (história 12).
+    location: >-
+      app-controle/src/BgsControle.App/NavegacaoMaui.cs, Platforms/Android/
+    severity: medium
+  - summary: >-
+      O aviso "o som está saindo pelo celular" só confere se há alguma saída de áudio Bluetooth, sem saber se é o processador.
+    evidence: |-
+      AudioDoCelularAndroid olha qualquer dispositivo A2DP; fone ou carro ligado esconderia o aviso. Ver no aparelho se dá para identificar o processador (nome ou endereço do Bluetooth de áudio).
+    location: >-
+      app-controle/src/BgsControle.App/Platforms/Android/AudioDoCelularAndroid.cs
+    severity: low
 ---
 
 <intent-contract>
@@ -122,6 +136,50 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-24 — Review pass
+- verdicts: 39 findings — high 0, medium 10, low 26, false 3, maybe-false 0
+- a revisão rodou depois do commit 7393d57 (o agente fechou a história sem ela); as correções entram num commit seguinte
+- findings:
+  - `[false]` `[reject]` (intenção) Escopo largo: reprodutor, seletor, porta da IA e histórico ligados no app — os itens adiados das histórias anteriores apontavam para a 11
+  - `[low]` `[reject]` (intenção) A decisão 1 também vale quando o Denis desconecta de propósito — manter a música tocando não faz mal; o pedido é sobre a música não parar com o BLE
+  - `[medium]` `[patch]` (intenção) Depois de uma queda, carregar uma memória do aparelho deixava a playlist antiga tocando — a retenção sai em qualquer troca explícita com a conexão aberta; testes com a queda involuntária
+  - `[low]` `[patch]` (intenção) "Reconexão confere outra memória" sem teste — teste novo
+  - `[false]` `[reject]` (intenção) A decisão 2 muda só o link do app — o link não tem registro no aparelho
+  - `[low]` `[patch]` (intenção) Alarme do gerador e histórico sem teste na tela — teste do alarme na casca
+  - `[low]` `[reject]` (intenção) Ponto de clip na coluna da Mesa e cadeado no bloco Gerador — fazem parte da monitoração e do gerador
+  - `[low]` `[patch]` (lacuna) Camada do alarme do gerador nunca verificada na casca — teste com o 202 ligado em R004
+  - `[low]` `[patch]` (lacuna) Trava do Tocar no toque da linha e pausa com trava — dois testes
+  - `[low]` `[patch]` (lacuna) Tirar a faixa que toca com a playlist retida — teste
+  - `[low]` `[patch]` (lacuna) Folha de presets travada fica aberta com o motivo — teste
+  - `[low]` `[patch]` (lacuna) Fim da faixa com a playlist retida — teste com o Terminar do reprodutor falso
+  - `[medium]` `[patch]` (cego) Sem foco de áudio, sem "becoming noisy" e sem ouvinte de erro: a música podia ir para o alto-falante do celular — pausa quando o Bluetooth de áudio cai, pede o foco, erro no meio marca a faixa
+  - `[medium]` `[patch]` (cego) "Sem permissão" em laço e trava de todas as faixas — vira "Sem acesso" por faixa, com escolher de novo; sem pedir permissão de música
+  - `[low]` `[patch]` (cego) Permissões das URIs nunca devolvidas — devolvidas quando a faixa sai de todas as playlists
+  - `[medium]` `[patch]` (cego) Parar do gerador podia rolar para fora da tela; sweep escondido com Avançado recolhido — Parar fixo no rodapé; campos do sweep sempre à vista no modo sweep
+  - `[medium]` `[patch]` (cego) Retenção da playlist sem fim depois de reconectar — o mesmo patch da decisão 1
+  - `[low]` `[patch]` (cego) Camadas mais altas sem teste — teste do alarme; a navegação real fica adiada
+  - `[medium]` `[patch]` (cego) IA ativa só esmaecia os controles — o painel não aceita toque no modo travado; PARAR IA sempre
+  - `[false]` `[reject]` (cego) Registro da história contraditório — esta revisão corrige
+  - `[low]` `[patch]` (cego) Notas adiadas da 8d e da 8e sem atualização — deferred-work.md atualizado
+  - `[low]` `[patch]` (cego) Falha ao desligar os links ficava só no log — aparece na mensagem
+  - `[low]` `[patch]` (cego) Nome do arquivo exportado e exportações acumuladas — nome limpo e pasta esvaziada
+  - `[low]` `[patch]` (cego) Senhas digitadas ficavam na memória ao sair da tela — limpas ao sair
+  - `[low]` `[reject]` (cego) Parâmetros opcionais do construtor somem calados se faltar registro — o build e o app registram todos; refazer os construtores é maior que o defeito
+  - `[medium]` `[patch]` (borda) Laço do Permitir com URI de documento — o mesmo patch do "Sem acesso"
+  - `[medium]` `[patch]` (borda) Tocar travado para sempre — o mesmo patch
+  - `[low]` `[patch]` (borda) Limite de permissões de URI — o mesmo patch das permissões
+  - `[low]` `[patch]` (borda) Seletor sem app de documentos — devolve lista vazia com mensagem
+  - `[low]` `[patch]` (borda) MediaMetadataRetriever sem Release — Release no finally
+  - `[low]` `[reject]` (borda) "Som saindo pelo celular" vale para qualquer saída Bluetooth — o app não sabe qual saída é o processador; conferir no aparelho
+  - `[low]` `[patch]` (borda) ContinuarAsync com o MediaPlayer em erro — pega a exceção e marca parado
+  - `[low]` `[patch]` (borda) Reconexão rápida antes de o Player ver a queda — a queda é anotada na hora
+  - `[medium]` `[patch]` (borda) Memória do aparelho ou Seguir sem Setup depois de reconectar — o mesmo patch da decisão 1
+  - `[low]` `[patch]` (borda) Histórico gravado sem esperar ao fechar — espera até 1 s e registra a falha
+  - `[medium]` `[patch]` (borda) Sweep escondido — o mesmo patch do gerador
+  - `[low]` `[patch]` (borda) TocarAsync podia lançar — tudo dentro do try
+  - `[low]` `[patch]` (verificação) Teste "Depois de uma queda" instável na suíte inteira — espera o aviso chegar à tela
+  - `[low]` `[patch]` (verificação) Teste novo "Bluetooth de áudio desligado" instável — espera a trava antes do toque
+
 ## Design Notes
 
 - **Por que o reprodutor fica no projeto Android:** o núcleo e os ViewModels já falam com `IReprodutor`; só a ponta real é do Android, como o transporte BLE.
@@ -160,3 +218,28 @@ Status: done
 - `dotnet test` do Telas.Testes: 440 passam (novo: `TelasParte2Testes`, com a matriz).
 - `dotnet build` do App para `net10.0-android` (Debug, XamlC validando): 0 erros e 0 avisos.
 - Sem celular no adb: nenhuma tela foi vista num aparelho, nenhuma música tocou de verdade e a porta da IA não foi testada na rede (história 12).
+
+### Revisão (feita depois do commit 7393d57)
+
+- **39 achados.**
+- **Corrigidos (medium):**
+  - o reprodutor ganhou o foco de áudio, a pausa quando o Bluetooth de áudio cai (a música não vai para o alto-falante do celular) e o erro no meio da faixa;
+  - "Sem acesso" por faixa, no lugar do laço de permissão;
+  - o Parar do gerador fixo no rodapé, com o sweep sempre à vista;
+  - a decisão 1 completa (a retenção sai em qualquer troca explícita depois de reconectar);
+  - a IA ativa trava os controles de verdade.
+- **Corrigidos (low):**
+  - as permissões devolvidas, o seletor sem app, o retriever liberado e o reprodutor que não lança;
+  - a queda anotada na hora;
+  - a falha do link na mensagem, o nome do arquivo exportado e as senhas limpas;
+  - o histórico ao fechar;
+  - as notas da 8d e da 8e no deferred-work.md;
+  - os testes (o alarme na casca, as travas do Player, a folha de presets, a playlist retida);
+  - dois testes instáveis.
+- **Adiados (2):** as camadas e as peças do Android no aparelho, e o aviso do Bluetooth que não identifica o processador.
+- **Revisão de acompanhamento:** recomendada. Foram 5 entradas medium corrigidas, e a parte Android só o aparelho prova.
+- **Verificação depois das correções:**
+  - `dotnet test` do Nucleo.Testes: 1010 passam.
+  - `dotnet test` do Telas.Testes: 447 passam em 6 rodadas seguidas.
+  - `dotnet build` do App para `net10.0-android`: 0 erros e 0 avisos.
+- **Sem celular:** nada foi visto num aparelho, nem tocou.

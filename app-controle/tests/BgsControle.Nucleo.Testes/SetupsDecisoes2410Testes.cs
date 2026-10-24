@@ -113,6 +113,21 @@ public sealed partial class SetupsTestes
         Assert.Equal((false, false), Links);
     }
 
+    [Fact]
+    public async Task Trocar_sem_conseguir_guardar_os_links_desligados_diz_na_frase()
+    {
+        await Conectar();
+        _guardadoLink.FalharAoGravar = true;
+
+        var r = await Rodar(_setups.TrocarAsync());
+
+        Assert.True(r.Ok, r.Motivo);
+        Assert.StartsWith("Não consegui desligar os links: ", r.Mensagem);
+        Assert.Equal(r.Mensagem, _setups.Aviso);
+        _guardadoLink.FalharAoGravar = false;
+        Assert.True((await Rodar(_setups.DesistirAsync())).Ok);
+    }
+
     // ----------------------------------------------------------------- decisão 1: o Player na queda
 
     /// <summary>O reprodutor do teste: toca na hora e conta as paradas.</summary>
@@ -132,7 +147,26 @@ public sealed partial class SetupsTestes
 
         public Task PausarAsync() => Task.CompletedTask;
 
-        public Task ContinuarAsync() => Task.CompletedTask;
+        public Task<bool> ContinuarAsync() => Task.FromResult(true);
+
+        public event Action<string>? Pausou;
+
+        public event Action<string>? Falhou;
+
+        public void PausarSozinho()
+        {
+            if (Tocando is { } uri)
+                Pausou?.Invoke(uri);
+        }
+
+        public void Falhar()
+        {
+            if (Tocando is { } uri)
+            {
+                Tocando = null;
+                Falhou?.Invoke(uri);
+            }
+        }
 
         public Task PararAsync()
         {
@@ -163,13 +197,19 @@ public sealed partial class SetupsTestes
         return (player, reprodutor);
     }
 
+    /// <summary>A queda sem pedido (o simulador derruba a conexão): o Player fica com a playlist.</summary>
+    private async Task Cair(Player.Player player)
+    {
+        _simulador.Derrubar();
+        await AndarAte(() => _sessao.Estado != EstadoSessao.Conectado && player.Retida);
+    }
+
     [Fact]
     public async Task BLE_cai_tocando_a_faixa_2_o_Player_continua_tocando_e_fica_na_playlist_da_FILME()
     {
         var (player, reprodutor) = await FilmeTocandoAFaixa2();
 
-        await _sessao.DesconectarAsync();
-        await AndarAte(() => player.Retida);
+        await Cair(player);
 
         Assert.Equal(Filme, player.Memoria);
         Assert.Equal(EstadoPlayer.Tocando, player.Estado);
@@ -187,8 +227,7 @@ public sealed partial class SetupsTestes
     public async Task Reconectar_e_conferir_a_mesma_FILME_segue_tocando_sem_parar()
     {
         var (player, reprodutor) = await FilmeTocandoAFaixa2();
-        await _sessao.DesconectarAsync();
-        await AndarAte(() => player.Retida);
+        await Cair(player);
 
         await Conectar();
         Assert.Equal(SomEmUso.DoCelular(Filme), _setups.EmUso);
@@ -213,8 +252,7 @@ public sealed partial class SetupsTestes
         await player.TocarFaixaAsync(_playlists.Playlist(Filme)[0].Id);
 
         // Cai; o caráter muda por fora; a reconexão confere "som diferente" (nenhuma memória do celular em uso).
-        await _sessao.DesconectarAsync();
-        await AndarAte(() => player.Retida);
+        await Cair(player);
         _simulador.Definir("081", 0, "-3.0");
         await Conectar();
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
@@ -236,8 +274,7 @@ public sealed partial class SetupsTestes
     public async Task Reconectar_em_duvida_e_escolher_o_Casa_com_a_FILME_segue_tocando()
     {
         var (player, reprodutor) = await FilmeTocandoAFaixa2();
-        await _sessao.DesconectarAsync();
-        await AndarAte(() => player.Retida);
+        await Cair(player);
 
         MexerNaCalibracao();
         await Conectar();
@@ -262,6 +299,128 @@ public sealed partial class SetupsTestes
 
         Assert.False(player.Retida);
         Assert.Null(reprodutor.Tocando);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Reconectar_e_conferir_outra_memoria_para_e_troca_a_playlist()
+    {
+        // A SHOW (a ativa) toca e cai; desconectado, a SHOW é apagada: a ativa do Casa volta a ser a FILME.
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        Assert.True((await _setups.CriarMemoriaAsync("SHOW")).Ok);
+        var show = _setups.MemoriasDe(Casa).Single(m => m.Nome == "SHOW").Id;
+        await AndarAte(() => player.Memoria == show);
+        Assert.True((await _playlists.AdicionarAsync(show, [Faixa(7)])).Ok);
+        await player.TocarPausarAsync();
+        Assert.Equal("content://musica/7", reprodutor.Tocando);
+        await Cair(player);
+        Assert.True((await _setups.ApagarMemoriaAsync(show)).Ok);
+
+        await Conectar();
+        Assert.Equal(SomEmUso.DoCelular(Filme), _setups.EmUso);
+        await AndarAte(() => player.Memoria == Filme);
+
+        Assert.False(player.Retida);
+        Assert.Equal(EstadoPlayer.Parado, player.Estado);
+        Assert.Null(reprodutor.Tocando);
+        Assert.Equal(3, player.Faixas.Count); // a playlist da FILME
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Reconectar_e_carregar_uma_memoria_do_aparelho_para_e_fica_sem_playlist()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        await Cair(player);
+        await Conectar();
+        await AndarAte(() => !player.Retida);
+        Assert.Equal("content://musica/2", reprodutor.Tocando);
+
+        Assert.True((await Rodar(_memorias.CarregarAsync(0))).Ok);
+        await AndarAte(() => player.Memoria is null);
+
+        Assert.False(player.Retida);
+        Assert.Equal(EstadoPlayer.Parado, player.Estado);
+        Assert.Null(reprodutor.Tocando);
+        Assert.Empty(player.Faixas);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Reconectar_em_duvida_mantem_e_Seguir_sem_Setup_para_e_fica_sem_playlist()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        await Cair(player);
+        MexerNaCalibracao();
+        await Conectar();
+        Assert.Equal(EstadoConferencia.Duvida, _setups.Estado);
+        Assert.True(player.Retida);
+        Assert.Equal("content://musica/2", reprodutor.Tocando);
+
+        Assert.True((await Rodar(_setups.SeguirSemSetupAsync())).Ok);
+        await AndarAte(() => player.Memoria is null);
+
+        Assert.False(player.Retida);
+        Assert.Equal(EstadoPlayer.Parado, player.Estado);
+        Assert.Null(reprodutor.Tocando);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Retida_o_fim_da_faixa_segue_para_a_proxima()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        await Cair(player);
+
+        reprodutor.Terminar();
+        await AndarAte(() => reprodutor.Tocando == "content://musica/3");
+
+        Assert.Equal(EstadoPlayer.Tocando, player.Estado);
+        Assert.Equal("Faixa 3", player.Atual!.Nome);
+        Assert.True(player.Retida);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Retida_remover_a_faixa_que_toca_para_o_Player()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        await Cair(player);
+
+        Assert.True((await _playlists.RemoverAsync(Filme, player.Atual!.Id)).Ok);
+        await AndarAte(() => player.Estado == EstadoPlayer.Parado);
+
+        Assert.Null(reprodutor.Tocando);
+        Assert.True(player.Retida);
+        Assert.Equal(2, player.Faixas.Count);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task O_reprodutor_que_pausa_sozinho_deixa_o_Player_Pausado_e_tocar_continua()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+
+        reprodutor.PausarSozinho();
+        await AndarAte(() => player.Estado == EstadoPlayer.Pausado);
+        Assert.Equal("Faixa 2", player.Atual!.Nome);
+
+        await player.TocarPausarAsync();
+        Assert.Equal(EstadoPlayer.Tocando, player.Estado);
+        player.Dispose();
+    }
+
+    [Fact]
+    public async Task Uma_faixa_que_falha_no_meio_fica_indisponivel_e_o_Player_segue_para_a_proxima()
+    {
+        var (player, reprodutor) = await FilmeTocandoAFaixa2();
+        var faixa2 = player.Atual!.Id;
+
+        reprodutor.Falhar();
+        await AndarAte(() => reprodutor.Tocando == "content://musica/3");
+
+        Assert.True(player.Indisponivel(faixa2));
+        Assert.Equal("Faixa 3", player.Atual!.Nome);
         player.Dispose();
     }
 }

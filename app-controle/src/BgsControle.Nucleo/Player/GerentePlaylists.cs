@@ -73,6 +73,12 @@ public sealed class GerentePlaylists
     /// <summary>Uma playlist mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
+    /// <summary>
+    /// Estas URIs saíram de todas as playlists (e das pendentes): o app pode soltar a permissão
+    /// persistente delas no Android (história 11). Pode chegar em qualquer thread.
+    /// </summary>
+    public event Action<IReadOnlyList<string>>? Soltas;
+
     public DadosPlaylists Dados
     {
         get
@@ -261,10 +267,32 @@ public sealed class GerentePlaylists
     {
         if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
             return false;
+        DadosPlaylists antes;
         lock (_trava)
+        {
+            antes = _dados;
             _dados = novos;
+        }
+        var ficam = Uris(novos);
+        var soltas = Uris(antes).Where(u => !ficam.Contains(u)).ToArray();
+        if (soltas.Length > 0)
+        {
+            try
+            {
+                Soltas?.Invoke(soltas);
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"playlist: falha ao soltar as músicas ({e.GetType().Name})");
+            }
+        }
         return true;
     }
+
+    /// <summary>Todas as URIs das playlists e das pendentes.</summary>
+    private static HashSet<string> Uris(DadosPlaylists dados) =>
+        dados.PorMemoria.Values.SelectMany(l => l).Concat(dados.Pendentes.SelectMany(p => p.Faixas))
+            .Select(f => f.Uri).ToHashSet(StringComparer.Ordinal);
 
     private async Task CarregarAsync()
     {

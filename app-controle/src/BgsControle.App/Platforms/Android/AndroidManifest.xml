@@ -16,10 +16,8 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-	<!-- O Player (história 11): a música segue com a tela apagada; e o acesso às músicas, se a permissão da URI se perder. -->
+	<!-- O Player (história 11): a música segue com a tela apagada. O acesso a cada música vem do seletor (permissão da URI). -->
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
-	<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
 	<uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 </manifest>

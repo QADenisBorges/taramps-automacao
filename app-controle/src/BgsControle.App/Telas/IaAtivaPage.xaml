@@ -45,8 +45,11 @@
                            IsVisible="{Binding UltimaMudanca, Converter={StaticResource TemTexto}}" />
                     <ContentView x:Name="Painel">
                         <ContentView.Triggers>
+                            <!-- Travado (padrão): esmaecido e sem toque; só o PARAR IA, fora daqui, destrava. -->
                             <DataTrigger TargetType="ContentView" Binding="{Binding Travado}" Value="True">
                                 <Setter Property="Opacity" Value="0.42" />
+                                <Setter Property="InputTransparent" Value="True" />
+                                <Setter Property="CascadeInputTransparent" Value="True" />
                             </DataTrigger>
                         </ContentView.Triggers>
                         <VerticalStackLayout x:Name="PainelMesa" x:DataType="telas:MesaViewModel" Spacing="10">

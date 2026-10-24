@@ -126,8 +126,16 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     /// <summary>"Preset Rock exportado."</summary>
     public static string MsgExportado(string nome) => $"Preset {nome} exportado.";
 
-    /// <summary>O nome do arquivo do preset exportado: "preset-Rock.json" (espaço vira _).</summary>
-    public static string NomeArquivo(string nome) => $"preset-{nome.Replace(' ', '_')}.json";
+    /// <summary>
+    /// O nome do arquivo do preset exportado: "preset-Rock.json". Espaço e todo caractere que não vale num
+    /// nome de arquivo (<c>/ \ : * ? " &lt; &gt; |</c>, controle) viram _.
+    /// </summary>
+    public static string NomeArquivo(string nome)
+    {
+        var invalidos = new HashSet<char>(Path.GetInvalidFileNameChars()) { ' ', '/', '\\', ':', '*', '?', '"', '<', '>', '|' };
+        var limpo = new string(nome.Select(c => invalidos.Contains(c) || char.IsControl(c) ? '_' : c).ToArray());
+        return $"preset-{limpo}.json";
+    }
 
     private readonly GerentePresets _gerente;
     private readonly GerenteSetups _setups;

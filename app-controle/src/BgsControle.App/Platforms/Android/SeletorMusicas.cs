@@ -13,11 +13,36 @@ namespace BgsControle.App.Plataforma;
 /// </summary>
 public sealed class SeletorMusicas : ISeletorAudio
 {
+    public const string MsgSemSeletor = "Este celular não tem um seletor de arquivos para escolher músicas.";
+
     private const int Codigo = 4208;
     private static TaskCompletionSource<Intent?>? _pedido;
 
+    public string? Motivo { get; private set; }
+
+    /// <summary>
+    /// Solta a permissão persistente das URIs que saíram de todas as playlists (o Android guarda um
+    /// número limitado delas por app).
+    /// </summary>
+    public static void Soltar(IReadOnlyList<string> uris)
+    {
+        var resolver = Android.App.Application.Context.ContentResolver;
+        foreach (var u in uris)
+        {
+            try
+            {
+                resolver?.ReleasePersistableUriPermission(Android.Net.Uri.Parse(u)!, ActivityFlags.GrantReadUriPermission);
+            }
+            catch (Exception)
+            {
+                // A permissão já não existia.
+            }
+        }
+    }
+
     public async Task<IReadOnlyList<ArquivoAudio>> EscolherAsync()
     {
+        Motivo = null;
         var dados = await MainThread.InvokeOnMainThreadAsync(() =>
         {
             var atividade = Platform.CurrentActivity;
@@ -31,9 +56,18 @@ public sealed class SeletorMusicas : ISeletorAudio
             intent.SetType("audio/*");
             intent.PutExtra(Intent.ExtraAllowMultiple, true);
             intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
+            try
+            {
 #pragma warning disable CA1422 // StartActivityForResult segue funcionando em todas as versões
-            atividade.StartActivityForResult(intent, Codigo);
+                atividade.StartActivityForResult(intent, Codigo);
 #pragma warning restore CA1422
+            }
+            catch (ActivityNotFoundException)
+            {
+                _pedido = null;
+                Motivo = MsgSemSeletor;
+                return Task.FromResult<Intent?>(null);
+            }
             return pedido.Task;
         });
         var escolhida = dados;
@@ -120,7 +154,7 @@ public sealed class SeletorMusicas : ISeletorAudio
 
     private static TimeSpan Duracao(Context contexto, Android.Net.Uri uri)
     {
-        using var leitor = new MediaMetadataRetriever();
+        var leitor = new MediaMetadataRetriever();
         try
         {
             leitor.SetDataSource(contexto, uri);
@@ -129,6 +163,18 @@ public sealed class SeletorMusicas : ISeletorAudio
         catch (Exception)
         {
             return TimeSpan.Zero;
+        }
+        finally
+        {
+            try
+            {
+                leitor.Release();
+            }
+            catch (Exception)
+            {
+                // Já solto.
+            }
+            leitor.Dispose();
         }
     }
 }

@@ -10,12 +10,14 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     private int _posicao;
     private bool _tocando;
     private bool _indisponivel;
+    private bool _semAcesso;
     private bool _editando;
 
     internal LinhaPlaylistViewModel(Faixa faixa, PlayerViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Id = faixa.Id;
+        Uri = faixa.Uri;
         Nome = faixa.Nome;
         Pasta = faixa.Pasta;
         Duracao = PlayerViewModel.FormatarDuracao(faixa.Duracao);
@@ -24,6 +26,9 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     }
 
     public string Id { get; }
+
+    /// <summary>A URI do arquivo (o app não copia a música).</summary>
+    public string Uri { get; }
 
     public string Nome { get; }
 
@@ -72,8 +77,22 @@ public sealed class LinhaPlaylistViewModel : TelaBase
         }
     }
 
-    /// <summary>"Arquivo não encontrado", ou null.</summary>
-    public string? TextoIndisponivel => _indisponivel ? Player.TextoIndisponivel : null;
+    /// <summary>O Android negou ler esta música: "Sem acesso ao arquivo: adicione de novo".</summary>
+    public bool SemAcesso
+    {
+        get => _semAcesso;
+        internal set
+        {
+            if (_semAcesso == value)
+                return;
+            _semAcesso = value;
+            Avisar();
+            Avisar(nameof(TextoIndisponivel));
+        }
+    }
+
+    /// <summary>"Arquivo não encontrado", "Sem acesso ao arquivo: adicione de novo", ou null.</summary>
+    public string? TextoIndisponivel => !_indisponivel ? null : _semAcesso ? PlayerViewModel.MsgSemAcessoArquivo : Player.TextoIndisponivel;
 
     /// <summary>O modo Editar da tela: a linha mostra − e ≡.</summary>
     public bool Editando
@@ -102,9 +121,9 @@ public sealed class LinhaPlaylistViewModel : TelaBase
 /// Adicionar músicas (o seletor do Android, vários de uma vez, no fim); Remover e Mover; Tocar/pausar
 /// e Próxima. Nada daqui manda nada ao processador, menos o Ligar do Bluetooth de áudio (251).
 /// <para>
-/// Os avisos do topo (história 11), um de cada vez, nesta ordem: "Sem permissão" (com Permitir), "Bluetooth
-/// de áudio desligado" (com Ligar; Tocar travado até ligar) e "Celular não está mandando o som" (com o
-/// atalho para o Bluetooth do Android). A queda do BLE não tira a playlist (decisão do Denis, 24/10/2026).
+/// Os avisos do topo (história 11), um de cada vez, nesta ordem: "Sem acesso" a músicas da playlist (com
+/// Adicionar de novo, o seletor; as outras faixas tocam), "Bluetooth de áudio desligado" (com Ligar; Tocar
+/// travado até ligar) e "Celular não está mandando o som" (com o atalho para o Bluetooth do Android). A queda do BLE não tira a playlist (decisão do Denis, 24/10/2026).
 /// </para>
 /// </summary>
 public sealed class PlayerViewModel : TelaBase, IDisposable
@@ -115,8 +134,14 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     public const string TextoTocar = "Tocar";
     public const string TextoPausar = "Pausar";
     public const string TextoProxima = "Próxima";
-    public const string MsgSemPermissao = "O app precisa de acesso às músicas do celular.";
-    public const string TextoPermitir = "Permitir";
+    public const string MsgSemAcessoArquivo = "Sem acesso ao arquivo: adicione de novo";
+    public const string TextoAdicionarDeNovo = "Adicionar de novo";
+    public const string MsgAcessoDevolvido = "As músicas voltaram a tocar.";
+
+    /// <summary>"Sem acesso a 2 músicas: adicione de novo."</summary>
+    public static string MsgSemAcesso(int n) => n == 1
+        ? "Sem acesso a 1 música: adicione de novo."
+        : $"Sem acesso a {n} músicas: adicione de novo.";
     public const string MsgBluetoothDesligado = "O Bluetooth de áudio do processador está desligado.";
     public const string TextoLigar = "Ligar";
     public const string MsgSomPeloCelular = "O som está saindo pelo celular. Conecte o Bluetooth do celular ao processador.";
@@ -185,8 +210,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ avisos do topo
 
-    /// <summary>O Android negou ler as músicas.</summary>
-    public bool SemPermissao => _audio?.SemPermissao == true;
+    /// <summary>Quantas músicas da playlist o Android negou ler (a permissão da URI se perdeu).</summary>
+    public int QuantasSemAcesso => _audio is null ? 0 : _linhas.Count(l => _audio.SemAcesso(l.Uri));
 
     /// <summary>O Bluetooth de áudio do processador (251) foi lido desligado. Sem leitura (desconectado), não se sabe: false.</summary>
     public bool BluetoothAudioDesligado => _aparelho?.BluetoothAudioLigado == false;
@@ -196,32 +221,38 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
 
     /// <summary>O aviso do topo, um de cada vez (sem permissão, Bluetooth de áudio desligado, som pelo celular), ou null.</summary>
     public string? AvisoTopo => !TemMemoria ? null
-        : SemPermissao ? MsgSemPermissao
+        : QuantasSemAcesso > 0 ? MsgSemAcesso(QuantasSemAcesso)
         : BluetoothAudioDesligado ? MsgBluetoothDesligado
         : SomPeloCelular ? MsgSomPeloCelular
         : null;
 
-    /// <summary>O botão do aviso: "Permitir", "Ligar" ou "Abrir o Bluetooth", ou null.</summary>
+    /// <summary>O botão do aviso: "Adicionar de novo", "Ligar" ou "Abrir o Bluetooth", ou null.</summary>
     public string? TextoAcaoAviso => AvisoTopo switch
     {
-        MsgSemPermissao => TextoPermitir,
+        null => null,
         MsgBluetoothDesligado => TextoLigar,
         MsgSomPeloCelular => TextoAbrirBluetooth,
-        _ => null,
+        _ => TextoAdicionarDeNovo,
     };
 
-    /// <summary>O botão do aviso: pede o acesso, liga o Bluetooth de áudio (251, sem confirmação) ou abre o Bluetooth do Android.</summary>
+    /// <summary>
+    /// O botão do aviso: abre o seletor para escolher de novo as músicas sem acesso, liga o Bluetooth de
+    /// áudio (251, sem confirmação) ou abre o Bluetooth do Android.
+    /// </summary>
     public Comando AcaoAviso { get; }
 
-    /// <summary>Por que Tocar está travado ("O Bluetooth de áudio do processador está desligado."), ou null.</summary>
-    public string? TravaTocar => SemPermissao ? MsgSemPermissao : BluetoothAudioDesligado ? MsgBluetoothDesligado : null;
+    /// <summary>
+    /// Por que Tocar está travado ("O Bluetooth de áudio do processador está desligado."), ou null. Uma
+    /// música sem acesso não trava as outras: ela é pulada como indisponível.
+    /// </summary>
+    public string? TravaTocar => BluetoothAudioDesligado ? MsgBluetoothDesligado : null;
 
     private async Task AgirNoAvisoAsync()
     {
         switch (AvisoTopo)
         {
-            case MsgSemPermissao when _audio is not null:
-                await _audio.PedirPermissaoAsync();
+            case { } aviso when aviso == MsgSemAcesso(QuantasSemAcesso) && QuantasSemAcesso > 0:
+                await AdicionarAsync();
                 break;
             case MsgBluetoothDesligado when _aparelho is not null:
                 await _aparelho.DefinirBluetoothAudioAsync(true);
@@ -325,8 +356,15 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         {
             var escolhidos = await _seletor.EscolherAsync();
             if (escolhidos.Count == 0)
-                return null; // desistiu: nada muda
-            return await _playlists.AdicionarAsync(n, escolhidos);
+                return _seletor.Motivo is { } motivo ? ResultadoPlaylist.Falha(motivo) : null; // desistiu: nada muda
+            // Escolher de novo devolve o acesso (o seletor guarda a permissão da URI); as que já estão na
+            // playlist não entram de novo.
+            _audio?.LimparSemAcesso();
+            var jaNaLista = _playlists.Playlist(n).Select(f => f.Uri).ToHashSet(StringComparer.Ordinal);
+            var novos = escolhidos.Where(a => !jaNaLista.Contains(a.Uri)).ToArray();
+            if (novos.Length == 0)
+                return new ResultadoPlaylist(true, MsgAcessoDevolvido);
+            return await _playlists.AdicionarAsync(n, novos);
         });
     }
 
@@ -468,6 +506,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         {
             l.Tocando = l.Id == atual;
             l.Indisponivel = _player.Indisponivel(l.Id);
+            l.SemAcesso = _audio?.SemAcesso(l.Uri) == true;
         }
 
         // Um aviso novo do Player (nenhuma faixa disponível, por exemplo) aparece.
@@ -490,7 +529,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         Avisar(nameof(Estado));
         Avisar(nameof(TextoTocarPausar));
         Avisar(nameof(Ocupado));
-        Avisar(nameof(SemPermissao));
+        Avisar(nameof(QuantasSemAcesso));
         Avisar(nameof(BluetoothAudioDesligado));
         Avisar(nameof(SomPeloCelular));
         Avisar(nameof(AvisoTopo));

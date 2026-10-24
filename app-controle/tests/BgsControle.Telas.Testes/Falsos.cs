@@ -167,8 +167,8 @@ internal sealed class NavegacaoFalsa : INavegacao
 /// <summary>O som do celular falso (história 11): a saída do som e o acesso às músicas, mudados pelo teste.</summary>
 internal sealed class AudioDoCelularFalso : IAudioDoCelular
 {
+    private readonly HashSet<string> _semAcesso = new(StringComparer.Ordinal);
     private bool? _bluetooth = true;
-    private bool _semPermissao;
 
     public bool? SaindoPeloBluetooth
     {
@@ -180,33 +180,35 @@ internal sealed class AudioDoCelularFalso : IAudioDoCelular
         }
     }
 
-    public bool SemPermissao
+    public bool SemAcesso(string uri)
     {
-        get => _semPermissao;
-        set
-        {
-            _semPermissao = value;
-            Mudou?.Invoke();
-        }
+        lock (_semAcesso)
+            return _semAcesso.Contains(uri);
     }
 
-    public bool Permitir { get; set; } = true;
+    /// <summary>O reprodutor de verdade marca; aqui, o teste.</summary>
+    public void MarcarSemAcesso(string uri)
+    {
+        lock (_semAcesso)
+            _semAcesso.Add(uri);
+        Mudou?.Invoke();
+    }
+
+    public void LimparSemAcesso()
+    {
+        lock (_semAcesso)
+            _semAcesso.Clear();
+        Limpezas++;
+        Mudou?.Invoke();
+    }
+
+    public int Limpezas { get; private set; }
 
     public int AberturasBluetooth { get; private set; }
-
-    public int PedidosPermissao { get; private set; }
 
     public event Action? Mudou;
 
     public void AbrirBluetooth() => AberturasBluetooth++;
-
-    public Task<bool> PedirPermissaoAsync()
-    {
-        PedidosPermissao++;
-        if (Permitir)
-            SemPermissao = false;
-        return Task.FromResult(Permitir);
-    }
 }
 
 /// <summary>O exportar falso: guarda o nome e o conteúdo; <see cref="Falha"/> faz recusar.</summary>

@@ -66,11 +66,41 @@ internal sealed class ReprodutorFalso : IReprodutor
         return Task.CompletedTask;
     }
 
-    public Task ContinuarAsync()
+    public Task<bool> ContinuarAsync()
     {
         lock (_trava)
             _pausado = false;
-        return Task.CompletedTask;
+        return Task.FromResult(true);
+    }
+
+    public event Action<string>? Pausou;
+
+    public event Action<string>? Falhou;
+
+    /// <summary>O reprodutor pausa sozinho (o Bluetooth de áudio caiu).</summary>
+    public void PausarSozinho()
+    {
+        string? uri;
+        lock (_trava)
+        {
+            uri = _tocando;
+            _pausado = true;
+        }
+        if (uri is not null)
+            Pausou?.Invoke(uri);
+    }
+
+    /// <summary>A faixa atual falha no meio.</summary>
+    public void Falhar()
+    {
+        string? uri;
+        lock (_trava)
+        {
+            uri = _tocando;
+            _tocando = null;
+        }
+        if (uri is not null)
+            Falhou?.Invoke(uri);
     }
 
     public Task PararAsync()
@@ -102,6 +132,8 @@ internal sealed class ReprodutorFalso : IReprodutor
 internal sealed class SeletorFalso : ISeletorAudio
 {
     public IReadOnlyList<ArquivoAudio> Escolhidos { get; set; } = [];
+
+    public string? Motivo { get; set; }
 
     /// <summary>Se definido, o seletor fica aberto até o teste completar o portão.</summary>
     public TaskCompletionSource? Portao { get; set; }

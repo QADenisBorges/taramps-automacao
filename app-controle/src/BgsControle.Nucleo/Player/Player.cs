@@ -21,14 +21,17 @@ public enum EstadoPlayer
 /// <item>Se a memória em uso muda (inclusive para nenhuma), o Player para na hora e passa a mostrar
 /// a playlist da nova memória, parado (decisão do Denis, 22/10).</item>
 /// <item>A <b>queda do BLE</b> não conta como troca (decisão do Denis, 24/10/2026): o Player continua
-/// tocando a playlist da memória que estava em uso, e ela fica na tela. Ele fica com ela até uma
-/// memória do celular entrar em uso depois de reconectar (aplicada, conferida ou escolhida): se é
-/// outra, para e passa à playlist dela; se é a mesma, segue tocando.</item>
+/// tocando a playlist da memória que estava em uso, e ela fica na tela, também durante a conferência,
+/// com "som diferente" e na dúvida. Uma mudança do som em uso depois de reconectar a solta: a mesma
+/// memória segue tocando; outra memória do celular, uma memória do aparelho carregada, Seguir sem
+/// Setup ou um Setup sem memórias param o Player e trocam a playlist.</item>
 /// <item>No fim de uma faixa, segue para a próxima; depois da última, para, e o próximo Tocar
 /// recomeça pela primeira.</item>
 /// <item>Uma faixa que o reprodutor recusa (o arquivo sumiu) fica marcada "Arquivo não encontrado"
 /// e é pulada. Se nenhuma da playlist toca, para com "Nenhuma faixa disponível na playlist da NOME.".</item>
 /// <item>Remover a faixa que está tocando (ou pausada) para o Player.</item>
+/// <item>O reprodutor que pausa sozinho (Bluetooth de áudio caiu, foco de áudio perdido) deixa o Player
+/// Pausado; uma faixa que falha no meio fica "Arquivo não encontrado" e o Player segue para a próxima.</item>
 /// </list>
 /// Os comandos andam um de cada vez, na ordem.
 /// </summary>
@@ -71,6 +74,8 @@ public sealed class Player : IDisposable
         _setups.Mudou += AoMudarMemoria;
         _playlists.Mudou += AoMudarPlaylists;
         _reprodutor.Terminou += AoTerminar;
+        _reprodutor.Pausou += AoPausarSozinho;
+        _reprodutor.Falhou += AoFalhar;
     }
 
     /// <summary>O estado, a faixa atual, a memória ou o aviso mudou. Pode chegar em qualquer thread.</summary>
@@ -161,8 +166,15 @@ public sealed class Player : IDisposable
                 Definir(EstadoPlayer.Pausado, Atual);
                 break;
             case EstadoPlayer.Pausado:
-                await _reprodutor.ContinuarAsync();
-                Definir(EstadoPlayer.Tocando, Atual);
+                if (await _reprodutor.ContinuarAsync())
+                {
+                    Definir(EstadoPlayer.Tocando, Atual);
+                }
+                else
+                {
+                    Definir(EstadoPlayer.Parado, null);
+                    _log.Evento("player: não deu para continuar a faixa; parado");
+                }
                 break;
             default:
                 var lista = _playlists.Playlist(n);
@@ -245,37 +257,28 @@ public sealed class Player : IDisposable
     /// </summary>
     private async Task SincronizarAsync()
     {
-        var emUso = MemoriaEmUso();
-        var aberta = _setups.ConexaoAberta;
+        var uso = _setups.EmUso;
+        var emUso = uso is { Tipo: TipoSomEmUso.MemoriaCelular } ? uso.IdMemoria : null;
+        RegistrarQueda();
         bool trocou;
-        bool reteve = false;
+        bool manteve;
         lock (_trava)
         {
-            if (_retida && emUso is null)
+            manteve = _retida && MantemRetida(uso, emUso);
+            if (manteve)
             {
-                // Depois da queda, até uma memória do celular entrar em uso: fica com a de antes.
-                trocou = false;
-            }
-            else if (!_retida && emUso is null && _memoria is not null && !aberta)
-            {
-                // A conexão caiu: a memória em uso foi a "nenhuma" só por isso. A playlist fica.
-                _retida = true;
-                reteve = true;
                 trocou = false;
             }
             else
             {
+                if (_retida)
+                    _log.Evento("player: depois de reconectar, o som em uso mudou; a playlist retida sai");
                 _retida = false;
                 trocou = emUso != _memoria;
                 _memoria = emUso;
             }
         }
-        if (reteve)
-        {
-            _log.Evento($"player: a conexão caiu; continua com a playlist da {NomeMemoria(Memoria!)}");
-            Notificar();
-        }
-        if (Retida)
+        if (manteve)
         {
             if (Atual is { } faixa && Memoria is { } m && Posicao(_playlists.Playlist(m), faixa.Id) < 0)
             {
@@ -299,13 +302,49 @@ public sealed class Player : IDisposable
         }
     }
 
+    /// <summary>
+    /// A conexão caiu com uma memória do celular no Player: ele fica com ela (decisão do Denis,
+    /// 24/10/2026). Chamado já no aviso da queda, para uma reconexão rápida não perder a marca.
+    /// </summary>
+    private void RegistrarQueda()
+    {
+        if (_setups.ConexaoAberta)
+            return;
+        string? memoria;
+        lock (_trava)
+        {
+            if (_retida || _memoria is null)
+                return;
+            _retida = true;
+            memoria = _memoria;
+        }
+        _log.Evento($"player: a conexão caiu; continua com a playlist da {NomeMemoria(memoria)}");
+        Notificar();
+    }
+
+    /// <summary>
+    /// Com a memória retida, o que a solta: uma mudança do som em uso feita com a conexão aberta e já
+    /// conferida (outra memória do celular, ou a mesma, que só tira a marca; uma memória do aparelho
+    /// carregada; Seguir sem Setup; um Setup sem memórias). Ficam com ela: a queda, a conferência ainda
+    /// por vir, "som diferente", a dúvida e a troca de Setup. Chamar com a trava.
+    /// </summary>
+    private bool MantemRetida(SomEmUso uso, string? emUso)
+    {
+        if (!_setups.ConexaoAberta || !_setups.Conferido)
+            return true;
+        if (emUso is not null || uso.Tipo == TipoSomEmUso.MemoriaAparelho)
+            return false;
+        return _setups.Estado is EstadoConferencia.SomDiferente or EstadoConferencia.Duvida or EstadoConferencia.Trocando;
+    }
+
     // ------------------------------------------------------------------ eventos
 
     private void AoMudarMemoria()
     {
-        var emUso = MemoriaEmUso();
-        // O Sincronizar para o Player na hora; depois da queda, também solta a memória retida.
-        if (emUso != Memoria || (Retida && emUso is not null))
+        // A queda fica marcada na hora (antes de qualquer reconexão).
+        RegistrarQueda();
+        // O Sincronizar para o Player na hora; com a memória retida, confere se ela sai.
+        if (MemoriaEmUso() != Memoria || Retida)
             _ = Executar(() => Task.CompletedTask);
     }
 
@@ -319,6 +358,29 @@ public sealed class Player : IDisposable
     {
         if (Estado != EstadoPlayer.Tocando || Atual is not { } atual || atual.Uri != uri || Memoria is not { } n)
             return;
+        var lista = _playlists.Playlist(n);
+        await TocarAPartirAsync(n, lista, Posicao(lista, atual.Id) + 1);
+    });
+
+    private void AoPausarSozinho(string uri) => _ = Executar(() =>
+    {
+        if (Estado == EstadoPlayer.Tocando && Atual is { } atual && atual.Uri == uri)
+        {
+            Definir(EstadoPlayer.Pausado, atual);
+            _log.Evento("player: o reprodutor pausou sozinho (Bluetooth de áudio ou foco perdido)");
+        }
+        return Task.CompletedTask;
+    });
+
+    /// <summary>A faixa falhou no meio: fica "Arquivo não encontrado" e o Player segue para a próxima.</summary>
+    private void AoFalhar(string uri) => _ = Executar(async () =>
+    {
+        if (Estado == EstadoPlayer.Parado || Atual is not { } atual || atual.Uri != uri || Memoria is not { } n)
+            return;
+        lock (_trava)
+            _indisponiveis.Add(atual.Id);
+        Definir(EstadoPlayer.Parado, null);
+        _log.Evento($"player: uma faixa da playlist da {NomeMemoria(n)} falhou no meio");
         var lista = _playlists.Playlist(n);
         await TocarAPartirAsync(n, lista, Posicao(lista, atual.Id) + 1);
     });
@@ -403,5 +465,7 @@ public sealed class Player : IDisposable
         _setups.Mudou -= AoMudarMemoria;
         _playlists.Mudou -= AoMudarPlaylists;
         _reprodutor.Terminou -= AoTerminar;
+        _reprodutor.Pausou -= AoPausarSozinho;
+        _reprodutor.Falhou -= AoFalhar;
     }
 }

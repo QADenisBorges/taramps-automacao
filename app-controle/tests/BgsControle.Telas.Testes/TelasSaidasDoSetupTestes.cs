@@ -424,13 +424,16 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
 
         var escrita = _b.Escritor.EscreverAsync(Catalogo.ParametroDe("081")!, 0, 4.0m);
         await Apoio.Esperar(() => _b.Sessao.Estado != EstadoSessao.Conectado);
+        // O aviso da queda chega à tela por outra thread: espera ele, não só a fila.
         await _b.Tela.EsvaziarAsync();
+        await Apoio.Esperar(() => _t.Inicio.HoraQueCaiu is not null);
 
         Assert.Matches(@"^Caiu às \d\d:\d\d$", _t.Inicio.HoraQueCaiu);
         Assert.True(_t.Inicio.MostrarConexao);
 
         await _b.Conectar();
         await _b.Tela.EsvaziarAsync();
+        await Apoio.Esperar(() => _t.Inicio.HoraQueCaiu is null);
         Assert.Null(_t.Inicio.HoraQueCaiu);
         await escrita;
     }

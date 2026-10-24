@@ -124,30 +124,37 @@ public interface INavegacao
 /// </summary>
 public interface ISeletorAudio
 {
-    /// <summary>Os arquivos escolhidos, na ordem; vazio se o Denis desistiu.</summary>
+    /// <summary>Os arquivos escolhidos, na ordem; vazio se o Denis desistiu ou se o seletor não abriu (<see cref="Motivo"/>).</summary>
     Task<IReadOnlyList<BgsControle.Nucleo.Player.ArquivoAudio>> EscolherAsync();
+
+    /// <summary>Por que a última escolha voltou vazia sem o Denis desistir ("Este celular não tem um seletor de arquivos."), ou null.</summary>
+    string? Motivo { get; }
 }
 
 /// <summary>
-/// O som do celular (história 11, Player): por onde o Android manda o áudio, o acesso às músicas e o atalho
-/// para as configurações de Bluetooth. No app é o Android; nos testes, um falso.
+/// O som do celular (história 11, Player): por onde o Android manda o áudio, as músicas que perderam o
+/// acesso (a permissão da URI dada pelo seletor) e o atalho para as configurações de Bluetooth. No app é o
+/// Android; nos testes, um falso.
 /// </summary>
 public interface IAudioDoCelular
 {
     /// <summary>True: o som sai por um aparelho Bluetooth de áudio; false: sai pelo celular; null: não se sabe.</summary>
     bool? SaindoPeloBluetooth { get; }
 
-    /// <summary>O Android negou ler uma música guardada (sem acesso às músicas do celular).</summary>
-    bool SemPermissao { get; }
+    /// <summary>
+    /// O Android negou ler esta música (a permissão da URI se perdeu): ela fica indisponível até ser
+    /// escolhida de novo no seletor. Uma permissão do sistema não a devolve.
+    /// </summary>
+    bool SemAcesso(string uri);
+
+    /// <summary>As músicas voltaram a ter acesso (foram escolhidas de novo no seletor).</summary>
+    void LimparSemAcesso();
 
     /// <summary>A saída do som ou o acesso mudou. Pode chegar em qualquer thread.</summary>
     event Action? Mudou;
 
     /// <summary>Abre as configurações de Bluetooth do Android.</summary>
     void AbrirBluetooth();
-
-    /// <summary>Pede ao Android o acesso às músicas (o pedido do sistema). True se ficou permitido.</summary>
-    Task<bool> PedirPermissaoAsync();
 }
 
 /// <summary>Entrega um arquivo para o Denis guardar ou mandar (o compartilhar do Android): o Exportar dos presets.</summary>

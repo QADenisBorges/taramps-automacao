@@ -317,6 +317,18 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
         Avisar(nome);
     }
 
+    /// <summary>
+    /// Sair da tela da senha: as senhas digitadas (e o erro) saem da memória do app. A folha da troca, se
+    /// aberta e sem comando andando, fecha junto.
+    /// </summary>
+    public void EsquecerSenhasDigitadas()
+    {
+        LimparSenhas();
+        ErroSenha = null;
+        if (_folha == FolhaAparelho.TrocaSenha && !_agindo)
+            Fechar();
+    }
+
     private void LimparSenhas()
     {
         _senhaAtual = "";

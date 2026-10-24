@@ -26,13 +26,11 @@
 
         <ScrollView Grid.Row="1">
             <VerticalStackLayout Padding="16,8" Spacing="12">
-                <!-- Tocando: a contagem e o Parar grande. -->
+                <!-- Tocando: a contagem (o Parar grande fica fixo no pé). -->
                 <Border Style="{StaticResource cartao-grande}" IsVisible="{Binding Tocando}">
                     <VerticalStackLayout Spacing="10">
                         <Label Style="{StaticResource tipo-rotulo}" Text="TOCANDO · DESLIGA SOZINHO EM" />
                         <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding TextoContagem}" />
-                        <Button Style="{StaticResource botao-principal}" HeightRequest="60" BackgroundColor="{StaticResource parar}"
-                                TextColor="White" FontSize="20" Text="Parar" Command="{Binding Parar}" />
                     </VerticalStackLayout>
                 </Border>
 
@@ -117,7 +115,10 @@
                                     </Button.Triggers>
                                 </Button>
                             </Grid>
-                            <VerticalStackLayout Spacing="10" IsVisible="{Binding ModoSweep}">
+                        </VerticalStackLayout>
+                        <!-- Com o sweep escolhido, os campos dele ficam à vista mesmo com o Avançado recolhido: nada toca escondido. -->
+                        <VerticalStackLayout Spacing="10" IsVisible="{Binding ModoSweep}" Padding="0,0,0,8">
+                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="Sweep" />
                                 <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
                                     <VerticalStackLayout VerticalOptions="Center">
                                         <Label Style="{StaticResource tipo-linha-titulo}" Text="Inicial" />
@@ -175,14 +176,17 @@
                                         </Button.Triggers>
                                     </Button>
                                 </Grid>
-                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Tocar, fixo no pé (some tocando: o Parar fica em cima). -->
+        <!-- O Parar grande, fixo no pé enquanto toca (nunca rola para fora da tela nem trava). -->
+        <Button Grid.Row="2" Style="{StaticResource botao-parar-ia}" Margin="16,8,16,12" Text="Parar" Command="{Binding Parar}"
+                IsVisible="{Binding Tocando}" />
+
+        <!-- Tocar, fixo no pé (no lugar do Parar quando não toca). -->
         <Button Grid.Row="2" Style="{StaticResource botao-principal}" Margin="16,8,16,12" Command="{Binding Tocar}"
                 IsVisible="{Binding Tocando, Converter={StaticResource Inverso}}" Text="Tocar">
             <Button.Triggers>

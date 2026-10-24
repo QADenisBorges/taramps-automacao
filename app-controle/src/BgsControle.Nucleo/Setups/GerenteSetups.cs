@@ -123,6 +123,9 @@ public sealed class GerenteSetups
 
     public static string MsgLinkNaoGuardado(string motivo) => $"O link do Setup não foi guardado: {motivo}";
 
+    /// <summary>"Não consegui desligar os links: …" (sem Setup em uso, decisão do Denis de 24/10/2026).</summary>
+    public static string MsgLinksNaoDesligados(string motivo) => $"Não consegui desligar os links: {motivo}";
+
     public static string MsgSomDiferente(string nome) => $"Som diferente da {nome}";
 
     public static string MsgSetupEscolhido(string nome) => $"Setup {nome} em uso.";
@@ -648,7 +651,7 @@ public sealed class GerenteSetups
                         _antes = null;
                     }
                     _log.Evento("setup: dúvida interrompida; o aparelho continua mutado");
-                    await DesligarLinksAsync();
+                    await DesligarLinksNaConferenciaAsync();
                     return true;
                 }
                 // O mudo saiu por fora (o app da Taramps): a marca não vale mais.
@@ -664,7 +667,7 @@ public sealed class GerenteSetups
                     _setupEmUso = null;
                     _emUso = SomEmUso.SomDoAparelho;
                 }
-                await DesligarLinksAsync();
+                await DesligarLinksNaConferenciaAsync();
                 return true;
             }
 
@@ -714,7 +717,7 @@ public sealed class GerenteSetups
             }
             _log.Evento($"setup: em dúvida ({lista.Count} diferenças de calibração com o {referencia.Nome})"
                         + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
-            await DesligarLinksAsync();
+            await DesligarLinksNaConferenciaAsync();
             return true;
         }
         finally
@@ -782,11 +785,28 @@ public sealed class GerenteSetups
     /// Sem Setup em uso, os links 1–2 e 3–4 ficam desligados (decisão do Denis, 24/10/2026). Não manda
     /// nada ao aparelho; só a falha de guardar vai para o registro.
     /// </summary>
-    private async Task DesligarLinksAsync()
+    private async Task<string?> DesligarLinksAsync()
     {
-        if (await _link.DefinirEstadoAsync(false, false) is { } motivo)
-            _log.Evento($"setup: os links sem Setup não foram guardados ({motivo})");
+        if (await _link.DefinirEstadoAsync(false, false) is not { } motivo)
+            return null;
+        var frase = MsgLinksNaoDesligados(motivo);
+        _log.Evento($"setup: {frase}");
+        return frase;
     }
+
+    /// <summary>Na conferência (sem resultado para devolver), a falha dos links vira o aviso do Setup.</summary>
+    private async Task DesligarLinksNaConferenciaAsync()
+    {
+        if (await DesligarLinksAsync() is { } frase)
+        {
+            lock (_trava)
+                _aviso = frase;
+        }
+    }
+
+    /// <summary>A frase com a falha dos links no fim, se houve.</summary>
+    private static string? Juntar(string? frase, string? links) =>
+        links is null ? frase : frase is null ? links : $"{frase} {links}";
 
     private static bool TodosMutados(IReadOnlyDictionary<Endereco, Valor> espelho) =>
         Enumerable.Range(0, Parametro.Canais).All(c =>
@@ -933,7 +953,7 @@ public sealed class GerenteSetups
             if (!await GravarAsync(novos))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
 
-            await DesligarLinksAsync();
+            var links = await DesligarLinksAsync();
             var desmutar = await DesmutarAsync();
             lock (_trava)
             {
@@ -950,7 +970,7 @@ public sealed class GerenteSetups
             var frase = MsgSetupCriado(nome);
             if (desmutar is not null)
                 frase += $" {MsgContinuaMutado(desmutar)}";
-            return Terminar(ResultadoSetup.Feito(frase));
+            return Terminar(ResultadoSetup.Feito(Juntar(frase, links)));
         }
         finally
         {
@@ -971,7 +991,7 @@ public sealed class GerenteSetups
         {
             if (!EmEscolha)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
-            await DesligarLinksAsync();
+            var links = await DesligarLinksAsync();
             var desmutar = await DesmutarAsync();
             lock (_trava)
             {
@@ -985,9 +1005,8 @@ public sealed class GerenteSetups
                 _pendente = null;
             }
             _log.Evento("setup: seguindo sem Setup");
-            return Terminar(desmutar is null
-                ? ResultadoSetup.Feito(MsgSeguiuSemSetup)
-                : ResultadoSetup.Feito($"{MsgSeguiuSemSetup} {MsgContinuaMutado(desmutar)}"));
+            return Terminar(ResultadoSetup.Feito(Juntar(
+                desmutar is null ? MsgSeguiuSemSetup : $"{MsgSeguiuSemSetup} {MsgContinuaMutado(desmutar)}", links)));
         }
         finally
         {
@@ -1031,8 +1050,7 @@ public sealed class GerenteSetups
                 _antes = antes;
             }
             _log.Evento("setup: trocando de Setup" + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
-            await DesligarLinksAsync();
-            return Terminar(ResultadoSetup.Feito(null));
+            return Terminar(ResultadoSetup.Feito(await DesligarLinksAsync()));
         }
         finally
         {
@@ -1058,8 +1076,12 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
             var desmutar = await DesmutarAsync();
             var setupAntes = Setup(antes.SetupEmUso);
+            string? links = null;
             if (await _link.DefinirEstadoAsync(setupAntes?.Link12 ?? false, setupAntes?.Link34 ?? false) is { } motivoLink)
-                _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
+            {
+                links = MsgLinkNaoGuardado(motivoLink);
+                _log.Evento($"setup: {links}");
+            }
             lock (_trava)
             {
                 _situacao = antes.Situacao;
@@ -1070,7 +1092,7 @@ public sealed class GerenteSetups
                 _motivoMudo = null;
                 _antes = null;
             }
-            return Terminar(desmutar is null ? ResultadoSetup.Feito(null) : ResultadoSetup.Feito(MsgContinuaMutado(desmutar)));
+            return Terminar(ResultadoSetup.Feito(Juntar(desmutar is null ? null : MsgContinuaMutado(desmutar), links)));
         }
         finally
         {

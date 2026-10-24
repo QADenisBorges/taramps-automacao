@@ -1,35 +1,21 @@
 using Android.Content;
-using Android.Content.PM;
 using Android.Media;
 using BgsControle.Telas;
 
 namespace BgsControle.App.Plataforma;
 
 /// <summary>
-/// O acesso às músicas do celular: READ_MEDIA_AUDIO no Android 13+, READ_EXTERNAL_STORAGE até o 12. O
-/// seletor do Android já dá acesso a cada música escolhida (a permissão persistente da URI); esta é a
-/// reserva quando ela se perde.
-/// </summary>
-public sealed class PermissaoMusicas : Permissions.BasePlatformPermission
-{
-    private static string Necessaria =>
-        OperatingSystem.IsAndroidVersionAtLeast(33)
-            ? Android.Manifest.Permission.ReadMediaAudio
-            : Android.Manifest.Permission.ReadExternalStorage;
-
-    public override (string androidPermission, bool isRuntime)[] RequiredPermissions => [(Necessaria, true)];
-}
-
-/// <summary>
 /// O som do celular no Android (história 11, Player): se o áudio sai por um aparelho Bluetooth de áudio
-/// (A2DP ou LE) ou pelo celular, ouvindo o <see cref="AudioManager"/>; o "Sem permissão" que o reprodutor
-/// marca; o atalho para as configurações de Bluetooth; e o pedido de acesso às músicas.
+/// (A2DP ou LE) ou pelo celular, ouvindo o <see cref="AudioManager"/>; as músicas que o reprodutor achou
+/// sem acesso (a permissão da URI do seletor se perdeu; só escolher de novo no seletor devolve); e o atalho
+/// para as configurações de Bluetooth.
 /// </summary>
 public sealed class AudioDoCelularAndroid : IAudioDoCelular
 {
     private readonly Context _contexto;
     private readonly AudioManager? _audio;
-    private bool _semPermissao;
+    private readonly object _trava = new();
+    private readonly HashSet<string> _semAcesso = new(StringComparer.Ordinal);
 
     public AudioDoCelularAndroid(Context contexto)
     {
@@ -51,14 +37,31 @@ public sealed class AudioDoCelularAndroid : IAudioDoCelular
         }
     }
 
-    public bool SemPermissao => Volatile.Read(ref _semPermissao);
-
-    /// <summary>O reprodutor conta se o Android negou (true) ou deixou (false) ler uma música.</summary>
-    public void MarcarSemPermissao(bool sem)
+    public bool SemAcesso(string uri)
     {
-        if (SemPermissao == sem)
-            return;
-        Volatile.Write(ref _semPermissao, sem);
+        lock (_trava)
+            return _semAcesso.Contains(uri);
+    }
+
+    public void LimparSemAcesso()
+    {
+        lock (_trava)
+        {
+            if (_semAcesso.Count == 0)
+                return;
+            _semAcesso.Clear();
+        }
+        Avisar();
+    }
+
+    /// <summary>O reprodutor conta se o Android negou (true) ou deixou (false) ler a música da URI.</summary>
+    public void MarcarSemAcesso(string uri, bool sem)
+    {
+        lock (_trava)
+        {
+            if (!(sem ? _semAcesso.Add(uri) : _semAcesso.Remove(uri)))
+                return;
+        }
         Avisar();
     }
 
@@ -74,19 +77,6 @@ public sealed class AudioDoCelularAndroid : IAudioDoCelular
         {
             // Sem a tela de Bluetooth no aparelho: nada a abrir.
         }
-    }
-
-    public async Task<bool> PedirPermissaoAsync()
-    {
-        var status = await MainThread.InvokeOnMainThreadAsync(async () =>
-        {
-            var agora = await Permissions.CheckStatusAsync<PermissaoMusicas>();
-            return agora == PermissionStatus.Granted ? agora : await Permissions.RequestAsync<PermissaoMusicas>();
-        });
-        var permitido = status == PermissionStatus.Granted;
-        if (permitido)
-            MarcarSemPermissao(false);
-        return permitido;
     }
 
     private void Avisar()

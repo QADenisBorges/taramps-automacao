@@ -217,23 +217,89 @@ public sealed class TelasParte2Testes : IDisposable
     }
 
     [Fact]
-    public async Task Sem_permissao_trava_o_Tocar_e_Permitir_pede_o_acesso()
+    public async Task Musica_sem_acesso_fica_indisponivel_sem_travar_as_outras_e_escolher_de_novo_devolve()
     {
-        await FilmeCom(1);
-
-        _t.Som.SemPermissao = true;
+        await FilmeCom(2);
+        // O Android negou ler a faixa 1 (a permissão da URI se perdeu): o reprodutor recusa e marca.
+        _t.Reprodutor.Ausentes.Add(Uri(1));
+        _t.Som.MarcarSemAcesso(Uri(1));
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal(PlayerViewModel.MsgSemPermissao, _t.PlayerTela.AvisoTopo);
-        Assert.Equal(PlayerViewModel.TextoPermitir, _t.PlayerTela.TextoAcaoAviso);
-        await _t.PlayerTela.TocarPausar.ExecutarAsync();
-        Assert.Empty(_t.Reprodutor.Pedidas);
+        Assert.Equal("Sem acesso a 1 música: adicione de novo.", _t.PlayerTela.AvisoTopo);
+        Assert.Equal(PlayerViewModel.TextoAdicionarDeNovo, _t.PlayerTela.TextoAcaoAviso);
+        Assert.Null(_t.PlayerTela.TravaTocar);
 
+        // As outras tocam: a 1 é pulada e fica "Sem acesso ao arquivo: adicione de novo".
+        await _t.PlayerTela.TocarPausar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(Uri(2), _t.Reprodutor.Tocando);
+        Assert.Equal(PlayerViewModel.MsgSemAcessoArquivo, _t.PlayerTela.Linhas[0].TextoIndisponivel);
+
+        // Adicionar de novo: o seletor abre; a mesma música volta a ter acesso e não entra duas vezes.
+        _t.Seletor.Escolhidos = [Arquivo(1)];
+        _t.Reprodutor.Ausentes.Remove(Uri(1));
+        var limpezas = _t.Som.Limpezas;
+        var aberturas = _t.Seletor.Aberturas;
         await _t.PlayerTela.AcaoAviso.ExecutarAsync();
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal(1, _t.Som.PedidosPermissao);
+        Assert.Equal(aberturas + 1, _t.Seletor.Aberturas);
+        Assert.Equal(limpezas + 1, _t.Som.Limpezas);
+        Assert.Equal(2, _t.PlayerTela.Linhas.Count);
+        Assert.Equal(PlayerViewModel.MsgAcessoDevolvido, _t.PlayerTela.Mensagem);
         Assert.Null(_t.PlayerTela.AvisoTopo);
+        await _t.PlayerTela.Linhas[0].Tocar.ExecutarAsync();
+        Assert.Equal(Uri(1), _t.Reprodutor.Tocando);
+    }
+
+    [Fact]
+    public async Task Seletor_que_nao_abre_diz_o_motivo_e_nada_muda()
+    {
+        await FilmeCom(1);
+        _t.Seletor.Escolhidos = [];
+        _t.Seletor.Motivo = "Este celular não tem um seletor de arquivos para escolher músicas.";
+
+        await _t.PlayerTela.Adicionar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(_t.Seletor.Motivo, _t.PlayerTela.Mensagem);
+        Assert.Single(_t.PlayerTela.Linhas);
+    }
+
+    [Fact]
+    public async Task Bluetooth_de_audio_desligado_tocar_numa_linha_nao_pede_nada_e_diz_por_que()
+    {
+        _b.Simulador.Definir(Catalogo.CodigoBluetoothAudio, null, "0");
+        await FilmeCom(2);
+        // O 251 lido chega à tela por outra thread: a trava tem de estar lá antes do toque.
+        await Apoio.Esperar(() => _t.PlayerTela.TravaTocar == PlayerViewModel.MsgBluetoothDesligado);
+
+        await _t.PlayerTela.Linhas[1].Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Empty(_t.Reprodutor.Pedidas);
+        Assert.Equal(PlayerViewModel.MsgBluetoothDesligado, _t.PlayerTela.Mensagem);
+    }
+
+    [Fact]
+    public async Task Tocando_quando_a_trava_aparece_TocarPausar_ainda_pausa()
+    {
+        await FilmeCom(1);
+        await _t.PlayerTela.TocarPausar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.True(_t.PlayerTela.Tocando);
+
+        // O Bluetooth de áudio é lido desligado com a música tocando.
+        await _b.Rodar(_t.Aparelho.DefinirBluetoothAudioAsync(false));
+        await Apoio.Esperar(() => _t.Aparelho.BluetoothAudioLigado == false);
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(PlayerViewModel.MsgBluetoothDesligado, _t.PlayerTela.TravaTocar);
+
+        await _t.PlayerTela.TocarPausar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(_t.Reprodutor.Pausado);
+        Assert.Equal(EstadoPlayer.Pausado, _t.PlayerTela.Estado);
     }
 
     [Fact]
@@ -277,6 +343,33 @@ public sealed class TelasParte2Testes : IDisposable
         Assert.All(_b.Simulador.Escritas.Skip(antes).Where(e => !Catalogo.EhLeitura(e)),
             e => Assert.StartsWith("020*", e)); // só as 15 bandas
         Assert.Equal("Rock", _t.Inicio.NomePreset); // a FILME passa a lembrar o Rock
+    }
+
+    [Fact]
+    public async Task Folha_de_presets_com_a_trava_fica_aberta_com_o_motivo_e_nao_escreve_nada()
+    {
+        await Conectar();
+        Assert.True((await _b.Presets.CriarAsync("Rock")).Ok);
+        Assert.True((await _b.Chaves.DefinirAsync(Chave.AjustesAudio, false, OrigemComando.Tela)).Ok);
+        await _b.Tela.EsvaziarAsync();
+        await _t.Inicio.AbrirPresets.ExecutarAsync();
+        var antes = _b.Simulador.Escritas.Count;
+
+        await _t.Presets.Item("Rock")!.Escolher.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(_t.Presets.FolhaAberta);
+        Assert.Equal("Chave desligada", _t.Presets.Mensagem);
+        Assert.Equal(antes, _b.Simulador.Escritas.Count);
+        Assert.Equal("Cinema", _t.Inicio.NomePreset);
+    }
+
+    [Fact]
+    public void O_nome_do_arquivo_exportado_troca_os_caracteres_que_nao_valem()
+    {
+        Assert.Equal("preset-Rock.json", PresetsViewModel.NomeArquivo("Rock"));
+        Assert.Equal("preset-a_b_c_d_e_f_g_h_i_j.json", PresetsViewModel.NomeArquivo(@"a/b\c:d*e?f""g<h>i|j"));
+        Assert.Equal("preset-Dia_de_sol.json", PresetsViewModel.NomeArquivo("Dia de sol"));
     }
 
     [Fact]
@@ -348,6 +441,30 @@ public sealed class TelasParte2Testes : IDisposable
 
         Assert.False(_t.Gerador.Tocando);
         Assert.Null(_t.Gerador.TextoContagem);
+    }
+
+    [Fact]
+    public async Task Alarme_do_gerador_sobe_por_cima_de_tudo_na_casca_e_sai_com_a_leitura_do_gerador_desligado()
+    {
+        _b.Simulador.Firmware = "R004";
+        _b.Simulador.Definir("202", null, "1");
+        _t.Casca.SincronizarCamadas(forcar: true);
+
+        await _b.Conectar();
+        await Apoio.Esperar(() => _t.Gerador.Alarme);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal((false, false, true), _t.Nav.Camadas);
+        Assert.True(_t.Casca.AlarmePorCima);
+
+        // Uma leitura com o 202 = 0 tira o alarme.
+        _b.Simulador.Definir("202", null, "0");
+        await _b.Rodar(_t.Conexao.LerDeNovo.ExecutarAsync());
+        await Apoio.Esperar(() => !_t.Gerador.Alarme);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal((false, false, false), _t.Nav.Camadas);
+        Assert.False(_t.Casca.AlarmePorCima);
     }
 
     // ----------------------------------------------------------------- monitoração
@@ -463,6 +580,25 @@ public sealed class TelasParte2Testes : IDisposable
         Assert.Equal("Chave desligada", c.Aparelho!.MotivoTravaResetAudio);
         Assert.Equal("Chave desligada", c.Aparelho.MotivoTravaResetFabrica);
         Assert.Equal("Chave desligada", c.Aparelho.MotivoTravaSenha);
+    }
+
+    [Fact]
+    public async Task Sair_da_tela_da_senha_esquece_as_senhas_digitadas()
+    {
+        await Conectar();
+        await LigarChave(Chave.TrocaSenha);
+        _t.Aparelho.SenhaAtual = "AB12";
+        _t.Aparelho.SenhaNova = "CD34";
+        _t.Aparelho.SenhaNovaConfirmacao = "CD34";
+        await _t.Aparelho.TrocarSenha.ExecutarAsync();
+        Assert.True(_t.Aparelho.FolhaAberta);
+
+        _t.Aparelho.EsquecerSenhasDigitadas();
+
+        Assert.Equal("", _t.Aparelho.SenhaAtual);
+        Assert.Equal("", _t.Aparelho.SenhaNova);
+        Assert.Equal("", _t.Aparelho.SenhaNovaConfirmacao);
+        Assert.False(_t.Aparelho.FolhaAberta);
     }
 
     [Fact]
