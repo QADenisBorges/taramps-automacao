@@ -204,17 +204,20 @@ public sealed class SimuladorTestes
     }
 
     [Fact]
-    public async Task Antes_da_senha_nada_responde()
+    public async Task Antes_da_senha_a_leitura_recebe_ERRO_0_e_a_escrita_nada()
     {
+        // Medido em 24/10 (história 12a): a leitura recebe ERRO 0; a escrita não foi medida.
         await _simulador.ConectarAsync(_simulador.Endereco!, default);
-        await Escrever("#080#");
+        Assert.Equal("ERRO 0\r\n", await Perguntar("#080#"));
+        Assert.Empty(_simulador.Recusadas);
+
         await Escrever("*081*0*-3.0*");
         _relogio.Avancar(TimeSpan.FromSeconds(1));
         await Task.Delay(30);
 
         Assert.Equal("", Recebido);
         Assert.Equal("+10.0", _simulador.Valor("081", 0));
-        Assert.Equal(2, _simulador.Recusadas.Count);
+        Assert.Contains(_simulador.Recusadas, r => r.Quadro == "*081*0*-3.0*");
     }
 
     // ----------------------------------------------------------------- senha
@@ -231,18 +234,18 @@ public sealed class SimuladorTestes
     }
 
     [Fact]
-    public async Task Senha_errada_depois_da_certa_tira_a_autenticacao()
+    public async Task Senha_errada_depois_da_certa_e_respondida_como_a_certa_e_a_sessao_continua()
     {
+        // Medido em 24/10 (história 12a): já autenticado, a senha errada recebe a resposta da certa.
         await ConectarEAutenticar();
 
-        Assert.Equal("#000#ERRO#\r\n", await EnviarSenha("ZZZZ"));
-        Assert.False(_simulador.Autenticado);
-        await Escrever("#080#");
-        _relogio.Avancar(TimeSpan.FromSeconds(1));
+        Assert.Equal("#000#PRO2.4MIR003#\r\n", await EnviarSenha("ZZZZ"));
+        Assert.True(_simulador.Autenticado);
+        Assert.Equal("#080#+0.0#\r\n", await Perguntar("#080#"));
+        _relogio.Avancar(TimeSpan.FromSeconds(40));
         await Task.Delay(30);
 
-        Assert.Equal("", Recebido);
-        Assert.Contains(_simulador.Recusadas, r => r.Quadro == "#080#");
+        Assert.True(_simulador.Conectado);
     }
 
     [Fact]
@@ -403,6 +406,26 @@ public sealed class SimuladorTestes
         Assert.Equal("#241#1#\r\n", await EscreverEEsperarAck("*241*1*"));
         Assert.Equal("-3.0", _simulador.Valor("081", 0));
         Assert.Equal("+10.0", _simulador.Memoria(0)[("081", 0)]); // as outras ficam como estavam
+    }
+
+    [Fact]
+    public async Task A_memoria_guarda_o_ganho_e_a_frequencia_do_tom_mas_nao_os_nomes()
+    {
+        // Medido em 24/10 (história 12a): carregar a SPL trocou o 200 e o 201, e os nomes 23N
+        // ficaram. O 202, o 210–213, o 251 e o 252 não deu para medir; o teste não diz nada deles.
+        await ConectarEAutenticar();
+        await EscreverEEsperarEco("*200*-40.0*");
+        await EscreverEEsperarEco("*201*51*");
+        Assert.Equal("#240#1#\r\n", await EscreverEEsperarAck("*240*1*"));
+
+        await EscreverEEsperarEco("*200*-50.0*");
+        await EscreverEEsperarEco("*201*1000*");
+        _simulador.Definir("232", null, "OUTRO NOME");
+        Assert.Equal("#241#1#\r\n", await EscreverEEsperarAck("*241*1*"));
+
+        Assert.Equal("-40.0", _simulador.Valor("200"));
+        Assert.Equal("51", _simulador.Valor("201"));
+        Assert.Equal("OUTRO NOME", _simulador.Valor("232"));
     }
 
     [Fact]

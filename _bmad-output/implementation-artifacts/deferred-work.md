@@ -25,6 +25,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/5-escrita-ajustes-chaves-acesso.md`
   summary: A montagem do DI no MauiProgram (Sessao com IChaves, EstadoAparelho e Escritor criados cedo) não tem teste; um erro ali deixaria o app sem escrever.
   evidence: O projeto do App é Android e nenhum teste o referencia. Fechar movendo os registros para um método de extensão testável, ou conferir no celular (abrir, conectar, mexer um ganho).
+  status: conferido em parte no A52 na história 12a (24/10). Abrir, conectar, ler 84 de 84, carregar as memórias 1 e 3 do aparelho e aplicar a FILME do celular (31 escritas com eco) funcionaram. Falta mexer um ganho pela tela, na 12b.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/6-memorias-link-copia-antes.md`
   summary: A retomada "Adiada" do salvar (queda de novo durante a releitura depois de reconectar) não tem teste.
@@ -99,3 +100,43 @@
   summary: Na dúvida, em "Seguir sem Setup" e ao criar um Setup novo, o link que vale é o do Setup anterior.
   evidence: Numa instalação desconhecida, o CH3 podia continuar espelhado no CH4.
   status: resolvido na história 11, pela decisão do Denis de 24/10/2026. Sem Setup em uso, os links 1–2 e 3–4 ficam desligados (na dúvida, também a interrompida, ao trocar de Setup e em Seguir sem Setup); desistir da troca devolve os links do Setup em uso; um Setup criado do aparelho nasce com os links desligados; escolher um Setup aplica os links dele. Uma falha ao guardar os links vai para a frase da operação ("Não consegui desligar os links: …"). Testes em `SetupsDecisoes2410Testes` e `TelasParte2Testes`.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Telas e aparelho inteiro no aparelho real (história 12b do stories.yaml).
+  evidence: A spec da antiga história 12 passava muito do tamanho, e o Denis decidiu dividi-la em 12a, 12b e 12c em 24/10/2026.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Porta da IA no Wi-Fi real e os testes 1, 2 e 4 do sinal de sucesso (história 12c do stories.yaml).
+  evidence: A spec da antiga história 12 passava muito do tamanho, e o Denis decidiu dividi-la em 12a, 12b e 12c em 24/10/2026.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: O voltímetro não chega ao app. O `#005#` responde `ERRO 0`, mas o app da Taramps mostra 13,8 V a 13,9 V na mesma hora.
+  evidence: Medido em 24/10 (leituras e sonda). O app da Taramps recebe o valor de outro jeito: espontâneo (`#005#v#`, VOLTIMETRO-ESPONTANEO) ou por outra consulta. Conferir na 12b, com o VC830L e o log do BLE.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Não se sabe se uma memória do aparelho guarda o 202 (gerador ligado) e o 210–213 (sweep). Se guardar o 202, carregar uma memória salva com o tom tocando ligaria o gerador.
+  evidence: Carregar a SPL trocou o 200 e o 201 (CONTEUDO-MEMORIA caiu), mas as duas memórias tinham o 202 em 0 e o 210–213 iguais. Conferir na 12b, com o RCA dos módulos desconectado, e ver se a regra 2 desliga o gerador depois de carregar.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: A memória 1 do aparelho se chama SPL (salva em 20/10), mas o conhecimento herdado (conhecimento-herdado.md e ConhecimentoHerdado.cs) ainda a descreve como MUSICA HIGH.
+  evidence: A leitura de 24/10 deu `231#SPL`, e carregar o `n` 0 trouxe a SPL (JBL com passa-alta em 200 Hz). Atualizar a nota da memória 1 é decisão do Denis.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Antes de conectar, o Início mostra "Sem Setup", e só depois da conexão aparece o Casa 2.1.
+  evidence: Visto no A52 em 24/10. Conferir na 12b contra o EXPERIENCE.md, para ver se o chip deveria mostrar o último Setup usado já ao abrir.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: O "Voltar à cópia" de um carregar de memória que caiu pela metade não volta o 200 e o 201 do gerador, que o carregar troca (CONTEUDO-MEMORIA caiu).
+  evidence: `CopiaAntes.Diferencas` (`app-controle/src/BgsControle.Nucleo/Escrita/CopiaAntes.cs:423`) percorre só o `Catalogo.ConsultasMarco1`. O efeito no som é pequeno, porque o gerador escreve o 201 e o 200 antes de cada `*202*1*`, mas a tela do gerador fica com os valores da memória. Decidir se o gerador entra na cópia antes.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Carregar uma memória do aparelho com o tom tocando troca o ganho do tom na hora (ex.: de −45 para −25 dB, +20 dB) antes da releitura e da regra 2.
+  evidence: Medido que o 241 troca o 200 (CONTEUDO-MEMORIA). Conferir na 12b se o app deixa carregar uma memória com o gerador ligado, e se não deve desligar o gerador antes.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Não se sabe se o `ERRO 0` de uma leitura antes da senha arma a queda de ~29 s (QUEDA-APOS-ERRO). O simulador supõe que não.
+  evidence: Na sonda de 24/10, a senha certa veio logo depois e cancelaria a queda de qualquer jeito. Para medir: ler antes da senha e esperar 35 s sem autenticar.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: O eco da fase (`060`) leva ~1,1 s no aparelho, mas o simulador usa ~85 ms para todos os ecos; nenhum teste exercita o `PrazoEco` de 2 s com um eco lento.
+  evidence: Medido no A52 em 24/10 (`estado/log-ble/2026-10-24_1712-app-12a.log`). Quando o prazo estoura, o escritor relê, o que é seguro, mas sobra menos de 1 s de folga. Simular o atraso da fase.

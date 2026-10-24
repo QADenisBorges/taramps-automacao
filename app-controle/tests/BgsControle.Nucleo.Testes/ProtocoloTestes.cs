@@ -164,6 +164,24 @@ public sealed class LogBleTestes
     }
 
     [Fact]
+    public void O_evento_Registrou_entrega_a_linha_ja_mascarada()
+    {
+        // O APK Debug grava o que o evento entrega em files/registro-ble.txt (história 12a).
+        var log = new LogBle();
+        var entregues = new List<string>();
+        log.Registrou += entregues.Add;
+        log.ProtegerSegredo("CD34");
+        log.Enviado("*000*AB12*");
+        log.Recusado("*001*AB12*CD34*", "teste");
+        log.Evento("algo com CD34 no meio");
+
+        Assert.Equal(3, entregues.Count);
+        Assert.All(entregues, l => Assert.DoesNotContain("AB12", l));
+        Assert.All(entregues, l => Assert.DoesNotContain("CD34", l, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(log.Linhas, entregues);
+    }
+
+    [Fact]
     public void Resposta_do_aparelho_continua_legivel()
     {
         var log = new LogBle();

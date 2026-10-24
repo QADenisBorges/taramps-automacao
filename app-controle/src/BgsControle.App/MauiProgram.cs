@@ -293,6 +293,33 @@ public static class MauiProgram
         // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.
         var logTela = app.Services.GetRequiredService<LogBle>();
         FalhasDeComando.Destino = e => logTela.Evento($"tela: um comando falhou ({e.GetType().Name}: {e.Message})");
+#if DEBUG
+        // Só no APK Debug (história 12a): o registro do BLE, já mascarado, também vai para
+        // files/registro-ble.txt, para conferir no aparelho os acks e os atrasos pelo run-as.
+        // Nunca vai ao logcat. Recomeça a cada abertura do app, para não crescer sem fim.
+        var arquivoRegistro = Path.Combine(FileSystem.AppDataDirectory, "registro-ble.txt");
+        var travaRegistro = new object();
+        try
+        {
+            File.Delete(arquivoRegistro);
+        }
+        catch (Exception)
+        {
+            // Sem apagar, o arquivo só continua o da última vez.
+        }
+        logTela.Registrou += linha =>
+        {
+            try
+            {
+                lock (travaRegistro)
+                    File.AppendAllText(arquivoRegistro, linha + "\n");
+            }
+            catch (Exception)
+            {
+                // O registro em arquivo é só para a conferência; uma falha nele não atrapalha o BLE.
+            }
+        };
+#endif
         // Criados já: o espelho, a cópia antes e o gerador precisam ver a primeira leitura (a
         // retomada do "aplicado pela metade", o 202), o link se pendura no escritor, e as chaves,
         // a cópia e o link começam a ler o guardado.

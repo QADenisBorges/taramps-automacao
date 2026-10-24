@@ -220,21 +220,48 @@
     trocando de Setup, Seguir sem Setup), os links 1–2 e 3–4 ficam
     desligados, e um Setup criado do aparelho nasce com eles desligados —
     fecha o item adiado da 8e.
-- id: "12"
-  title: Integração e testes no aparelho real
+# A antiga história 12 (integração e testes no aparelho real) foi dividida em
+# 24/10/2026 pelo Denis, porque a spec passava muito do tamanho. Decisão do
+# Denis na mesma data: reset de fábrica, reset de áudio e troca de senha são
+# testados só na recusa (chave desligada), para não arriscar as memórias do
+# aparelho. Todas precisam do celular e do processador.
+- id: "12a"
+  title: Instalar, ler, paridade e suposições do protocolo
   description: >-
-    Liga tudo no PRO 2.4BT: confere a lista de suposições do simulador, a
-    paridade do estado atual e depois de aplicar a FILME herdada, se o
-    processador guarda o estado ao vivo ao ser desligado (se não guardar,
-    confere a reaplicação ao conectar) e os testes 1 a 4 do sinal de sucesso.
+    APK Debug no A52; conectar, 84 de 84 e a senha fora do logcat; paridade
+    valor a valor com o app da Taramps no estado atual e depois de carregar
+    a FILME (teste 3); as suposições do simulador que são do protocolo,
+    medidas no aparelho, com o simulador corrigido onde cair.
   done_checkpoint: true
   invoke_dev_with: >-
-    Precisa do celular e do processador. Voltímetro contra o multímetro;
-    gerador só com o RCA dos módulos desconectado; Wi-Fi real; reset de
-    fábrica testado só na recusa, a menos que o Denis decida outra coisa.
-    Cuidados de conhecimento-herdado.md para o app da Taramps. Conferir
-    também o Sub do Casa 2.1 escrevendo no CH3 e no CH4 juntos e o
-    esquema do Casa 2.1 na tela.
+    Cuidados de conhecimento-herdado.md para o app da Taramps. As
+    suposições de gerador, clip, voltímetro espontâneo, 251/252 e nome do
+    produto ficam para a 12b.
+- id: "12b"
+  title: Telas e aparelho inteiro no aparelho real
+  description: >-
+    Cada tela no A52 contra o aparelho: ajustes, Sub do Casa 2.1 escrevendo
+    no CH3 e no CH4 juntos, link, Setups, esquema do Casa 2.1, memórias,
+    presets, Player com áudio, gerador, voltímetro, clip, remote out,
+    Bluetooth, nome do produto e chaves; as suposições que sobraram.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Gerador só com o RCA dos módulos desconectado, e fechar o app com o tom
+    tocando (deferred-work). Voltímetro contra o VC830L, com foto. Reset de
+    fábrica, reset de áudio e troca de senha só na recusa. As pendências
+    "no aparelho" das histórias 4 a 11 que são de tela.
+- id: "12c"
+  title: Porta da IA no Wi-Fi e testes 1, 2 e 4
+  description: >-
+    A porta 8787 no Wi-Fi real, com o Claude Code no notebook por curl
+    (parear, ler, ajustar, aplicar memória com confirmação na tela, recusas,
+    PARAR IA, tela ao vivo em até 1 s); a MUSICA ORIG refeita pelo Denis só
+    pelo celular; desligar e religar o processador (guarda o estado ou o app
+    reaplica); o aparelho no estado de outro Setup.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Testes 1, 2 e 4 do sinal de sucesso do SPEC. Item IA1 da 9b (a porta
+    inerte no app real).
 # Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
 # playlist, teste a seco, teto por preset), a partir de
 # _bmad-output/forge/teste-de-playlist/forged-idea.md.

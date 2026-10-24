@@ -35,6 +35,9 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// <summary>O que chega quando se pergunta o voltímetro <c>#005#</c> (história 2, 20/10).</summary>
     public const string RespostaVoltimetro = "ERRO 0";
 
+    /// <summary>A resposta a uma leitura antes da senha aceita (medido em 24/10 na história 12a).</summary>
+    public const string RespostaSemSenha = "ERRO 0";
+
     /// <summary>Memórias do DSP: <c>*240*n*</c> e <c>*241*n*</c> com n de 0 a 2.</summary>
     public const int Memorias = 3;
 
@@ -111,7 +114,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
         _estado = new Dictionary<(string, int?), string>(Semente);
         // Suposição MEMORIAS-INICIAIS: o conteúdo das 3 memórias não foi lido; começam iguais ao estado semeado.
         for (var n = 0; n < Memorias; n++)
-            _memorias[n] = CopiaMarco1(_estado);
+            _memorias[n] = CopiaMemoria(_estado);
     }
 
     /// <summary>A semente: as 84 respostas reais do Marco 1 e os extras reais.</summary>
@@ -483,7 +486,9 @@ public sealed partial class ProcessadorSimulado : ITransporte
         // Senha.
         if (QuadroSenha().Match(texto) is { Success: true } senha)
         {
-            if (senha.Groups[1].Value == Senha)
+            // Suposição SENHA-ERRADA-DESAUTENTICA (caiu, medido em 24/10 na história 12a): com a sessão
+            // já autenticada, uma senha errada recebe a mesma resposta da certa e a sessão continua.
+            if (senha.Groups[1].Value == Senha || _autenticado)
             {
                 _autenticado = true;
                 // Suposição QUEDA-APOS-ERRO: a senha certa dentro da janela cancela a queda depois do ERRO.
@@ -492,9 +497,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
             }
             else
             {
-                // Suposição SENHA-ERRADA-DESAUTENTICA: uma senha errada depois da certa tira a autenticação.
-                _autenticado = false;
-                // Suposição QUEDA-APOS-ERRO: um segundo ERRO não reinicia o prazo da queda (conta desde o primeiro).
+                // Suposição QUEDA-APOS-ERRO (confirmada em 24/10): um segundo ERRO não reinicia o prazo da queda (conta desde o primeiro).
                 if (_quedaAposErro is null)
                 {
                     var geracao = _geracao;
@@ -506,10 +509,15 @@ public sealed partial class ProcessadorSimulado : ITransporte
             return respostas;
         }
 
-        // Suposição MUDO-SEM-SENHA: antes da senha aceita, o aparelho ignora tudo, sem resposta.
+        // Suposição MUDO-SEM-SENHA (caiu em parte, medido em 24/10 na história 12a): antes da senha
+        // aceita, uma leitura recebe ERRO 0 (com CR LF no fim, como as outras respostas); uma escrita
+        // não foi medida e continua ignorada, sem resposta.
         if (!_autenticado)
         {
-            Recusar(texto, "antes da senha");
+            if (Catalogo.ConsultaDe(texto) is not null)
+                Responder(RespostaSemSenha, AtrasoLeitura);
+            else
+                Recusar(texto, "antes da senha");
             return respostas;
         }
 
@@ -532,8 +540,10 @@ public sealed partial class ProcessadorSimulado : ITransporte
             var n = int.Parse(memoria.Groups[2].Value, Fio);
             if (memoria.Groups[1].Value == "240")
             {
-                // Suposição CONTEUDO-MEMORIA: a memória guarda os 84 valores do Marco 1 (sem gerador, nomes, 251, 252).
-                _memorias[n] = CopiaMarco1(_estado);
+                // Suposição CONTEUDO-MEMORIA (caiu, medido em 24/10 na história 12a): a memória guarda os 84
+                // valores do Marco 1 e também o ganho (200) e a frequência (201) do tom fixo. Que ela não
+                // guarda o 202, o 210–213, o 251 e o 252 não deu para medir (eram iguais nas memórias).
+                _memorias[n] = CopiaMemoria(_estado);
             }
             else
             {
@@ -542,7 +552,8 @@ public sealed partial class ProcessadorSimulado : ITransporte
                     _estado[chave] = valor;
             }
             // Medido (20/10, 2026-10-20_1322-memoria.log): o 240 responde #240#n#\r\n ~1,17 s depois.
-            // Suposição ACK-241: o 241 responde igual, #241#n#, no mesmo prazo (não medido).
+            // Suposição ACK-241 (confirmada em 24/10): o 241 responde #241#n#, em ~1,41 s no aparelho;
+            // o simulador usa o prazo do 240.
             Responder($"#{memoria.Groups[1].Value}#{n}#", AtrasoAckMemoria);
             return respostas;
         }
@@ -830,6 +841,20 @@ public sealed partial class ProcessadorSimulado : ITransporte
         else
             estado[(p.Codigo, int.Parse(q.Segmentos[0], Fio))] = q.Segmentos[1];
     }
+
+    /// <summary>O que uma memória guarda: o Marco 1 e o 200 e o 201 (medido em 24/10).</summary>
+    private static Dictionary<(string, int?), string> CopiaMemoria(Dictionary<(string Codigo, int? Indice), string> estado)
+    {
+        var copia = CopiaMarco1(estado);
+        foreach (var codigo in CodigosDoGeradorNaMemoria)
+        {
+            if (estado.TryGetValue((codigo, null), out var valor))
+                copia[(codigo, null)] = valor;
+        }
+        return copia;
+    }
+
+    private static readonly string[] CodigosDoGeradorNaMemoria = ["200", "201"];
 
     private static Dictionary<(string, int?), string> CopiaMarco1(Dictionary<(string Codigo, int? Indice), string> estado) =>
         Catalogo.ConsultasMarco1

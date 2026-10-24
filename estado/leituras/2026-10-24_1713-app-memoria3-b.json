@@ -1,0 +1,1717 @@
+{
+  "versaoDoFormato": 1,
+  "nomeDoAparelho": "PRO 2.4BT + AUDIO",
+  "firmware": "R003",
+  "inicio": "2026-10-24T17:13:03.8860748-03:00",
+  "fimMarco1": "2026-10-24T17:13:16.0283245-03:00",
+  "fim": "2026-10-24T17:13:23.1841357-03:00",
+  "completo": true,
+  "lidos": [
+    {
+      "codigo": "080",
+      "nome": "master",
+      "onde": "—",
+      "extra": false,
+      "consulta": "#080#",
+      "cru": "#080#+0.0#",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "080 master · — · 0,0 dB"
+    },
+    {
+      "codigo": "081",
+      "nome": "ganho",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#081#0#",
+      "cru": "#081#0#+10.0#",
+      "valor": {
+        "noFio": "+10.0",
+        "numero": 10.0,
+        "foraDaFaixa": false,
+        "exibicao": "+10,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "081 ganho · saída 1 · +10,0 dB"
+    },
+    {
+      "codigo": "081",
+      "nome": "ganho",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#081#1#",
+      "cru": "#081#1#+7.0#",
+      "valor": {
+        "noFio": "+7.0",
+        "numero": 7.0,
+        "foraDaFaixa": false,
+        "exibicao": "+7,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "081 ganho · saída 2 · +7,0 dB"
+    },
+    {
+      "codigo": "081",
+      "nome": "ganho",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#081#2#",
+      "cru": "#081#2#+6.0#",
+      "valor": {
+        "noFio": "+6.0",
+        "numero": 6.0,
+        "foraDaFaixa": false,
+        "exibicao": "+6,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "081 ganho · saída 3 · +6,0 dB"
+    },
+    {
+      "codigo": "081",
+      "nome": "ganho",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#081#3#",
+      "cru": "#081#3#+6.0#",
+      "valor": {
+        "noFio": "+6.0",
+        "numero": 6.0,
+        "foraDaFaixa": false,
+        "exibicao": "+6,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "081 ganho · saída 4 · +6,0 dB"
+    },
+    {
+      "codigo": "100",
+      "nome": "mute",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#100#0#",
+      "cru": "#100#0#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "com som"
+      },
+      "tentativas": 1,
+      "linha": "100 mute · saída 1 · com som"
+    },
+    {
+      "codigo": "100",
+      "nome": "mute",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#100#1#",
+      "cru": "#100#1#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "com som"
+      },
+      "tentativas": 1,
+      "linha": "100 mute · saída 2 · com som"
+    },
+    {
+      "codigo": "100",
+      "nome": "mute",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#100#2#",
+      "cru": "#100#2#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "com som"
+      },
+      "tentativas": 1,
+      "linha": "100 mute · saída 3 · com som"
+    },
+    {
+      "codigo": "100",
+      "nome": "mute",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#100#3#",
+      "cru": "#100#3#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "com som"
+      },
+      "tentativas": 1,
+      "linha": "100 mute · saída 4 · com som"
+    },
+    {
+      "codigo": "010",
+      "nome": "roteamento",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#010#0#",
+      "cru": "#010#0#b#",
+      "valor": {
+        "noFio": "b",
+        "texto": "b",
+        "rotulo": "B",
+        "foraDaFaixa": false,
+        "exibicao": "B"
+      },
+      "tentativas": 1,
+      "linha": "010 roteamento · saída 1 · B"
+    },
+    {
+      "codigo": "010",
+      "nome": "roteamento",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#010#1#",
+      "cru": "#010#1#a#",
+      "valor": {
+        "noFio": "a",
+        "texto": "a",
+        "rotulo": "A",
+        "foraDaFaixa": false,
+        "exibicao": "A"
+      },
+      "tentativas": 1,
+      "linha": "010 roteamento · saída 2 · A"
+    },
+    {
+      "codigo": "010",
+      "nome": "roteamento",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#010#2#",
+      "cru": "#010#2#a+b#",
+      "valor": {
+        "noFio": "a+b",
+        "texto": "a+b",
+        "rotulo": "A+B",
+        "foraDaFaixa": false,
+        "exibicao": "A+B"
+      },
+      "tentativas": 1,
+      "linha": "010 roteamento · saída 3 · A+B"
+    },
+    {
+      "codigo": "010",
+      "nome": "roteamento",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#010#3#",
+      "cru": "#010#3#a+b#",
+      "valor": {
+        "noFio": "a+b",
+        "texto": "a+b",
+        "rotulo": "A+B",
+        "foraDaFaixa": false,
+        "exibicao": "A+B"
+      },
+      "tentativas": 1,
+      "linha": "010 roteamento · saída 4 · A+B"
+    },
+    {
+      "codigo": "060",
+      "nome": "fase",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#060#0#",
+      "cru": "#060#0#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "rotulo": "0°",
+        "foraDaFaixa": false,
+        "exibicao": "0°"
+      },
+      "tentativas": 1,
+      "linha": "060 fase · saída 1 · 0°"
+    },
+    {
+      "codigo": "060",
+      "nome": "fase",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#060#1#",
+      "cru": "#060#1#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "rotulo": "0°",
+        "foraDaFaixa": false,
+        "exibicao": "0°"
+      },
+      "tentativas": 1,
+      "linha": "060 fase · saída 2 · 0°"
+    },
+    {
+      "codigo": "060",
+      "nome": "fase",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#060#2#",
+      "cru": "#060#2#180#",
+      "valor": {
+        "noFio": "180",
+        "numero": 180,
+        "rotulo": "180°",
+        "foraDaFaixa": false,
+        "exibicao": "180°"
+      },
+      "tentativas": 1,
+      "linha": "060 fase · saída 3 · 180°"
+    },
+    {
+      "codigo": "060",
+      "nome": "fase",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#060#3#",
+      "cru": "#060#3#180#",
+      "valor": {
+        "noFio": "180",
+        "numero": 180,
+        "rotulo": "180°",
+        "foraDaFaixa": false,
+        "exibicao": "180°"
+      },
+      "tentativas": 1,
+      "linha": "060 fase · saída 4 · 180°"
+    },
+    {
+      "codigo": "040",
+      "nome": "HPF frequência",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#040#0#",
+      "cru": "#040#0#150#",
+      "valor": {
+        "noFio": "150",
+        "numero": 150,
+        "foraDaFaixa": false,
+        "exibicao": "150 Hz"
+      },
+      "tentativas": 1,
+      "linha": "040 HPF frequência · saída 1 · 150 Hz"
+    },
+    {
+      "codigo": "040",
+      "nome": "HPF frequência",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#040#1#",
+      "cru": "#040#1#150#",
+      "valor": {
+        "noFio": "150",
+        "numero": 150,
+        "foraDaFaixa": false,
+        "exibicao": "150 Hz"
+      },
+      "tentativas": 1,
+      "linha": "040 HPF frequência · saída 2 · 150 Hz"
+    },
+    {
+      "codigo": "040",
+      "nome": "HPF frequência",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#040#2#",
+      "cru": "#040#2#40#",
+      "valor": {
+        "noFio": "40",
+        "numero": 40,
+        "foraDaFaixa": false,
+        "exibicao": "40 Hz"
+      },
+      "tentativas": 1,
+      "linha": "040 HPF frequência · saída 3 · 40 Hz"
+    },
+    {
+      "codigo": "040",
+      "nome": "HPF frequência",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#040#3#",
+      "cru": "#040#3#40#",
+      "valor": {
+        "noFio": "40",
+        "numero": 40,
+        "foraDaFaixa": false,
+        "exibicao": "40 Hz"
+      },
+      "tentativas": 1,
+      "linha": "040 HPF frequência · saída 4 · 40 Hz"
+    },
+    {
+      "codigo": "041",
+      "nome": "LPF frequência",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#041#0#",
+      "cru": "#041#0#22000#",
+      "valor": {
+        "noFio": "22000",
+        "numero": 22000,
+        "foraDaFaixa": false,
+        "exibicao": "22000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "041 LPF frequência · saída 1 · 22000 Hz"
+    },
+    {
+      "codigo": "041",
+      "nome": "LPF frequência",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#041#1#",
+      "cru": "#041#1#22000#",
+      "valor": {
+        "noFio": "22000",
+        "numero": 22000,
+        "foraDaFaixa": false,
+        "exibicao": "22000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "041 LPF frequência · saída 2 · 22000 Hz"
+    },
+    {
+      "codigo": "041",
+      "nome": "LPF frequência",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#041#2#",
+      "cru": "#041#2#150#",
+      "valor": {
+        "noFio": "150",
+        "numero": 150,
+        "foraDaFaixa": false,
+        "exibicao": "150 Hz"
+      },
+      "tentativas": 1,
+      "linha": "041 LPF frequência · saída 3 · 150 Hz"
+    },
+    {
+      "codigo": "041",
+      "nome": "LPF frequência",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#041#3#",
+      "cru": "#041#3#150#",
+      "valor": {
+        "noFio": "150",
+        "numero": 150,
+        "foraDaFaixa": false,
+        "exibicao": "150 Hz"
+      },
+      "tentativas": 1,
+      "linha": "041 LPF frequência · saída 4 · 150 Hz"
+    },
+    {
+      "codigo": "042",
+      "nome": "HPF filtro",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#042#0#",
+      "cru": "#042#0#3#",
+      "valor": {
+        "noFio": "3",
+        "numero": 3,
+        "rotulo": "LR24",
+        "foraDaFaixa": false,
+        "exibicao": "LR24"
+      },
+      "tentativas": 1,
+      "linha": "042 HPF filtro · saída 1 · LR24"
+    },
+    {
+      "codigo": "042",
+      "nome": "HPF filtro",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#042#1#",
+      "cru": "#042#1#3#",
+      "valor": {
+        "noFio": "3",
+        "numero": 3,
+        "rotulo": "LR24",
+        "foraDaFaixa": false,
+        "exibicao": "LR24"
+      },
+      "tentativas": 1,
+      "linha": "042 HPF filtro · saída 2 · LR24"
+    },
+    {
+      "codigo": "042",
+      "nome": "HPF filtro",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#042#2#",
+      "cru": "#042#2#11#",
+      "valor": {
+        "noFio": "11",
+        "numero": 11,
+        "rotulo": "BT24",
+        "foraDaFaixa": false,
+        "exibicao": "BT24"
+      },
+      "tentativas": 1,
+      "linha": "042 HPF filtro · saída 3 · BT24"
+    },
+    {
+      "codigo": "042",
+      "nome": "HPF filtro",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#042#3#",
+      "cru": "#042#3#11#",
+      "valor": {
+        "noFio": "11",
+        "numero": 11,
+        "rotulo": "BT24",
+        "foraDaFaixa": false,
+        "exibicao": "BT24"
+      },
+      "tentativas": 1,
+      "linha": "042 HPF filtro · saída 4 · BT24"
+    },
+    {
+      "codigo": "043",
+      "nome": "LPF filtro",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#043#0#",
+      "cru": "#043#0#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "rotulo": "OFF",
+        "foraDaFaixa": false,
+        "exibicao": "OFF"
+      },
+      "tentativas": 1,
+      "linha": "043 LPF filtro · saída 1 · OFF"
+    },
+    {
+      "codigo": "043",
+      "nome": "LPF filtro",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#043#1#",
+      "cru": "#043#1#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "rotulo": "OFF",
+        "foraDaFaixa": false,
+        "exibicao": "OFF"
+      },
+      "tentativas": 1,
+      "linha": "043 LPF filtro · saída 2 · OFF"
+    },
+    {
+      "codigo": "043",
+      "nome": "LPF filtro",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#043#2#",
+      "cru": "#043#2#3#",
+      "valor": {
+        "noFio": "3",
+        "numero": 3,
+        "rotulo": "LR24",
+        "foraDaFaixa": false,
+        "exibicao": "LR24"
+      },
+      "tentativas": 1,
+      "linha": "043 LPF filtro · saída 3 · LR24"
+    },
+    {
+      "codigo": "043",
+      "nome": "LPF filtro",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#043#3#",
+      "cru": "#043#3#3#",
+      "valor": {
+        "noFio": "3",
+        "numero": 3,
+        "rotulo": "LR24",
+        "foraDaFaixa": false,
+        "exibicao": "LR24"
+      },
+      "tentativas": 1,
+      "linha": "043 LPF filtro · saída 4 · LR24"
+    },
+    {
+      "codigo": "050",
+      "nome": "delay",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#050#0#",
+      "cru": "#050#0#0.0#",
+      "valor": {
+        "noFio": "0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 cm"
+      },
+      "tentativas": 1,
+      "linha": "050 delay · saída 1 · 0,0 cm"
+    },
+    {
+      "codigo": "050",
+      "nome": "delay",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#050#1#",
+      "cru": "#050#1#100.0#",
+      "valor": {
+        "noFio": "100.0",
+        "numero": 100.0,
+        "foraDaFaixa": false,
+        "exibicao": "100,0 cm"
+      },
+      "tentativas": 1,
+      "linha": "050 delay · saída 2 · 100,0 cm"
+    },
+    {
+      "codigo": "050",
+      "nome": "delay",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#050#2#",
+      "cru": "#050#2#80.0#",
+      "valor": {
+        "noFio": "80.0",
+        "numero": 80.0,
+        "foraDaFaixa": false,
+        "exibicao": "80,0 cm"
+      },
+      "tentativas": 1,
+      "linha": "050 delay · saída 3 · 80,0 cm"
+    },
+    {
+      "codigo": "050",
+      "nome": "delay",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#050#3#",
+      "cru": "#050#3#80.0#",
+      "valor": {
+        "noFio": "80.0",
+        "numero": 80.0,
+        "foraDaFaixa": false,
+        "exibicao": "80,0 cm"
+      },
+      "tentativas": 1,
+      "linha": "050 delay · saída 4 · 80,0 cm"
+    },
+    {
+      "codigo": "070",
+      "nome": "limiter auto",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#070#0#",
+      "cru": "#070#0#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "manual"
+      },
+      "tentativas": 1,
+      "linha": "070 limiter auto · saída 1 · manual"
+    },
+    {
+      "codigo": "070",
+      "nome": "limiter auto",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#070#1#",
+      "cru": "#070#1#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "manual"
+      },
+      "tentativas": 1,
+      "linha": "070 limiter auto · saída 2 · manual"
+    },
+    {
+      "codigo": "070",
+      "nome": "limiter auto",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#070#2#",
+      "cru": "#070#2#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "manual"
+      },
+      "tentativas": 1,
+      "linha": "070 limiter auto · saída 3 · manual"
+    },
+    {
+      "codigo": "070",
+      "nome": "limiter auto",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#070#3#",
+      "cru": "#070#3#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "manual"
+      },
+      "tentativas": 1,
+      "linha": "070 limiter auto · saída 4 · manual"
+    },
+    {
+      "codigo": "071",
+      "nome": "limiter threshold",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#071#0#",
+      "cru": "#071#0#-15.0#",
+      "valor": {
+        "noFio": "-15.0",
+        "numero": -15.0,
+        "foraDaFaixa": false,
+        "exibicao": "-15,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "071 limiter threshold · saída 1 · -15,0 dB"
+    },
+    {
+      "codigo": "071",
+      "nome": "limiter threshold",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#071#1#",
+      "cru": "#071#1#-18.0#",
+      "valor": {
+        "noFio": "-18.0",
+        "numero": -18.0,
+        "foraDaFaixa": false,
+        "exibicao": "-18,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "071 limiter threshold · saída 2 · -18,0 dB"
+    },
+    {
+      "codigo": "071",
+      "nome": "limiter threshold",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#071#2#",
+      "cru": "#071#2#-12.0#",
+      "valor": {
+        "noFio": "-12.0",
+        "numero": -12.0,
+        "foraDaFaixa": false,
+        "exibicao": "-12,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "071 limiter threshold · saída 3 · -12,0 dB"
+    },
+    {
+      "codigo": "071",
+      "nome": "limiter threshold",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#071#3#",
+      "cru": "#071#3#-12.0#",
+      "valor": {
+        "noFio": "-12.0",
+        "numero": -12.0,
+        "foraDaFaixa": false,
+        "exibicao": "-12,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "071 limiter threshold · saída 4 · -12,0 dB"
+    },
+    {
+      "codigo": "072",
+      "nome": "limiter attack",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#072#0#",
+      "cru": "#072#0#50.0#",
+      "valor": {
+        "noFio": "50.0",
+        "numero": 50.0,
+        "foraDaFaixa": false,
+        "exibicao": "50,0 ms"
+      },
+      "tentativas": 1,
+      "linha": "072 limiter attack · saída 1 · 50,0 ms"
+    },
+    {
+      "codigo": "072",
+      "nome": "limiter attack",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#072#1#",
+      "cru": "#072#1#50.0#",
+      "valor": {
+        "noFio": "50.0",
+        "numero": 50.0,
+        "foraDaFaixa": false,
+        "exibicao": "50,0 ms"
+      },
+      "tentativas": 1,
+      "linha": "072 limiter attack · saída 2 · 50,0 ms"
+    },
+    {
+      "codigo": "072",
+      "nome": "limiter attack",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#072#2#",
+      "cru": "#072#2#50.0#",
+      "valor": {
+        "noFio": "50.0",
+        "numero": 50.0,
+        "foraDaFaixa": false,
+        "exibicao": "50,0 ms"
+      },
+      "tentativas": 1,
+      "linha": "072 limiter attack · saída 3 · 50,0 ms"
+    },
+    {
+      "codigo": "072",
+      "nome": "limiter attack",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#072#3#",
+      "cru": "#072#3#50.0#",
+      "valor": {
+        "noFio": "50.0",
+        "numero": 50.0,
+        "foraDaFaixa": false,
+        "exibicao": "50,0 ms"
+      },
+      "tentativas": 1,
+      "linha": "072 limiter attack · saída 4 · 50,0 ms"
+    },
+    {
+      "codigo": "073",
+      "nome": "limiter release",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#073#0#",
+      "cru": "#073#0#200#",
+      "valor": {
+        "noFio": "200",
+        "numero": 200,
+        "foraDaFaixa": false,
+        "exibicao": "200 ms"
+      },
+      "tentativas": 1,
+      "linha": "073 limiter release · saída 1 · 200 ms"
+    },
+    {
+      "codigo": "073",
+      "nome": "limiter release",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#073#1#",
+      "cru": "#073#1#200#",
+      "valor": {
+        "noFio": "200",
+        "numero": 200,
+        "foraDaFaixa": false,
+        "exibicao": "200 ms"
+      },
+      "tentativas": 1,
+      "linha": "073 limiter release · saída 2 · 200 ms"
+    },
+    {
+      "codigo": "073",
+      "nome": "limiter release",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#073#2#",
+      "cru": "#073#2#200#",
+      "valor": {
+        "noFio": "200",
+        "numero": 200,
+        "foraDaFaixa": false,
+        "exibicao": "200 ms"
+      },
+      "tentativas": 1,
+      "linha": "073 limiter release · saída 3 · 200 ms"
+    },
+    {
+      "codigo": "073",
+      "nome": "limiter release",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#073#3#",
+      "cru": "#073#3#200#",
+      "valor": {
+        "noFio": "200",
+        "numero": 200,
+        "foraDaFaixa": false,
+        "exibicao": "200 ms"
+      },
+      "tentativas": 1,
+      "linha": "073 limiter release · saída 4 · 200 ms"
+    },
+    {
+      "codigo": "090",
+      "nome": "EQ saída frequência",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#090#0#",
+      "cru": "#090#0#2000#",
+      "valor": {
+        "noFio": "2000",
+        "numero": 2000,
+        "foraDaFaixa": false,
+        "exibicao": "2000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "090 EQ saída frequência · saída 1 · 2000 Hz"
+    },
+    {
+      "codigo": "090",
+      "nome": "EQ saída frequência",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#090#1#",
+      "cru": "#090#1#2000#",
+      "valor": {
+        "noFio": "2000",
+        "numero": 2000,
+        "foraDaFaixa": false,
+        "exibicao": "2000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "090 EQ saída frequência · saída 2 · 2000 Hz"
+    },
+    {
+      "codigo": "090",
+      "nome": "EQ saída frequência",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#090#2#",
+      "cru": "#090#2#45#",
+      "valor": {
+        "noFio": "45",
+        "numero": 45,
+        "foraDaFaixa": false,
+        "exibicao": "45 Hz"
+      },
+      "tentativas": 1,
+      "linha": "090 EQ saída frequência · saída 3 · 45 Hz"
+    },
+    {
+      "codigo": "090",
+      "nome": "EQ saída frequência",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#090#3#",
+      "cru": "#090#3#45#",
+      "valor": {
+        "noFio": "45",
+        "numero": 45,
+        "foraDaFaixa": false,
+        "exibicao": "45 Hz"
+      },
+      "tentativas": 1,
+      "linha": "090 EQ saída frequência · saída 4 · 45 Hz"
+    },
+    {
+      "codigo": "091",
+      "nome": "EQ saída ganho",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#091#0#",
+      "cru": "#091#0#+2.5#",
+      "valor": {
+        "noFio": "+2.5",
+        "numero": 2.5,
+        "foraDaFaixa": false,
+        "exibicao": "+2,5 dB"
+      },
+      "tentativas": 1,
+      "linha": "091 EQ saída ganho · saída 1 · +2,5 dB"
+    },
+    {
+      "codigo": "091",
+      "nome": "EQ saída ganho",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#091#1#",
+      "cru": "#091#1#+2.5#",
+      "valor": {
+        "noFio": "+2.5",
+        "numero": 2.5,
+        "foraDaFaixa": false,
+        "exibicao": "+2,5 dB"
+      },
+      "tentativas": 1,
+      "linha": "091 EQ saída ganho · saída 2 · +2,5 dB"
+    },
+    {
+      "codigo": "091",
+      "nome": "EQ saída ganho",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#091#2#",
+      "cru": "#091#2#+3.0#",
+      "valor": {
+        "noFio": "+3.0",
+        "numero": 3.0,
+        "foraDaFaixa": false,
+        "exibicao": "+3,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "091 EQ saída ganho · saída 3 · +3,0 dB"
+    },
+    {
+      "codigo": "091",
+      "nome": "EQ saída ganho",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#091#3#",
+      "cru": "#091#3#+3.0#",
+      "valor": {
+        "noFio": "+3.0",
+        "numero": 3.0,
+        "foraDaFaixa": false,
+        "exibicao": "+3,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "091 EQ saída ganho · saída 4 · +3,0 dB"
+    },
+    {
+      "codigo": "092",
+      "nome": "EQ saída Q",
+      "indice": 0,
+      "onde": "saída 1",
+      "extra": false,
+      "consulta": "#092#0#",
+      "cru": "#092#0#+0.7#",
+      "valor": {
+        "noFio": "+0.7",
+        "numero": 0.7,
+        "foraDaFaixa": false,
+        "exibicao": "0,7"
+      },
+      "tentativas": 1,
+      "linha": "092 EQ saída Q · saída 1 · 0,7"
+    },
+    {
+      "codigo": "092",
+      "nome": "EQ saída Q",
+      "indice": 1,
+      "onde": "saída 2",
+      "extra": false,
+      "consulta": "#092#1#",
+      "cru": "#092#1#+0.7#",
+      "valor": {
+        "noFio": "+0.7",
+        "numero": 0.7,
+        "foraDaFaixa": false,
+        "exibicao": "0,7"
+      },
+      "tentativas": 1,
+      "linha": "092 EQ saída Q · saída 2 · 0,7"
+    },
+    {
+      "codigo": "092",
+      "nome": "EQ saída Q",
+      "indice": 2,
+      "onde": "saída 3",
+      "extra": false,
+      "consulta": "#092#2#",
+      "cru": "#092#2#+0.7#",
+      "valor": {
+        "noFio": "+0.7",
+        "numero": 0.7,
+        "foraDaFaixa": false,
+        "exibicao": "0,7"
+      },
+      "tentativas": 1,
+      "linha": "092 EQ saída Q · saída 3 · 0,7"
+    },
+    {
+      "codigo": "092",
+      "nome": "EQ saída Q",
+      "indice": 3,
+      "onde": "saída 4",
+      "extra": false,
+      "consulta": "#092#3#",
+      "cru": "#092#3#+0.7#",
+      "valor": {
+        "noFio": "+0.7",
+        "numero": 0.7,
+        "foraDaFaixa": false,
+        "exibicao": "0,7"
+      },
+      "tentativas": 1,
+      "linha": "092 EQ saída Q · saída 4 · 0,7"
+    },
+    {
+      "codigo": "030",
+      "nome": "EQ entrada ganho",
+      "onde": "—",
+      "extra": false,
+      "consulta": "#030#",
+      "cru": "#030#+0.0#",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "030 EQ entrada ganho · — · 0,0 dB"
+    },
+    {
+      "codigo": "031",
+      "nome": "EQ entrada frequência",
+      "onde": "—",
+      "extra": false,
+      "consulta": "#031#",
+      "cru": "#031#1000#",
+      "valor": {
+        "noFio": "1000",
+        "numero": 1000,
+        "foraDaFaixa": false,
+        "exibicao": "1000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "031 EQ entrada frequência · — · 1000 Hz"
+    },
+    {
+      "codigo": "032",
+      "nome": "EQ entrada Q",
+      "onde": "—",
+      "extra": false,
+      "consulta": "#032#",
+      "cru": "#032#+1.0#",
+      "valor": {
+        "noFio": "+1.0",
+        "numero": 1.0,
+        "foraDaFaixa": false,
+        "exibicao": "1,0"
+      },
+      "tentativas": 1,
+      "linha": "032 EQ entrada Q · — · 1,0"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 0,
+      "onde": "banda 25 Hz",
+      "extra": false,
+      "consulta": "020#0",
+      "cru": "020#0#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 25 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 1,
+      "onde": "banda 40 Hz",
+      "extra": false,
+      "consulta": "020#1",
+      "cru": "020#1#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 40 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 2,
+      "onde": "banda 63 Hz",
+      "extra": false,
+      "consulta": "020#2",
+      "cru": "020#2#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 63 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 3,
+      "onde": "banda 100 Hz",
+      "extra": false,
+      "consulta": "020#3",
+      "cru": "020#3#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 100 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 4,
+      "onde": "banda 160 Hz",
+      "extra": false,
+      "consulta": "020#4",
+      "cru": "020#4#+1.0",
+      "valor": {
+        "noFio": "+1.0",
+        "numero": 1.0,
+        "foraDaFaixa": false,
+        "exibicao": "+1,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 160 Hz · +1,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 5,
+      "onde": "banda 250 Hz",
+      "extra": false,
+      "consulta": "020#5",
+      "cru": "020#5#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 250 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 6,
+      "onde": "banda 400 Hz",
+      "extra": false,
+      "consulta": "020#6",
+      "cru": "020#6#-1.0",
+      "valor": {
+        "noFio": "-1.0",
+        "numero": -1.0,
+        "foraDaFaixa": false,
+        "exibicao": "-1,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 400 Hz · -1,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 7,
+      "onde": "banda 630 Hz",
+      "extra": false,
+      "consulta": "020#7",
+      "cru": "020#7#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 630 Hz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 8,
+      "onde": "banda 1 kHz",
+      "extra": false,
+      "consulta": "020#8",
+      "cru": "020#8#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 1 kHz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 9,
+      "onde": "banda 1,6 kHz",
+      "extra": false,
+      "consulta": "020#9",
+      "cru": "020#9#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 1,6 kHz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 10,
+      "onde": "banda 2,5 kHz",
+      "extra": false,
+      "consulta": "020#10",
+      "cru": "020#10#+0.0",
+      "valor": {
+        "noFio": "+0.0",
+        "numero": 0.0,
+        "foraDaFaixa": false,
+        "exibicao": "0,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 2,5 kHz · 0,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 11,
+      "onde": "banda 4 kHz",
+      "extra": false,
+      "consulta": "020#11",
+      "cru": "020#11#-1.0",
+      "valor": {
+        "noFio": "-1.0",
+        "numero": -1.0,
+        "foraDaFaixa": false,
+        "exibicao": "-1,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 4 kHz · -1,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 12,
+      "onde": "banda 6,3 kHz",
+      "extra": false,
+      "consulta": "020#12",
+      "cru": "020#12#-2.0",
+      "valor": {
+        "noFio": "-2.0",
+        "numero": -2.0,
+        "foraDaFaixa": false,
+        "exibicao": "-2,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 6,3 kHz · -2,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 13,
+      "onde": "banda 10 kHz",
+      "extra": false,
+      "consulta": "020#13",
+      "cru": "020#13#+2.0",
+      "valor": {
+        "noFio": "+2.0",
+        "numero": 2.0,
+        "foraDaFaixa": false,
+        "exibicao": "+2,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 10 kHz · +2,0 dB"
+    },
+    {
+      "codigo": "020",
+      "nome": "EQ gráfico",
+      "indice": 14,
+      "onde": "banda 16 kHz",
+      "extra": false,
+      "consulta": "020#14",
+      "cru": "020#14#+2.0",
+      "valor": {
+        "noFio": "+2.0",
+        "numero": 2.0,
+        "foraDaFaixa": false,
+        "exibicao": "+2,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "020 EQ gráfico · banda 16 kHz · +2,0 dB"
+    },
+    {
+      "codigo": "220",
+      "nome": "preset de EQ",
+      "onde": "—",
+      "extra": false,
+      "consulta": "#220#",
+      "cru": "#220#255#",
+      "valor": {
+        "noFio": "255",
+        "numero": 255,
+        "rotulo": "Custom",
+        "foraDaFaixa": false,
+        "exibicao": "Custom"
+      },
+      "tentativas": 1,
+      "linha": "220 preset de EQ · — · Custom"
+    },
+    {
+      "codigo": "111",
+      "nome": "clip da entrada",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#111#",
+      "cru": "#111#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "sem clip"
+      },
+      "tentativas": 1,
+      "linha": "111 clip da entrada · — · sem clip"
+    },
+    {
+      "codigo": "150",
+      "nome": "clip das saídas",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#150#",
+      "cru": "#150#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "foraDaFaixa": false,
+        "exibicao": "nenhuma saída"
+      },
+      "tentativas": 1,
+      "linha": "150 clip das saídas · — · nenhuma saída"
+    },
+    {
+      "codigo": "200",
+      "nome": "gerador ganho",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#200#",
+      "cru": "#200#-45.0#",
+      "valor": {
+        "noFio": "-45.0",
+        "numero": -45.0,
+        "foraDaFaixa": false,
+        "exibicao": "-45,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "200 gerador ganho · — · -45,0 dB"
+    },
+    {
+      "codigo": "201",
+      "nome": "gerador frequência",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#201#",
+      "cru": "#201#1000#",
+      "valor": {
+        "noFio": "1000",
+        "numero": 1000,
+        "foraDaFaixa": false,
+        "exibicao": "1000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "201 gerador frequência · — · 1000 Hz"
+    },
+    {
+      "codigo": "202",
+      "nome": "gerador ligado",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#202#",
+      "cru": "#202#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "desligado"
+      },
+      "tentativas": 1,
+      "linha": "202 gerador ligado · — · desligado"
+    },
+    {
+      "codigo": "210",
+      "nome": "sweep frequência inicial",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#210#",
+      "cru": "#210#10#",
+      "valor": {
+        "noFio": "10",
+        "numero": 10,
+        "foraDaFaixa": false,
+        "exibicao": "10 Hz"
+      },
+      "tentativas": 1,
+      "linha": "210 sweep frequência inicial · — · 10 Hz"
+    },
+    {
+      "codigo": "211",
+      "nome": "sweep frequência final",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#211#",
+      "cru": "#211#22000#",
+      "valor": {
+        "noFio": "22000",
+        "numero": 22000,
+        "foraDaFaixa": false,
+        "exibicao": "22000 Hz"
+      },
+      "tentativas": 1,
+      "linha": "211 sweep frequência final · — · 22000 Hz"
+    },
+    {
+      "codigo": "212",
+      "nome": "sweep ganho",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#212#",
+      "cru": "#212#-45.0#",
+      "valor": {
+        "noFio": "-45.0",
+        "numero": -45.0,
+        "foraDaFaixa": false,
+        "exibicao": "-45,0 dB"
+      },
+      "tentativas": 1,
+      "linha": "212 sweep ganho · — · -45,0 dB"
+    },
+    {
+      "codigo": "213",
+      "nome": "sweep velocidade",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#213#",
+      "cru": "#213#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "rotulo": "desligado",
+        "foraDaFaixa": false,
+        "exibicao": "desligado"
+      },
+      "tentativas": 1,
+      "linha": "213 sweep velocidade · — · desligado"
+    },
+    {
+      "codigo": "231",
+      "nome": "nome da memória 1",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#231#",
+      "cru": "231#SPL",
+      "valor": {
+        "noFio": "SPL",
+        "texto": "SPL",
+        "foraDaFaixa": false,
+        "exibicao": "\"SPL\""
+      },
+      "tentativas": 1,
+      "linha": "231 nome da memória 1 · — · \"SPL\""
+    },
+    {
+      "codigo": "232",
+      "nome": "nome da memória 2",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#232#",
+      "cru": "232#MUSICA ORIG",
+      "valor": {
+        "noFio": "MUSICA ORIG",
+        "texto": "MUSICA ORIG",
+        "foraDaFaixa": false,
+        "exibicao": "\"MUSICA ORIG\""
+      },
+      "tentativas": 1,
+      "linha": "232 nome da memória 2 · — · \"MUSICA ORIG\""
+    },
+    {
+      "codigo": "233",
+      "nome": "nome da memória 3",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#233#",
+      "cru": "233#FILME",
+      "valor": {
+        "noFio": "FILME",
+        "texto": "FILME",
+        "foraDaFaixa": false,
+        "exibicao": "\"FILME\""
+      },
+      "tentativas": 1,
+      "linha": "233 nome da memória 3 · — · \"FILME\""
+    },
+    {
+      "codigo": "251",
+      "nome": "Audio Classic",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#251#",
+      "cru": "#251#0#",
+      "valor": {
+        "noFio": "0",
+        "numero": 0,
+        "ligado": false,
+        "foraDaFaixa": false,
+        "exibicao": "desligado"
+      },
+      "tentativas": 1,
+      "linha": "251 Audio Classic · — · desligado"
+    },
+    {
+      "codigo": "252",
+      "nome": "remote out",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#252#",
+      "cru": "#252#1#",
+      "valor": {
+        "noFio": "1",
+        "numero": 1,
+        "ligado": true,
+        "foraDaFaixa": false,
+        "exibicao": "ligado"
+      },
+      "tentativas": 1,
+      "linha": "252 remote out · — · ligado"
+    }
+  ],
+  "falhas": [
+    {
+      "codigo": "005",
+      "nome": "voltímetro",
+      "onde": "—",
+      "extra": true,
+      "consulta": "#005#",
+      "motivo": "sem resposta",
+      "tentativas": 1,
+      "linha": "005 voltímetro · — · sem resposta"
+    }
+  ],
+  "orfaos": [
+    "ERRO 0"
+  ],
+  "status": "completo",
+  "placarMarco1": {
+    "lidos": 84,
+    "total": 84,
+    "texto": "84 de 84"
+  },
+  "placarExtras": {
+    "lidos": 14,
+    "total": 15,
+    "texto": "14 de 15"
+  },
+  "feitas": 99,
+  "duracaoMarco1": "00:00:12.1422497",
+  "duracao": "00:00:19.2980609"
+}
