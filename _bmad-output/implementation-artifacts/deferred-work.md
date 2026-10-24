@@ -141,3 +141,7 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
   summary: O eco da fase (`060`) leva ~1,1 s no aparelho, mas o simulador usa ~85 ms para todos os ecos; nenhum teste exercita o `PrazoEco` de 2 s com um eco lento.
   evidence: Medido no A52 em 24/10 (`estado/log-ble/2026-10-24_1712-app-12a.log`). Quando o prazo estoura, o escritor relê, o que é seguro, mas sobra menos de 1 s de folga. Simular o atraso da fase.
+
+- source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/12a-instalar-ler-paridade-e-suposicoes-do-protocolo.md`
+  summary: Na Mesa do A52, o valor "+10,0 dB" da JBL L não cabe na caixa, e o "dB" quebra para uma segunda linha cortada. "+7,0 dB" e "+6,0 dB" cabem.
+  evidence: Visto no vídeo da IA de 24/10 (`_bmad-output/videos/2026-10-24-bgs-controle-ia.mp4`, depois da aplicação da FILME). Conferir na 12b, com valores de três dígitos (+10,0, −12,5) em todas as saídas.
