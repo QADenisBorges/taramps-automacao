@@ -3,12 +3,13 @@ using BgsControle.Nucleo;
 
 namespace BgsControle.Telas;
 
-/// <summary>Os destinos da barra inferior. O Player entra na história 11.</summary>
+/// <summary>Os destinos da barra inferior: Início · Mesa · Áudio · Player (o Player entrou na história 11).</summary>
 public enum Aba
 {
     Inicio,
     Mesa,
     Audio,
+    Player,
 }
 
 /// <summary>O ponto da pílula de status.</summary>
@@ -20,11 +21,13 @@ public enum PontoStatus
 }
 
 /// <summary>
-/// A casca do app (EXPERIENCE, Information Architecture): a barra inferior (Início · Mesa · Áudio), que
-/// troca de destino sem perder o estado de cada um; a pílula de status ("Conectado · R003",
+/// A casca do app (EXPERIENCE, Information Architecture): a barra inferior (Início · Mesa · Áudio · Player),
+/// que troca de destino sem perder o estado de cada um; a pílula de status ("Conectado · R003",
 /// "Conectando · senha", "Desconectado", "Só leitura · firmware R004"); a engrenagem; e as telas que
 /// sobem sozinhas por cima de tudo: a escolha do Setup quando o <c>GerenteSetups</c> entra em dúvida ou
-/// troca, e a folha "Aplicado pela metade" ao reconectar com a marca.
+/// troca, e a folha "Aplicado pela metade" ao reconectar com a marca. Acima delas (história 11), as camadas
+/// que sobem sozinhas: a IA ativa quando a IA começa uma tarefa, a folha de confirmação de um pedido de risco
+/// da IA e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador.
 /// </summary>
 public sealed class CascaViewModel : TelaBase, IDisposable
 {
@@ -37,6 +40,10 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private readonly SalvarViewModel _salvar;
     private readonly LinkViewModel _link;
     private readonly FabricaControles _fabrica;
+    private readonly IaAtivaViewModel? _iaAtiva;
+    private readonly ConfirmacaoIaViewModel? _confirmacao;
+    private readonly GeradorViewModel? _gerador;
+    private (bool Ia, bool Confirmacao, bool Alarme)? _camadas;
 
     public CascaViewModel(
         Sessao sessao,
@@ -51,9 +58,17 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         FabricaControles fabrica,
         INavegacao nav,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        PlayerViewModel? player = null,
+        IaAtivaViewModel? iaAtiva = null,
+        ConfirmacaoIaViewModel? confirmacaoIa = null,
+        GeradorViewModel? gerador = null)
         : base(despachante, relogio)
     {
+        Player = player;
+        _iaAtiva = iaAtiva;
+        _confirmacao = confirmacaoIa;
+        _gerador = gerador;
         Inicio = inicio;
         Mesa = mesa;
         Audio = audio;
@@ -67,20 +82,30 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         IrInicio = new Comando(() => Ir(Aba.Inicio));
         IrMesa = new Comando(() => Ir(Aba.Mesa));
         IrAudio = new Comando(() => Ir(Aba.Audio));
+        IrPlayer = new Comando(() => Ir(Aba.Player));
         AbrirConfiguracoes = new Comando(nav.AbrirConfiguracoes);
         TocarPilula = new Comando(nav.AbrirConexao);
 
         _sessao.Mudou += AoMudarSessao;
         _setup.PropertyChanged += AoMudarTelas;
         _memorias.PropertyChanged += AoMudarTelas;
+        if (_iaAtiva is not null)
+            _iaAtiva.PropertyChanged += AoMudarCamadas;
+        if (_confirmacao is not null)
+            _confirmacao.PropertyChanged += AoMudarCamadas;
+        if (_gerador is not null)
+            _gerador.PropertyChanged += AoMudarCamadas;
     }
 
-    /// <summary>Os três destinos da barra (cada um guarda o próprio estado).</summary>
+    /// <summary>Os destinos da barra (cada um guarda o próprio estado).</summary>
     public InicioViewModel Inicio { get; }
 
     public MesaViewModel Mesa { get; }
 
     public AudioViewModel Audio { get; }
+
+    /// <summary>A aba Player (a playlist da memória do celular em uso), ou null.</summary>
+    public PlayerViewModel? Player { get; }
 
     /// <summary>Os botões de memória e a lista "…" (a folha sobe por cima da casca).</summary>
     public BotoesMemoriaViewModel Memorias => Inicio.Memorias;
@@ -92,10 +117,12 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     public bool NoInicio => _aba == Aba.Inicio;
     public bool NaMesa => _aba == Aba.Mesa;
     public bool NoAudio => _aba == Aba.Audio;
+    public bool NoPlayer => _aba == Aba.Player;
 
     public Comando IrInicio { get; }
     public Comando IrMesa { get; }
     public Comando IrAudio { get; }
+    public Comando IrPlayer { get; }
 
     public void Ir(Aba aba)
     {
@@ -106,6 +133,7 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         Avisar(nameof(NoInicio));
         Avisar(nameof(NaMesa));
         Avisar(nameof(NoAudio));
+        Avisar(nameof(NoPlayer));
     }
 
     // ------------------------------------------------------------------ topo
@@ -179,6 +207,38 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         Avisar(nameof(PelaMetadePorCima));
     }
 
+    /// <summary>A IA ativa está por cima (abre sozinha quando a IA começa e fecha ao parar).</summary>
+    public bool IaAtivaPorCima => _camadas?.Ia == true;
+
+    /// <summary>A folha de confirmação de um pedido da IA está por cima.</summary>
+    public bool ConfirmacaoIaPorCima => _camadas?.Confirmacao == true;
+
+    /// <summary>A faixa "DESLIGUE O MÓDULO AGORA" está por cima de tudo.</summary>
+    public bool AlarmePorCima => _camadas?.Alarme == true;
+
+    /// <summary>
+    /// Confere as camadas da história 11 e pede à navegação quando mudam (ou sempre, com
+    /// <paramref name="forcar"/>). A ordem, de baixo para cima: a IA ativa, a confirmação da IA e o alarme
+    /// do gerador; as duas últimas ficam acima de tudo, até da escolha do Setup.
+    /// </summary>
+    public void SincronizarCamadas(bool forcar = false)
+    {
+        var agora = (_iaAtiva?.Ativa == true, _confirmacao?.FolhaAberta == true, _gerador?.Alarme == true);
+        if (_camadas == agora && !forcar)
+            return;
+        _camadas = agora;
+        _nav.MostrarCamadas(agora.Item1, agora.Item2, agora.Item3);
+        Avisar(nameof(IaAtivaPorCima));
+        Avisar(nameof(ConfirmacaoIaPorCima));
+        Avisar(nameof(AlarmePorCima));
+    }
+
+    private void AoMudarCamadas(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(IaAtivaViewModel.Ativa) or nameof(ConfirmacaoIaViewModel.FolhaAberta) or nameof(GeradorViewModel.Alarme))
+            SincronizarCamadas();
+    }
+
     private void AoMudarTelas(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SetupViewModel.Aberta) or nameof(MemoriasViewModel.PelaMetade))
@@ -199,5 +259,11 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudarSessao;
         _setup.PropertyChanged -= AoMudarTelas;
         _memorias.PropertyChanged -= AoMudarTelas;
+        if (_iaAtiva is not null)
+            _iaAtiva.PropertyChanged -= AoMudarCamadas;
+        if (_confirmacao is not null)
+            _confirmacao.PropertyChanged -= AoMudarCamadas;
+        if (_gerador is not null)
+            _gerador.PropertyChanged -= AoMudarCamadas;
     }
 }

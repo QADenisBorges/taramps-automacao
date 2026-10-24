@@ -77,11 +77,39 @@ public interface INavegacao
     /// <summary>A tela de conexão (tocar na pílula de status): Conectar, a senha, a leitura, o registro e Esquecer a senha.</summary>
     void AbrirConexao();
 
+    /// <summary>A tela Gerador (bloco Gerador da grade Áudio), em tela cheia (história 11).</summary>
+    void AbrirGerador();
+
+    /// <summary>Configurações › Presets.</summary>
+    void AbrirPresets();
+
+    /// <summary>Configurações › Aparelho › Senha: a troca de senha do processador.</summary>
+    void AbrirSenha();
+
+    /// <summary>Configurações › Aparelho › Voltímetro e clip (também ao tocar na faixa de monitoração da Mesa).</summary>
+    void AbrirMonitoracao();
+
+    /// <summary>Configurações › Chaves de acesso (também ao tocar num bloco travado pela chave).</summary>
+    void AbrirChaves();
+
+    /// <summary>Configurações › IA pela rede.</summary>
+    void AbrirIaPelaRede();
+
+    /// <summary>Configurações › Histórico.</summary>
+    void AbrirHistorico();
+
     /// <summary>
     /// As telas que sobem por cima de tudo, sem barra: a escolha do Setup (Setup em dúvida ou Trocar de
     /// Setup) e a folha "Aplicado pela metade". Mostra as que valem e tira as outras.
     /// </summary>
     void MostrarPorCima(bool escolhaSetup, bool pelaMetade);
+
+    /// <summary>
+    /// As camadas da história 11, também por cima de tudo, acima da escolha do Setup e da folha pela
+    /// metade: a IA ativa (abre sozinha quando a IA começa e fecha ao parar), a folha de confirmação da IA e,
+    /// no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador. Mostra as que valem e tira as outras.
+    /// </summary>
+    void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador);
 
     /// <summary>‹ numa tela cheia.</summary>
     void Voltar();
@@ -98,4 +126,33 @@ public interface ISeletorAudio
 {
     /// <summary>Os arquivos escolhidos, na ordem; vazio se o Denis desistiu.</summary>
     Task<IReadOnlyList<BgsControle.Nucleo.Player.ArquivoAudio>> EscolherAsync();
+}
+
+/// <summary>
+/// O som do celular (história 11, Player): por onde o Android manda o áudio, o acesso às músicas e o atalho
+/// para as configurações de Bluetooth. No app é o Android; nos testes, um falso.
+/// </summary>
+public interface IAudioDoCelular
+{
+    /// <summary>True: o som sai por um aparelho Bluetooth de áudio; false: sai pelo celular; null: não se sabe.</summary>
+    bool? SaindoPeloBluetooth { get; }
+
+    /// <summary>O Android negou ler uma música guardada (sem acesso às músicas do celular).</summary>
+    bool SemPermissao { get; }
+
+    /// <summary>A saída do som ou o acesso mudou. Pode chegar em qualquer thread.</summary>
+    event Action? Mudou;
+
+    /// <summary>Abre as configurações de Bluetooth do Android.</summary>
+    void AbrirBluetooth();
+
+    /// <summary>Pede ao Android o acesso às músicas (o pedido do sistema). True se ficou permitido.</summary>
+    Task<bool> PedirPermissaoAsync();
+}
+
+/// <summary>Entrega um arquivo para o Denis guardar ou mandar (o compartilhar do Android): o Exportar dos presets.</summary>
+public interface IExportarArquivo
+{
+    /// <summary>Grava o texto num arquivo com o nome e abre o compartilhar. Devolve null se deu certo, ou o motivo.</summary>
+    Task<string?> ExportarAsync(string nomeArquivo, string conteudo);
 }

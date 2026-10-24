@@ -22,6 +22,9 @@ public sealed class ItemChaveViewModel : TelaBase
     /// <summary>O risco mostrado ao ligar, ou null (liga sem aviso).</summary>
     public string? Risco => Definicao.Risco;
 
+    /// <summary>A chave vem desligada por padrão: o risco escrito na linha fica em erro-texto (DESIGN, linha-de-chave).</summary>
+    public bool PadraoDesligada => !Definicao.Padrao;
+
     /// <summary>Uma nota fixa da linha (a chave da IA: pareia por código de 6 dígitos).</summary>
     public string? Observacao => Chave == Chave.IaPelaRede ? ChavesViewModel.NotaIa : null;
 

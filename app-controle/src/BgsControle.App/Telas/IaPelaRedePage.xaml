@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › IA pela rede (EXPERIENCE, Uso junto com a IA; State Patterns › Porta da IA desligada, Pareando;
+    porta-de-comandos.md): a chave "IA pela rede" com Lig./Desl. (ligar abre a folha do risco), o estado da porta,
+    o código de 6 dígitos grande enquanto ninguém pareou, o endereço, o cliente pareado com a data e Revogar, e
+    "Quando eu toco durante a IA": Travar até PARAR IA (padrão) ou Pausar a IA.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.IaPelaRedePage"
+             x:DataType="telas:IaPelaRedeViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <ContentPage.Resources>
+        <Style x:Key="par" TargetType="Button" BasedOn="{StaticResource botao-contornado-pequeno}">
+            <Setter Property="BorderColor" Value="{StaticResource sup-2}" />
+            <Setter Property="WidthRequest" Value="56" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style x:Key="opcao" TargetType="Button" BasedOn="{StaticResource botao-secundario}">
+            <Setter Property="BorderColor" Value="{StaticResource sup-2}" />
+            <Setter Property="CornerRadius" Value="14" />
+        </Style>
+    </ContentPage.Resources>
+    <Grid>
+        <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="IA pela rede" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Só a rede da casa · a senha do processador nunca passa" />
+                </VerticalStackLayout>
+            </Grid>
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="12">
+                    <!-- A chave "IA pela rede". -->
+                    <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 18">
+                        <Grid x:Name="LinhaChave" x:DataType="telas:ItemChaveViewModel" ColumnDefinitions="*,Auto" ColumnSpacing="10"
+                              Padding="16,10" MinimumHeightRequest="52">
+                            <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}" />
+                                <Label Style="{StaticResource tipo-risco-chave}" TextColor="{StaticResource erro-texto}" Text="{Binding Risco}"
+                                       IsVisible="{Binding Risco, Converter={StaticResource TemTexto}}" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" VerticalOptions="Center" SemanticProperties.Description="{Binding TextoEstado}">
+                                <Button Style="{StaticResource par}" Text="Desl." Command="{Binding Desligar}">
+                                    <Button.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding Ligada}" Value="False">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                        </DataTrigger>
+                                    </Button.Triggers>
+                                </Button>
+                                <Button Style="{StaticResource par}" Text="Lig." Command="{Binding Ligar}">
+                                    <Button.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding Ligada}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                        </DataTrigger>
+                                    </Button.Triggers>
+                                </Button>
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- O estado da porta e o pareamento. -->
+                    <Border Style="{StaticResource cartao-grande}">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Style="{StaticResource tipo-rotulo}" Text="PORTA DA IA" />
+                            <Label Style="{StaticResource tipo-corpo}" Text="{Binding TextoEstado}" />
+                            <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding Codigo}" CharacterSpacing="6"
+                                   IsVisible="{Binding Codigo, Converter={StaticResource TemTexto}}" />
+                            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Endereco, StringFormat='Endereço: {0}'}"
+                                   IsVisible="{Binding Endereco, Converter={StaticResource TemTexto}}" />
+                            <VerticalStackLayout Spacing="2" IsVisible="{Binding PodeRevogar}">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Cliente}" />
+                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding PareadoEm, StringFormat='Pareado em {0}'}" />
+                            </VerticalStackLayout>
+                            <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:IaPelaRedeViewModel.TextoRevogar}"
+                                    Command="{Binding Revogar}" IsVisible="{Binding PodeRevogar}" />
+                            <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding AvisoConexao}"
+                                   IsVisible="{Binding AvisoConexao, Converter={StaticResource TemTexto}}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- O toque durante a IA. -->
+                    <Label Style="{StaticResource tipo-rotulo}" Text="QUANDO EU TOCO DURANTE A IA" />
+                    <Button Style="{StaticResource opcao}" Text="{x:Static telas:IaPelaRedeViewModel.TextoTravar}"
+                            Command="{Binding TravarAtePararIa}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding Travar}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Os controles ficam travados; o único jeito de mexer é PARAR IA." />
+                    <Button Style="{StaticResource opcao}" Text="{x:Static telas:IaPelaRedeViewModel.TextoPausar}"
+                            Command="{Binding PausarIa}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding Pausar}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    <Label Style="{StaticResource tipo-detalhe}" Text="O toque pausa a IA; ela retoma depois de 10 s sem toques." />
+                    <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- A folha do risco ao ligar a chave (a mesma da tela Chaves de acesso). -->
+        <c:FolhaView x:Name="FolhaChave" x:DataType="telas:ChavesViewModel" Aberta="{Binding FolhaAberta}" Fechar="{Binding DesistirFolha}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding FolhaTitulo}" />
+                <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 14" Padding="14,10">
+                    <Label Style="{StaticResource tipo-texto-risco}" Text="{Binding FolhaRisco}" />
+                </Border>
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:ChavesViewModel.TextoConfirmar}"
+                        Command="{Binding ConfirmarFolha}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:ChavesViewModel.TextoDesistir}"
+                        Command="{Binding DesistirFolha}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › Aparelho › Senha (EXPERIENCE, State Patterns › Troca de senha): travada com a chave desligada.
+    Com a chave: a senha atual e a nova (4 caracteres, mascarados, a nova duas vezes), a folha "Uma senha perdida
+    tranca o aparelho." e o app guarda a nova depois que o aparelho aceita. Nenhuma senha aparece numa frase.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.AparelhoPage"
+             x:DataType="telas:AparelhoViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid>
+        <Grid RowDefinitions="Auto,*,Auto">
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="Senha" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="A senha do processador (4 letras ou números)" />
+                </VerticalStackLayout>
+            </Grid>
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="12">
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding MotivoTravaSenha}"
+                           IsVisible="{Binding MotivoTravaSenha, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <Border Style="{StaticResource cartao}">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Style="{StaticResource tipo-linha-titulo}" Text="Senha atual" />
+                            <Entry x:Name="Atual" Style="{StaticResource entrada}" IsPassword="True" MaxLength="4"
+                                   IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" Text="{Binding SenhaAtual}" />
+                            <Label Style="{StaticResource tipo-linha-titulo}" Text="Senha nova" />
+                            <Entry x:Name="Nova" Style="{StaticResource entrada}" IsPassword="True" MaxLength="4"
+                                   IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" Text="{Binding SenhaNova}" />
+                            <Label Style="{StaticResource tipo-linha-titulo}" Text="Senha nova outra vez" />
+                            <Entry x:Name="Confirmacao" Style="{StaticResource entrada}" IsPassword="True" MaxLength="4"
+                                   IsSpellCheckEnabled="False" IsTextPredictionEnabled="False" Text="{Binding SenhaNovaConfirmacao}" />
+                            <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroSenha}"
+                                   IsVisible="{Binding ErroSenha, Converter={StaticResource TemTexto}}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Com a senha nova aceita, o app guarda ela no celular." />
+                </VerticalStackLayout>
+            </ScrollView>
+            <Button Grid.Row="2" Style="{StaticResource botao-principal}" Margin="16,8,16,12" Text="Trocar a senha"
+                    Command="{Binding TrocarSenha}">
+                <Button.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding PodeTrocarSenha}" Value="False">
+                        <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                        <Setter Property="TextColor" Value="{StaticResource apoio}" />
+                    </DataTrigger>
+                </Button.Triggers>
+            </Button>
+        </Grid>
+
+        <c:FolhaView Aberta="{Binding FolhaAberta}" Fechar="{Binding CancelarFolha}">
+            <c:FolhaAparelhoView />
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

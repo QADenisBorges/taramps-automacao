@@ -2,7 +2,8 @@
 <!--
     A Mesa (DESIGN, Layout › Mesa; canal-da-mesa, master): no topo, MEMÓRIA EM USO e os mesmos botões de
     memória do Início; um canal por saída do Setup, em colunas iguais (nome na cor, campo do ganho, fader vertical, resumo,
-    Ajustar) e o MASTER embaixo. A faixa de monitoração e os chips são da próxima versão.
+    Ajustar) e o MASTER embaixo. Entre os canais e o MASTER, a faixa de monitoração (voltímetro e clip por saída);
+    o ponto de clip aceso aparece também no topo da coluna do canal.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -10,7 +11,7 @@
              xmlns:c="clr-namespace:BgsControle.App.Controles"
              x:Class="BgsControle.App.Telas.MesaView"
              x:DataType="telas:MesaViewModel">
-    <Grid RowDefinitions="Auto,*,Auto" Padding="16,8,16,12" RowSpacing="12">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Padding="16,8,16,12" RowSpacing="12">
 
         <VerticalStackLayout Spacing="6">
             <HorizontalStackLayout Spacing="8">
@@ -28,6 +29,9 @@
                             FlexLayout.Grow="1" FlexLayout.Basis="0" Margin="4,0">
                         <Grid RowDefinitions="4,Auto,Auto,Auto,*,Auto,Auto,Auto" RowSpacing="6">
                             <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                            <!-- O ponto de clip no topo da coluna (o mesmo da faixa de monitoração). -->
+                            <Ellipse Grid.Row="1" WidthRequest="8" HeightRequest="8" HorizontalOptions="End" VerticalOptions="Start"
+                                     Margin="0,6,8,0" Fill="{StaticResource parar}" IsVisible="{Binding Clip}" />
                             <VerticalStackLayout Grid.Row="1" Padding="8,8,8,0" Spacing="2">
                                 <Label Style="{StaticResource tipo-nome-canal}" Text="{Binding Nome}" HorizontalTextAlignment="Center"
                                        TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
@@ -72,8 +76,11 @@
             </BindableLayout.ItemTemplate>
         </FlexLayout>
 
+        <!-- A faixa de monitoração: voltímetro e clip por saída do Setup (tocar abre Voltímetro e clip). -->
+        <c:FaixaMonitoracaoView Grid.Row="2" BindingContext="{Binding Monitoracao}" />
+
         <!-- O MASTER: todas as saídas, −80,0 a 0,0 dB. -->
-        <Border Grid.Row="2" BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 22"
+        <Border Grid.Row="3" BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 22"
                 Padding="14,8" BindingContext="{Binding Master}">
             <VerticalStackLayout x:DataType="telas:ControleParametroViewModel" Spacing="4">
                 <Grid ColumnDefinitions="*,*,100" ColumnSpacing="10" MinimumHeightRequest="60">

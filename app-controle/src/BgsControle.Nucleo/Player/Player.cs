@@ -20,6 +20,10 @@ public enum EstadoPlayer
 /// desconectado), nada de playlist nem de comandos.</item>
 /// <item>Se a memória em uso muda (inclusive para nenhuma), o Player para na hora e passa a mostrar
 /// a playlist da nova memória, parado (decisão do Denis, 22/10).</item>
+/// <item>A <b>queda do BLE</b> não conta como troca (decisão do Denis, 24/10/2026): o Player continua
+/// tocando a playlist da memória que estava em uso, e ela fica na tela. Ele fica com ela até uma
+/// memória do celular entrar em uso depois de reconectar (aplicada, conferida ou escolhida): se é
+/// outra, para e passa à playlist dela; se é a mesma, segue tocando.</item>
 /// <item>No fim de uma faixa, segue para a próxima; depois da última, para, e o próximo Tocar
 /// recomeça pela primeira.</item>
 /// <item>Uma faixa que o reprodutor recusa (o arquivo sumiu) fica marcada "Arquivo não encontrado"
@@ -51,6 +55,7 @@ public sealed class Player : IDisposable
     private readonly object _trava = new();
     private readonly HashSet<string> _indisponiveis = [];
     private string? _memoria;
+    private bool _retida;
     private EstadoPlayer _estado = EstadoPlayer.Parado;
     private Faixa? _atual;
     private string? _aviso;
@@ -71,13 +76,29 @@ public sealed class Player : IDisposable
     /// <summary>O estado, a faixa atual, a memória ou o aviso mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
-    /// <summary>A memória do celular cuja playlist o Player mostra (o id): a em uso. Null = nenhuma.</summary>
+    /// <summary>
+    /// A memória do celular cuja playlist o Player mostra (o id): a em uso, ou, depois de uma queda, a
+    /// que estava em uso (<see cref="Retida"/>). Null = nenhuma.
+    /// </summary>
     public string? Memoria
     {
         get
         {
             lock (_trava)
                 return _memoria;
+        }
+    }
+
+    /// <summary>
+    /// O Player ficou com a memória de antes de a conexão cair (decisão do Denis, 24/10/2026), até uma
+    /// memória do celular entrar em uso depois de reconectar.
+    /// </summary>
+    public bool Retida
+    {
+        get
+        {
+            lock (_trava)
+                return _retida;
         }
     }
 
@@ -225,11 +246,43 @@ public sealed class Player : IDisposable
     private async Task SincronizarAsync()
     {
         var emUso = MemoriaEmUso();
+        var aberta = _setups.ConexaoAberta;
         bool trocou;
+        bool reteve = false;
         lock (_trava)
         {
-            trocou = emUso != _memoria;
-            _memoria = emUso;
+            if (_retida && emUso is null)
+            {
+                // Depois da queda, até uma memória do celular entrar em uso: fica com a de antes.
+                trocou = false;
+            }
+            else if (!_retida && emUso is null && _memoria is not null && !aberta)
+            {
+                // A conexão caiu: a memória em uso foi a "nenhuma" só por isso. A playlist fica.
+                _retida = true;
+                reteve = true;
+                trocou = false;
+            }
+            else
+            {
+                _retida = false;
+                trocou = emUso != _memoria;
+                _memoria = emUso;
+            }
+        }
+        if (reteve)
+        {
+            _log.Evento($"player: a conexão caiu; continua com a playlist da {NomeMemoria(Memoria!)}");
+            Notificar();
+        }
+        if (Retida)
+        {
+            if (Atual is { } faixa && Memoria is { } m && Posicao(_playlists.Playlist(m), faixa.Id) < 0)
+            {
+                await PararAsync();
+                _log.Evento("player: a faixa atual saiu da playlist; parado");
+            }
+            return;
         }
         if (trocou)
         {
@@ -250,8 +303,10 @@ public sealed class Player : IDisposable
 
     private void AoMudarMemoria()
     {
-        if (MemoriaEmUso() != Memoria)
-            _ = Executar(() => Task.CompletedTask); // o Sincronizar para o Player na hora
+        var emUso = MemoriaEmUso();
+        // O Sincronizar para o Player na hora; depois da queda, também solta a memória retida.
+        if (emUso != Memoria || (Retida && emUso is not null))
+            _ = Executar(() => Task.CompletedTask);
     }
 
     private void AoMudarPlaylists()

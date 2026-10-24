@@ -2,8 +2,8 @@
 <!--
     A casca (DESIGN, barra-inferior, topo-do-app; EXPERIENCE, Information Architecture): o topo com a marca, a
     pílula de status e a engrenagem (no Início, em duas linhas, com o seletor de Setup), os destinos Início ·
-    Mesa · Áudio (trocar não perde o estado de cada um) e a barra inferior. A lista de memórias ("…") sobe por
-    cima como folha.
+    Mesa · Áudio · Player (trocar não perde o estado de cada um) e a barra inferior. A lista de memórias ("…") e
+    a folha de presets do chip sobem por cima como folhas.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -68,12 +68,15 @@
                 <ContentView IsVisible="{Binding NoAudio}">
                     <t:AudioView BindingContext="{Binding Audio}" />
                 </ContentView>
+                <ContentView IsVisible="{Binding NoPlayer}">
+                    <t:PlayerView BindingContext="{Binding Player}" />
+                </ContentView>
             </Grid>
 
             <!-- A barra inferior. -->
             <VerticalStackLayout Grid.Row="3">
                 <BoxView HeightRequest="1" Color="{StaticResource sup-3}" />
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Padding="16,14" HeightRequest="72">
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" Padding="16,14" HeightRequest="72">
                     <Button Style="{StaticResource pilula-nav}" Text="Início" Command="{Binding IrInicio}">
                         <Button.Triggers>
                             <DataTrigger TargetType="Button" Binding="{Binding NoInicio}" Value="True">
@@ -98,6 +101,14 @@
                             </DataTrigger>
                         </Button.Triggers>
                     </Button>
+                    <Button Grid.Column="3" Style="{StaticResource pilula-nav}" Text="Player" Command="{Binding IrPlayer}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding NoPlayer}" Value="True">
+                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
                 </Grid>
             </VerticalStackLayout>
         </Grid>
@@ -105,6 +116,11 @@
         <!-- A lista de memórias do "…" (Início e Mesa). -->
         <c:FolhaView Aberta="{Binding Memorias.ListaAberta}" Fechar="{Binding Memorias.FecharLista}">
             <c:ListaMemoriasView BindingContext="{Binding Memorias}" />
+        </c:FolhaView>
+
+        <!-- A folha de presets do chip "Preset: Cinema ▾" (Início). -->
+        <c:FolhaView Aberta="{Binding Inicio.Presets.FolhaAberta}" Fechar="{Binding Inicio.Presets.FecharFolha}">
+            <c:PresetsFolhaView BindingContext="{Binding Inicio.Presets}" />
         </c:FolhaView>
     </Grid>
 </ContentPage>

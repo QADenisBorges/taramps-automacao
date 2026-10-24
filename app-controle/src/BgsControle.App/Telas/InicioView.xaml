@@ -94,7 +94,7 @@
                         <Label Style="{StaticResource tipo-apoio}" Text="{Binding LinhaMemoria}"
                                IsVisible="{Binding LinhaMemoria, Converter={StaticResource TemTexto}}" />
 
-                        <!-- O chip de preset (a folha de presets é da próxima versão). -->
+                        <!-- O chip de preset: tocar abre a folha de presets (só as 15 bandas, por cima da memória). -->
                         <Border IsVisible="{Binding MostrarChip}" HorizontalOptions="Start" BackgroundColor="{StaticResource palco}"
                                 Stroke="{StaticResource campo-borda}" StrokeThickness="1" StrokeShape="RoundRectangle 22"
                                 Padding="14,0" HeightRequest="44">
@@ -103,7 +103,15 @@
                                 <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding NomePreset}" VerticalTextAlignment="Center" />
                                 <Label Text="▾" TextColor="{StaticResource apoio}" VerticalTextAlignment="Center" />
                             </HorizontalStackLayout>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding AbrirPresets}" />
+                            </Border.GestureRecognizers>
                         </Border>
+                        <!-- "Preset Rock aplicado na FILME." (ou o motivo da trava). -->
+                        <ContentView BindingContext="{Binding Presets}">
+                            <Label x:DataType="telas:PresetsViewModel" Style="{StaticResource tipo-detalhe}" Text="{Binding Mensagem}"
+                                   IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                        </ContentView>
 
                         <!-- Som diferente da memória ativa: o lembrete com Reaplicar. -->
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"

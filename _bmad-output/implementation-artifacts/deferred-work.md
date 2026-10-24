@@ -49,14 +49,17 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
   summary: O reprodutor e o seletor de áudio do Android (`ReprodutorAndroid` com MediaPlayer, `SeletorAudioAndroid` com ACTION_OPEN_DOCUMENT e TakePersistableUriPermission, duração pelo MediaMetadataRetriever) e o DI do Player no MauiProgram.
   evidence: Separado da 8b pelo tamanho da spec (~2.900 tokens); o stories.yaml deixa na 8b só o núcleo e o ViewModel. Entra com as telas na história 11. Não usar o FilePicker do MAUI, que copia o arquivo para o cache.
+  status: feito na 11. `Platforms/Android/ReprodutorAndroid.cs` (MediaPlayer, wake lock parcial) e `SeletorMusicas.cs` (ACTION_OPEN_DOCUMENT, `audio/*`, vários, TakePersistableUriPermission, nome, pasta e duração); o `Player` e o `PlayerViewModel` registrados no MauiProgram. Sem celular no adb: o áudio real não foi ouvido (história 12).
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
   summary: Música com o app em segundo plano, com tocar/pausar e próxima na notificação do Android (serviço de mídia, FOREGROUND_SERVICE_MEDIA_PLAYBACK, POST_NOTIFICATIONS).
   evidence: Decisão do Denis em 22/10 no plano da 8b: fica para a história 11 ou 12; na 8b a música toca só com o app aberto.
+  status (história 11): a música segue com o app em segundo plano enquanto o Android deixar (sem serviço). A notificação de mídia e o serviço em primeiro plano continuam para depois (Never da spec da 11).
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
   summary: O contrato do IReprodutor não diz o que fazer quando o tocar lança exceção nem quando o som cai no meio da faixa (arquivo apagado, perda do foco de áudio, queda do Bluetooth); o Player ficaria Tocando sem som e sem frase na tela.
   evidence: Não verificado (maybe-false; seria medium). Hoje o TocarAsync que lança é engolido pelo Executar do Player (só log), e o IReprodutor só tem o evento Terminou. Quem resolve é o ReprodutorAndroid da história 11: nunca lançar (devolver false) e ganhar um evento de erro ou interrupção, com teste no Player.
+  status (história 11): em parte. O `ReprodutorAndroid` nunca lança no TocarAsync (devolve false; a SecurityException vira o aviso "Sem permissão"). O evento de erro ou interrupção no meio da faixa continua aberto.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8b-player-playlist-por-memoria.md`
   summary: O título "Playlist da Memória N" (memória em uso sem nome lido) não tem teste.
@@ -74,10 +77,12 @@
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9b-porta-de-comandos-da-ia.md`
   summary: O MauiProgram ainda não registra a porta da IA: `Pareamento` (porta-ia.json, `RepositorioTextoArquivos.ArquivoPortaIa`), `PedidosConfirmacao`, `RedeLocal` como `IRedeLocal`, `PortaComandos` (porta 8787, criada cedo, depois das chaves, do uso e do histórico), `IaPelaRedeViewModel` e `ConfirmacaoIaViewModel` (a folha sobre qualquer tela).
   evidence: A spec da 9b deixa XAML, navegação e MauiProgram para a história 11 (Never). Até lá, o app real não abre a porta mesmo com a chave "IA pela rede" ligada. O manifesto já tem INTERNET e ACCESS_NETWORK_STATE.
+  status: feito na 11. O MauiProgram registra o `Pareamento`, os `PedidosConfirmacao`, a `RedeLocal`, a `PortaComandos` (criada cedo) e os ViewModels da IA; a folha de confirmação e a IA ativa sobem por cima de tudo.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/9a-historico-estado-ao-vivo-uso-simultaneo.md`
   summary: O MauiProgram ainda não cria o Historico (historico.json) nem o UsoCompartilhado (uso-ia.json), não os passa à Sessao, e ninguém chama Historico.GravarAgoraAsync ao sair do app.
   evidence: A spec da 9a deixa o MauiProgram para a história 11 (Never). Até lá, o app real não tem histórico nem trava, e uma entrada dos últimos 2 s se perde ao fechar o app.
+  status: feito na 11. O `Historico` e o `UsoCompartilhado` vão para a `Sessao`; o `App` chama `Historico.GravarAgoraAsync` ao ir para o segundo plano e ao fechar.
 
 - source_spec: `_bmad-output/specs/spec-app-controle-taramps/stories/8c-setup-e-memoria-no-celular.md`
   summary: Com o link 1–2 ligado e um equilíbrio L/R diferente de 0, o link copia o valor final da saída 1 (mestre) para a saída 2 e perde o equilíbrio na outra saída (o ganho e o limiter da JBL R ficam iguais aos da JBL L, sem os −3 dB do Casa 2.1).

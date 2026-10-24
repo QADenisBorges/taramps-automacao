@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › Chaves de acesso (EXPERIENCE, Linha de chave; telas-chave 5a, 5b; chaves-de-acesso.md): as 11
+    chaves, cada uma com o par Desl. · Lig. (o escolhido em branco) e o risco escrito (em erro-texto nas que vêm
+    desligadas). Ligar uma chave com risco abre a folha com o aviso ("Ligar a chave" ou "Deixar desligada");
+    desligar age direto. A IA nunca muda uma chave.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.ChavesPage"
+             x:DataType="telas:ChavesViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <ContentPage.Resources>
+        <Style x:Key="par" TargetType="Button" BasedOn="{StaticResource botao-contornado-pequeno}">
+            <Setter Property="BorderColor" Value="{StaticResource sup-2}" />
+            <Setter Property="WidthRequest" Value="56" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </ContentPage.Resources>
+    <Grid>
+        <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="Chaves de acesso" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Só você liga e desliga. A IA passa pelas mesmas chaves." />
+                </VerticalStackLayout>
+            </Grid>
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="10">
+                    <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 18">
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Itens}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:ItemChaveViewModel">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Padding="16,10" MinimumHeightRequest="52">
+                                        <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                            <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}" />
+                                            <Label Style="{StaticResource tipo-risco-chave}" Text="{Binding Risco}"
+                                                   IsVisible="{Binding Risco, Converter={StaticResource TemTexto}}">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding PadraoDesligada}" Value="True">
+                                                        <Setter Property="TextColor" Value="{StaticResource erro-texto}" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Label Style="{StaticResource tipo-risco-chave}" Text="{Binding Observacao}"
+                                                   IsVisible="{Binding Observacao, Converter={StaticResource TemTexto}}" />
+                                        </VerticalStackLayout>
+                                        <HorizontalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center"
+                                                               SemanticProperties.Description="{Binding TextoEstado}">
+                                            <Button Style="{StaticResource par}" Text="Desl." Command="{Binding Desligar}">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligada}" Value="False">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                            <Button Style="{StaticResource par}" Text="Lig." Command="{Binding Ligar}">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligada}" Value="True">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                        </HorizontalStackLayout>
+                                        <BoxView Grid.ColumnSpan="2" HeightRequest="1" VerticalOptions="End" Margin="-16,0,-16,-10"
+                                                 Color="{StaticResource sup-3}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Border>
+                    <Label Style="{StaticResource tipo-detalhe}"
+                           Text="Com a chave desligada, a operação é recusada antes de qualquer envio, pela tela e pela IA." />
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- A folha do risco ao ligar. -->
+        <c:FolhaView Aberta="{Binding FolhaAberta}" Fechar="{Binding DesistirFolha}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding FolhaTitulo}" />
+                <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 14" Padding="14,10">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Label Text="⚠" TextColor="{StaticResource parar}" FontSize="18" VerticalTextAlignment="Center" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-texto-risco}" Text="{Binding FolhaRisco}" />
+                    </Grid>
+                </Border>
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:ChavesViewModel.TextoConfirmar}"
+                        Command="{Binding ConfirmarFolha}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:ChavesViewModel.TextoDesistir}"
+                        Command="{Binding DesistirFolha}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

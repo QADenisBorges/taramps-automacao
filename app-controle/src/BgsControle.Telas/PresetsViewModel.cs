@@ -23,6 +23,8 @@ public sealed class ItemPresetViewModel : TelaBase
         Aplicar = new Comando(() => tela.AplicarAsync(Id));
         Renomear = new Comando(() => tela.AbrirRenomear(Id));
         Apagar = new Comando(() => tela.AbrirApagar(Id));
+        Escolher = new Comando(() => tela.EscolherNaFolhaAsync(Id));
+        Exportar = new Comando(() => tela.ExportarAsync(Id));
     }
 
     public string Id { get; }
@@ -49,6 +51,7 @@ public sealed class ItemPresetViewModel : TelaBase
                 return;
             _emUso = value;
             Avisar();
+            Avisar(nameof(Detalhe));
         }
     }
 
@@ -85,6 +88,15 @@ public sealed class ItemPresetViewModel : TelaBase
 
     /// <summary>Abre a folha "Apagar o preset X?" (só os próprios que nenhuma memória lembra; senão, o motivo).</summary>
     public Comando Apagar { get; }
+
+    /// <summary>Tocar na linha da folha de presets (o chip): aplica e fecha; o em uso só fecha.</summary>
+    public Comando Escolher { get; }
+
+    /// <summary>Exportar: grava o preset como arquivo JSON (não <c>.trps</c>) e abre o compartilhar.</summary>
+    public Comando Exportar { get; }
+
+    /// <summary>O detalhe da linha de escolha: "Em uso" ou "Herdado dos protótipos", ou null.</summary>
+    public string? Detalhe => EmUso ? PresetsViewModel.TextoEmUso : null;
 }
 
 /// <summary>
@@ -107,6 +119,15 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     public const string TextoVoltar = "Voltar à cópia";
     public const string MsgEmAndamento = "Uma operação está em andamento";
     public const string MsgVoltou = "O som voltou à cópia.";
+    public const string TextoEmUso = "Em uso";
+    public const string TextoExportar = "Exportar";
+    public const string MsgSemExportar = "Exportar não está disponível neste aparelho.";
+
+    /// <summary>"Preset Rock exportado."</summary>
+    public static string MsgExportado(string nome) => $"Preset {nome} exportado.";
+
+    /// <summary>O nome do arquivo do preset exportado: "preset-Rock.json" (espaço vira _).</summary>
+    public static string NomeArquivo(string nome) => $"preset-{nome.Replace(' ', '_')}.json";
 
     private readonly GerentePresets _gerente;
     private readonly GerenteSetups _setups;
@@ -114,6 +135,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     private readonly Sessao _sessao;
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
+    private readonly IExportarArquivo? _exportar;
 
     private readonly Dictionary<string, ItemPresetViewModel> _porId = [];
     private IReadOnlyList<ItemPresetViewModel> _itens = [];
@@ -124,6 +146,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
     private string? _erroRenomear;
     private string? _apagar;
     private bool _agindo;
+    private bool _folha;
 
     public PresetsViewModel(
         GerentePresets gerente,
@@ -133,10 +156,12 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
         IChaves chaves,
         EstadoAparelho estado,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        IExportarArquivo? exportar = null)
         : base(despachante, relogio)
     {
         _gerente = gerente;
+        _exportar = exportar;
         _setups = setups;
         _copia = copia;
         _sessao = sessao;
@@ -149,6 +174,8 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
         CancelarApagar = new Comando(FecharApagar);
         Terminar = new Comando(TerminarAsync);
         VoltarACopia = new Comando(VoltarAsync);
+        AbrirFolha = new Comando(AbrirAFolha);
+        FecharFolha = new Comando(FecharAFolha);
 
         _ultimoAvisoGerente = _gerente.Aviso;
         _gerente.Mudou += AoMudarAlgo;
@@ -239,6 +266,90 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
 
     /// <summary>"Preset Rock aplicado na FILME."</summary>
     public static string MsgAplicadoNa(string preset, string memoria) => $"Preset {preset} aplicado na {memoria}.";
+
+    // ------------------------------------------------------------------ folha de presets (o chip)
+
+    /// <summary>A folha de presets do chip "Preset: Cinema ▾" (Início) está aberta.</summary>
+    public bool FolhaAberta
+    {
+        get => _folha;
+        private set
+        {
+            if (_folha == value)
+                return;
+            _folha = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>"Preset da FILME" (a memória do celular em uso), ou "Presets".</summary>
+    public string TituloFolha => _setups.MemoriaEmUso is { } m ? $"Preset da {m.Nome}" : "Presets";
+
+    /// <summary>"Só as 15 bandas mudam, por cima da memória."</summary>
+    public string ApoioFolha => "Só as 15 bandas mudam, por cima da memória. A memória passa a lembrar o preset.";
+
+    /// <summary>Tocar no chip: abre a folha, com a lista e o preset em uso em branco.</summary>
+    public Comando AbrirFolha { get; }
+
+    /// <summary>O véu ou o Voltar: fecha sem mudar nada.</summary>
+    public Comando FecharFolha { get; }
+
+    private void AbrirAFolha()
+    {
+        Mensagem = null;
+        FolhaAberta = true;
+        Avisar(nameof(TituloFolha));
+    }
+
+    private void FecharAFolha() => FolhaAberta = false;
+
+    /// <summary>
+    /// Tocar numa linha da folha: o em uso só fecha; outro preset fecha a folha e aplica (sem
+    /// confirmação, cópia antes, releitura). Travado, a folha fica aberta com o motivo.
+    /// </summary>
+    public async Task EscolherNaFolhaAsync(string id)
+    {
+        if (id == _setups.IdPresetEmUso)
+        {
+            FolhaAberta = false;
+            return;
+        }
+        if (MotivoTravaAplicar is { } motivo)
+        {
+            Mensagem = motivo;
+            return;
+        }
+        FolhaAberta = false;
+        await AplicarAsync(id);
+    }
+
+    // ------------------------------------------------------------------ exportar
+
+    /// <summary>Exportar: o preset em JSON (formato próprio, não <c>.trps</c>) para o compartilhar do Android. Nada vai pelo BLE.</summary>
+    public async Task ExportarAsync(string id)
+    {
+        if (_gerente.Obter(id) is not { } preset || _gerente.ExportarJson(id) is not { } json)
+        {
+            Mensagem = GerentePresets.MsgNaoExiste;
+            return;
+        }
+        if (_exportar is null)
+        {
+            Mensagem = MsgSemExportar;
+            return;
+        }
+        string? motivo;
+        try
+        {
+            motivo = await _exportar.ExportarAsync(NomeArquivo(preset.Nome), json);
+        }
+        catch (Exception e)
+        {
+            motivo = $"Erro inesperado ({e.GetType().Name}).";
+        }
+        var frase = motivo ?? MsgExportado(preset.Nome);
+        NaTela(() => Mensagem = frase);
+    }
 
     // ------------------------------------------------------------------ renomear
 
@@ -522,6 +633,7 @@ public sealed class PresetsViewModel : TelaBase, IDisposable
             FecharApagar();
 
         Avisar(nameof(TextoVazio));
+        Avisar(nameof(TituloFolha));
         Avisar(nameof(MotivoTravaAplicar));
         Avisar(nameof(PodeAplicar));
         Avisar(nameof(Ocupado));

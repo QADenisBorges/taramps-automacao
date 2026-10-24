@@ -9,10 +9,12 @@ using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
+using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
+using BgsControle.Nucleo.Uso;
 using BgsControle.Telas;
 using Microsoft.Extensions.Logging;
 
@@ -36,11 +38,25 @@ public static class MauiProgram
         // As chaves de acesso (CAP-11), em JSON nos arquivos privados. A trava da sessão pergunta a elas.
         builder.Services.AddSingleton<IRepositorioChaves, RepositorioChavesArquivos>();
         builder.Services.AddSingleton<IChaves, Chaves>();
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<IArquivosApp, ArquivosMaui>();
+        // História 11 (as peças das histórias 9a e 9b): o histórico de cada comando e o uso ao mesmo tempo com a
+        // IA, que a sessão consulta em cada escrita. Em historico.json e uso-ia.json, nos arquivos privados.
+        builder.Services.AddSingleton(sp => new Historico(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoHistorico),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new UsoCompartilhado(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoUsoIa),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new Sessao(
             sp.GetRequiredService<ITransporte>(),
             sp.GetRequiredService<ICofreSenha>(),
             sp.GetRequiredService<LogBle>(),
-            chaves: sp.GetRequiredService<IChaves>()));
+            chaves: sp.GetRequiredService<IChaves>(),
+            historico: sp.GetRequiredService<Historico>(),
+            uso: sp.GetRequiredService<UsoCompartilhado>()));
         builder.Services.AddSingleton(sp => new LeitorCompleto(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<LogBle>()));
@@ -58,10 +74,13 @@ public static class MauiProgram
             sp.GetRequiredService<LogBle>()));
 
         // As abstrações das telas (BgsControle.Telas), com os adaptadores do MAUI e do Android.
-        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IDespachante, DespachanteMaui>();
-        builder.Services.AddSingleton<IArquivosApp, ArquivosMaui>();
         builder.Services.AddSingleton<IPreparoBluetooth, PreparoBluetoothAndroid>();
+        // História 11: o som do celular (saída e acesso às músicas), o seletor de músicas e o Exportar dos presets.
+        builder.Services.AddSingleton(_ => new AudioDoCelularAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton<IAudioDoCelular>(sp => sp.GetRequiredService<AudioDoCelularAndroid>());
+        builder.Services.AddSingleton<ISeletorAudio, SeletorMusicas>();
+        builder.Services.AddSingleton<IExportarArquivo, ExportarMaui>();
 
         // História 6: a cópia antes de mexer, o link de canais e as memórias, com o estado em
         // JSON nos arquivos privados.
@@ -127,6 +146,17 @@ public static class MauiProgram
             sp.GetRequiredService<LogBle>(),
             sp.GetRequiredService<GerenteMemorias>()));
 
+        // História 11: o reprodutor real (o MediaPlayer do Android) e o Player, que toca a playlist da memória do
+        // celular em uso (e segue tocando na queda do BLE, decisão do Denis de 24/10/2026).
+        builder.Services.AddSingleton<IReprodutor>(sp => new ReprodutorAndroid(
+            Android.App.Application.Context,
+            sp.GetRequiredService<AudioDoCelularAndroid>()));
+        builder.Services.AddSingleton(sp => new Player(
+            sp.GetRequiredService<GerentePlaylists>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<IReprodutor>(),
+            sp.GetRequiredService<LogBle>()));
+
         // História 7b: a monitoração (voltímetro e clip, só ouve) e os comandos de aparelho (remote
         // out, Bluetooth de áudio, resets, troca de senha e nome do produto).
         builder.Services.AddSingleton(sp => new MonitorAparelho(
@@ -169,7 +199,9 @@ public static class MauiProgram
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
             sp.GetRequiredService<MonitorAparelho>(),
             sp.GetRequiredService<IDespachante>(),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<INavegacao>()));
         builder.Services.AddSingleton(sp => new AparelhoViewModel(
             sp.GetRequiredService<ComandosAparelho>(),
             sp.GetRequiredService<Sessao>(),
@@ -201,6 +233,56 @@ public static class MauiProgram
         builder.Services.AddSingleton<MemoriasPage>();
         builder.Services.AddSingleton<ConexaoPage>();
 
+        // História 11: a porta de comandos da IA (CAP-12; escuta na 8787 só com a chave "IA pela rede"), o
+        // pareamento em porta-ia.json e a folha de confirmação dos pedidos de risco.
+        builder.Services.AddSingleton(sp => new Pareamento(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPortaIa),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new PedidosConfirmacao(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp => new PortaComandos(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<UsoCompartilhado>(),
+            sp.GetRequiredService<Historico>(),
+            sp.GetRequiredService<Pareamento>(),
+            sp.GetRequiredService<PedidosConfirmacao>(),
+            new RedeLocal(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<GerenteMemorias>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<GeradorSinal>(),
+            sp.GetRequiredService<ComandosAparelho>(),
+            sp.GetRequiredService<MonitorAparelho>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<TimeProvider>()));
+
+        // História 11: os ViewModels que só faltavam ligar (Player, IA pela rede, confirmação da IA, IA ativa,
+        // histórico) e as páginas novas. Singletons, como os da história 10.
+        builder.Services.AddSingleton<PlayerViewModel>();
+        builder.Services.AddSingleton(sp => new IaPelaRedeViewModel(
+            sp.GetRequiredService<PortaComandos>(),
+            sp.GetRequiredService<UsoCompartilhado>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton(sp => new ConfirmacaoIaViewModel(
+            sp.GetRequiredService<PedidosConfirmacao>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton<IaAtivaViewModel>();
+        builder.Services.AddSingleton<HistoricoViewModel>();
+        builder.Services.AddSingleton<GeradorPage>();
+        builder.Services.AddSingleton<PresetsPage>();
+        builder.Services.AddSingleton<AparelhoPage>();
+        builder.Services.AddSingleton<MonitoracaoPage>();
+        builder.Services.AddSingleton<ChavesPage>();
+        builder.Services.AddSingleton<IaPelaRedePage>();
+        builder.Services.AddSingleton<HistoricoPage>();
+        builder.Services.AddSingleton<IaAtivaPage>();
+        builder.Services.AddSingleton<ConfirmacaoIaPage>();
+        builder.Services.AddSingleton<AlarmeGeradorPage>();
+
         var app = builder.Build();
         // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.
         var logTela = app.Services.GetRequiredService<LogBle>();
@@ -222,6 +304,10 @@ public static class MauiProgram
         app.Services.GetRequiredService<GeradorSinal>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.
         app.Services.GetRequiredService<MonitorAparelho>();
+        // História 11: o Player cedo (acompanha a memória em uso desde a primeira conferência) e a porta da IA
+        // (abre sozinha se a chave "IA pela rede" já estiver ligada).
+        app.Services.GetRequiredService<Player>();
+        app.Services.GetRequiredService<PortaComandos>();
         return app;
     }
 }

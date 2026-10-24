@@ -16,5 +16,6 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnActivityResult(requestCode, resultCode, data);
         PedidoLigarBluetooth.Resultado(requestCode, resultCode);
+        SeletorMusicas.Resultado(requestCode, resultCode, data);
     }
 }

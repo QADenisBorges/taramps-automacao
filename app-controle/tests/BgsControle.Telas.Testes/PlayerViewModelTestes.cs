@@ -271,19 +271,53 @@ public sealed class PlayerViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Ao_desconectar_nao_ha_mais_memoria_do_celular_em_uso_e_o_Player_para()
+    public async Task BLE_cai_tocando_a_faixa_2_continua_tocando_e_a_playlist_da_FILME_fica_na_tela()
+    {
+        // Decisão do Denis (24/10/2026): a queda não troca nem limpa a playlist do Player.
+        await FilmeCom(3);
+        await _vm.Linhas[1].Tocar.ExecutarAsync();
+        Assert.Equal(Uri(2), _reprodutor.Tocando);
+
+        await _b.Sessao.DesconectarAsync();
+        await Apoio.Esperar(() => _player.Retida);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(_vm.TemMemoria);
+        Assert.Equal("Playlist da FILME", _vm.Titulo);
+        Assert.Equal(3, _vm.Linhas.Count);
+        Assert.True(_vm.Linhas[1].Tocando);
+        Assert.Equal(Uri(2), _reprodutor.Tocando);
+        Assert.Equal(0, _reprodutor.Paradas);
+        Assert.Equal(PlayerViewModel.TextoPausar, _vm.TextoTocarPausar);
+
+        // Desconectado, os controles seguem valendo.
+        await _vm.Proxima.ExecutarAsync();
+        Assert.Equal(Uri(3), _reprodutor.Tocando);
+    }
+
+    [Fact]
+    public async Task Reconectar_na_FILME_segue_tocando_e_aplicar_outra_memoria_depois_para_e_mostra_a_playlist_dela()
     {
         await FilmeCom(2);
+        var show = await CriarShow();
+        await Aplicar(Filme);
         await _vm.TocarPausar.ExecutarAsync();
         Assert.Equal(Uri(1), _reprodutor.Tocando);
 
         await _b.Sessao.DesconectarAsync();
-        await Apoio.Esperar(() => _player.Memoria is null && _player.Estado == EstadoPlayer.Parado);
+        await Apoio.Esperar(() => _player.Retida);
+        await _b.Conectar(); // a conferência confere a FILME: a mesma memória, segue tocando
+        await Apoio.Esperar(() => !_player.Retida);
         await _b.Tela.EsvaziarAsync();
+        Assert.Equal("Playlist da FILME", _vm.Titulo);
+        Assert.Equal(Uri(1), _reprodutor.Tocando);
+        Assert.Equal(0, _reprodutor.Paradas);
 
-        Assert.False(_vm.TemMemoria);
+        await Aplicar(show);
+
+        Assert.Equal("Playlist da SHOW", _vm.Titulo);
         Assert.Null(_reprodutor.Tocando);
-        Assert.Equal(SemMemoria, _vm.TextoAviso);
+        Assert.Equal(EstadoPlayer.Parado, _vm.Estado);
     }
 
     [Fact]

@@ -951,7 +951,7 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Criar_Setup_com_o_link_1_2_ligado_guarda_o_link_e_ele_sobrevive_ao_JSON()
+    public async Task Criar_Setup_com_o_link_1_2_ligado_antes_nasce_com_os_links_desligados_e_eles_sobrevivem_ao_JSON()
     {
         await Conectar();
         Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
@@ -959,13 +959,24 @@ public sealed partial class SetupsTestes : IDisposable
 
         Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
 
+        // Decisão do Denis (24/10/2026): um Setup criado do aparelho nasce com os links desligados.
         var carro = _setups.SetupEmUso!;
-        Assert.True(carro.Link12);
-        Assert.True(carro.Link34); // o link que vale agora: o do Casa 2.1 (Link 3–4 ligado, história 8e)
-        Assert.Empty(carro.Equipamentos); // nasce sem equipamentos: as saídas são CH1 + CH2 e CH3 + CH4
+        Assert.False(carro.Link12);
+        Assert.False(carro.Link34);
+        Assert.False(_link.Ligado(ParCanais.Saidas12));
+        Assert.False(_link.Ligado(ParCanais.Saidas34));
+        Assert.Empty(carro.Equipamentos); // nasce sem equipamentos: as saídas são CH1 a CH4
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _setups.SaidasEmUso.Select(s => s.Nome));
         var relido = GerenteSetups.DeJson(GerenteSetups.ParaJson(_setups.Dados))!.Setups.Single(s => s.Id == carro.Id);
-        Assert.True(relido.Link12);
-        Assert.True(relido.Link34);
+        Assert.False(relido.Link12);
+        Assert.False(relido.Link34);
+
+        // Os links ligados também sobrevivem ao JSON (quando o Salvar os guarda).
+        var ligado = carro with { Link12 = true, Link34 = true };
+        var dados = _setups.Dados with { Setups = _setups.Dados.Setups.Select(s => s.Id == carro.Id ? ligado : s).ToArray() };
+        var relidoLigado = GerenteSetups.DeJson(GerenteSetups.ParaJson(dados))!.Setups.Single(s => s.Id == carro.Id);
+        Assert.True(relidoLigado.Link12);
+        Assert.True(relidoLigado.Link34);
     }
 
     [Fact]

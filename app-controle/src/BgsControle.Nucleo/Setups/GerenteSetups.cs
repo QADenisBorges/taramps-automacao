@@ -41,6 +41,10 @@ public sealed record DadosSetups(
 /// 4 canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
 /// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.
 /// Quando o Setup confere, o link dele passa a valer no app.</item>
+/// <item><b>Links sem Setup</b> (decisão do Denis, 24/10/2026): sem Setup em uso (na dúvida, ao trocar de
+/// Setup, em Seguir sem Setup, ou sem Setup de referência), os links 1–2 e 3–4 ficam desligados: cada
+/// canal é uma saída, e nada é espelhado sem querer numa instalação desconhecida. Desistir da troca
+/// devolve os links do Setup em uso; um Setup criado do aparelho nasce com os links desligados.</item>
 /// <item><b>Aplicar</b> uma memória, <b>escolher</b> um Setup e o <b>Manter a calibração</b> do Salvar
 /// passam pela <see cref="CopiaAntes"/> (regra 3): escrevem só o que difere, relêem e conferem.</item>
 /// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho; nem adicionar, editar
@@ -339,6 +343,20 @@ public sealed class GerenteSetups
     public MemoriaCelular? MemoriaEmUso => EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso ? Memoria(uso.IdMemoria) : null;
 
     /// <summary>
+    /// A conexão com o aparelho está aberta (conectado e segurando a conexão). Quando ela cai, o som em
+    /// uso volta a "nenhum" até a conferência da conexão nova; o Player usa isto para não largar a
+    /// playlist na queda (decisão do Denis, 24/10/2026).
+    /// </summary>
+    public bool ConexaoAberta
+    {
+        get
+        {
+            lock (_trava)
+                return _aberta;
+        }
+    }
+
+    /// <summary>
     /// O id do preset em uso: o lembrado pela memória do celular em uso, ou o último aplicado nesta
     /// conexão; nenhum depois de carregar uma memória do aparelho ou de uma queda.
     /// </summary>
@@ -630,6 +648,7 @@ public sealed class GerenteSetups
                         _antes = null;
                     }
                     _log.Evento("setup: dúvida interrompida; o aparelho continua mutado");
+                    await DesligarLinksAsync();
                     return true;
                 }
                 // O mudo saiu por fora (o app da Taramps): a marca não vale mais.
@@ -645,6 +664,7 @@ public sealed class GerenteSetups
                     _setupEmUso = null;
                     _emUso = SomEmUso.SomDoAparelho;
                 }
+                await DesligarLinksAsync();
                 return true;
             }
 
@@ -694,6 +714,7 @@ public sealed class GerenteSetups
             }
             _log.Evento($"setup: em dúvida ({lista.Count} diferenças de calibração com o {referencia.Nome})"
                         + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
+            await DesligarLinksAsync();
             return true;
         }
         finally
@@ -755,6 +776,16 @@ public sealed class GerenteSetups
         else
             _log.Evento($"setup: não desmutou ({motivo}); a marca fica");
         return motivo;
+    }
+
+    /// <summary>
+    /// Sem Setup em uso, os links 1–2 e 3–4 ficam desligados (decisão do Denis, 24/10/2026). Não manda
+    /// nada ao aparelho; só a falha de guardar vai para o registro.
+    /// </summary>
+    private async Task DesligarLinksAsync()
+    {
+        if (await _link.DefinirEstadoAsync(false, false) is { } motivo)
+            _log.Evento($"setup: os links sem Setup não foram guardados ({motivo})");
     }
 
     private static bool TodosMutados(IReadOnlyDictionary<Endereco, Valor> espelho) =>
@@ -867,8 +898,9 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Criar Setup novo (na dúvida ou na troca): nasce com a calibração lida, equilíbrio 0 e o link de
-    /// agora; fica em uso, sem memórias; desmuta. Não manda nada ao aparelho além do desmutar.
+    /// Criar Setup novo (na dúvida ou na troca): nasce com a calibração lida, equilíbrio 0 e os links
+    /// desligados (decisão do Denis, 24/10/2026); fica em uso, sem memórias; desmuta. Não manda nada
+    /// ao aparelho além do desmutar.
     /// </summary>
     public async Task<ResultadoSetup> CriarSetupAsync(string? nomeDigitado)
     {
@@ -889,9 +921,8 @@ public sealed class GerenteSetups
             if (faltam > 0)
                 return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
 
-            await _link.Carregada;
             var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), calibracao, Equilibrio.Zero,
-                _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34));
+                Link12: false, Link34: false);
             var dados = Dados;
             var novos = dados with
             {
@@ -902,6 +933,7 @@ public sealed class GerenteSetups
             if (!await GravarAsync(novos))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
 
+            await DesligarLinksAsync();
             var desmutar = await DesmutarAsync();
             lock (_trava)
             {
@@ -926,7 +958,10 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Seguir sem Setup (na dúvida ou na troca): desmuta sem aplicar nada; as memórias do celular ficam travadas.</summary>
+    /// <summary>
+    /// Seguir sem Setup (na dúvida ou na troca): desmuta sem aplicar nada; as memórias do celular ficam
+    /// travadas e os links ficam desligados.
+    /// </summary>
     public async Task<ResultadoSetup> SeguirSemSetupAsync()
     {
         await Carregada;
@@ -936,6 +971,7 @@ public sealed class GerenteSetups
         {
             if (!EmEscolha)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
+            await DesligarLinksAsync();
             var desmutar = await DesmutarAsync();
             lock (_trava)
             {
@@ -959,7 +995,10 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Tocar no Setup com o app conectado: guarda a marca, muta e abre "Trocar de Setup".</summary>
+    /// <summary>
+    /// Tocar no Setup com o app conectado: guarda a marca, muta, desliga os links (sem Setup em uso
+    /// durante a escolha) e abre "Trocar de Setup".
+    /// </summary>
     public async Task<ResultadoSetup> TrocarAsync()
     {
         await Carregada;
@@ -992,6 +1031,7 @@ public sealed class GerenteSetups
                 _antes = antes;
             }
             _log.Evento("setup: trocando de Setup" + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
+            await DesligarLinksAsync();
             return Terminar(ResultadoSetup.Feito(null));
         }
         finally
@@ -1000,7 +1040,10 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Desistir da troca (‹ ou Voltar): desmuta e volta ao estado de antes, sem aplicar nada.</summary>
+    /// <summary>
+    /// Desistir da troca (‹ ou Voltar): desmuta e volta ao estado de antes, sem aplicar nada; os links
+    /// do Setup em uso voltam (sem Setup em uso antes, ficam desligados).
+    /// </summary>
     public async Task<ResultadoSetup> DesistirAsync()
     {
         await Carregada;
@@ -1014,6 +1057,9 @@ public sealed class GerenteSetups
             if (antes is null)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
             var desmutar = await DesmutarAsync();
+            var setupAntes = Setup(antes.SetupEmUso);
+            if (await _link.DefinirEstadoAsync(setupAntes?.Link12 ?? false, setupAntes?.Link34 ?? false) is { } motivoLink)
+                _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
             lock (_trava)
             {
                 _situacao = antes.Situacao;

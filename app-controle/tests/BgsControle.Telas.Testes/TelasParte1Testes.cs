@@ -25,7 +25,7 @@ internal sealed class Telas10 : IDisposable
         Botoes = new BotoesMemoriaViewModel(setups, b.Memorias, Memorias, b.Sessao, b.Tela, b.Relogio);
         Inicio = new InicioViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio);
         Mesa = new MesaViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio);
-        Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio);
+        Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
         Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, Link, b.Fabrica, Nav, b.Tela, b.Relogio);
         Setups = new SetupsViewModel(setups, b.Sessao, Nav, b.Tela, b.Relogio);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio);
@@ -422,7 +422,7 @@ public sealed class TelasParte1Testes : IDisposable
     // ----------------------------------------------------------------- Áudio e telas de função
 
     [Fact]
-    public async Task A_grade_Audio_tem_os_10_blocos_na_ordem_da_Taramps_com_o_Gerador_travado()
+    public async Task A_grade_Audio_tem_os_10_blocos_na_ordem_da_Taramps_com_o_Gerador_travado_pela_chave()
     {
         await _b.Conectar();
         await _b.Tela.EsvaziarAsync();
@@ -432,15 +432,17 @@ public sealed class TelasParte1Testes : IDisposable
             _t.Audio.Blocos.Select(b => b.Titulo));
         var gerador = _t.Audio.Bloco(FuncaoAudio.Gerador);
         Assert.True(gerador.Travado);
-        Assert.Equal("Gerador na próxima versão", gerador.Trava);
+        Assert.Equal("Chave desligada", gerador.Trava); // a chave do Gerador vem desligada
+        Assert.Equal("Chave desligada", gerador.TextoResumo);
         Assert.Equal("+10,0 · +7,0 · +6,0 dB", _t.Audio.Bloco(FuncaoAudio.NivelSaidas).TextoResumo);
         Assert.Equal("Preset Cinema", _t.Audio.Bloco(FuncaoAudio.Eq15Bandas).TextoResumo);
         Assert.Equal(R, _t.Audio.Bloco(FuncaoAudio.NivelSaidas).Resumo[2].Canal);
 
-        await gerador.Abrir.ExecutarAsync();
+        await gerador.Abrir.ExecutarAsync(); // travado pela chave: abre Chaves de acesso
         await _t.Audio.Bloco(FuncaoAudio.Crossover).Abrir.ExecutarAsync();
 
         Assert.Equal(["funcao:Crossover"], _t.Nav.Pedidos.Where(p => p.StartsWith("funcao")));
+        Assert.Contains("chaves", _t.Nav.Pedidos);
     }
 
     [Fact]

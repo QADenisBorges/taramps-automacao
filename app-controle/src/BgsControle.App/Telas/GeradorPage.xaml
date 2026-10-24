@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O Gerador (EXPERIENCE, Gerador; State Patterns › Gerador tocando, Chave desligada; Fluxo 6): à vista o tom
+    fixo (frequência, ganho, Tocar); em Avançado o sweep (inicial, final, ganho, velocidade). Tocando, a contagem
+    de 30 s grande e o Parar grande, que nunca trava. Travado, o motivo ("Chave desligada", "Sem conexão").
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.GeradorPage"
+             x:DataType="telas:GeradorViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <ContentPage.Resources>
+        <Style x:Key="par" TargetType="Button" BasedOn="{StaticResource botao-contornado-pequeno}">
+            <Setter Property="BorderColor" Value="{StaticResource sup-2}" />
+        </Style>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+            <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label Style="{StaticResource tipo-titulo-tela}" Text="Gerador" />
+                <Label Style="{StaticResource tipo-detalhe}" Text="Tom de teste com prazo de 30 s" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,8" Spacing="12">
+                <!-- Tocando: a contagem e o Parar grande. -->
+                <Border Style="{StaticResource cartao-grande}" IsVisible="{Binding Tocando}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource tipo-rotulo}" Text="TOCANDO · DESLIGA SOZINHO EM" />
+                        <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding TextoContagem}" />
+                        <Button Style="{StaticResource botao-principal}" HeightRequest="60" BackgroundColor="{StaticResource parar}"
+                                TextColor="White" FontSize="20" Text="Parar" Command="{Binding Parar}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- O aviso de risco da chave, sempre à vista. -->
+                <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 14" Padding="14,10">
+                    <Label Style="{StaticResource tipo-texto-risco}" Text="Um tom forte pode queimar o tweeter ou o sub." />
+                </Border>
+
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                       IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-apoio}" Text="{Binding MotivoTrava}"
+                       IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+
+                <!-- Tom fixo. -->
+                <Border Style="{StaticResource cartao}" IsVisible="{Binding ModoTom}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource tipo-titulo-parametro}" Text="Tom fixo" />
+                        <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="Frequência" />
+                                <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaFrequencia}" />
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1" Style="{StaticResource campo-numerico}" MinimumWidthRequest="0">
+                                <Grid>
+                                    <Entry Style="{StaticResource entrada}" BackgroundColor="Transparent" Keyboard="Numeric"
+                                           HorizontalTextAlignment="End" Text="{Binding FrequenciaTom}" />
+                                    <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0" Color="{StaticResource texto}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-linha-titulo}" Text="Ganho" />
+                                <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaGanho}" />
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1" Style="{StaticResource campo-numerico}" MinimumWidthRequest="0">
+                                <Grid>
+                                    <Entry Style="{StaticResource entrada}" BackgroundColor="Transparent" Keyboard="Numeric"
+                                           HorizontalTextAlignment="End" Text="{Binding GanhoTom}" />
+                                    <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0" Color="{StaticResource texto}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroCampo}"
+                       IsVisible="{Binding ErroCampo, Converter={StaticResource TemTexto}}" />
+
+                <!-- Avançado: o sweep. -->
+                <Border BackgroundColor="{StaticResource lista-aberta}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 18" Padding="14,6">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Style="{StaticResource tipo-rotulo}" Text="AVANÇADO" />
+                                <Label Style="{StaticResource tipo-detalhe}" Text="Sweep: inicial, final, ganho e velocidade" />
+                            </VerticalStackLayout>
+                            <Label x:Name="SetaAvancado" Grid.Column="1" Text="⌄" FontSize="20" TextColor="{StaticResource apoio}"
+                                   VerticalTextAlignment="Center" />
+                            <Grid.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="AoAlternarAvancado" />
+                            </Grid.GestureRecognizers>
+                        </Grid>
+                        <VerticalStackLayout x:Name="Avancado" Spacing="10" IsVisible="False" Padding="0,0,0,8">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Button Style="{StaticResource par}" Text="Tom fixo" Command="{Binding UsarTom}">
+                                    <Button.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding ModoTom}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                        </DataTrigger>
+                                    </Button.Triggers>
+                                </Button>
+                                <Button Grid.Column="1" Style="{StaticResource par}" Text="Sweep" Command="{Binding UsarSweep}">
+                                    <Button.Triggers>
+                                        <DataTrigger TargetType="Button" Binding="{Binding ModoSweep}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                        </DataTrigger>
+                                    </Button.Triggers>
+                                </Button>
+                            </Grid>
+                            <VerticalStackLayout Spacing="10" IsVisible="{Binding ModoSweep}">
+                                <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Style="{StaticResource tipo-linha-titulo}" Text="Inicial" />
+                                        <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaFrequencia}" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" Style="{StaticResource campo-numerico}" MinimumWidthRequest="0">
+                                        <Entry Style="{StaticResource entrada}" BackgroundColor="Transparent" Keyboard="Numeric"
+                                               HorizontalTextAlignment="End" Text="{Binding InicioSweep}" />
+                                    </Border>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Style="{StaticResource tipo-linha-titulo}" Text="Final" />
+                                        <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaFrequencia}" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" Style="{StaticResource campo-numerico}" MinimumWidthRequest="0">
+                                        <Entry Style="{StaticResource entrada}" BackgroundColor="Transparent" Keyboard="Numeric"
+                                               HorizontalTextAlignment="End" Text="{Binding FimSweep}" />
+                                    </Border>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,140" ColumnSpacing="10">
+                                    <VerticalStackLayout VerticalOptions="Center">
+                                        <Label Style="{StaticResource tipo-linha-titulo}" Text="Ganho" />
+                                        <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaGanho}" />
+                                    </VerticalStackLayout>
+                                    <Border Grid.Column="1" Style="{StaticResource campo-numerico}" MinimumWidthRequest="0">
+                                        <Entry Style="{StaticResource entrada}" BackgroundColor="Transparent" Keyboard="Numeric"
+                                               HorizontalTextAlignment="End" Text="{Binding GanhoSweep}" />
+                                    </Border>
+                                </Grid>
+                                <Label Style="{StaticResource tipo-rotulo}" Text="VELOCIDADE" />
+                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                    <Button Style="{StaticResource par}" Text="Lento" Command="{Binding UsarLento}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Lento}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Button Grid.Column="1" Style="{StaticResource par}" Text="Médio" Command="{Binding UsarMedio}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Medio}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Button Grid.Column="2" Style="{StaticResource par}" Text="Rápido" Command="{Binding UsarRapido}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Rapido}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Tocar, fixo no pé (some tocando: o Parar fica em cima). -->
+        <Button Grid.Row="2" Style="{StaticResource botao-principal}" Margin="16,8,16,12" Command="{Binding Tocar}"
+                IsVisible="{Binding Tocando, Converter={StaticResource Inverso}}" Text="Tocar">
+            <Button.Triggers>
+                <DataTrigger TargetType="Button" Binding="{Binding PodeTocar}" Value="False">
+                    <Setter Property="BackgroundColor" Value="{StaticResource sup-2}" />
+                    <Setter Property="TextColor" Value="{StaticResource apoio}" />
+                </DataTrigger>
+            </Button.Triggers>
+        </Button>
+    </Grid>
+</ContentPage>

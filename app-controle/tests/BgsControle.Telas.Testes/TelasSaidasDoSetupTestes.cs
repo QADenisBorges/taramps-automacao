@@ -88,7 +88,7 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
     }
 
     [Fact]
-    public async Task Setup_criado_do_aparelho_sem_equipamentos_mostra_CH1_CH2_e_CH3_mais_CH4_e_com_4_equipamentos_sem_link_quatro_saidas()
+    public async Task Setup_criado_do_aparelho_sem_equipamentos_mostra_CH1_a_CH4_sem_link_e_com_4_equipamentos_quatro_saidas()
     {
         await _b.Conectar();
         await _b.Rodar(_t.Inicio.TrocarSetup.ExecutarAsync());
@@ -97,8 +97,10 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         await _b.Rodar(_t.Setup.ConfirmarCriar.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal(["CH1", "CH2", "CH3 + CH4"], _t.Inicio.CartoesSaida.Select(c => c.Nome));
-        Assert.Equal(["CH1", "CH2", "CH3 + CH4"], _t.Mesa.Canais.Select(c => c.Saida.Nome));
+        // Decisão do Denis (24/10/2026): o Setup criado do aparelho nasce com os links desligados.
+        Assert.False(_b.Link.Ligado(ParCanais.Saidas34));
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _t.Inicio.CartoesSaida.Select(c => c.Nome));
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _t.Mesa.Canais.Select(c => c.Saida.Nome));
 
         var id = Setups.SetupEmUso!.Id;
         string[] nomes = ["Caixa 1", "Caixa 2", "Caixa 3", "Caixa 4"];
@@ -111,7 +113,7 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
                 });
             Assert.True(r.Ok, r.Motivo);
         }
-        await DesligarLink34();
+        await _b.Tela.EsvaziarAsync();
 
         Assert.Equal(nomes, _t.Inicio.CartoesSaida.Select(c => c.Nome));
         Assert.Equal(nomes.Select(n => n.ToUpperInvariant()), _t.Mesa.Canais.Select(c => c.Nome));
@@ -380,7 +382,7 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
     }
 
     [Fact]
-    public async Task Trocar_de_Setup_muda_as_abas_e_o_titulo_das_telas_abertas_sem_mexer_no_link()
+    public async Task Trocar_de_Setup_muda_as_abas_e_o_titulo_das_telas_abertas_e_o_Setup_novo_vem_sem_link()
     {
         await _b.Conectar();
         var alinhamento = _t.Audio.Tela(FuncaoAudio.Alinhamento);
@@ -393,9 +395,9 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         await _b.Rodar(_t.Setup.ConfirmarCriar.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
 
-        Assert.True(_b.Link.Ligado(ParCanais.Saidas34));
-        Assert.Equal(["CH1", "CH2", "CH3 + CH4"], alinhamento.Abas.Select(a => a.Nome));
-        Assert.Equal("CH3 + CH4", ajusteSub.Titulo);
+        Assert.False(_b.Link.Ligado(ParCanais.Saidas34)); // o Setup criado do aparelho nasce sem link
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], alinhamento.Abas.Select(a => a.Nome));
+        Assert.Equal("CH3", ajusteSub.Titulo);
     }
 
     [Fact]

@@ -124,9 +124,12 @@ public sealed class InicioViewModel : TelaBase, IDisposable
         BotoesMemoriaViewModel botoes,
         INavegacao nav,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        PresetsViewModel? presets = null)
         : base(despachante, relogio)
     {
+        Presets = presets;
+        AbrirPresets = new Comando(() => presets?.AbrirFolha.ExecutarAsync() ?? Task.CompletedTask);
         _setups = setups;
         _memorias = memorias;
         _sessao = sessao;
@@ -220,13 +223,19 @@ public sealed class InicioViewModel : TelaBase, IDisposable
     /// <summary>"Memória 2 do aparelho (app da Taramps)", "O app não sabe qual memória está tocando.", ou null.</summary>
     public string? LinhaMemoria => Som.Linha;
 
-    /// <summary>O chip: o nome do preset lembrado ("Cinema"), ou null (sem chip). A folha de presets é da história 11.</summary>
+    /// <summary>O chip: o nome do preset lembrado ("Cinema"), ou null (sem chip). Tocar abre a folha de presets.</summary>
     public string? NomePreset => Som.NomePreset;
 
     public bool MostrarChip => NomePreset is not null;
 
     /// <summary>"Preset: Cinema".</summary>
     public string? TextoChip => NomePreset is { } p ? $"Preset: {p}" : null;
+
+    /// <summary>Os presets (a folha do chip e a frase "Preset Rock aplicado na FILME."), ou null.</summary>
+    public PresetsViewModel? Presets { get; }
+
+    /// <summary>Tocar no chip "Preset: Cinema ▾": abre a folha de presets (história 11).</summary>
+    public Comando AbrirPresets { get; }
 
     /// <summary>"Som diferente da FILME" (com Reaplicar), ou null.</summary>
     public string? SomDiferente => Som.SomDiferente;

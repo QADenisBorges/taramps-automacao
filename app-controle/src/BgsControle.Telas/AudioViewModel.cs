@@ -1,6 +1,8 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Memorias;
+using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -9,16 +11,27 @@ namespace BgsControle.Telas;
 public sealed class BlocoFuncaoViewModel : TelaBase
 {
     private IReadOnlyList<TrechoResumo> _resumo = [];
+    private string? _trava;
 
     internal BlocoFuncaoViewModel(FuncaoAudio funcao, string? trava, INavegacao nav, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Funcao = funcao;
-        Trava = trava;
+        _trava = trava;
         Abrir = new Comando(() =>
         {
-            if (Trava is null)
+            if (funcao == FuncaoAudio.Gerador)
+            {
+                // Travado pela chave: tocar abre Chaves de acesso (EXPERIENCE, Bloco de função).
+                if (Trava is null)
+                    nav.AbrirGerador();
+                else
+                    nav.AbrirChaves();
+            }
+            else if (Trava is null)
+            {
                 nav.AbrirFuncao(funcao);
+            }
         });
     }
 
@@ -48,23 +61,36 @@ public sealed class BlocoFuncaoViewModel : TelaBase
     /// <summary>O resumo em uma linha (testes e leitor de tela).</summary>
     public string TextoResumo => string.Concat(_resumo.Select(t => t.Texto));
 
-    /// <summary>Travado: "Gerador na próxima versão" (até a história 11), ou null.</summary>
-    public string? Trava { get; }
+    /// <summary>Travado: "Chave desligada" (o Gerador com a chave desligada), ou null.</summary>
+    public string? Trava
+    {
+        get => _trava;
+        internal set
+        {
+            if (_trava == value)
+                return;
+            _trava = value;
+            Avisar();
+            Avisar(nameof(Travado));
+        }
+    }
 
     public bool Travado => Trava is not null;
 
-    /// <summary>Abre a tela da função. Travado, nada.</summary>
+    /// <summary>Abre a tela da função. O Gerador travado pela chave abre Chaves de acesso; os outros travados, nada.</summary>
     public Comando Abrir { get; }
 }
 
 /// <summary>
 /// A grade Áudio (2 × 5, na ordem do app da Taramps): Roteamento, EQ 15 bandas, EQ de entrada,
 /// Crossover, Alinhamento, Fase, Limitador, Nível das saídas, EQ de saída e Gerador. Cada bloco mostra
-/// o resumo do valor lido e abre a tela da função; o Gerador fica travado até a história 11.
+/// o resumo do valor lido e abre a tela da função. O Gerador abre a tela Gerador (história 11); com a
+/// chave "Gerador" desligada, fica travado com "Chave desligada" e o toque abre Chaves de acesso.
 /// </summary>
 public sealed class AudioViewModel : TelaBase, IDisposable
 {
-    public const string TravaGerador = "Gerador na próxima versão";
+    /// <summary>O bloco Gerador com a chave desligada.</summary>
+    public const string TravaGerador = ControleParametroViewModel.MsgChaveDesligada;
 
     private readonly FabricaControles _fabrica;
     private readonly GerenteSetups _setups;
@@ -75,6 +101,8 @@ public sealed class AudioViewModel : TelaBase, IDisposable
     private readonly LinkViewModel _linkTela;
     private readonly SalvarViewModel _salvar;
     private readonly INavegacao _nav;
+    private readonly IChaves? _chaves;
+    private readonly GeradorSinal? _gerador;
     private readonly Dictionary<FuncaoAudio, FuncaoViewModel> _telas = [];
 
     public AudioViewModel(
@@ -88,9 +116,13 @@ public sealed class AudioViewModel : TelaBase, IDisposable
         SalvarViewModel salvar,
         INavegacao nav,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        IChaves? chaves = null,
+        GeradorSinal? gerador = null)
         : base(despachante, relogio)
     {
+        _chaves = chaves;
+        _gerador = gerador;
         _fabrica = fabrica;
         _setups = setups;
         _memorias = memorias;
@@ -101,8 +133,15 @@ public sealed class AudioViewModel : TelaBase, IDisposable
         _salvar = salvar;
         _nav = nav;
         Blocos = Enum.GetValues<FuncaoAudio>()
-            .Select(f => new BlocoFuncaoViewModel(f, f == FuncaoAudio.Gerador ? TravaGerador : null, nav, despachante, relogio))
+            .Select(f => new BlocoFuncaoViewModel(f, f == FuncaoAudio.Gerador ? TravaDoGerador() : null, nav, despachante, relogio))
             .ToArray();
+        if (_chaves is not null)
+        {
+            _chaves.Mudou += AoMudarChave;
+            _ = _chaves.Carregada.ContinueWith(_ => NaTela(Atualizar), TaskScheduler.Default);
+        }
+        if (_gerador is not null)
+            _gerador.Mudou += AoMudar;
 
         _estado.Mudou += AoMudarValor;
         _estado.Recarregou += AoMudar;
@@ -198,8 +237,32 @@ public sealed class AudioViewModel : TelaBase, IDisposable
         FuncaoAudio.Limitador => PorSaida("071", "dB"),
         FuncaoAudio.NivelSaidas => PorSaida("081", "dB"),
         FuncaoAudio.EqSaida => PorSaida("091", "dB"),
-        _ => [new(TravaGerador)],
+        _ => ResumoGerador(),
     };
+
+    /// <summary>"Chave desligada" sem a chave "Gerador" (sem as chaves, também travado), ou null.</summary>
+    private string? TravaDoGerador() => _chaves?.Ligada(Chave.Gerador) == true ? null : TravaGerador;
+
+    /// <summary>"Desligado", "Tocando · 23 s", "Ligando", "Desligando"; com a chave desligada, "Chave desligada".</summary>
+    private IReadOnlyList<TrechoResumo> ResumoGerador()
+    {
+        if (TravaDoGerador() is { } trava)
+            return [new(trava)];
+        return _gerador?.Estado switch
+        {
+            EstadoGerador.Tocando when _gerador.Restante is { } falta => [new($"Tocando · {(int)Math.Ceiling(falta.TotalSeconds)} s")],
+            EstadoGerador.Tocando => [new("Tocando")],
+            EstadoGerador.Ligando => [new("Ligando")],
+            EstadoGerador.Desligando => [new("Desligando")],
+            _ => [new("Desligado")],
+        };
+    }
+
+    private void AoMudarChave(Chave chave)
+    {
+        if (chave == Chave.Gerador)
+            NaTela(Atualizar);
+    }
 
     private void AoMudar() => NaTela(Atualizar);
 
@@ -209,6 +272,7 @@ public sealed class AudioViewModel : TelaBase, IDisposable
 
     private void Atualizar()
     {
+        Bloco(FuncaoAudio.Gerador).Trava = TravaDoGerador();
         foreach (var b in Blocos)
             b.Resumo = Resumo(b.Funcao);
     }
@@ -220,6 +284,10 @@ public sealed class AudioViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudar;
         _setups.Mudou -= AoMudar;
         _link.Mudou -= AoMudarLink;
+        if (_chaves is not null)
+            _chaves.Mudou -= AoMudarChave;
+        if (_gerador is not null)
+            _gerador.Mudou -= AoMudar;
         foreach (var t in _telas.Values)
             t.Dispose();
     }

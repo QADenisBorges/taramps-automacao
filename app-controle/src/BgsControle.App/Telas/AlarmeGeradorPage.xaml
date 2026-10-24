@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A faixa "DESLIGUE O MÓDULO AGORA" (EXPERIENCE, State Patterns › Gerador sem resposta; DESIGN,
+    faixa-desligue-o-modulo): o app não conseguiu desligar o gerador e 3 reconexões falharam. Sobe por cima de
+    tudo, até de uma confirmação da IA, e fica até uma leitura mostrar o gerador desligado. Embaixo, a pílula
+    de status abre a conexão (Conectar), por cima desta faixa.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.AlarmeGeradorPage"
+             x:DataType="telas:CascaViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource palco}">
+    <Grid RowDefinitions="Auto,*">
+        <Border BackgroundColor="{StaticResource parar}" StrokeThickness="0" Padding="16,28,16,24">
+            <Label Style="{StaticResource tipo-botao-parar}" Text="{x:Static telas:GeradorViewModel.TextoAlarme}"
+                   HorizontalTextAlignment="Center" LineBreakMode="WordWrap" SemanticProperties.HeadingLevel="Level1" />
+        </Border>
+        <VerticalStackLayout Grid.Row="1" Padding="16,20" Spacing="14">
+            <Label Style="{StaticResource tipo-corpo}"
+                   Text="O app não conseguiu desligar o gerador de sinal e a conexão não voltou. Desligue o módulo (ou o processador) na chave dele agora." />
+            <Label Style="{StaticResource tipo-apoio}"
+                   Text="Esta faixa some quando o app reconectar e ler o gerador desligado. Toque na pílula para conectar." />
+            <c:PilulaView HorizontalOptions="Start" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

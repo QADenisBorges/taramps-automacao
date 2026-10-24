@@ -17,8 +17,9 @@ public partial class CascaPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // A dúvida pode ter chegado antes de a casca aparecer.
+        // A dúvida (ou a IA, ou o alarme do gerador) pode ter chegado antes de a casca aparecer.
         _vm.Sincronizar(forcar: true);
+        _vm.SincronizarCamadas(forcar: true);
     }
 
     protected override bool OnBackButtonPressed()
@@ -26,6 +27,11 @@ public partial class CascaPage : ContentPage
         if (_vm.Memorias.ListaAberta)
         {
             _vm.Memorias.FecharLista.Execute(null);
+            return true;
+        }
+        if (_vm.Inicio.Presets is { FolhaAberta: true } presets)
+        {
+            presets.FecharFolha.Execute(null);
             return true;
         }
         if (!_vm.NoInicio)

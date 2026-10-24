@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O Player (EXPERIENCE, Player; DESIGN, linha-da-playlist, controles-do-player; Layout › Player): a playlist
+    da memória do celular em uso, sem abas. Em cima, "Playlist da FILME", Adicionar músicas e Editar (− remove,
+    ≡ arrasta; Pronto sai). O aviso do topo (sem permissão, Bluetooth de áudio desligado, som pelo celular), a
+    lista rolando e, fixos embaixo, a faixa atual, tocar/pausar e próxima.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:r="clr-namespace:BgsControle.App.Recursos"
+             x:Class="BgsControle.App.Telas.PlayerView"
+             x:DataType="telas:PlayerViewModel">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="16,8,16,12" RowSpacing="10">
+
+        <!-- O título e as ações da playlist. -->
+        <VerticalStackLayout Spacing="8">
+            <Label Style="{StaticResource tipo-rotulo}" Text="PLAYER" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding TemMemoria}">
+                <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" VerticalTextAlignment="Center"
+                       LineBreakMode="WordWrap" />
+                <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}"
+                        Text="{x:Static telas:PlayerViewModel.TextoEditar}" Command="{Binding Editar}"
+                        IsVisible="{Binding Editando, Converter={StaticResource Inverso}}" />
+                <Button Grid.Column="1" Style="{StaticResource botao-pequeno}" BackgroundColor="{StaticResource texto}"
+                        TextColor="{StaticResource sobre-escolhido}"
+                        Text="{x:Static telas:PlayerViewModel.TextoPronto}" Command="{Binding Pronto}" IsVisible="{Binding Editando}" />
+            </Grid>
+            <Button Style="{StaticResource botao-medio}" Text="{x:Static telas:PlayerViewModel.TextoAdicionar}"
+                    Command="{Binding Adicionar}" IsVisible="{Binding TemMemoria}" />
+        </VerticalStackLayout>
+
+        <!-- O aviso do topo, com o botão dele. -->
+        <Border Grid.Row="1" IsVisible="{Binding AvisoTopo, Converter={StaticResource TemTexto}}"
+                BackgroundColor="{StaticResource sup-1}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                StrokeShape="RoundRectangle 14" Padding="14,10">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Label Style="{StaticResource tipo-corpo}" Text="{Binding AvisoTopo}" VerticalTextAlignment="Center" />
+                <Button Grid.Column="1" Style="{StaticResource botao-pequeno}" Text="{Binding TextoAcaoAviso}"
+                        Command="{Binding AcaoAviso}" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Sem playlist, vazia, ou a última frase. -->
+        <VerticalStackLayout Grid.Row="2" Spacing="6">
+            <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoAviso}"
+                   IsVisible="{Binding TextoAviso, Converter={StaticResource TemTexto}}" />
+            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                   IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+        </VerticalStackLayout>
+
+        <!-- As faixas. -->
+        <ScrollView Grid.Row="3">
+            <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 18"
+                    IsVisible="{Binding Linhas, Converter={StaticResource TemTexto}}" VerticalOptions="Start">
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Linhas}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:LinhaPlaylistViewModel">
+                            <Grid ColumnDefinitions="4,Auto,*,Auto" MinimumHeightRequest="52">
+                                <BoxView Color="{StaticResource texto}" IsVisible="{Binding Tocando}" />
+                                <!-- O − do modo Editar: tira da playlist (o arquivo fica no celular). -->
+                                <Button Grid.Column="1" Style="{StaticResource botao-pequeno}" Text="−" WidthRequest="44" Padding="0"
+                                        Margin="8,0,0,0" Command="{Binding Remover}"
+                                        IsVisible="{Binding Editando}"
+                                        SemanticProperties.Description="Remover da playlist" />
+                                <VerticalStackLayout Grid.Column="2" Padding="14,8" Spacing="2" VerticalOptions="Center">
+                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}" LineBreakMode="TailTruncation">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding Tocando}" Value="True">
+                                                <Setter Property="r:Tipo.Peso" Value="700" />
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label" Binding="{Binding Indisponivel}" Value="True">
+                                                <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Duracao}" />
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Pasta}"
+                                               IsVisible="{Binding Pasta, Converter={StaticResource TemTexto}}" LineBreakMode="TailTruncation" />
+                                    </HorizontalStackLayout>
+                                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apagado}" Text="{Binding TextoIndisponivel}"
+                                           IsVisible="{Binding Indisponivel}" />
+                                    <VerticalStackLayout.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Tocar}" />
+                                    </VerticalStackLayout.GestureRecognizers>
+                                </VerticalStackLayout>
+                                <!-- A alça ≡ do modo Editar: arrastar até outra faixa muda a ordem. -->
+                                <Label Grid.Column="3" Text="≡" FontSize="24" TextColor="{StaticResource apoio}" WidthRequest="44"
+                                       HorizontalTextAlignment="Center" VerticalTextAlignment="Center"
+                                       IsVisible="{Binding Editando}"
+                                       SemanticProperties.Description="Arrastar para mudar a ordem">
+                                    <Label.GestureRecognizers>
+                                        <DragGestureRecognizer CanDrag="True" DragStarting="AoArrastar" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <BoxView Grid.ColumnSpan="4" HeightRequest="1" VerticalOptions="End" Color="{StaticResource sup-3}" />
+                                <Grid.GestureRecognizers>
+                                    <DropGestureRecognizer AllowDrop="True" Drop="AoSoltar" />
+                                </Grid.GestureRecognizers>
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+        </ScrollView>
+
+        <!-- Os controles fixos: a faixa atual, tocar/pausar e próxima. -->
+        <VerticalStackLayout Grid.Row="4" Spacing="8" IsVisible="{Binding TemMemoria}">
+            <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding FaixaAtual}" HorizontalTextAlignment="Center"
+                   LineBreakMode="TailTruncation" IsVisible="{Binding FaixaAtual, Converter={StaticResource TemTexto}}" />
+            <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                <Button WidthRequest="60" HeightRequest="60" CornerRadius="30" Padding="0" BackgroundColor="{StaticResource texto}"
+                        TextColor="{StaticResource sobre-escolhido}" FontSize="22" Text="▶" Command="{Binding TocarPausar}"
+                        SemanticProperties.Description="{Binding TextoTocarPausar}">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" Binding="{Binding Tocando}" Value="True">
+                            <Setter Property="Text" Value="❚❚" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+                <Button WidthRequest="48" HeightRequest="48" CornerRadius="24" Padding="0" BackgroundColor="{StaticResource sup-2}"
+                        TextColor="{StaticResource texto}" FontSize="18" Text="⏭" VerticalOptions="Center" Command="{Binding Proxima}"
+                        SemanticProperties.Description="{x:Static telas:PlayerViewModel.TextoProxima}" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </Grid>
+</ContentView>

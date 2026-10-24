@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha de risco do grupo Aparelho (EXPERIENCE, State Patterns › Reset de áudio / de fábrica, Troca de senha;
+    DESIGN, folha-de-confirmacao, aviso-de-risco): o título, o risco da chave sem mudar o texto, o botão branco que
+    diz o que faz ("Enviando…" até o fim) e Cancelar. Nada sai antes do botão branco; depois, o app relê.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.FolhaAparelhoView"
+             x:DataType="telas:AparelhoViewModel">
+    <VerticalStackLayout Spacing="12">
+        <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding FolhaTitulo}" />
+        <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                StrokeShape="RoundRectangle 14" Padding="14,10" IsVisible="{Binding FolhaAviso, Converter={StaticResource TemTexto}}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Label Text="⚠" TextColor="{StaticResource parar}" FontSize="18" VerticalTextAlignment="Center" />
+                <Label Grid.Column="1" Style="{StaticResource tipo-texto-risco}" Text="{Binding FolhaAviso}" />
+            </Grid>
+        </Border>
+        <Label Style="{StaticResource tipo-apoio}" Text="Depois, o app relê o aparelho e mostra o resultado." />
+        <ActivityIndicator IsRunning="{Binding Agindo}" IsVisible="{Binding Agindo}" HeightRequest="24" />
+        <Button Style="{StaticResource botao-principal}" Text="{Binding TextoConfirmarFolha}" Command="{Binding ConfirmarFolha}" />
+        <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:AparelhoViewModel.TextoCancelar}"
+                Command="{Binding CancelarFolha}" />
+    </VerticalStackLayout>
+</ContentView>

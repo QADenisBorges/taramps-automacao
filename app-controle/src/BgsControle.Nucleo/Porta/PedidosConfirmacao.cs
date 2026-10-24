@@ -44,6 +44,7 @@ public sealed class PedidosConfirmacao
     private readonly LogBle? _log;
     private readonly object _trava = new();
     private PedidoConfirmacao? _atual;
+    private DateTimeOffset? _abertoEm;
     private TaskCompletionSource<DecisaoConfirmacao>? _decisao;
     private ITimer? _prazo;
 
@@ -66,6 +67,16 @@ public sealed class PedidosConfirmacao
         }
     }
 
+    /// <summary>Quando a folha do pedido atual abriu (o prazo de 60 s conta daqui), ou null.</summary>
+    public DateTimeOffset? AbertoEm
+    {
+        get
+        {
+            lock (_trava)
+                return _abertoEm;
+        }
+    }
+
     /// <summary>Abre a folha e espera a decisão (no máximo 60 s). Com outro esperando: <see cref="DecisaoConfirmacao.Ocupado"/>.</summary>
     public Task<DecisaoConfirmacao> PedirAsync(PedidoConfirmacao pedido)
     {
@@ -75,6 +86,7 @@ public sealed class PedidosConfirmacao
             if (_atual is not null)
                 return Task.FromResult(DecisaoConfirmacao.Ocupado);
             _atual = pedido;
+            _abertoEm = _relogio.GetUtcNow();
             decisao = new TaskCompletionSource<DecisaoConfirmacao>(TaskCreationOptions.RunContinuationsAsynchronously);
             _decisao = decisao;
             _prazo = _relogio.CreateTimer(_ => Decidir(decisao, DecisaoConfirmacao.SemResposta), null, Prazo, Timeout.InfiniteTimeSpan);
@@ -117,6 +129,7 @@ public sealed class PedidosConfirmacao
                 return; // já decidido
             _decisao = null;
             _atual = null;
+            _abertoEm = null;
             _prazo?.Dispose();
             _prazo = null;
         }

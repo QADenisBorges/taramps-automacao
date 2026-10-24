@@ -40,6 +40,11 @@
             <Color x:Key="capa-borda">#4C4C52</Color>
             <Color x:Key="campo">#0B0B0C</Color>
             <Color x:Key="campo-borda">#3A3A3D</Color>
+            <!-- IA (história 11): o mesmo lilás do canal-2, por decisão do Denis. -->
+            <Color x:Key="ia">#C495FF</Color>
+            <Color x:Key="ia-fundo">#1B1526</Color>
+            <Color x:Key="ia-texto">#D6C6F5</Color>
+            <Color x:Key="ia-halo">#40C495FF</Color>
 
             <!-- ============================================================ conversores -->
             <r:CorDaSaida x:Key="CorDaSaida" />
@@ -175,6 +180,26 @@
                 <Setter Property="TextColor" Value="{StaticResource apagado}" />
             </Style>
 
+            <!-- História 11: o PARAR IA e a faixa "DESLIGUE O MÓDULO AGORA" (texto branco sobre o parar) e a faixa da IA. -->
+            <Style x:Key="tipo-botao-parar" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="CharacterSpacing" Value="0.8" />
+                <Setter Property="TextColor" Value="White" />
+            </Style>
+            <Style x:Key="tipo-titulo-faixa-ia" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="17" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+            </Style>
+            <Style x:Key="tipo-valor-campo-linha" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="17" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+            </Style>
+            <Style x:Key="tipo-risco-chave" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="TextColor" Value="{StaticResource apoio}" />
+            </Style>
+
             <!-- ============================================================ botões (DESIGN, components) -->
             <Style x:Key="botao-base" TargetType="Button">
                 <Setter Property="r:Tipo.Peso" Value="800" />
@@ -257,6 +282,14 @@
                 <Setter Property="CornerRadius" Value="16" />
                 <Setter Property="FontSize" Value="28" />
                 <Setter Property="r:Tipo.Peso" Value="500" />
+            </Style>
+            <Style x:Key="botao-parar-ia" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="60" />
+                <Setter Property="BackgroundColor" Value="{StaticResource parar}" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="CornerRadius" Value="18" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="CharacterSpacing" Value="0.8" />
             </Style>
             <Style x:Key="engrenagem" TargetType="Button" BasedOn="{StaticResource botao-base}">
                 <Setter Property="HeightRequest" Value="44" />

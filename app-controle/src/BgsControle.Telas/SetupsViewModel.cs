@@ -308,15 +308,83 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
     }
 }
 
-/// <summary>Configurações (a engrenagem): nesta versão, as linhas Setups e Memórias. As outras entram na história 11.</summary>
-public sealed class ConfiguracoesViewModel(INavegacao nav, IDespachante despachante, TimeProvider relogio) : TelaBase(despachante, relogio)
+/// <summary>
+/// Configurações (a engrenagem; EXPERIENCE, Information Architecture): os grupos SOM (Setups, Memórias,
+/// Presets), APARELHO (remote out e Bluetooth de áudio na própria linha, o nome do produto que vale no ✓,
+/// Senha › e Voltímetro e clip ›), ACESSO E IA (Chaves de acesso, IA pela rede, Histórico) e o Avançado
+/// recolhido, com o reset de áudio e o reset de fábrica. O grupo Aparelho é o <see cref="AparelhoViewModel"/>.
+/// </summary>
+public sealed class ConfiguracoesViewModel : TelaBase
 {
+    private bool _avancadoAberto;
+
+    public ConfiguracoesViewModel(
+        INavegacao nav,
+        IDespachante despachante,
+        TimeProvider relogio,
+        AparelhoViewModel? aparelho = null)
+        : base(despachante, relogio)
+    {
+        Aparelho = aparelho;
+        AbrirSetups = new Comando(nav.AbrirSetups);
+        AbrirMemorias = new Comando(nav.AbrirMemorias);
+        AbrirPresets = new Comando(nav.AbrirPresets);
+        AbrirSenha = new Comando(nav.AbrirSenha);
+        AbrirMonitoracao = new Comando(nav.AbrirMonitoracao);
+        AbrirChaves = new Comando(nav.AbrirChaves);
+        AbrirIaPelaRede = new Comando(nav.AbrirIaPelaRede);
+        AbrirHistorico = new Comando(nav.AbrirHistorico);
+        AlternarAvancado = new Comando(() => AvancadoAberto = !AvancadoAberto);
+        Voltar = new Comando(nav.Voltar);
+    }
+
     public string TituloSetups => "Setups";
     public string DescricaoSetups => "Ver, renomear e apagar";
     public string TituloMemorias => "Memórias";
     public string DescricaoMemorias => "Do celular e do aparelho";
+    public string TituloPresets => "Presets";
+    public string DescricaoPresets => "15 bandas: aplicar, renomear, apagar, exportar";
+    public string TituloSenha => "Senha";
+    public string DescricaoSenha => "Trocar a senha do aparelho";
+    public string TituloMonitoracao => "Voltímetro e clip";
+    public string DescricaoMonitoracao => "Tensão e clip ao vivo";
+    public string TituloChaves => "Chaves de acesso";
+    public string DescricaoChaves => "Ligar e desligar as 11 chaves";
+    public string TituloIaPelaRede => "IA pela rede";
+    public string DescricaoIaPelaRede => "Código, cliente pareado e o toque durante a IA";
+    public string TituloHistorico => "Histórico";
+    public string DescricaoHistorico => "Cada comando, com origem, hora e valor";
 
-    public Comando AbrirSetups { get; } = new(nav.AbrirSetups);
-    public Comando AbrirMemorias { get; } = new(nav.AbrirMemorias);
-    public Comando Voltar { get; } = new(nav.Voltar);
+    /// <summary>O grupo Aparelho (remote out, Bluetooth de áudio, nome, resets), ou null.</summary>
+    public AparelhoViewModel? Aparelho { get; }
+
+    public Comando AbrirSetups { get; }
+    public Comando AbrirMemorias { get; }
+    public Comando AbrirPresets { get; }
+    public Comando AbrirSenha { get; }
+    public Comando AbrirMonitoracao { get; }
+    public Comando AbrirChaves { get; }
+    public Comando AbrirIaPelaRede { get; }
+    public Comando AbrirHistorico { get; }
+
+    /// <summary>O Avançado (reset de áudio e de fábrica) vem recolhido; lembra enquanto o app está aberto.</summary>
+    public bool AvancadoAberto
+    {
+        get => _avancadoAberto;
+        private set
+        {
+            if (_avancadoAberto == value)
+                return;
+            _avancadoAberto = value;
+            Avisar();
+            Avisar(nameof(SetaAvancado));
+        }
+    }
+
+    /// <summary>"⌄" recolhido, "⌃" aberto.</summary>
+    public string SetaAvancado => AvancadoAberto ? "⌃" : "⌄";
+
+    public Comando AlternarAvancado { get; }
+
+    public Comando Voltar { get; }
 }

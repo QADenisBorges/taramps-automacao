@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A IA ativa (EXPERIENCE, IA; v2 quadro 5; DESIGN, faixa-da-ia, botao-parar-ia, painel-ao-vivo, registro): abre
+    sozinha quando a IA começa uma tarefa, sem barra e sem ‹, e fecha ao parar, voltando à tela de antes. A faixa
+    com o pulso lilás, o que a IA faz agora e o PARAR IA (sempre à mão, sem confirmação); o painel ao vivo com os
+    ganhos e o MASTER (esmaecidos e travados no modo padrão; no modo "pausar a IA", tocar pausa a tarefa); a
+    linha "Agora" e o registro "O que a IA fez".
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.IaAtivaPage"
+             x:DataType="telas:IaAtivaViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource palco}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16,12,16,20" Spacing="12">
+            <!-- A faixa da IA. -->
+            <Border BackgroundColor="{StaticResource ia-fundo}" Stroke="{StaticResource ia}" StrokeThickness="2"
+                    StrokeShape="RoundRectangle 22" Padding="16,14">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Ellipse WidthRequest="14" HeightRequest="14" Fill="{StaticResource ia}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-titulo-faixa-ia}" Text="{Binding Faixa}" LineBreakMode="WordWrap" />
+                    </Grid>
+                    <Label Style="{StaticResource tipo-apoio}" TextColor="{StaticResource ia-texto}" Text="{Binding AvisoControles}"
+                           IsVisible="{Binding AvisoControles, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-apoio}" TextColor="{StaticResource ia-texto}"
+                           Text="Toque num controle para pausar a IA. Ela retoma depois de 10 s sem toques."
+                           IsVisible="{Binding Travado, Converter={StaticResource Inverso}}" />
+                    <Button Style="{StaticResource botao-parar-ia}" Text="{x:Static telas:IaAtivaViewModel.TextoPararIa}"
+                            Command="{Binding PararIa}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- O painel ao vivo: os controles de sempre, que mostram cada mudança da IA pelo espelho. -->
+            <Border Style="{StaticResource cartao}">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Style="{StaticResource tipo-titulo-parametro}" Text="Saídas e MASTER" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource ia}" Text="● AO VIVO" />
+                    </Grid>
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource ia}" Text="{Binding UltimaMudanca}"
+                           IsVisible="{Binding UltimaMudanca, Converter={StaticResource TemTexto}}" />
+                    <ContentView x:Name="Painel">
+                        <ContentView.Triggers>
+                            <DataTrigger TargetType="ContentView" Binding="{Binding Travado}" Value="True">
+                                <Setter Property="Opacity" Value="0.42" />
+                            </DataTrigger>
+                        </ContentView.Triggers>
+                        <VerticalStackLayout x:Name="PainelMesa" x:DataType="telas:MesaViewModel" Spacing="10">
+                            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Canais}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="telas:CanalMesaViewModel">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <Label Style="{StaticResource tipo-nome-canal}" Text="{Binding Nome}"
+                                                       TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                                <Label Grid.Column="1" Style="{StaticResource tipo-valor-campo-linha}" Text="{Binding Ganho.TextoValor}" />
+                                            </Grid>
+                                            <ContentView BindingContext="{Binding Ganho}">
+                                                <c:FaderView x:DataType="telas:ControleParametroViewModel" HeightRequest="44"
+                                                             Minimo="{Binding Minimo}" Maximo="{Binding Maximo}" Valor="{Binding ValorFader}"
+                                                             Travado="{Binding Travado}" Cor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
+                                                             ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                                            </ContentView>
+                                            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Ganho.Aviso}"
+                                                   IsVisible="{Binding Ganho.Aviso, Converter={StaticResource TemTexto}}" />
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Spacing="2" BindingContext="{Binding Master}">
+                                <Grid x:DataType="telas:ControleParametroViewModel" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Style="{StaticResource tipo-nome-canal}" Text="MASTER" />
+                                    <Label Grid.Column="1" Style="{StaticResource tipo-valor-campo-linha}" Text="{Binding TextoValor}" />
+                                </Grid>
+                                <c:FaderView x:DataType="telas:ControleParametroViewModel" HeightRequest="44"
+                                             Minimo="{Binding Minimo}" Maximo="{Binding Maximo}" Valor="{Binding ValorFader}"
+                                             Travado="{Binding Travado}" ComandoArrastar="{Binding ArrastarPara}" ComandoSoltar="{Binding SoltarFader}" />
+                                <Label x:DataType="telas:ControleParametroViewModel" Style="{StaticResource tipo-detalhe}" Text="{Binding Aviso}"
+                                       IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </ContentView>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- O registro "O que a IA fez": a mais nova em cima. -->
+            <Label Style="{StaticResource tipo-rotulo}" Text="O QUE A IA FEZ" />
+            <Border BackgroundColor="{StaticResource registro-fundo}" Stroke="{StaticResource sup-3}" StrokeThickness="1"
+                    StrokeShape="RoundRectangle 18" Padding="14,8">
+                <VerticalStackLayout>
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding OQueAIaFez}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:LinhaHistorico">
+                                <Grid ColumnDefinitions="64,*" ColumnSpacing="8" Padding="0,6">
+                                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource ia}" Text="{Binding Hora}" />
+                                    <VerticalStackLayout Grid.Column="1">
+                                        <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Frase}" />
+                                        <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource erro-texto}" Text="{Binding Motivo}"
+                                               IsVisible="{Binding Motivo, Converter={StaticResource TemTexto}}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

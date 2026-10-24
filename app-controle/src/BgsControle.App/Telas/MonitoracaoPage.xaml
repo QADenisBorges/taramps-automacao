@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › Aparelho › Voltímetro e clip (EXPERIENCE, State Patterns › Voltímetro e clip): a tensão e o
+    clip das saídas do Setup em uso e da entrada, ao vivo e maiores. Sem leitura do voltímetro, "—". O clip fica
+    aceso 3 s depois do último aviso do aparelho; um par com link acende com qualquer um dos dois canais.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.MonitoracaoPage"
+             x:DataType="telas:MonitoracaoViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+            <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                <Label Style="{StaticResource tipo-titulo-tela}" Text="Voltímetro e clip" />
+                <Label Style="{StaticResource tipo-detalhe}" Text="Ao vivo · só lê o aparelho" />
+            </VerticalStackLayout>
+        </Grid>
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,8" Spacing="12">
+                <Border Style="{StaticResource cartao-grande}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Style="{StaticResource tipo-rotulo}" Text="VOLTÍMETRO" />
+                        <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding Voltimetro}" />
+                        <Label Style="{StaticResource tipo-detalhe}" Text="Sem leitura do aparelho, fica —." />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Style="{StaticResource tipo-rotulo}" Text="CLIP POR SAÍDA" />
+                <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 18">
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding PorSaida}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:ClipSaidaViewModel">
+                                <Grid ColumnDefinitions="4,*,Auto" MinimumHeightRequest="52" SemanticProperties.Description="{Binding TextoLeitor}">
+                                    <BoxView Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                    <VerticalStackLayout Grid.Column="1" Padding="14,8" VerticalOptions="Center">
+                                        <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}"
+                                               TextColor="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Saida.Rotulo}" />
+                                    </VerticalStackLayout>
+                                    <Ellipse Grid.Column="2" WidthRequest="18" HeightRequest="18" Margin="0,0,16,0" VerticalOptions="Center"
+                                             Fill="{StaticResource sup-2}">
+                                        <Ellipse.Triggers>
+                                            <DataTrigger TargetType="Ellipse" Binding="{Binding Aceso}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource parar}" />
+                                            </DataTrigger>
+                                        </Ellipse.Triggers>
+                                    </Ellipse>
+                                    <BoxView Grid.ColumnSpan="3" HeightRequest="1" VerticalOptions="End" Color="{StaticResource sup-3}" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource cartao}" BindingContext="{Binding Entrada}">
+                    <Grid x:DataType="telas:PontoClipViewModel" ColumnDefinitions="*,Auto">
+                        <Label Style="{StaticResource tipo-linha-titulo}" Text="Entrada" VerticalTextAlignment="Center" />
+                        <Ellipse Grid.Column="1" WidthRequest="18" HeightRequest="18" Fill="{StaticResource sup-2}">
+                            <Ellipse.Triggers>
+                                <DataTrigger TargetType="Ellipse" Binding="{Binding Aceso}" Value="True">
+                                    <Setter Property="Fill" Value="{StaticResource parar}" />
+                                </DataTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+                    </Grid>
+                </Border>
+                <Label Style="{StaticResource tipo-detalhe}" Text="O clip fica aceso 3 s depois do último aviso do aparelho." />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

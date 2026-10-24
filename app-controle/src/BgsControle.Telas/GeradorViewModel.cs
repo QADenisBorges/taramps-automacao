@@ -78,6 +78,11 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
 
         Tocar = new Comando(TocarAsync);
         Parar = new Comando(PararAsync);
+        UsarTom = new Comando(() => ModoSweep = false);
+        UsarSweep = new Comando(() => ModoSweep = true);
+        UsarLento = new Comando(() => VelocidadeSweep = 1);
+        UsarMedio = new Comando(() => VelocidadeSweep = 2);
+        UsarRapido = new Comando(() => VelocidadeSweep = 3);
 
         _ultimaDoGerador = _gerador.Mensagem;
         _gerador.Mudou += AoMudarAlgo;
@@ -105,7 +110,37 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
             _modoSweep = value;
             ErroCampo = null;
             Avisar();
+            Avisar(nameof(ModoTom));
         }
+    }
+
+    /// <summary>Tom fixo (o par de botões "Tom fixo · Sweep").</summary>
+    public bool ModoTom => !_modoSweep;
+
+    /// <summary>Escolhe o tom fixo.</summary>
+    public Comando UsarTom { get; }
+
+    /// <summary>Escolhe o sweep.</summary>
+    public Comando UsarSweep { get; }
+
+    /// <summary>A velocidade do sweep escolhida: lento, médio ou rápido.</summary>
+    public bool Lento => _velocidade == 1;
+
+    public bool Medio => _velocidade == 2;
+
+    public bool Rapido => _velocidade == 3;
+
+    public Comando UsarLento { get; }
+
+    public Comando UsarMedio { get; }
+
+    public Comando UsarRapido { get; }
+
+    private void AvisarVelocidade()
+    {
+        Avisar(nameof(Lento));
+        Avisar(nameof(Medio));
+        Avisar(nameof(Rapido));
     }
 
     /// <summary>Frequência do tom fixo (201), como escrita no campo.</summary>
@@ -154,6 +189,7 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
             _velocidade = value;
             _velocidadeEscolhida = true;
             Avisar();
+            AvisarVelocidade();
         }
     }
 
@@ -370,6 +406,7 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
         {
             _velocidade = (int)v;
             Avisar(nameof(VelocidadeSweep));
+            AvisarVelocidade();
         }
     }
 

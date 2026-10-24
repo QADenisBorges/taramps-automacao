@@ -15,6 +15,12 @@ namespace BgsControle.App;
 /// tela de conexão: ela sobe por cima da escolha do Setup (Conectar, o registro e Esquecer a senha
 /// precisam estar ao alcance também ali).
 /// </para>
+/// <para>
+/// História 11: as telas cheias novas (Gerador, Presets, Senha, Voltímetro e clip, Chaves de acesso, IA pela
+/// rede, Histórico) e as camadas que sobem sozinhas, também modais, na ordem de baixo para cima: a escolha
+/// do Setup, a folha pela metade, a IA ativa, a folha de confirmação da IA e a faixa "DESLIGUE O MÓDULO
+/// AGORA". A confirmação da IA e o alarme do gerador ficam acima de tudo.
+/// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
 {
@@ -22,6 +28,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private readonly Dictionary<FuncaoAudio, FuncaoPage> _funcoes = [];
     private readonly SemaphoreSlim _porCima = new(1, 1);
     private (bool Setup, bool Metade) _pedido;
+    private (bool Ia, bool Confirmacao, bool Alarme) _camadas;
     private (string Nome, Func<Page> Criar)? _esperando;
 
     private static INavigation? Navegacao => Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation;
@@ -59,6 +66,20 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
 
     public void AbrirMemorias() => Empurrar("Memórias", servicos.GetRequiredService<MemoriasPage>);
 
+    public void AbrirGerador() => Empurrar("Gerador", servicos.GetRequiredService<GeradorPage>);
+
+    public void AbrirPresets() => Empurrar("Presets", servicos.GetRequiredService<PresetsPage>);
+
+    public void AbrirSenha() => Empurrar("Senha", servicos.GetRequiredService<AparelhoPage>);
+
+    public void AbrirMonitoracao() => Empurrar("Voltímetro e clip", servicos.GetRequiredService<MonitoracaoPage>);
+
+    public void AbrirChaves() => Empurrar("Chaves de acesso", servicos.GetRequiredService<ChavesPage>);
+
+    public void AbrirIaPelaRede() => Empurrar("IA pela rede", servicos.GetRequiredService<IaPelaRedePage>);
+
+    public void AbrirHistorico() => Empurrar("Histórico", servicos.GetRequiredService<HistoricoPage>);
+
     public void AbrirConexao() => MainThread.BeginInvokeOnMainThread(async () =>
     {
         if (Navegacao is not { } nav)
@@ -89,6 +110,19 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     public void MostrarPorCima(bool escolhaSetup, bool pelaMetade)
     {
         _pedido = (escolhaSetup, pelaMetade);
+        Reconciliar();
+    }
+
+    /// <summary>As camadas da história 11, acima das outras: a IA ativa, a confirmação da IA e o alarme do gerador.</summary>
+    public void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador)
+    {
+        _camadas = (iaAtiva, confirmacaoIa, alarmeGerador);
+        Reconciliar();
+    }
+
+    /// <summary>Deixa na pilha de modais só as telas que valem agora, na ordem de baixo para cima.</summary>
+    private void Reconciliar()
+    {
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             await _porCima.WaitAsync();
@@ -97,11 +131,18 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                 if (Navegacao is not { } nav)
                     return;
                 var (setup, metade) = _pedido;
+                var (ia, confirmacao, alarme) = _camadas;
                 var queremos = new List<Page>();
                 if (setup)
                     queremos.Add(servicos.GetRequiredService<SetupEscolhaPage>());
                 if (metade)
                     queremos.Add(servicos.GetRequiredService<PelaMetadePage>());
+                if (ia)
+                    queremos.Add(servicos.GetRequiredService<IaAtivaPage>());
+                if (confirmacao)
+                    queremos.Add(servicos.GetRequiredService<ConfirmacaoIaPage>());
+                if (alarme)
+                    queremos.Add(servicos.GetRequiredService<AlarmeGeradorPage>());
                 // A tela de conexão aberta por cima da escolha não conta; se algo muda, ela sai junto.
                 var conexao = servicos.GetRequiredService<ConexaoPage>();
                 if (!nav.ModalStack.Where(p => p != conexao).SequenceEqual(queremos))

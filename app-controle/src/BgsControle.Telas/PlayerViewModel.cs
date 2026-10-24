@@ -10,6 +10,7 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     private int _posicao;
     private bool _tocando;
     private bool _indisponivel;
+    private bool _editando;
 
     internal LinhaPlaylistViewModel(Faixa faixa, PlayerViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -74,6 +75,19 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     /// <summary>"Arquivo não encontrado", ou null.</summary>
     public string? TextoIndisponivel => _indisponivel ? Player.TextoIndisponivel : null;
 
+    /// <summary>O modo Editar da tela: a linha mostra − e ≡.</summary>
+    public bool Editando
+    {
+        get => _editando;
+        internal set
+        {
+            if (_editando == value)
+                return;
+            _editando = value;
+            Avisar();
+        }
+    }
+
     /// <summary>Tocar na linha: toca a partir desta faixa.</summary>
     public Comando Tocar { get; }
 
@@ -86,7 +100,12 @@ public sealed class LinhaPlaylistViewModel : TelaBase
 /// 22/10). O título "Playlist da NOME"; sem memória do celular em uso, "Sem memória do celular em
 /// uso, não há playlist. Aplique uma memória do celular." e nenhum comando. As linhas (nome, m:ss, pasta, tocando, "Arquivo não encontrado"); Editar e Pronto;
 /// Adicionar músicas (o seletor do Android, vários de uma vez, no fim); Remover e Mover; Tocar/pausar
-/// e Próxima. Nada daqui manda nada ao processador.
+/// e Próxima. Nada daqui manda nada ao processador, menos o Ligar do Bluetooth de áudio (251).
+/// <para>
+/// Os avisos do topo (história 11), um de cada vez, nesta ordem: "Sem permissão" (com Permitir), "Bluetooth
+/// de áudio desligado" (com Ligar; Tocar travado até ligar) e "Celular não está mandando o som" (com o
+/// atalho para o Bluetooth do Android). A queda do BLE não tira a playlist (decisão do Denis, 24/10/2026).
+/// </para>
 /// </summary>
 public sealed class PlayerViewModel : TelaBase, IDisposable
 {
@@ -96,6 +115,12 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     public const string TextoTocar = "Tocar";
     public const string TextoPausar = "Pausar";
     public const string TextoProxima = "Próxima";
+    public const string MsgSemPermissao = "O app precisa de acesso às músicas do celular.";
+    public const string TextoPermitir = "Permitir";
+    public const string MsgBluetoothDesligado = "O Bluetooth de áudio do processador está desligado.";
+    public const string TextoLigar = "Ligar";
+    public const string MsgSomPeloCelular = "O som está saindo pelo celular. Conecte o Bluetooth do celular ao processador.";
+    public const string TextoAbrirBluetooth = "Abrir o Bluetooth";
 
     /// <summary>"3:07": minutos e segundos (os minutos passam de 59 sem virar hora).</summary>
     public static string FormatarDuracao(TimeSpan d)
@@ -110,6 +135,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     private readonly GerentePlaylists _playlists;
     private readonly GerenteSetups _setups;
     private readonly ISeletorAudio _seletor;
+    private readonly AparelhoViewModel? _aparelho;
+    private readonly IAudioDoCelular? _audio;
 
     private readonly Dictionary<string, LinhaPlaylistViewModel> _porId = [];
     private IReadOnlyList<LinhaPlaylistViewModel> _linhas = [];
@@ -125,9 +152,13 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         GerenteSetups setups,
         ISeletorAudio seletor,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        AparelhoViewModel? aparelho = null,
+        IAudioDoCelular? audio = null)
         : base(despachante, relogio)
     {
+        _aparelho = aparelho;
+        _audio = audio;
         _player = player;
         _playlists = playlists;
         _setups = setups;
@@ -138,13 +169,80 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         Pronto = new Comando(() => Editando = false);
         TocarPausar = new Comando(TocarPausarAsync);
         Proxima = new Comando(ProximaAsync);
+        AcaoAviso = new Comando(AgirNoAvisoAsync);
 
         _ultimoAvisoPlayer = _player.Aviso;
         _memoriaVista = _player.Memoria;
         _player.Mudou += AoMudarAlgo;
         _playlists.Mudou += AoMudarAlgo;
         _setups.Mudou += AoMudarAlgo;
+        if (_aparelho is not null)
+            _aparelho.PropertyChanged += AoMudarAparelho;
+        if (_audio is not null)
+            _audio.Mudou += AoMudarAlgo;
         Atualizar();
+    }
+
+    // ------------------------------------------------------------------ avisos do topo
+
+    /// <summary>O Android negou ler as músicas.</summary>
+    public bool SemPermissao => _audio?.SemPermissao == true;
+
+    /// <summary>O Bluetooth de áudio do processador (251) foi lido desligado. Sem leitura (desconectado), não se sabe: false.</summary>
+    public bool BluetoothAudioDesligado => _aparelho?.BluetoothAudioLigado == false;
+
+    /// <summary>O Android manda o som pelo alto-falante do celular, não por Bluetooth.</summary>
+    public bool SomPeloCelular => _audio?.SaindoPeloBluetooth == false;
+
+    /// <summary>O aviso do topo, um de cada vez (sem permissão, Bluetooth de áudio desligado, som pelo celular), ou null.</summary>
+    public string? AvisoTopo => !TemMemoria ? null
+        : SemPermissao ? MsgSemPermissao
+        : BluetoothAudioDesligado ? MsgBluetoothDesligado
+        : SomPeloCelular ? MsgSomPeloCelular
+        : null;
+
+    /// <summary>O botão do aviso: "Permitir", "Ligar" ou "Abrir o Bluetooth", ou null.</summary>
+    public string? TextoAcaoAviso => AvisoTopo switch
+    {
+        MsgSemPermissao => TextoPermitir,
+        MsgBluetoothDesligado => TextoLigar,
+        MsgSomPeloCelular => TextoAbrirBluetooth,
+        _ => null,
+    };
+
+    /// <summary>O botão do aviso: pede o acesso, liga o Bluetooth de áudio (251, sem confirmação) ou abre o Bluetooth do Android.</summary>
+    public Comando AcaoAviso { get; }
+
+    /// <summary>Por que Tocar está travado ("O Bluetooth de áudio do processador está desligado."), ou null.</summary>
+    public string? TravaTocar => SemPermissao ? MsgSemPermissao : BluetoothAudioDesligado ? MsgBluetoothDesligado : null;
+
+    private async Task AgirNoAvisoAsync()
+    {
+        switch (AvisoTopo)
+        {
+            case MsgSemPermissao when _audio is not null:
+                await _audio.PedirPermissaoAsync();
+                break;
+            case MsgBluetoothDesligado when _aparelho is not null:
+                await _aparelho.DefinirBluetoothAudioAsync(true);
+                await NaTelaAsync(() =>
+                {
+                    // "Bluetooth de áudio ligado." ou o motivo ("Chave desligada").
+                    if (_aparelho.Mensagem is { } frase)
+                        Mensagem = frase;
+                });
+                break;
+            case MsgSomPeloCelular when _audio is not null:
+                _audio.AbrirBluetooth();
+                break;
+        }
+        await NaTelaAsync(Atualizar);
+    }
+
+    private void AoMudarAparelho(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AparelhoViewModel.BluetoothAudioLigado) or null or "")
+            NaTela(Atualizar);
     }
 
     // ------------------------------------------------------------------ o que aparece
@@ -205,6 +303,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
                 return;
             _editando = value;
             Avisar();
+            foreach (var l in _linhas)
+                l.Editando = value;
         }
     }
 
@@ -256,12 +356,29 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     /// <summary>Próxima: a faixa seguinte; depois da última, para.</summary>
     public Comando Proxima { get; }
 
-    private Task TocarPausarAsync() => Comandar(_player.TocarPausarAsync);
+    private Task TocarPausarAsync()
+    {
+        // Pausar nunca trava; tocar ou continuar, sim (sem acesso, ou o Bluetooth de áudio desligado).
+        if (_player.Estado != EstadoPlayer.Tocando && TravaTocar is { } trava && TemMemoria)
+        {
+            Mensagem = trava;
+            return Task.CompletedTask;
+        }
+        return Comandar(_player.TocarPausarAsync);
+    }
 
     private Task ProximaAsync() => Comandar(_player.ProximaAsync);
 
     /// <summary>Tocar numa linha: toca aquela faixa.</summary>
-    public Task TocarFaixaAsync(string id) => Comandar(() => _player.TocarFaixaAsync(id));
+    public Task TocarFaixaAsync(string id)
+    {
+        if (TravaTocar is { } trava && TemMemoria)
+        {
+            Mensagem = trava;
+            return Task.CompletedTask;
+        }
+        return Comandar(() => _player.TocarFaixaAsync(id));
+    }
 
     private async Task Comandar(Func<Task> comando)
     {
@@ -373,7 +490,17 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         Avisar(nameof(Estado));
         Avisar(nameof(TextoTocarPausar));
         Avisar(nameof(Ocupado));
+        Avisar(nameof(SemPermissao));
+        Avisar(nameof(BluetoothAudioDesligado));
+        Avisar(nameof(SomPeloCelular));
+        Avisar(nameof(AvisoTopo));
+        Avisar(nameof(TextoAcaoAviso));
+        Avisar(nameof(TravaTocar));
+        Avisar(nameof(Tocando));
     }
+
+    /// <summary>O Player está tocando (o botão mostra pausar).</summary>
+    public bool Tocando => _player.Estado == EstadoPlayer.Tocando;
 
     /// <summary>Refaz as linhas a partir do Player, mantendo o mesmo objeto para o mesmo id.</summary>
     private void MontarLinhas()
@@ -386,6 +513,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             if (!_porId.TryGetValue(f.Id, out var linha))
                 _porId[f.Id] = linha = new LinhaPlaylistViewModel(f, this, Despachante, Relogio);
             linha.Posicao = i + 1;
+            linha.Editando = _editando;
             novas.Add(linha);
         }
         foreach (var id in _porId.Keys.Where(id => faixas.All(f => f.Id != id)).ToArray())
@@ -402,5 +530,9 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         _player.Mudou -= AoMudarAlgo;
         _playlists.Mudou -= AoMudarAlgo;
         _setups.Mudou -= AoMudarAlgo;
+        if (_aparelho is not null)
+            _aparelho.PropertyChanged -= AoMudarAparelho;
+        if (_audio is not null)
+            _audio.Mudou -= AoMudarAlgo;
     }
 }

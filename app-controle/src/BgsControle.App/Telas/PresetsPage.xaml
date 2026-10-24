@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Configurações › Presets (EXPERIENCE, Presets no celular; State Patterns › Preset aplicado, Presets vazio, Apagar
+    preset): os presets de 15 bandas, o herdado Cinema primeiro (HERDADO e a nota). Cada um com Aplicar (só as 15
+    bandas, por cima da memória), Renomear (vale no ✓), Apagar (folha; travado no herdado e no lembrado, com o
+    motivo) e Exportar (JSON). O preset novo nasce na folha do Salvar.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.PresetsPage"
+             x:DataType="telas:PresetsViewModel"
+             NavigationPage.HasNavigationBar="False">
+    <Grid>
+        <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
+                <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-titulo-tela}" Text="Presets" />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Só as 15 bandas, por cima da memória" />
+                </VerticalStackLayout>
+            </Grid>
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout Padding="16,8" Spacing="10">
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding MotivoTravaAplicar}"
+                           IsVisible="{Binding MotivoTravaAplicar, Converter={StaticResource TemTexto}}" />
+                    <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" HorizontalOptions="Start" />
+
+                    <!-- O campo do nome (Renomear): vale no ✓. -->
+                    <Border Style="{StaticResource cartao}" IsVisible="{Binding RenomearAberto}">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding RenomearTitulo}" />
+                            <Entry Style="{StaticResource entrada}" Text="{Binding NomeRenomear}" MaxLength="24"
+                                   ReturnCommand="{Binding ConfirmarRenomear}" />
+                            <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroRenomear}"
+                                   IsVisible="{Binding ErroRenomear, Converter={StaticResource TemTexto}}" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <Button Style="{StaticResource botao-pequeno}" BackgroundColor="{StaticResource texto}"
+                                        TextColor="{StaticResource sobre-escolhido}" Text="✓ Renomear" Command="{Binding ConfirmarRenomear}" />
+                                <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}"
+                                        Text="{x:Static telas:PresetsViewModel.TextoCancelar}" Command="{Binding CancelarRenomear}" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Itens}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:ItemPresetViewModel">
+                                <Border Style="{StaticResource cartao-grande}">
+                                    <VerticalStackLayout Spacing="8">
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Border IsVisible="{Binding EmUso}" BackgroundColor="{StaticResource texto}" StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0">
+                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource sobre-escolhido}"
+                                                       Text="EM USO" VerticalTextAlignment="Center" />
+                                            </Border>
+                                            <Border IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
+                                                    StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0">
+                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
+                                                       VerticalTextAlignment="Center" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                        <Label Style="{StaticResource tipo-memoria-lista}" FontSize="28" Text="{Binding Nome}" />
+                                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding Nota}"
+                                               IsVisible="{Binding Nota, Converter={StaticResource TemTexto}}" />
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                                            <Button Style="{StaticResource botao-pequeno}" Text="Aplicar" Command="{Binding Aplicar}" />
+                                            <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}"
+                                                    Text="{x:Static telas:PresetsViewModel.TextoExportar}" Command="{Binding Exportar}" />
+                                            <Button Grid.Row="1" Style="{StaticResource botao-contornado-pequeno}" Text="Renomear"
+                                                    Command="{Binding Renomear}">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding Herdado}" Value="True">
+                                                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                                                        <Setter Property="BorderColor" Value="Transparent" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Apagar"
+                                                    Command="{Binding Apagar}">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding PodeApagar}" Value="False">
+                                                        <Setter Property="TextColor" Value="{StaticResource apagado}" />
+                                                        <Setter Property="BorderColor" Value="Transparent" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                        </Grid>
+                                        <!-- Por que Apagar está travado: "Lembrado por 2 memórias.", "Preset herdado não muda." -->
+                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaApagar}"
+                                               IsVisible="{Binding MotivoTravaApagar, Converter={StaticResource TemTexto}}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoVazio}"
+                           IsVisible="{Binding TextoVazio, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- A folha "Apagar o preset X?". -->
+        <c:FolhaView Aberta="{Binding ApagarAberto}" Fechar="{Binding CancelarApagar}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding ApagarTitulo}" />
+                <Label Style="{StaticResource tipo-corpo}" Text="O preset some do celular. As memórias e o som de agora não mudam." />
+                <Button Style="{StaticResource botao-principal}" Text="{Binding TextoConfirmarApagar}" Command="{Binding ConfirmarApagar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:PresetsViewModel.TextoCancelar}"
+                        Command="{Binding CancelarApagar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

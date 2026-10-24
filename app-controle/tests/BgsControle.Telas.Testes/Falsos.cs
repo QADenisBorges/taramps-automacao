@@ -137,6 +137,22 @@ internal sealed class NavegacaoFalsa : INavegacao
     public void AbrirSetups() => Pedidos.Add("setups");
     public void AbrirMemorias() => Pedidos.Add("memorias");
     public void AbrirConexao() => Pedidos.Add("conexao");
+    public void AbrirGerador() => Pedidos.Add("gerador");
+    public void AbrirPresets() => Pedidos.Add("presets");
+    public void AbrirSenha() => Pedidos.Add("senha");
+    public void AbrirMonitoracao() => Pedidos.Add("monitoracao");
+    public void AbrirChaves() => Pedidos.Add("chaves");
+    public void AbrirIaPelaRede() => Pedidos.Add("ia-pela-rede");
+    public void AbrirHistorico() => Pedidos.Add("historico");
+
+    /// <summary>O último pedido das camadas da história 11: (IA ativa, confirmação da IA, alarme do gerador).</summary>
+    public (bool IaAtiva, bool Confirmacao, bool Alarme)? Camadas { get; private set; }
+
+    public void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador)
+    {
+        Camadas = (iaAtiva, confirmacaoIa, alarmeGerador);
+        Pedidos.Add($"camadas:{iaAtiva}:{confirmacaoIa}:{alarmeGerador}");
+    }
 
     public void MostrarPorCima(bool escolhaSetup, bool pelaMetade)
     {
@@ -146,4 +162,64 @@ internal sealed class NavegacaoFalsa : INavegacao
 
     public void Voltar() => Pedidos.Add("voltar");
     public void VoltarAoInicio() => Pedidos.Add("inicio");
+}
+
+/// <summary>O som do celular falso (história 11): a saída do som e o acesso às músicas, mudados pelo teste.</summary>
+internal sealed class AudioDoCelularFalso : IAudioDoCelular
+{
+    private bool? _bluetooth = true;
+    private bool _semPermissao;
+
+    public bool? SaindoPeloBluetooth
+    {
+        get => _bluetooth;
+        set
+        {
+            _bluetooth = value;
+            Mudou?.Invoke();
+        }
+    }
+
+    public bool SemPermissao
+    {
+        get => _semPermissao;
+        set
+        {
+            _semPermissao = value;
+            Mudou?.Invoke();
+        }
+    }
+
+    public bool Permitir { get; set; } = true;
+
+    public int AberturasBluetooth { get; private set; }
+
+    public int PedidosPermissao { get; private set; }
+
+    public event Action? Mudou;
+
+    public void AbrirBluetooth() => AberturasBluetooth++;
+
+    public Task<bool> PedirPermissaoAsync()
+    {
+        PedidosPermissao++;
+        if (Permitir)
+            SemPermissao = false;
+        return Task.FromResult(Permitir);
+    }
+}
+
+/// <summary>O exportar falso: guarda o nome e o conteúdo; <see cref="Falha"/> faz recusar.</summary>
+internal sealed class ExportarFalso : IExportarArquivo
+{
+    public List<(string Nome, string Conteudo)> Exportados { get; } = [];
+
+    public string? Falha { get; set; }
+
+    public Task<string?> ExportarAsync(string nomeArquivo, string conteudo)
+    {
+        if (Falha is null)
+            Exportados.Add((nomeArquivo, conteudo));
+        return Task.FromResult(Falha);
+    }
 }

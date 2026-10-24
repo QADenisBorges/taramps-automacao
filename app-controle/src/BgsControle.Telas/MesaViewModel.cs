@@ -12,6 +12,7 @@ namespace BgsControle.Telas;
 public sealed class CanalMesaViewModel : TelaBase
 {
     private readonly EstadoAparelho _estado;
+    private bool _clip;
 
     internal CanalMesaViewModel(SaidaTela saida, int coluna, ControleParametroViewModel ganho, EstadoAparelho estado, INavegacao nav,
         IDespachante despachante, TimeProvider relogio)
@@ -49,6 +50,19 @@ public sealed class CanalMesaViewModel : TelaBase
 
     public Comando Ajustar { get; }
 
+    /// <summary>O ponto de clip no topo da coluna: aceso quando a saída clipa (o mesmo da faixa de monitoração).</summary>
+    public bool Clip
+    {
+        get => _clip;
+        internal set
+        {
+            if (_clip == value)
+                return;
+            _clip = value;
+            Avisar();
+        }
+    }
+
     internal void Atualizar()
     {
         Avisar(nameof(Subtitulo));
@@ -60,8 +74,8 @@ public sealed class CanalMesaViewModel : TelaBase
 /// A Mesa (EXPERIENCE, Information Architecture; DESIGN, Layout › Mesa): no topo, a memória em uso e os
 /// mesmos 3 botões de memória + "…" do Início; os faders de ganho das saídas do Setup em uso (de 1 a 4,
 /// refeitos quando as saídas mudam) e o MASTER (caráter,
-/// vai para a memória). Arrastar muda o som na hora; tocar no número vira campo, que vale no ✓. A faixa
-/// de monitoração é da história 11.
+/// vai para a memória). Arrastar muda o som na hora; tocar no número vira campo, que vale no ✓. Entre os
+/// canais e o MASTER, a faixa de monitoração (história 11): o voltímetro e o clip por saída do Setup.
 /// </summary>
 public sealed class MesaViewModel : TelaBase, IDisposable
 {
@@ -74,6 +88,7 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     private readonly LinkCanais _link;
     private readonly FabricaControles _fabrica;
     private readonly INavegacao _nav;
+    private readonly MonitoracaoViewModel? _monitoracao;
     private IReadOnlyList<CanalMesaViewModel> _canais = [];
 
     public MesaViewModel(
@@ -86,9 +101,11 @@ public sealed class MesaViewModel : TelaBase, IDisposable
         BotoesMemoriaViewModel botoes,
         INavegacao nav,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        MonitoracaoViewModel? monitoracao = null)
         : base(despachante, relogio)
     {
+        _monitoracao = monitoracao;
         _setups = setups;
         _memorias = memorias;
         _sessao = sessao;
@@ -107,7 +124,13 @@ public sealed class MesaViewModel : TelaBase, IDisposable
         _estado.Recarregou += AoMudar;
         _estado.Mudou += AoMudarValor;
         _link.Mudou += AoMudarLink;
+        if (_monitoracao is not null)
+            _monitoracao.Atualizou += AtualizarClip;
+        AtualizarClip();
     }
+
+    /// <summary>A faixa de monitoração (voltímetro e clip por saída), ou null.</summary>
+    public MonitoracaoViewModel? Monitoracao => _monitoracao;
 
     /// <summary>"MEMÓRIA EM USO".</summary>
     public string RotuloMemoria => InicioViewModel.RotuloMemoria;
@@ -180,7 +203,16 @@ public sealed class MesaViewModel : TelaBase, IDisposable
         RefazerCanais();
         foreach (var c in Canais)
             c.Atualizar();
+        AtualizarClip();
         Avisar(nameof(NomeMemoria));
+    }
+
+    private void AtualizarClip()
+    {
+        if (_monitoracao is null)
+            return;
+        foreach (var c in _canais)
+            c.Clip = _monitoracao.Clipou(c.Saida.App);
     }
 
     public void Dispose()
@@ -191,6 +223,8 @@ public sealed class MesaViewModel : TelaBase, IDisposable
         _estado.Recarregou -= AoMudar;
         _estado.Mudou -= AoMudarValor;
         _link.Mudou -= AoMudarLink;
+        if (_monitoracao is not null)
+            _monitoracao.Atualizou -= AtualizarClip;
         foreach (var c in Canais)
             c.Ganho.Dispose();
         Master.Dispose();

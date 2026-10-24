@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A faixa de monitoração da Mesa (DESIGN, faixa-de-monitoracao; EXPERIENCE, Faixa de monitoração): 44 px, à
+    esquerda o voltímetro ("12,4 V", ou "—" sem leitura), à direita um ponto de clip por saída do Setup em uso e
+    um da entrada, cada um com o nome embaixo. Apagado em sup-2; com clip, aceso em parar por 3 s. Tocar abre
+    Voltímetro e clip. Só ouve: nada sai pelo BLE.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.FaixaMonitoracaoView"
+             x:DataType="telas:MonitoracaoViewModel">
+    <Border BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" StrokeShape="RoundRectangle 14"
+            Padding="12,4" MinimumHeightRequest="44">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                <Label Style="{StaticResource tipo-rotulo}" Text="VOLT." VerticalTextAlignment="Center" />
+                <Label Style="{StaticResource tipo-valor-campo-linha}" Text="{Binding Voltimetro}" VerticalTextAlignment="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="1" Spacing="10" HorizontalOptions="End" VerticalOptions="Center">
+                <HorizontalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding PorSaida}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:ClipSaidaViewModel">
+                            <VerticalStackLayout Spacing="1" SemanticProperties.Description="{Binding TextoLeitor}">
+                                <Ellipse WidthRequest="10" HeightRequest="10" HorizontalOptions="Center" Fill="{StaticResource sup-2}">
+                                    <Ellipse.Triggers>
+                                        <DataTrigger TargetType="Ellipse" Binding="{Binding Aceso}" Value="True">
+                                            <Setter Property="Fill" Value="{StaticResource parar}" />
+                                        </DataTrigger>
+                                    </Ellipse.Triggers>
+                                </Ellipse>
+                                <Label Style="{StaticResource tipo-escala}" Text="{Binding Nome}" HorizontalTextAlignment="Center"
+                                       MaximumWidthRequest="56" LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </HorizontalStackLayout>
+                <VerticalStackLayout Spacing="1" BindingContext="{Binding Entrada}">
+                    <Ellipse x:DataType="telas:PontoClipViewModel" WidthRequest="10" HeightRequest="10" HorizontalOptions="Center"
+                             Fill="{StaticResource sup-2}">
+                        <Ellipse.Triggers>
+                            <DataTrigger TargetType="Ellipse" Binding="{Binding Aceso}" Value="True">
+                                <Setter Property="Fill" Value="{StaticResource parar}" />
+                            </DataTrigger>
+                        </Ellipse.Triggers>
+                    </Ellipse>
+                    <Label Style="{StaticResource tipo-escala}" Text="Entrada" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+        </Grid>
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Command="{Binding Abrir}" />
+        </Border.GestureRecognizers>
+    </Border>
+</ContentView>
