@@ -247,7 +247,7 @@ public sealed class InicioViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ saídas
 
-    /// <summary>As saídas do Setup em uso, na ordem dos canais (no Casa 2.1: JBL L, JBL R e Sub).</summary>
+    /// <summary>Um cartão por saída do Setup em uso (1 a 4), na ordem dos canais; refeitos quando as saídas mudam (no Casa 2.1: JBL L, JBL R e Sub).</summary>
     public IReadOnlyList<CartaoSaidaViewModel> CartoesSaida => _cartoes;
 
     /// <summary>O cartão da saída que tem o canal (0 a 3), ou null.</summary>

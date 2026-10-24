@@ -13,7 +13,21 @@ context:
   - '{project-root}/_bmad-output/specs/spec-app-controle-taramps/stories/8e-equipamentos-ligacoes-e-saidas-do-setup.md'
 warnings:
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      A navegação com uma tela por cima (esperar sob "Aplicado pela metade", descartar sob a escolha do Setup, a conexão como exceção) não tem teste automático.
+    evidence: |-
+      A lógica fica no NavegacaoMaui, que depende do MAUI (INavigation, MainThread); os testes usam a NavegacaoFalsa. Extrair a decisão para uma classe do BgsControle.Telas e testar, ou conferir no aparelho (história 12).
+    location: >-
+      app-controle/src/BgsControle.App/NavegacaoMaui.cs
+    severity: medium
+  - summary: >-
+      Ao tocar em Concluído no teclado, a perda do foco pode chegar antes do Completed e descartar o valor digitado.
+    evidence: |-
+      O CampoEdicaoView fecha o campo no Unfocused. No MAUI Android o Completed costuma vir antes, mas só o aparelho confirma. Se for real, a correção é adiar o fechamento (Dispatcher.Dispatch).
+    location: >-
+      app-controle/src/BgsControle.App/Controles/CampoEdicaoView.xaml.cs
+    severity: high (unverified)
 ---
 
 <intent-contract>
@@ -108,6 +122,39 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-23 — Review pass
+- verdicts: 28 findings — high 0, medium 2, low 19, false 6, maybe-false 1
+- a revisão rodou depois do commit 4bdd12a (o agente fechou a história sem ela); as correções entram num commit seguinte
+- findings:
+  - `[false]` `[reject]` (intenção) XAML e navegação testados só pelos ViewModels — não há harness MAUI nem celular; a spec deixa a conferência visual pendente
+  - `[low]` `[reject]` (intenção) O registro da SetupPage no DI nunca roda num teste — o build valida os bindings; a abertura real fica para a conferência no aparelho
+  - `[low]` `[reject]` (intenção) A tela de conexão (registro, esquecer a senha, ocupado) só no XAML — idem
+  - `[false]` `[reject]` (intenção) Correções de Android só pelo build — é o que dá para provar sem aparelho
+  - `[false]` `[reject]` (intenção) Com o Link 3–4 desligado, as saídas viram "Sub · CH3" e "Sub · CH4" — os dois canais alimentam o mesmo Sub; o canal desempata, como a spec manda para nomes iguais
+  - `[low]` `[patch]` (intenção) Lacunas de teste da tentativa 1 não cobertas ("Caiu às", criar memória pelo Início, opção escolhida) — testes novos
+  - `[false]` `[reject]` (intenção) Link com equilíbrios diferentes não decidido — a spec manda deixar com o Denis (adiado)
+  - `[low]` `[patch]` (cego) Rótulos com "do" antes de qualquer nome ("Ganho do JBL L") — forma sem artigo: "Ganho · JBL L", "mexer em …"
+  - `[false]` `[reject]` (cego) O teste da matriz não confere as saídas — confere: CH1, CH2, "CH3 + CH4" e depois as 4 caixas no Início, na Mesa e nas abas
+  - `[false]` `[reject]` (cego) A spec dizia done sem revisão — esta revisão corrige; a correção seria editar a spec
+  - `[medium]` `[patch]` (cego) A pílula na tela Setup em dúvida não abria a conexão — a conexão abre por cima da escolha do Setup (única exceção)
+  - `[low]` `[patch]` (cego) Comentários do modelo de saídas fixas — reescritos
+  - `[low]` `[patch]` (cego) Falhas dos comandos sem registro — vão para o LogBle
+  - `[low]` `[reject]` (cego) Rótulos agrupados por links diferentes quando o mesmo Salvar troca o link — raro
+  - `[low]` `[patch]` (cego) Cor do equipamento pelo primeiro canal, não pelo mestre da saída — passa a ser o mestre da saída
+  - `[low]` `[patch]` (cego) Código morto e duplicado — removido
+  - `[low]` `[reject]` (cego) Cores em C# e o ícone ainda azul — sombras no desenho e o ícone do inicializador não são o tema
+  - `[low]` `[patch]` (lacuna) Telas abertas não testadas ao mudar equipamento ou Setup — teste novo
+  - `[low]` `[patch]` (lacuna) Subtítulo das telas de função não testado — teste novo
+  - `[medium]` `[defer]` (lacuna) Navegação com tela por cima (esperar ou descartar) sem teste — depende do MAUI; extrair a decisão para uma classe testável é maior que esta história
+  - `[low]` `[patch]` (borda) Passo do equilíbrio perdido quando o envio falha — mostra o motivo do aparelho
+  - `[low]` `[patch]` (borda) Exceção no retorno à tela derrubava o envio — pega a exceção; o envio sempre termina
+  - `[low]` `[patch]` (borda) Memória em uso com id que sumiu mostrava "Nenhuma memória" — vira "Som do aparelho"
+  - `[low]` `[patch]` (borda) Toque duplo em aplicar ou carregar memória — o segundo é ignorado; teste
+  - `[low]` `[patch]` (borda) Toque duplo em confirmar renomear ou apagar Setup — o segundo é ignorado
+  - `[maybe-false]` `[defer]` (borda) No Concluído do teclado, a perda do foco pode chegar antes e descartar o valor digitado — no MAUI Android o Completed costuma vir antes; só o aparelho confirma; se for real, é high
+  - `[low]` `[patch]` (borda) Folha do Salvar ou campo aberto ficavam depois da escolha do Setup — fechados ao voltar ao Início; teste
+  - `[low]` `[patch]` (borda) Mesa com "Memória 2 · memória 2 do aparelho" — o sufixo só com nome lido
+
 ## Design Notes
 
 - **Por que aplicar o patch:** a tentativa 1 passou em 916 + 358 testes e no build; o que a bloqueou foi só o modelo das saídas, que a 8e resolveu. Refazer as telas do zero seria retrabalho.
@@ -146,3 +193,25 @@ Status: done
 - `git grep -n "class Saidas\b" -- app-controle/src`: nenhuma linha.
 - Sem celular no adb: nenhuma tela foi vista num aparelho; a conferência visual contra os mocks fica pendente.
 
+
+### Revisão (feita depois do commit 4bdd12a)
+
+- **28 achados.**
+- **Corrigidos:** 1 medium (a pílula na tela "Setup em dúvida" agora abre a conexão), mais as low:
+  - rótulos sem artigo ("Atraso · Sub");
+  - falhas de comando no log;
+  - a cor do equipamento pelo canal mestre;
+  - o equilíbrio sem passo perdido e sem exceção;
+  - toques duplos;
+  - a memória que sumiu;
+  - as folhas fechadas depois da escolha do Setup;
+  - código morto;
+  - os testes que faltavam.
+- **Adiados (2):** os testes da navegação com tela por cima e a ordem do Concluído do teclado (os dois para o aparelho, história 12).
+- **Revisão de acompanhamento:** não recomendada; só 1 medium foi corrigido.
+- **Verificação depois das correções:**
+  - `dotnet test` do Nucleo.Testes: 990 passam.
+  - `dotnet test` do Telas.Testes: 395 passam.
+  - `dotnet build` do App para `net10.0-android`: 0 erros e 0 avisos.
+  - `git grep "class Saidas"`: nenhuma linha.
+- **Sem conferência visual:** nada foi visto num celular.

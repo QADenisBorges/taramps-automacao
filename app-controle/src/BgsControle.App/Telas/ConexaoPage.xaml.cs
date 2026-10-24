@@ -17,8 +17,10 @@ public partial class ConexaoPage : ContentPage
         vm.PropertyChanged += AoMudar;
     }
 
-    /// <summary>Esta tela é a da frente (a senha cai aqui, e não no Início escondido).</summary>
-    public bool NaFrente => Navigation.NavigationStack.LastOrDefault() == this && Navigation.ModalStack.Count == 0;
+    /// <summary>Esta tela é a da frente (a senha cai aqui, e não no Início escondido): na pilha, ou por cima da escolha do Setup.</summary>
+    public bool NaFrente => Navigation.ModalStack.Count > 0
+        ? Navigation.ModalStack[^1] == this
+        : Navigation.NavigationStack.LastOrDefault() == this;
 
     protected override void OnAppearing()
     {
@@ -30,7 +32,9 @@ public partial class ConexaoPage : ContentPage
     private void AoVoltar(object? sender, EventArgs e)
     {
         FecharTeclado();
-        _ = Navigation.PopAsync();
+        _ = Navigation.ModalStack.Count > 0 && Navigation.ModalStack[^1] == this
+            ? Navigation.PopModalAsync(false)
+            : Navigation.PopAsync();
     }
 
     private void AoEnviarSenha(object? sender, EventArgs e) => FecharTeclado();

@@ -279,26 +279,37 @@ public sealed class ControleEquilibrioViewModel : TelaBase, ICampoEditavel, IDis
             // a resposta e este ponto não se perde (ou ele é o próximo envio, ou chegou depois do fim e
             // começa um envio novo).
             var feito = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Uma recusa com um passo novo na fila também para: o passo novo não vai, e o aviso diz por
+            // quê (a frase do aparelho ou da trava). Uma exceção aqui não chega ao UltimoEnvio: o estado
+            // volta e o aviso diz "Erro inesperado".
             NaTela(() =>
             {
                 try
                 {
                     if (r.Ok && _alvo is { } a && a != enviado)
                     {
-                        feito.SetResult(true);
+                        feito.TrySetResult(true);
                         return;
                     }
                     _alvo = null;
                     _enviando = false;
-                    Aviso = r.Mensagem;
+                    Aviso = r.Ok ? r.Mensagem : r.Mensagem ?? r.Motivo;
                     AvisarValor();
-                    feito.SetResult(false);
                 }
                 catch (Exception e)
                 {
+                    _alvo = null;
                     _enviando = false;
-                    feito.SetException(e);
+                    try
+                    {
+                        Aviso = $"Erro inesperado ({e.GetType().Name}).";
+                    }
+                    catch
+                    {
+                        // Sem mais o que fazer: o envio termina sem falhar.
+                    }
                 }
+                feito.TrySetResult(false);
             });
             if (!await feito.Task)
                 return;
@@ -431,9 +442,10 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
     /// <summary>O ganho (−45,0 a +15,0 dB), no giratório: arrastar, − e + grandes, tocar no número para escrever.</summary>
     public ControleParametroViewModel Ganho => _controles.Ganho;
 
-    public string DicaGiratorio => "Gire o botão ou toque em − e +";
+    /// <summary>As duas frases entre os − e + grandes do ganho (DESIGN, botoes-mais-menos).</summary>
+    public const string DicaGiratorio = "Gire o botão ou toque em − e +";
 
-    public string DicaCampo => "Toque no número para escrever";
+    public const string DicaCampo = "Toque no número para escrever";
 
     /// <summary>Passa-alta, passa-baixa (frequência e tipo) e limitador.</summary>
     public IReadOnlyList<ItemControleViewModel> Vista => _controles.Vista;

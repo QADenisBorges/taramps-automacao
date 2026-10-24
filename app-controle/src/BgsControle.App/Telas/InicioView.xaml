@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     O Início (DESIGN, Layout › Início; mock da 3b, quadro 1): o cartão da memória em uso (rótulo, nome, chip de
-    preset, botões de memória), o rótulo SAÍDAS e os três cartões de saída. Sem conexão, o cartão de conexão com
+    preset, botões de memória), o rótulo SAÍDAS e um cartão por saída do Setup em uso (1 a 4). Sem conexão, o cartão de conexão com
     Conectar e as caixas da senha. O topo em duas linhas (marca + engrenagem; seletor de Setup + pílula) é da
     casca.
 -->

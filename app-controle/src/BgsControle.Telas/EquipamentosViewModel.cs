@@ -57,7 +57,7 @@ public sealed class ItemEquipamentoViewModel
     /// <summary>O modelo é "genérico" (a tela o mostra apagado).</summary>
     public bool Generico { get; }
 
-    /// <summary>O primeiro canal do processador que alimenta o equipamento (0 a 3; a barra na cor dele), ou null sem ligação.</summary>
+    /// <summary>O canal mestre da saída que alimenta o equipamento (0 a 3; a barra na cor dela), ou null sem ligação.</summary>
     public int? Canal { get; }
 
     public string Id { get; }
@@ -1017,12 +1017,18 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         }
         else
         {
+            _saidas = _setups.Saidas(setup.Id);
+            var saidas = _saidas;
+            // A cor da linha: a do canal mestre da saída que alimenta o equipamento (no Casa 2.1 com o
+            // Link 3–4, um equipamento só no CH4 é do Sub, âmbar).
+            int? Cor(Equipamento e) =>
+                Ligacoes.CanaisQueAlimentam(setup.Equipamentos, e.Id) is { Count: > 0 } canais
+                    ? saidas.FirstOrDefault(s => s.Canais.Contains(canais[0]))?.Mestre ?? canais[0]
+                    : null;
             _itens = setup.Equipamentos
                 .Select(e => new ItemEquipamentoViewModel(e, Detalhe(setup, e),
-                    _setups.Funcao(setup.Id, e) is { } f ? Ligacoes.RotuloFuncao(f) : null,
-                    Ligacoes.CanaisQueAlimentam(setup.Equipamentos, e.Id) is { Count: > 0 } canais ? canais[0] : null, this))
+                    _setups.Funcao(setup.Id, e) is { } f ? Ligacoes.RotuloFuncao(f) : null, Cor(e), this))
                 .ToArray();
-            _saidas = _setups.Saidas(setup.Id);
         }
         if (_folhaAberta)
         {

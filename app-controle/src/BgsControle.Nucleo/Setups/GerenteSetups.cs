@@ -763,7 +763,7 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// A calibração lida contra a do Setup: uma linha por valor diferente (ou sem leitura), pelo nome da
-    /// saída do Setup ("Atraso do Sub"); o par com link que difere igual nos dois canais é uma linha só.
+    /// saída do Setup ("Atraso · Sub"); o par com link que difere igual nos dois canais é uma linha só.
     /// </summary>
     private static IReadOnlyList<DiferencaCalibracao> DiferencasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho) =>
         RotulosSaida.Juntar(
@@ -1803,7 +1803,7 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// A calibração do aparelho contra a do Setup, mais o link e o equilíbrio pendente, pelo nome das
-    /// saídas em uso ("Atraso do Sub: 80 cm → 85 cm"; o par com link que muda igual é uma linha só).
+    /// saídas em uso ("Atraso · Sub: 80 cm → 85 cm"; o par com link que muda igual é uma linha só).
     /// </summary>
     private List<MudancaSalvar> MudancasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
     {

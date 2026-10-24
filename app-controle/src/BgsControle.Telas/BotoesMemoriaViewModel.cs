@@ -120,6 +120,7 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
     private bool _listaAberta;
     private string? _mensagem;
     private string? _aplicando;
+    private bool _agindo;
 
     public BotoesMemoriaViewModel(
         GerenteSetups setups,
@@ -222,6 +223,8 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
     /// <summary>Aplica a memória do celular: sem confirmação, pelas travas da tela Memórias.</summary>
     public async Task AplicarAsync(string id)
     {
+        if (_agindo)
+            return; // um segundo toque com o primeiro rodando não faz nada
         if (_tela.MotivoTravaAplicar is { } motivo)
         {
             Mensagem = motivo;
@@ -231,12 +234,14 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         if (_setups.EmUso is { Tipo: TipoSomEmUso.MemoriaCelular } uso && uso.IdMemoria == id)
             return; // já é a em uso: nada a aplicar
         Aplicando = _setups.Memoria(id) is { } m ? $"Aplicando a {m.Nome}" : null;
+        _agindo = true;
         try
         {
             await _tela.AplicarAsync(id);
         }
         finally
         {
+            _agindo = false;
             Fim();
         }
     }
@@ -244,6 +249,8 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
     /// <summary>Carrega a memória do aparelho (0 a 2): sem confirmação, pelas travas da tela Memórias.</summary>
     public async Task CarregarAsync(int indice)
     {
+        if (_agindo)
+            return; // um segundo toque com o primeiro rodando não faz nada
         if (_tela.MotivoTravaCarregar is { } motivo)
         {
             Mensagem = motivo;
@@ -251,12 +258,14 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         }
         ListaAberta = false;
         Aplicando = $"Carregando a memória {indice + 1} do aparelho";
+        _agindo = true;
         try
         {
             await _tela.CarregarAsync(indice);
         }
         finally
         {
+            _agindo = false;
             Fim();
         }
     }

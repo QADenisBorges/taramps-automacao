@@ -178,8 +178,8 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
 
     private async Task ConfirmarRenomearAsync()
     {
-        if (_renomear is not { } id)
-            return;
+        if (_agindo || _renomear is not { } id)
+            return; // um segundo toque com o primeiro rodando não faz nada
         ResultadoSetup? r = null;
         await Agir(async () =>
         {
@@ -236,8 +236,8 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
 
     private async Task ConfirmarApagarAsync()
     {
-        if (_apagar is not { } id)
-            return;
+        if (_agindo || _apagar is not { } id)
+            return; // um segundo toque com o primeiro rodando não faz nada
         await Agir(async () => (await _setups.ApagarSetupAsync(id)).Mensagem, depois: FecharApagar);
     }
 

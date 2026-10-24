@@ -123,7 +123,8 @@ public sealed class MesaViewModel : TelaBase, IDisposable
             var som = SomEmUsoTexto.De(_setups, _memorias, _sessao);
             if (som.Nome is null)
                 return "—";
-            if (_setups.EmUso is { Tipo: TipoSomEmUso.MemoriaAparelho, MemoriaAparelho: { } n })
+            // O sufixo só com o nome lido; sem ele, o nome já é "Memória 2".
+            if (_setups.EmUso is { Tipo: TipoSomEmUso.MemoriaAparelho, MemoriaAparelho: { } n } && _memorias.Nome(n) is { Length: > 0 })
                 return $"{som.Nome} · memória {n + 1} do aparelho";
             return som.Nome;
         }
@@ -131,7 +132,7 @@ public sealed class MesaViewModel : TelaBase, IDisposable
 
     public BotoesMemoriaViewModel Memorias { get; }
 
-    /// <summary>As saídas do Setup em uso, na ordem dos canais (no Casa 2.1: JBL L, JBL R e Sub).</summary>
+    /// <summary>Um canal da Mesa por saída do Setup em uso (1 a 4), na ordem dos canais; refeitos quando as saídas mudam (no Casa 2.1: JBL L, JBL R e Sub).</summary>
     public IReadOnlyList<CanalMesaViewModel> Canais => _canais;
 
     /// <summary>Quantas colunas a Mesa tem (1 a 4).</summary>
@@ -143,7 +144,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     /// <summary>O MASTER, de −80,0 a 0,0 dB.</summary>
     public ControleParametroViewModel Master { get; }
 
-    public string RotuloDoMaster => RotuloMaster;
 
     private void AoMudar() => NaTela(Atualizar);
 

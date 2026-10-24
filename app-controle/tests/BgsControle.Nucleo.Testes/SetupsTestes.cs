@@ -274,7 +274,7 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.True(Mutados(true));
         Assert.True(_setups.Mutado);
         var d = Assert.Single(_setups.Diferencas);
-        Assert.Equal("Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho", d.Linha("Casa 2.1"));
+        Assert.Equal("Atraso · Sub: 80 cm no Casa 2.1, 0 cm no aparelho", d.Linha("Casa 2.1"));
         Assert.Equal(2, d.Canal);
         Assert.Equal(GerenteSetups.MsgDuvida, _setups.MotivoBloqueioIa);
         var marca = GerenteSetups.MarcaDeJson(_guardadoMudo.Texto!)!;
@@ -753,10 +753,10 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Equal("Calibração → Setup Casa 2.1", folha.Linhas[0].Titulo);
         // O Link 3–4 do Casa 2.1 (história 8e) repete o atraso no CH4: o par muda igual, uma linha só,
         // pelo nome da saída (história 10), na cor do CH3.
-        Assert.Equal(["Atraso do Sub: 80 cm → 85 cm"], folha.Linhas[0].Mudancas.Select(m => m.Linha));
+        Assert.Equal(["Atraso · Sub: 80 cm → 85 cm"], folha.Linhas[0].Mudancas.Select(m => m.Linha));
         Assert.Equal(2, Assert.Single(folha.Linhas[0].Mudancas).Canal);
         Assert.Equal("Caráter → memória FILME", folha.Linhas[1].Titulo);
-        Assert.Equal("Ganho do JBL L: +10,0 dB → +8,0 dB", Assert.Single(folha.Linhas[1].Mudancas).Linha);
+        Assert.Equal("Ganho · JBL L: +10,0 dB → +8,0 dB", Assert.Single(folha.Linhas[1].Mudancas).Linha);
         var inicio = _simulador.Escritas.Count;
 
         var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null);
@@ -782,7 +782,7 @@ public sealed partial class SetupsTestes : IDisposable
         var folha = _setups.PrepararSalvar();
         var linha = Assert.Single(folha.Linhas);
         Assert.Equal("Calibração → Setup Casa 2.1", linha.Titulo);
-        Assert.Equal("Equilíbrio do JBL R · ganho: −3,0 dB → −2,0 dB", Assert.Single(linha.Mudancas).Linha);
+        Assert.Equal("Equilíbrio · JBL R · ganho: −3,0 dB → −2,0 dB", Assert.Single(linha.Mudancas).Linha);
 
         var r = await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, null);
 
@@ -819,7 +819,7 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Null(folha.Trava);
         Assert.True(folha.PedeNome);
         Assert.True(folha.PerguntaCalibracao);
-        Assert.Equal("Atraso do Sub: 80 cm no Casa 2.1, 60 cm no aparelho", Assert.Single(folha.Diferencas).Linha("Casa 2.1"));
+        Assert.Equal("Atraso · Sub: 80 cm no Casa 2.1, 60 cm no aparelho", Assert.Single(folha.Diferencas).Linha("Casa 2.1"));
         Assert.Equal(GerenteSetups.MsgEscolha, (await _setups.SalvarAsync(EscolhaCalibracao.Nenhuma, "MUSICA ORIG")).Motivo);
         var inicio = _simulador.Escritas.Count;
 

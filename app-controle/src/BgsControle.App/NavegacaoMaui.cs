@@ -11,7 +11,9 @@ namespace BgsControle.App;
 /// <para>
 /// Uma tela cheia pedida com um modal por cima não falha calada: com só a folha "Aplicado pela metade" por
 /// cima, o pedido espera e entra quando ela fecha; com a escolha do Setup, ele é descartado (depois da
-/// escolha a casca volta ao Início), e nos dois casos a linha vai para o registro.
+/// escolha a casca volta ao Início), e nos dois casos a linha vai para o registro. A única exceção é a
+/// tela de conexão: ela sobe por cima da escolha do Setup (Conectar, o registro e Esquecer a senha
+/// precisam estar ao alcance também ali).
 /// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
@@ -57,7 +59,18 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
 
     public void AbrirMemorias() => Empurrar("Memórias", servicos.GetRequiredService<MemoriasPage>);
 
-    public void AbrirConexao() => Empurrar("Conexão", servicos.GetRequiredService<ConexaoPage>);
+    public void AbrirConexao() => MainThread.BeginInvokeOnMainThread(async () =>
+    {
+        if (Navegacao is not { } nav)
+            return;
+        var pagina = servicos.GetRequiredService<ConexaoPage>();
+        if (nav.ModalStack.Contains(pagina) || nav.NavigationStack.Contains(pagina))
+            return; // já aberta
+        if (nav.ModalStack.Count > 0)
+            await nav.PushModalAsync(pagina, false); // por cima da escolha do Setup ou da folha pela metade
+        else
+            await nav.PushAsync(pagina);
+    });
 
     public void Voltar() => MainThread.BeginInvokeOnMainThread(async () =>
     {
@@ -89,7 +102,9 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                     queremos.Add(servicos.GetRequiredService<SetupEscolhaPage>());
                 if (metade)
                     queremos.Add(servicos.GetRequiredService<PelaMetadePage>());
-                if (!nav.ModalStack.SequenceEqual(queremos))
+                // A tela de conexão aberta por cima da escolha não conta; se algo muda, ela sai junto.
+                var conexao = servicos.GetRequiredService<ConexaoPage>();
+                if (!nav.ModalStack.Where(p => p != conexao).SequenceEqual(queremos))
                 {
                     // Tira as que sobram (de cima para baixo) e põe as que faltam, na ordem.
                     while (nav.ModalStack.Count > 0 && !queremos.Take(nav.ModalStack.Count).SequenceEqual(nav.ModalStack))

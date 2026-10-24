@@ -40,7 +40,7 @@ public sealed class Comando : ICommand
 /// Um comando da tela com parâmetro (a opção escolhida, o valor do fader). Não roda duas vezes em
 /// paralelo: um toque que chega enquanto o anterior ainda corre é ignorado (o duplo toque). Uma exceção
 /// não sai pelo <see cref="Execute"/> (que é <c>async void</c> e derrubaria o app): fica em
-/// <see cref="UltimoErro"/> e vai para o <see cref="Falhou"/>.
+/// <see cref="UltimoErro"/> e vai para o <see cref="FalhasDeComando.Destino"/> (no app, o registro do BLE).
 /// </summary>
 public sealed class ComandoCom<T> : ICommand
 {
@@ -56,9 +56,6 @@ public sealed class ComandoCom<T> : ICommand
     })
     {
     }
-
-    /// <summary>Uma exceção da ação (o app pode registrar).</summary>
-    public static event Action<Exception>? Falhou;
 
     /// <summary>A última exceção da ação, ou null.</summary>
     public Exception? UltimoErro { get; private set; }
@@ -92,7 +89,7 @@ public sealed class ComandoCom<T> : ICommand
         catch (Exception e)
         {
             UltimoErro = e;
-            Falhou?.Invoke(e);
+            FalhasDeComando.Avisar(e);
         }
         finally
         {
@@ -121,6 +118,28 @@ public sealed class ComandoCom<T> : ICommand
             default:
                 valor = default!;
                 return false;
+        }
+    }
+}
+
+/// <summary>
+/// Para onde vão as exceções dos comandos da tela (<see cref="ComandoCom{T}"/>), para deixarem rastro: o
+/// app põe aqui, uma vez, a escrita no registro do BLE. Sem destino, nada (os testes leem
+/// <see cref="ComandoCom{T}.UltimoErro"/>).
+/// </summary>
+public static class FalhasDeComando
+{
+    public static Action<Exception>? Destino { get; set; }
+
+    internal static void Avisar(Exception e)
+    {
+        try
+        {
+            Destino?.Invoke(e);
+        }
+        catch
+        {
+            // O registro não pode derrubar a tela.
         }
     }
 }

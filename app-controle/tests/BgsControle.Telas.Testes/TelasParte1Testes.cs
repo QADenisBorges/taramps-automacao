@@ -26,7 +26,7 @@ internal sealed class Telas10 : IDisposable
         Inicio = new InicioViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio);
         Mesa = new MesaViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio);
         Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio);
-        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Nav, b.Tela, b.Relogio);
+        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, Link, b.Fabrica, Nav, b.Tela, b.Relogio);
         Setups = new SetupsViewModel(setups, b.Sessao, Nav, b.Tela, b.Relogio);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio);
     }
@@ -247,7 +247,7 @@ public sealed class TelasParte1Testes : IDisposable
         Assert.True(_t.Casca.EscolhaSetupPorCima);
         Assert.False(_t.Setup.PodeDesistir); // na dúvida não há ‹ (nem o Voltar do Android)
         var linha = Assert.Single(_t.Setup.LinhasDiferenca);
-        Assert.Equal("Atraso do Sub", linha.Rotulo);
+        Assert.Equal("Atraso · Sub", linha.Rotulo);
         Assert.Equal("80 cm no Casa 2.1, 0 cm no aparelho", linha.Detalhe);
         Assert.Equal(Sub, linha.Canal);
         await _b.Rodar(_t.Setup.Desistir.ExecutarAsync());
@@ -533,7 +533,7 @@ public sealed class TelasParte1Testes : IDisposable
         await _b.Tela.EsvaziarAsync();
         // O par 1–2 vira uma saída só, na cor do CH1.
         Assert.Equal(["JBL L + JBL R", "Sub"], x.Abas.Select(a => a.Nome));
-        Assert.Equal("Link 1–2 ligado: mexer no JBL L + JBL R muda o CH1 e o CH2.", x.AvisoLink);
+        Assert.Equal("Link 1–2 ligado: mexer em JBL L + JBL R muda o CH1 e o CH2.", x.AvisoLink);
 
         x.EscolherSaida(L);
         var pa = x.Controle("040")!;
@@ -579,7 +579,7 @@ public sealed class TelasParte1Testes : IDisposable
         await r.Salvar.Abrir.ExecutarAsync();
         var linha = Assert.Single(r.Salvar.Linhas);
         Assert.Equal("Calibração → Setup Casa 2.1", linha.Titulo);
-        Assert.Contains("Equilíbrio do JBL R · ganho: −3,0 dB → −4,0 dB", linha.Mudancas);
+        Assert.Contains("Equilíbrio · JBL R · ganho: −3,0 dB → −4,0 dB", linha.Mudancas);
         await r.Salvar.Cancelar.ExecutarAsync();
     }
 

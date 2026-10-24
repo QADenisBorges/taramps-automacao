@@ -68,7 +68,8 @@ public sealed class FaderView : GraphicsView, IDrawable
         return min + f * (max - min);
     }
 
-    private double Comprimento => Math.Max(1, (Vertical ? Height : Width) - (Vertical ? 30 : 30));
+    /// <summary>O curso do fader: o comprimento menos a capa (30 px no sentido do curso, nos dois sentidos).</summary>
+    private double Comprimento => Math.Max(1, (Vertical ? Height : Width) - 30);
 
     private void AoArrastar(object? sender, PanUpdatedEventArgs e)
     {

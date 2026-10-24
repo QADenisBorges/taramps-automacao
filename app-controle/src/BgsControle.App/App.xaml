@@ -28,11 +28,6 @@
             <Color x:Key="canal-2">#C495FF</Color>
             <Color x:Key="canal-3">#FFCD94</Color>
             <Color x:Key="canal-4">#8FE3CF</Color>
-            <!-- Os nomes antigos de canal-1 a canal-3. -->
-            <Color x:Key="saida-l">#7EAEFF</Color>
-            <Color x:Key="saida-r">#C495FF</Color>
-            <Color x:Key="saida-sub">#FFCD94</Color>
-            <Color x:Key="saida-sub-fundo">#241D13</Color>
             <Color x:Key="ok">#30D158</Color>
             <Color x:Key="parar">#FF453A</Color>
             <Color x:Key="erro-texto">#FF8A82</Color>

@@ -19,7 +19,7 @@ public sealed class RotulosSaidaTestes
             [DiferencaPorCanal.De("050", 2, "80 cm", "85 cm"), DiferencaPorCanal.De("050", 3, "80 cm", "85 cm")], Casa);
 
         var l = Assert.Single(linhas);
-        Assert.Equal("Atraso do Sub", l.Rotulo);
+        Assert.Equal("Atraso · Sub", l.Rotulo);
         Assert.Equal(2, l.Canal);
     }
 
@@ -29,7 +29,7 @@ public sealed class RotulosSaidaTestes
         var linhas = RotulosSaida.Juntar(
             [DiferencaPorCanal.De("050", 2, "80 cm", "85 cm"), DiferencaPorCanal.De("050", 3, "80 cm", "90 cm")], Casa);
 
-        Assert.Equal(["Atraso do Sub: 80 cm → 85 cm", "Atraso do Sub · CH4: 80 cm → 90 cm"],
+        Assert.Equal(["Atraso · Sub: 80 cm → 85 cm", "Atraso · Sub · CH4: 80 cm → 90 cm"],
             linhas.Select(l => $"{l.Rotulo}: {l.Antes} → {l.Depois}"));
         Assert.All(linhas, l => Assert.Equal(2, l.Canal));
     }
@@ -37,8 +37,8 @@ public sealed class RotulosSaidaTestes
     [Fact]
     public void So_o_mestre_diferente_e_a_linha_da_saida_e_so_o_outro_leva_o_canal()
     {
-        Assert.Equal("Atraso do Sub", Assert.Single(RotulosSaida.Juntar([DiferencaPorCanal.De("050", 2, "80 cm", "0 cm")], Casa)).Rotulo);
-        Assert.Equal("Atraso do Sub · CH4", Assert.Single(RotulosSaida.Juntar([DiferencaPorCanal.De("050", 3, "80 cm", "0 cm")], Casa)).Rotulo);
+        Assert.Equal("Atraso · Sub", Assert.Single(RotulosSaida.Juntar([DiferencaPorCanal.De("050", 2, "80 cm", "0 cm")], Casa)).Rotulo);
+        Assert.Equal("Atraso · Sub · CH4", Assert.Single(RotulosSaida.Juntar([DiferencaPorCanal.De("050", 3, "80 cm", "0 cm")], Casa)).Rotulo);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class RotulosSaidaTestes
             [new DiferencaPorCanal("eq", 2, 2, "Equilíbrio", "0,0 dB", "−2,0 dB", " · ganho"),
              new DiferencaPorCanal("eq", 3, 3, "Equilíbrio", "0,0 dB", "−2,0 dB", " · ganho")], Casa);
 
-        Assert.Equal("Equilíbrio do Sub · ganho", Assert.Single(linhas).Rotulo);
+        Assert.Equal("Equilíbrio · Sub · ganho", Assert.Single(linhas).Rotulo);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class RotulosSaidaTestes
         Assert.Equal(["JBL L", "JBL R", "Sub · CH3", "Sub · CH4"], Ligacoes.NomesNaTela(semLink));
         var linhas = RotulosSaida.Juntar(
             [DiferencaPorCanal.De("050", 2, "80 cm", "85 cm"), DiferencaPorCanal.De("050", 3, "80 cm", "85 cm")], semLink);
-        Assert.Equal(["Atraso do Sub · CH3", "Atraso do Sub · CH4"], linhas.Select(l => l.Rotulo));
+        Assert.Equal(["Atraso · Sub · CH3", "Atraso · Sub · CH4"], linhas.Select(l => l.Rotulo));
         Assert.Equal([2, 3], linhas.Select(l => l.Canal!.Value));
     }
 
@@ -80,7 +80,7 @@ public sealed class RotulosSaidaTestes
         var saidas = Ligacoes.Saidas([], link12: false, link34: true);
 
         Assert.Equal(["CH1", "CH2", "CH3 + CH4"], Ligacoes.NomesNaTela(saidas));
-        Assert.Equal("Atraso do CH3 + CH4",
+        Assert.Equal("Atraso · CH3 + CH4",
             Assert.Single(RotulosSaida.Juntar([DiferencaPorCanal.De("050", 2, "80 cm", "85 cm")], saidas)).Rotulo);
     }
 }

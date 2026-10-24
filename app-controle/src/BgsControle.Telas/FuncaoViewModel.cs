@@ -190,9 +190,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
 
     public IReadOnlyList<AbaSaidaViewModel> Abas => _abas;
 
-    /// <summary>Quantas colunas as abas ocupam (1 a 4).</summary>
-    public int ColunasAbas => Math.Max(1, _abas.Count);
-
     /// <summary>O canal mestre da saída que se mexe agora.</summary>
     public int SaidaEscolhida => _saida;
 
@@ -229,7 +226,7 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// O que a aba mexe quando não é só um canal: o aviso do bridge sem o link, ou, num par com link,
-    /// "Link 3–4 ligado: mexer no Sub muda o CH3 e o CH4."; senão null.
+    /// "Link 3–4 ligado: mexer em Sub muda o CH3 e o CH4."; senão null.
     /// </summary>
     public string? AvisoLink
     {
@@ -242,7 +239,7 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
             if (!s.Par)
                 return null;
             var (a, b) = (s.App.Canais[0] + 1, s.App.Canais[1] + 1);
-            return $"Link {a}–{b} ligado: mexer no {s.Nome} muda o CH{a} e o CH{b}.";
+            return $"Link {a}–{b} ligado: mexer em {s.Nome} muda o CH{a} e o CH{b}.";
         }
     }
 
@@ -329,7 +326,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
             return;
         _abas = agora.Select((s, i) => new AbaSaidaViewModel(s, i, this, Despachante, Relogio)).ToArray();
         Avisar(nameof(Abas));
-        Avisar(nameof(ColunasAbas));
         EscolherSaida(Aba(_saida) is null ? _abas.FirstOrDefault()?.Canal ?? 0 : _saida);
     }
 

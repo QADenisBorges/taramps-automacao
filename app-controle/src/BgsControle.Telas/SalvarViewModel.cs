@@ -14,7 +14,7 @@ public sealed record LinhaSalvarViewModel(string Titulo, IReadOnlyList<string> M
 }
 
 /// <summary>
-/// Uma mudança da folha do Salvar em pedaços (DESIGN, folha-do-salvar): "Atraso do Sub: 80 cm → " em
+/// Uma mudança da folha do Salvar em pedaços (DESIGN, folha-do-salvar): "Atraso · Sub: 80 cm → " em
 /// apoio e o valor novo ("85 cm") em peso 700 na cor da saída dona (o canal mestre, ou null).
 /// </summary>
 public sealed record MudancaSalvarViewModel(string Antes, string Novo, int? Canal)
@@ -93,7 +93,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     public string? Subtitulo => Aberta ? SubtituloFolha : null;
 
-    /// <summary>Uma por camada: "Calibração → Setup Casa 2.1" com "Atraso do Sub: 80 cm → 85 cm".</summary>
+    /// <summary>Uma por camada: "Calibração → Setup Casa 2.1" com "Atraso · Sub: 80 cm → 85 cm".</summary>
     public IReadOnlyList<LinhaSalvarViewModel> Linhas =>
         _folha?.Linhas.Select(l => new LinhaSalvarViewModel(l.Titulo, l.Mudancas.Select(m => m.Linha).ToArray(),
             l.Herdado ? HerdadoViewModel.TextoSelo : null)

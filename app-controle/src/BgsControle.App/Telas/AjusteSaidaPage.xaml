@@ -2,8 +2,8 @@
 <!--
     O Ajuste da saída (EXPERIENCE, Ajuste da saída; DESIGN, botao-giratorio, avancado): cabeçalho com ‹ e o
     nome da saída na cor dela; o ganho no giratório, com − e + grandes; à vista o passa-alta, o passa-baixa e o
-    limitador; em Avançado o atraso, a fase, o equilíbrio L/R do Setup (só JBL L e JBL R), o EQ de saída, o
-    ataque, a liberação, o Auto e o mute. O Salvar fica fixo no pé.
+    limitador; em Avançado o atraso, a fase, o equilíbrio do Setup desta saída (em toda saída; num par, nos
+    dois canais), o EQ de saída, o ataque, a liberação, o Auto e o mute. O Salvar fica fixo no pé.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -58,8 +58,8 @@
                                             BorderColor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
                                             ComandoApertar="{Binding ApertarMenos}" ComandoSoltar="{Binding SoltarPasso}" />
                             <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
-                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="Gire o botão ou toque em − e +" />
-                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="Toque no número para escrever" />
+                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="{x:Static telas:AjusteSaidaViewModel.DicaGiratorio}" />
+                                <Label Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center" Text="{x:Static telas:AjusteSaidaViewModel.DicaCampo}" />
                             </VerticalStackLayout>
                             <c:BotaoSegurar Grid.Column="2" Style="{StaticResource botao-passo-grande}" Text="+"
                                             BorderColor="{Binding Canal, Converter={StaticResource CorDaSaida}}"
@@ -95,7 +95,7 @@
                                 <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding AvancadoInicio}"
                                                      BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
 
-                                <!-- O equilíbrio L/R do Setup (JBL L e JBL R). -->
+                                <!-- O equilíbrio do Setup desta saída (ganho e limitador; em toda saída). -->
                                 <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Equilibrio}">
                                     <BindableLayout.ItemTemplate>
                                         <DataTemplate x:DataType="telas:ControleEquilibrioViewModel">

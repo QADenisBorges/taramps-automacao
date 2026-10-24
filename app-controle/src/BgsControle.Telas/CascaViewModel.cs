@@ -34,6 +34,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private readonly INavegacao _nav;
     private Aba _aba = Aba.Inicio;
     private (bool Setup, bool Metade)? _porCima;
+    private readonly SalvarViewModel _salvar;
+    private readonly LinkViewModel _link;
+    private readonly FabricaControles _fabrica;
 
     public CascaViewModel(
         Sessao sessao,
@@ -43,6 +46,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         InicioViewModel inicio,
         MesaViewModel mesa,
         AudioViewModel audio,
+        SalvarViewModel salvar,
+        LinkViewModel link,
+        FabricaControles fabrica,
         INavegacao nav,
         IDespachante despachante,
         TimeProvider relogio)
@@ -55,6 +61,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         _setup = setup;
         _memorias = memorias;
         _nav = nav;
+        _salvar = salvar;
+        _link = link;
+        _fabrica = fabrica;
         IrInicio = new Comando(() => Ir(Aba.Inicio));
         IrMesa = new Comando(() => Ir(Aba.Mesa));
         IrAudio = new Comando(() => Ir(Aba.Audio));
@@ -154,6 +163,14 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         _porCima = agora;
         if (saiuDaEscolha)
         {
+            // As folhas e os campos abertos eram do Setup de antes: fecham, sem guardar nem mandar nada.
+            if (_salvar.Aberta)
+                _salvar.Cancelar.Execute(null);
+            if (_link.FolhaAberta)
+                _link.CancelarFolha.Execute(null);
+            if (Memorias.ListaAberta)
+                Memorias.FecharLista.Execute(null);
+            _fabrica.FecharCampos();
             _nav.VoltarAoInicio();
             Ir(Aba.Inicio);
         }

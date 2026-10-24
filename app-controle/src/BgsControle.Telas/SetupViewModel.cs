@@ -167,7 +167,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     }
 
     /// <summary>
-    /// A lista do que não bate em duas linhas, com a saída dona (a barra na cor dela): "Atraso do Sub"
+    /// A lista do que não bate em duas linhas, com a saída dona (a barra na cor dela): "Atraso · Sub"
     /// e "80 cm no Casa 2.1, 0 cm no aparelho".
     /// </summary>
     public IReadOnlyList<LinhaDiferencaViewModel> LinhasDiferenca

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     A pílula de status (DESIGN, pilula-status): ponto de 7 px em {colors.ok} com halo (Conectado · R003),
-    {colors.apoio} (Conectando) ou {colors.apagado} (Desconectado). Tocar desconectado faz o mesmo que
-    Conectar; conectado, abre os detalhes da conexão.
+    {colors.apoio} (Conectando) ou {colors.apagado} (Desconectado). Tocar abre a tela de conexão (Conectar e a
+    senha, o registro do BLE, Esquecer a senha), também por cima da escolha do Setup.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"

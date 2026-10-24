@@ -201,6 +201,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ConexaoPage>();
 
         var app = builder.Build();
+        // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.
+        var logTela = app.Services.GetRequiredService<LogBle>();
+        FalhasDeComando.Destino = e => logTela.Evento($"tela: um comando falhou ({e.GetType().Name}: {e.Message})");
         // Criados já: o espelho, a cópia antes e o gerador precisam ver a primeira leitura (a
         // retomada do "aplicado pela metade", o 202), o link se pendura no escritor, e as chaves,
         // a cópia e o link começam a ler o guardado.

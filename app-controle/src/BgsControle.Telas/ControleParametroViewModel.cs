@@ -866,8 +866,31 @@ public sealed class FabricaControles(
     IDespachante despachante,
     TimeProvider relogio)
 {
-    public ControleParametroViewModel Criar(Parametro parametro, int? indice, GrupoControles? grupo = null, string? titulo = null) =>
-        new(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo, titulo);
+    private readonly List<WeakReference<ControleParametroViewModel>> _criados = [];
+
+    public ControleParametroViewModel Criar(Parametro parametro, int? indice, GrupoControles? grupo = null, string? titulo = null)
+    {
+        var controle = new ControleParametroViewModel(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo, titulo);
+        lock (_criados)
+        {
+            _criados.RemoveAll(r => !r.TryGetTarget(out _));
+            _criados.Add(new WeakReference<ControleParametroViewModel>(controle));
+        }
+        return controle;
+    }
+
+    /// <summary>
+    /// Fecha o campo aberto (sem ✓, como o descarte) de todo controle criado, em qualquer tela. A casca
+    /// chama depois da escolha do Setup: um campo aberto antes não vale para o Setup novo.
+    /// </summary>
+    public void FecharCampos()
+    {
+        ControleParametroViewModel[] vivos;
+        lock (_criados)
+            vivos = _criados.Select(r => r.TryGetTarget(out var c) ? c : null).OfType<ControleParametroViewModel>().ToArray();
+        foreach (var c in vivos.Where(c => c.EditandoCampo))
+            c.FecharCampo.Execute(null);
+    }
 
     /// <summary>O controle pelo código do catálogo.</summary>
     public ControleParametroViewModel Criar(string codigo, int? indice, GrupoControles? grupo = null, string? titulo = null) =>

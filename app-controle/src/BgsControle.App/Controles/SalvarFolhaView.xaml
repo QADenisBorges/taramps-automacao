@@ -32,7 +32,7 @@
                                                VerticalTextAlignment="Center" />
                                     </Border>
                                 </HorizontalStackLayout>
-                                <!-- "Atraso do Sub: 80 cm → 85 cm": o valor novo em peso 700 na cor da saída dona. -->
+                                <!-- "Atraso · Sub: 80 cm → 85 cm": o valor novo em peso 700 na cor da saída dona. -->
                                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding Itens}">
                                     <BindableLayout.ItemTemplate>
                                         <DataTemplate x:DataType="telas:MudancaSalvarViewModel">

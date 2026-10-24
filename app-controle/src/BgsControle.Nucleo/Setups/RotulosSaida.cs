@@ -19,9 +19,9 @@ public sealed record LinhaRotulada(string Codigo, int? Indice, string Rotulo, st
 
 /// <summary>
 /// Os rótulos da folha do Salvar e da lista "O que não bate" pelo nome da saída do Setup (história 10;
-/// EXPERIENCE, "Atraso do Sub: 80 → 85 cm"). O canal mestre de uma saída é a saída: "Atraso do Sub". O
+/// EXPERIENCE, "Atraso · Sub: 80 → 85 cm"). O canal mestre de uma saída é a saída: "Atraso · Sub". O
 /// outro canal de um par com link entra na mesma linha quando muda igual; senão, ganha a linha dele, com
-/// o canal ("Atraso do Sub · CH4"). Os globais e o que não é de um canal ficam como estão.
+/// o canal ("Atraso · Sub · CH4"). Os globais e o que não é de um canal ficam como estão.
 /// </summary>
 public static class RotulosSaida
 {
@@ -56,7 +56,7 @@ public static class RotulosSaida
                 grupo.Add(o);
             }
 
-            var rotulo = $"{d.Base} do {nomes[k]}";
+            var rotulo = $"{d.Base} · {nomes[k]}"; // sem artigo: o app não sabe o gênero do nome
             var mestre = grupo.FirstOrDefault(o => o.Canal == s.Mestre);
             if (mestre is not null)
                 linhas.Add(new(mestre.Codigo, mestre.Indice, rotulo + d.Sufixo, mestre.Antes, mestre.Depois, s.Mestre));

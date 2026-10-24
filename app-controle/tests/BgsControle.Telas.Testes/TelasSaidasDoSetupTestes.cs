@@ -175,7 +175,7 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         Assert.Equal(-2.0m, Setups.EquilibrioEfetivo.Valor(3, false));
         var salvar = _t.Ajuste(Sub).Salvar;
         await salvar.Abrir.ExecutarAsync();
-        Assert.Equal(["Equilíbrio do Sub · ganho: 0,0 dB → −2,0 dB"], Assert.Single(salvar.Linhas).Mudancas);
+        Assert.Equal(["Equilíbrio · Sub · ganho: 0,0 dB → −2,0 dB"], Assert.Single(salvar.Linhas).Mudancas);
         await salvar.Cancelar.ExecutarAsync();
     }
 
@@ -196,9 +196,9 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         var salvar = _t.Ajuste(Sub).Salvar;
         await salvar.Abrir.ExecutarAsync();
         var linha = Assert.Single(salvar.Linhas);
-        Assert.Equal(["Atraso do Sub: 80 cm → 85 cm"], linha.Mudancas);
+        Assert.Equal(["Atraso · Sub: 80 cm → 85 cm"], linha.Mudancas);
         var item = Assert.Single(linha.Itens);
-        Assert.Equal("Atraso do Sub: 80 cm → ", item.Antes);
+        Assert.Equal("Atraso · Sub: 80 cm → ", item.Antes);
         Assert.Equal("85 cm", item.Novo);
         Assert.Equal(Sub, item.Canal);
         await salvar.Cancelar.ExecutarAsync();
@@ -213,7 +213,7 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
 
         Assert.Equal((true, false), _t.Nav.PorCima);
-        Assert.Equal(["Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho"], _t.Setup.Diferencas);
+        Assert.Equal(["Atraso · Sub: 80 cm no Casa 2.1, 0 cm no aparelho"], _t.Setup.Diferencas);
 
         await _b.Rodar(_t.Setup.Item("Casa 2.1")!.Escolher.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
@@ -353,5 +353,191 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         Assert.IsType<InvalidOperationException>(comando.UltimoErro);
         Assert.False(comando.Rodando);
         comando.Execute("não é número"); // parâmetro que não converte: nada, sem exceção
+    }
+
+    // ----------------------------------------------------------------- as telas abertas acompanham
+
+    [Fact]
+    public async Task Renomear_um_equipamento_muda_as_abas_e_o_titulo_das_telas_abertas_sem_mexer_no_link()
+    {
+        await _b.Conectar();
+        var alinhamento = _t.Audio.Tela(FuncaoAudio.Alinhamento);
+        var ajusteR = _t.Ajuste(R);
+        var ajusteSub = _t.Ajuste(Sub);
+        var setup = Setups.SetupEmUso!;
+        var jblR = setup.Equipamentos.Single(e => e.Nome == "JBL R");
+        var sub = setup.Equipamentos.Single(e => e.Nome == "Sub");
+
+        Assert.True((await Setups.EditarEquipamentoAsync(setup.Id, jblR with { Nome = "JBL Direita" })).Ok);
+        Assert.True((await Setups.EditarEquipamentoAsync(setup.Id, sub with { Nome = "Subwoofer" })).Ok);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(_b.Link.Ligado(ParCanais.Saidas34));
+        Assert.Equal(["JBL L", "JBL Direita", "Subwoofer"], alinhamento.Abas.Select(a => a.Nome));
+        Assert.Equal("JBL Direita", ajusteR.Titulo);
+        Assert.Equal("Subwoofer", ajusteSub.Titulo);
+        Assert.Equal(Sub, ajusteSub.Canal);
+    }
+
+    [Fact]
+    public async Task Trocar_de_Setup_muda_as_abas_e_o_titulo_das_telas_abertas_sem_mexer_no_link()
+    {
+        await _b.Conectar();
+        var alinhamento = _t.Audio.Tela(FuncaoAudio.Alinhamento);
+        var ajusteSub = _t.Ajuste(Sub);
+        Assert.Equal("Sub", ajusteSub.Titulo);
+
+        await _b.Rodar(_t.Inicio.TrocarSetup.ExecutarAsync());
+        await _t.Setup.AbrirCriar.ExecutarAsync();
+        _t.Setup.NomeNovo = "Bancada";
+        await _b.Rodar(_t.Setup.ConfirmarCriar.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(_b.Link.Ligado(ParCanais.Saidas34));
+        Assert.Equal(["CH1", "CH2", "CH3 + CH4"], alinhamento.Abas.Select(a => a.Nome));
+        Assert.Equal("CH3 + CH4", ajusteSub.Titulo);
+    }
+
+    [Fact]
+    public async Task Uma_tela_de_funcao_criada_antes_de_carregar_a_memoria_2_mostra_o_nome_dela_depois()
+    {
+        await _b.Conectar();
+        var fase = _t.Audio.Tela(FuncaoAudio.Fase);
+        Assert.Equal("FILME", fase.Subtitulo);
+
+        await _b.Rodar(_t.Botoes.LinhasAparelho[1].Tocar.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(_b.Memorias.Nome(1), fase.Subtitulo);
+    }
+
+    // ----------------------------------------------------------------- lacunas da tentativa 1
+
+    [Fact]
+    public async Task Depois_de_uma_queda_o_Inicio_diz_a_hora_que_caiu_e_some_ao_reconectar()
+    {
+        await _b.Conectar();
+        Assert.Null(_t.Inicio.HoraQueCaiu);
+        _b.Simulador.CairDepoisDaEscrita = _b.Simulador.Escritas.Count + 1;
+
+        var escrita = _b.Escritor.EscreverAsync(Catalogo.ParametroDe("081")!, 0, 4.0m);
+        await Apoio.Esperar(() => _b.Sessao.Estado != EstadoSessao.Conectado);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Matches(@"^Caiu às \d\d:\d\d$", _t.Inicio.HoraQueCaiu);
+        Assert.True(_t.Inicio.MostrarConexao);
+
+        await _b.Conectar();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Null(_t.Inicio.HoraQueCaiu);
+        await escrita;
+    }
+
+    [Fact]
+    public async Task Durante_a_leitura_o_Inicio_diz_lendo_o_aparelho_com_a_contagem()
+    {
+        await _b.Conectar();
+        Assert.Null(_t.Inicio.TextoLendo);
+
+        var leitura = _t.Conexao.LerDeNovo.ExecutarAsync();
+        await Apoio.Esperar(() => _t.Conexao.LendoAgora);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.StartsWith("Lendo o aparelho · ", _t.Inicio.TextoLendo);
+        await _b.Rodar(leitura);
+        await Apoio.Esperar(() => !_t.Conexao.LendoAgora);
+        await _b.Tela.EsvaziarAsync();
+        Assert.Null(_t.Inicio.TextoLendo);
+    }
+
+    [Fact]
+    public async Task Criar_memoria_pelo_Inicio_abre_Memorias_com_o_campo()
+    {
+        await _b.Conectar();
+
+        await _t.Inicio.CriarMemoria.ExecutarAsync();
+
+        Assert.True(_t.Memorias.CriarAberto);
+        Assert.Contains("memorias", _t.Nav.Pedidos);
+    }
+
+    [Fact]
+    public async Task Criar_memoria_pelo_Inicio_travado_mostra_a_trava_e_nao_abre_Memorias()
+    {
+        // Criar memória não tem chave própria: a trava é a do celular sem Setup ("Seguir sem Setup").
+        _b.Simulador.Definir("050", 2, "0.0");
+        await _b.Conectar();
+        await _b.Rodar(_t.Setup.SeguirSemSetup.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        await _t.Inicio.CriarMemoria.ExecutarAsync();
+
+        Assert.False(_t.Memorias.CriarAberto);
+        Assert.Equal(GerenteSetups.MsgSemSetup, _t.Inicio.Mensagem);
+        Assert.DoesNotContain("memorias", _t.Nav.Pedidos);
+    }
+
+    [Fact]
+    public async Task So_a_opcao_escolhida_fica_marcada_no_tipo_do_filtro_e_na_fase()
+    {
+        await _b.Conectar();
+        var tipo = _t.Audio.Tela(FuncaoAudio.Crossover).Vista[1].Controle;
+
+        await _b.Rodar(tipo.EscolherOpcao.ExecutarAsync(tipo.Opcoes.First(o => o.Rotulo == "OFF")));
+        await _b.Rodar(tipo.EscolherOpcao.ExecutarAsync(tipo.Opcoes.First(o => o.Rotulo == "BT24")));
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(["BT24"], tipo.ItensOpcao.Where(i => i.Escolhida).Select(i => i.Rotulo));
+
+        var fase = _t.Audio.Tela(FuncaoAudio.Fase).Controle("060")!;
+        var cento = fase.Opcoes.First(o => o.Rotulo.StartsWith("180", StringComparison.Ordinal));
+        await _b.Rodar(fase.EscolherOpcao.ExecutarAsync(cento));
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal([cento.Rotulo], fase.ItensOpcao.Where(i => i.Escolhida).Select(i => i.Rotulo));
+    }
+
+    // ----------------------------------------------------------------- correções da revisão
+
+    [Fact]
+    public async Task Fechar_a_escolha_do_Setup_fecha_a_folha_do_Salvar_e_os_campos_abertos()
+    {
+        await _b.Conectar();
+        var atraso = _t.Ajuste(L).Controle("050")!;
+        await atraso.Aumentar.ExecutarAsync();
+        await _b.Rodar(atraso.UltimaEscrita);
+        await _t.Salvar.Abrir.ExecutarAsync();
+        Assert.True(_t.Salvar.Aberta);
+        var ganho = _t.Mesa.Canal(L)!.Ganho;
+        ganho.AbrirCampo();
+        Assert.True(ganho.EditandoCampo);
+        _t.Casca.Ir(Aba.Mesa);
+
+        await _b.Rodar(_t.Inicio.TrocarSetup.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+        await _b.Rodar(_t.Setup.Desistir.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(_t.Salvar.Aberta);
+        Assert.False(ganho.EditandoCampo);
+        Assert.True(_t.Casca.NoInicio);
+    }
+
+    [Fact]
+    public async Task Um_segundo_toque_na_memoria_enquanto_a_primeira_aplica_e_ignorado()
+    {
+        await _b.Conectar();
+        await _b.Rodar(_b.Escritor.EscreverAsync(Catalogo.ParametroDe("081")!, 0, 4.0m));
+        await _t.Memorias.AbrirCriar.ExecutarAsync();
+        _t.Memorias.NomeNova = "ROCK";
+        await _b.Rodar(_t.Memorias.ConfirmarCriar.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        var primeiro = _t.Botoes.Botao("FILME")!.Tocar.ExecutarAsync();
+        var segundo = _t.Botoes.Botao("ROCK")!.Tocar.ExecutarAsync();
+        Assert.True(segundo.IsCompleted); // ignorado na hora
+        await _b.Rodar(primeiro);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal("FILME", _t.Inicio.NomeMemoria);
+        Assert.Equal("Memória FILME aplicada.", _t.Botoes.Mensagem);
     }
 }

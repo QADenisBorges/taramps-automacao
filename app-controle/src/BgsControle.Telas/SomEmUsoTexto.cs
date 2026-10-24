@@ -32,6 +32,9 @@ public sealed record SomEmUsoTexto(string? Nome, string? Linha, string? NomePres
         {
             case TipoSomEmUso.MemoriaCelular when setups.Memoria(uso.IdMemoria) is { } m:
                 return new(m.Nome, null, setups.PresetDe(m)?.Nome ?? SemPreset, null, false);
+            case TipoSomEmUso.MemoriaCelular:
+                // A memória em uso não existe mais (apagada): o app não sabe o que toca.
+                return new(SomDoAparelho, NaoSabe, null, null, false);
             case TipoSomEmUso.MemoriaAparelho when uso.MemoriaAparelho is { } n:
                 return new(memorias.Nome(n) is { Length: > 0 } nome ? nome : $"Memória {n + 1}", LinhaDoAparelho(n), null, null, false);
             case TipoSomEmUso.SomDoAparelho:
