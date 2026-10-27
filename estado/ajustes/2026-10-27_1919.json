@@ -1,0 +1,46 @@
+{
+  "formato": 1,
+  "tipo": "memoria",
+  "inicio": "2026-10-27T19:19:42",
+  "fim": "2026-10-27T19:19:56",
+  "simular": false,
+  "lote": [
+    "salvar memória 2 \"MUSICA ORIG\""
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882"
+  },
+  "status": "salvo",
+  "backup": "estado/backups/2026-10-27_1919.json",
+  "log": "estado/log-ble/2026-10-27_1919-memoria.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "*240*1*",
+      "*232*MUSICA ORIG*"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "comandos": [
+    {
+      "texto": "*240*1*",
+      "status": "enviado"
+    },
+    {
+      "texto": "*232*MUSICA ORIG*",
+      "status": "enviado"
+    }
+  ],
+  "escritas": [],
+  "aplicados": [
+    "salvar memória 2 \"MUSICA ORIG\""
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "nome_relido": "MUSICA ORIG",
+  "retrato_sha256": "908901a6559056c9495da1af2e70b4483d1c81533dd593007c7867ce038e4dc9"
+}

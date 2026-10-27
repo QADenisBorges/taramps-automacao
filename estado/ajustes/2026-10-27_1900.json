@@ -1,0 +1,46 @@
+{
+  "formato": 1,
+  "tipo": "memoria",
+  "inicio": "2026-10-27T19:00:29",
+  "fim": "2026-10-27T19:00:43",
+  "simular": false,
+  "lote": [
+    "salvar memória 3 \"FILME\""
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882"
+  },
+  "status": "salvo",
+  "backup": "estado/backups/2026-10-27_1900.json",
+  "log": "estado/log-ble/2026-10-27_1900-memoria.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "*240*2*",
+      "*233*FILME*"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": []
+  },
+  "comandos": [
+    {
+      "texto": "*240*2*",
+      "status": "enviado"
+    },
+    {
+      "texto": "*233*FILME*",
+      "status": "enviado"
+    }
+  ],
+  "escritas": [],
+  "aplicados": [
+    "salvar memória 3 \"FILME\""
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "nome_relido": "FILME",
+  "retrato_sha256": "29d25243d415fcd2d1b990cdeb982b55a3fadb40acba0ddce9d0a8862bdb45f9"
+}

@@ -1,6 +1,6 @@
 {
   "formato": 1,
-  "atualizado": "2026-10-20T13:22:45",
+  "atualizado": "2026-10-27T19:19:56",
   "dsp": {
     "1": {
       "nome": "SPL",
@@ -11,14 +11,14 @@
     "2": {
       "nome": "MUSICA ORIG",
       "por": "ia",
-      "hora": "2026-10-18T15:34:29",
-      "retrato": "1068e8db3e12f1c174f19eb069c3a28c2b028c385481c3b9f7d2af7c59b75bc3"
+      "hora": "2026-10-27T19:19:56",
+      "retrato": "908901a6559056c9495da1af2e70b4483d1c81533dd593007c7867ce038e4dc9"
     },
     "3": {
       "nome": "FILME",
       "por": "ia",
-      "hora": "2026-10-18T21:48:34",
-      "retrato": "fe612dd6daf91c2e5cdf90dc7c5061883beaaf872ff03b2097f0603ec0c41280"
+      "hora": "2026-10-27T19:00:43",
+      "retrato": "29d25243d415fcd2d1b990cdeb982b55a3fadb40acba0ddce9d0a8862bdb45f9"
     }
   },
   "presets": [],

@@ -1,6 +1,6 @@
 # Contexto de regulagem: memória SPL
 
-**Status:** recalculado do zero em 2026-10-20 a partir das medidas de 17 e 18/10 (seção 12) · JBLs em 17,9 V com LR4 em 200 Hz, confirmado por conta independente · sub em **28,6 V** (seguro de 200 W; 34 V só se a compra confirmar 450 W) · fonte: Bluetooth serve · **Fb do duto medida: 51 Hz** → subsônico BW 24 dB em 40 Hz · módulo e sub confirmados pelo Denis (20/10)
+**Status:** recalculado do zero em 2026-10-20 a partir das medidas de 17 e 18/10 (seção 12) · JBLs em 17,9 V com LR4 em 200 Hz, confirmado por conta independente · sub em **28,6 V** (450 W confirmados em 27/10: o limite passa a ser o curso do cone e o duto, não o calor; ver seção 13) · fonte: Bluetooth serve · **Fb do duto medida: 51 Hz** → subsônico BW 24 dB em 40 Hz · módulo e sub confirmados pelo Denis (20/10)
 
 **Fontes de verdade externas:** repositório `QADenisBorges/sound` — `componentes/alto-falantes.md`, `componentes/subwoofers.md`, `componentes/amplificadores.md`, `projetos/home-theater-2.1/montagem-2.1.md` e `.claude/skills/consultor-som/scripts/calc_som.py excursao`.
 
@@ -18,7 +18,7 @@ Este arquivo é a fonte de verdade da regulagem para quem for operar o sistema o
 | Módulo | SounDigital **SD800.4 EVO** (não é a EVO6), marcação **BRIDGE 4Ω** (confirmado pelo Denis em 20/10) | Tabela usada: 4 × 132 W em 4 Ω; ponte 400 W em 4 Ω (mínimo em ponte: 4 Ω; ponte em 2 Ω proibida). Coerente com o medido: 26 V por canal sem carga (14/10). Chave de crossover em **F (full)** nos 4 canais: o processador define os cortes |
 | Canal 1 | JBL Selenium 4TRMS80 (triaxial 4", 80 W RMS, 4 Ω) | Um falante por canal |
 | Canal 2 | JBL Selenium 4TRMS80 (triaxial 4", 80 W RMS, 4 Ω) | Um falante por canal |
-| Canais 3+4 | Sub **Protech Speakers 8"** (confirmado pelo Denis em 20/10), em ponte (sub + no CH4 ⊕, sub − no CH3 ⊖) | Potência **sem prova**: 450 W informados pelo Denis e por anúncio, mas o cone só traz a logo e a caixa não abre; **vale o seguro de 200 W** até a nota ou o pedido da compra confirmar. 84 dB, Fs 46 Hz, Xmax 8 mm (dados de loja). **3,7 a 4,0 Ω medidos** (17/10 e 15/10): bobina de 4 Ω. Caixa com duto, ≈28 L, **Fb medida 51 Hz** (20/10) |
+| Canais 3+4 | Sub **Protech Light 8" 4 Ω** (modelo e 450 W RMS confirmados pelo Denis em 27/10; R$ 390 no site da Protech), em ponte (sub + no CH4 ⊕, sub − no CH3 ⊖) | Ficha completa na seção 13: Re 3,7 Ω, Fs 46 Hz, Qts 0,52, Vas 10 L, Bl 13, **Xmax 8 mm**, Sd 240 cm², 84 dB/1 W. **3,7 a 4,0 Ω medidos** (17/10 e 15/10): bobina de 4 Ω. Caixa com duto, ≈28 L, **Fb medida 51 Hz** (20/10) |
 | Caixa dos JBLs | BS-369, selada, ~3,5 L cada | Fc ≈ 124 Hz, Qtc ≈ 0,81-0,90 (Sound). Reduz excursão e protege o cone. Recomendado amortecimento interno e vedação conferida |
 | JBL 4TRMS80 (ficha impressa, Sound) | 80 W RMS / 160 W pico · 4 Ω (Re 3,4 Ω) · 87 dB declarado (~85,8 dB efetivo) · Fs 98 Hz · Vas 2,06 L · Sd 64 cm² · **Xmax 1,75 mm de pico** · corte mínimo recomendado pela ficha: 100 Hz a 24 dB/oit | O limite real do falante é o curso do cone, não o calor |
 
@@ -198,10 +198,13 @@ Ações que a IA **nunca** libera nesta memória: baixar ou suavizar o passa-alt
 - [ ] Soldar as emendas da linha de 40 A, ou instalar o porta-fusível midi. Decisão do Denis (20/10): fica para **depois de configurar** a memória SPL. A configuração (tons sem falantes, corrente baixa) pode ser feita antes. A demonstração em volume máximo espera a solda; até lá, depois de cada uso alto, tocar na emenda e no porta-fusível (morno é normal; quente, parar).
 - [x] Prender o duto do sub que vibra em ~35 Hz: feito pelo Denis em 20/10 ("subwoofer prendido"). Conferido com o gerador a −30 dB em 35, 45, 55 e 70 Hz: sem barulho.
 - [ ] Confirmar se o EQ entra antes do limitador (seção 12.5).
-- [ ] Alinhamento no corte de 200 Hz: a fase do sub começou em **0°** (20/10, decisão do Denis); comparar de ouvido com 180° e aplicar os atrasos da FILME (R 100 cm, sub 80 cm). Ganho esperado: +3 a +6 dB na região do corte, sem mais potência.
+- [ ] Fase do sub no corte de 200 Hz: começou em **0°** (20/10, decisão do Denis); comparar de ouvido com 180° e ficar com a que soar mais cheia. **Sem atrasos:** regra do Denis de 27/10, nas memórias de música L e R tocam igual e os atrasos ficam em 0; a compensação por distância (R 100 cm, sub 80 cm) é só da FILME.
 - [ ] Definir e masterizar a playlist.
 - [x] Amortecimento interno e vedação das caixas: silicone e fibra feitos, caixas instaladas (confirmado pelo Denis em 20/10). Com a fibra, o volume efetivo sobe ~10 a 20 % (até ~4,2 L): com LR4 em 200 Hz e 17,9 V, a excursão fica em 0,79 a 0,80 × Xmax, sem mudança no teto.
 - [ ] Registrar o passa-alta atual da memória diária, para comparação.
+- [x] Potência e modelo do sub: Protech Light 8" 4 Ω, 450 W RMS (confirmado pelo Denis em 27/10). Ficha e simulação na seção 13.
+- [ ] Decisão do Denis (seção 13.4): manter o sub em 28,6 V ou passar a 34 V com o subsônico em 43 Hz.
+- [x] FILME (seção 13.3): reforço de 45 Hz tirado, subsônico em 45 Hz BW24 e ataque do sub em 15 ms. Aprovado de ouvido pelo Denis e salvo na memória 3 em 27/10 19h00 (`estado/backups/2026-10-27_1900.json`).
 
 ## 11. Referências de cálculo
 
@@ -336,7 +339,7 @@ Calibrada pelo **Bluetooth do celular a 100 %**, com arquivos de tom a 0 dBFS (`
 | Corte | Passa-alta LR24 em 200 Hz | idem | Subsônico BW24 em 40 Hz + passa-baixa LR24 em 200 Hz |
 | Ganho | +6,0 dB | +6,0 dB | +2,6 dB |
 | Limitador | −7,0 dB, ataque 5 ms, liberação 200 ms | idem | −9,0 dB, ataque 10 ms, liberação 200 ms |
-| Fase / atraso | 0° / 0 | 0° / 0 | **0°** / 0 (pendente: comparar com 180° e aplicar os atrasos da FILME) |
+| Fase / atraso | 0° / 0 | 0° / 0 | **0°** / 0 (pendente: comparar com 180°; atraso fica em 0, regra de 27/10) |
 | EQ | plano | plano | plano |
 | **Medido (tom a 0 dBFS pelo BT)** | **17,7 V** (400 Hz) → ~78 W, 0,80 × Xmax | **17,6 V** → ~77 W | **27,5 V** (80 Hz) → ~190 W em 4 Ω |
 | Calculado | 17,9 V | 17,9 V | 28,3 a 28,6 V (seguro de 200 W) |
@@ -347,7 +350,7 @@ Conferências feitas no caminho:
 - As leituras oscilantes (2 a 27 V) e os 26,2 V do sub vieram de pontas do multímetro mal encaixadas, não do sistema.
 - O guardião foi ajustado por decisão do Denis: teto das JBL até −7,0 dB só com passa-alta LR ≥ 200 Hz a 24 dB/oit (código e `guardiao.json`), teto do sub em −8,0 dB.
 - Escuta com os falantes religados (20/10): 30 % e 70 % sem chiado, estalo, raspado nas JBL ou sopro no duto; configuração relida igual depois de religar a fonte. Emenda e porta-fusível de 40 A **frios** depois do teste de 70 %.
-- Próximos: soldar a linha de 40 A → validação a 100 % (seção 6) → comparar a fase do sub 0° × 180° e aplicar os atrasos da FILME.
+- Próximos: soldar a linha de 40 A → validação a 100 % (seção 6) → comparar a fase do sub 0° × 180° (sem atrasos: L = R e atraso 0, regra de 27/10).
 
 ### 12.9 Playlist da memória SPL (em montagem, 20/10/2026)
 
@@ -366,3 +369,59 @@ Arquivos no celular em `Music/SPL SOUNDS` e no PC em `Desktop/SPL SOUNDS`, separ
 Regra comum (`adaptar2.py`): trecho com entrada de 0,3 s e saída de 2 s; LR4 em 40 Hz no arquivo; **corte em 51 Hz (Q 2) de −2 dB na versão 200 W e −3 dB na 400 W**, para o duto não soprar (o grave das três está na Fb ou perto dela); na versão 200 W, também −1,5 dB abaixo de 100 Hz (prateleira), para o limitador do sub trabalhar menos; volume igualado pelo P90 de curto prazo (alvo −8,5, ficou entre −9,0 e −9,6 depois do limitador); limitador de pico verdadeiro em −1 dBTP (até 5 dB, acima de 1 dB em 16 a 19 % do tempo). Músicas inteiras (decisão do Denis em 20/10: o tempo da demonstração, até 10 min, é controlado por ele na hora). Total com as 7 faixas: ~20 min (o Denis escolhe na hora o que toca nos 10 min). Conta térmica com as músicas inteiras no máximo da SPL [≈]: média de 2 a 4 W nas JBL (pior trecho de 30 s: 5 W, contra 80 W) e de 7 a 9 W no sub (pior trecho: 16 W, contra 200 W); a fonte puxa ~2 a 3 A em média, picos de ~17 A.
 
 O LUFS do trecho fica abaixo de −8 por causa dos 44 s de abertura sem grave; as pancadas ficam em ~−7,5 LUFS de curto prazo. As próximas faixas (brasileiras) seguem o mesmo processo e são igualadas pelo volume das pancadas.
+
+## 13. Sub com ficha confirmada (2026-10-27)
+
+### 13.1 Ficha e conferência
+
+O Denis confirmou que o sub é o **Protech Light 8" 4 Ω, 450 W RMS**. A ficha vem da página do produto no site da Protech (`protechspeakers.com/protech-light-8/`, lida em 27/10); o manual em PDF não abriu.
+
+| Parâmetro | Ficha | Confere com |
+|---|---|---|
+| Potência RMS | 450 W | √(450 × 4) = **42 V**: acima do ceifamento da ponte (40 V) |
+| Re | 3,7 Ω | **3,7 Ω medidos** em 17/10 [M] |
+| Fs | 46 Hz | dado de loja anterior |
+| Qms / Qes / Qts | 3,90 / 0,61 / 0,52 | Qts calculado pelos outros dois: 0,527 [C] |
+| Vas | 10 L | Vas recalculada por Mms e Cms: 9,9 L [C] |
+| Bl | 13 T·m | Mms derivada: 96 g; Cms 0,124 mm/N [C] |
+| Xmax | 8 mm | |
+| Le | 1,63 mH | |
+| Sd | 240 cm² | |
+| Sensibilidade | 84 dB/1 W/1 m (87 dB/2,83 V) | eficiência calculada 0,154 % → 83,9 dB [C] (ficha: 0,16 %) |
+
+A ficha fecha consigo mesma e com o que medimos: dá para confiar nela.
+
+Na caixa (≈28 L, Fb 51 Hz medida): Vas/Vb = 0,36, Fb/Fs = 1,11 e duto efetivo de ~16 cm para a área de 38,5 cm².
+
+### 13.2 O que muda
+
+- **O calor deixou de ser o limite.** Com 450 W RMS, nem o ceifamento da ponte (40 V ≈ 400 W) passa da potência do falante. O seguro de 200 W existia só porque a potência não tinha prova.
+- **O limite agora é o curso do cone abaixo da Fb e o ar no duto em volta da Fb.** Simulação em `calculo_excursao_sub.py` (modelo de Small com perda Ql 7, sem ganho da sala), tom senoidal a 0 dBFS pelo BT, na pior frequência [C]:
+
+| Cenário | Excursão máx. | Ar no duto em 51 Hz |
+|---|---|---|
+| SPL hoje: +2,6, teto 28,6 V, subsônico 40 Hz | 6,8 mm (**86 %** do Xmax) em 40 Hz | ~49 m/s |
+| SPL a 34 V, subsônico 40 Hz | 8,4 mm (**105 %**) em 40 Hz | ~61 m/s |
+| SPL a 34 V, subsônico 43 Hz | 7,2 mm (**90 %**) em 42 Hz | ~58 m/s |
+| FILME hoje: +6, EQ 45 Hz +3, teto 20 V | 8,2 mm (**102 %**) em 35 Hz | ~38 m/s |
+| FILME hoje, pico dentro do ataque de 50 ms (até 40 V) | 13,7 mm (**172 %**) em 40 Hz | ~75 m/s |
+| FILME sem o reforço, subsônico 45 Hz, teto 20 V | 7,0 mm (88 %) em 38 Hz | ~38 m/s |
+| FILME sem o reforço, subsônico 45 Hz, pico (40 V) | 8,1 mm (101 %) em 70 Hz | ~66 m/s |
+| Tom puro no ceifamento da ponte (40 V, ex.: MUSICA ORIG com fonte forte) | 18,3 mm (**229 %**) em 30 Hz | ~75 m/s |
+
+- O Xmax é o limite da região linear (a distorção sobe), não o batente mecânico, que costuma ficar 1,5 a 2 vezes acima. Ainda assim, 172 % é zona de batida do cone.
+- **O duto é o gargalo.** Na Fb, o modelo dá 38 a 49 m/s já no teto de hoje; o sopro começa por volta de 17 a 25 m/s. O modelo não tem compressão do duto, então o valor real é menor, mas a conclusão vale: subir de 28,6 V para 34 V dá só **+1,5 dB**, e na região de 51 Hz vira sopro e compressão, não grave limpo. Isso confirma a análise da caixa de 20/10 (seção 12.3): a caixa é da classe de ~200 W.
+
+### 13.3 FILME: correção recomendada
+
+O reforço de 45 Hz (+3 dB, Q 0,7) foi feito em 18/10, antes da Fb ser medida. Somado ao ganho +6, ele leva o sinal ao limitador já em 35 Hz, abaixo da Fb, onde o duto não segura o cone. O ataque de 50 ms deixa passar dois ciclos inteiros em 40 Hz antes de o limitador agir. Na cena pesada de 18/10 o multímetro marcou 24 V com o limitador em 20 V, e esse é um valor médio.
+
+Proposta (o Denis decide):
+1. Tirar o reforço de 45 Hz. Se faltar peso, usar no máximo +1,5 dB em 58 Hz.
+2. Subir o subsônico do sub para 45 Hz BW24.
+3. Baixar o ataque do limitador do sub para 10 a 20 ms. As JBL continuam em 50 ms.
+
+### 13.4 SPL: 28,6 V ou 34 V
+
+- **Manter 28,6 V (recomendado):** 86 % do Xmax, sem mudar o subsônico. A diferença para 34 V é de 1,5 dB, e a caixa e o duto não aproveitam bem esse ganho.
+- **Passar a 34 V:** limitador em −7,5 dB, subsônico em **43 Hz** (sem isso o cone passa do Xmax em 38 a 42 Hz), usar as faixas `Sub 400W` (corte de −3 dB em 51 Hz) e só depois da solda da linha de 40 A (a corrente de pico sobe para ~41 A).
