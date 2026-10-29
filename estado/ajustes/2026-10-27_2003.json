@@ -1,0 +1,67 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-27T20:03:35",
+  "fim": "2026-10-27T20:03:53",
+  "simular": true,
+  "lote": [
+    "020:0=0",
+    "020:1=0",
+    "020:2=1",
+    "020:3=1",
+    "020:4=1",
+    "020:5=0",
+    "020:6=-1",
+    "020:7=0",
+    "020:8=0",
+    "020:9=1",
+    "020:10=0",
+    "020:11=0",
+    "020:12=-1",
+    "020:13=2",
+    "020:14=1"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "simulado",
+  "backup": "estado/backups/2026-10-27_2003.json",
+  "log": "estado/log-ble/2026-10-27_2003-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "020:2=1.0",
+      "020:3=1.0",
+      "020:5=0.0",
+      "020:13=2.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [
+      "020:0=0.0",
+      "020:1=0.0",
+      "020:4=1.0",
+      "020:6=-1.0",
+      "020:7=0.0",
+      "020:8=0.0",
+      "020:9=1.0",
+      "020:10=0.0",
+      "020:11=0.0",
+      "020:12=-1.0",
+      "020:14=1.0"
+    ],
+    "espelhados": []
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

@@ -1,0 +1,56 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-24T21:20:39",
+  "fim": "2026-10-24T21:20:52",
+  "simular": true,
+  "lote": [
+    "091:0=0.0",
+    "091:1=0.0",
+    "020:11=-2.0",
+    "020:12=-3.0",
+    "020:13=-2.0",
+    "020:14=-2.0",
+    "020:2=2.0",
+    "020:3=1.0",
+    "081:2=7.7",
+    "071:2=-9.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "recusado",
+  "backup": "estado/backups/2026-10-24_2120-2.json",
+  "log": "estado/log-ble/2026-10-24_2120-2-ajuste.log",
+  "decisao": {
+    "aprovado": false,
+    "ordem": [],
+    "recusas": [
+      {
+        "regra": 7,
+        "rotulo": "regra 7",
+        "item": "020:11=-2.0, 020:12=-3.0, 020:13=-2.0, 020:14=-2.0, 020:2=2.0, 020:3=1.0, 081:2=7.7",
+        "motivo": "G_ef da saída 3 em 18.0 dB (máximo 18.0 dB) (também na saída 4)",
+        "seguro": "baixe ganho, master ou reforço de EQ dessa saída"
+      }
+    ],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": [
+      "081:3=7.7",
+      "071:3=-9.0"
+    ]
+  },
+  "escritas": [],
+  "aplicados": [],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [],
+  "estado_relido": []
+}

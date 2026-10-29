@@ -1,0 +1,733 @@
+{
+  "formato": 1,
+  "aparelho": "PRO 2.4BT + AUDIO",
+  "status": "completo",
+  "motivo": null,
+  "inicio": "2026-10-24T21:20:14",
+  "fim": "2026-10-24T21:20:28",
+  "dispositivo": {
+    "nome": "2.4BT AUDIO",
+    "endereco": "00:80:E1:22:B6:30"
+  },
+  "caracteristicas": {
+    "1122": [
+      "write"
+    ],
+    "1123": [
+      "notify"
+    ]
+  },
+  "firmware": "R003",
+  "resposta_000": "PRO2.4MIR003",
+  "total": 84,
+  "lidos": 84,
+  "leituras": [
+    {
+      "codigo": "080",
+      "canal": null,
+      "nome": "master",
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "#080#+0.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 0,
+      "nome": "ganho",
+      "valor": 10.0,
+      "unidade": "dB",
+      "cru": "#081#0#+10.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 1,
+      "nome": "ganho",
+      "valor": 7.0,
+      "unidade": "dB",
+      "cru": "#081#1#+7.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 2,
+      "nome": "ganho",
+      "valor": 6.0,
+      "unidade": "dB",
+      "cru": "#081#2#+6.0#"
+    },
+    {
+      "codigo": "081",
+      "canal": 3,
+      "nome": "ganho",
+      "valor": 6.0,
+      "unidade": "dB",
+      "cru": "#081#3#+6.0#"
+    },
+    {
+      "codigo": "100",
+      "canal": 0,
+      "nome": "mute",
+      "valor": false,
+      "unidade": null,
+      "cru": "#100#0#0#"
+    },
+    {
+      "codigo": "100",
+      "canal": 1,
+      "nome": "mute",
+      "valor": false,
+      "unidade": null,
+      "cru": "#100#1#0#"
+    },
+    {
+      "codigo": "100",
+      "canal": 2,
+      "nome": "mute",
+      "valor": false,
+      "unidade": null,
+      "cru": "#100#2#0#"
+    },
+    {
+      "codigo": "100",
+      "canal": 3,
+      "nome": "mute",
+      "valor": false,
+      "unidade": null,
+      "cru": "#100#3#0#"
+    },
+    {
+      "codigo": "010",
+      "canal": 0,
+      "nome": "roteamento",
+      "valor": "b",
+      "unidade": null,
+      "cru": "#010#0#b#",
+      "rotulo": "B"
+    },
+    {
+      "codigo": "010",
+      "canal": 1,
+      "nome": "roteamento",
+      "valor": "a",
+      "unidade": null,
+      "cru": "#010#1#a#",
+      "rotulo": "A"
+    },
+    {
+      "codigo": "010",
+      "canal": 2,
+      "nome": "roteamento",
+      "valor": "a+b",
+      "unidade": null,
+      "cru": "#010#2#a+b#",
+      "rotulo": "A+B"
+    },
+    {
+      "codigo": "010",
+      "canal": 3,
+      "nome": "roteamento",
+      "valor": "a+b",
+      "unidade": null,
+      "cru": "#010#3#a+b#",
+      "rotulo": "A+B"
+    },
+    {
+      "codigo": "060",
+      "canal": 0,
+      "nome": "fase",
+      "valor": 0,
+      "unidade": "graus",
+      "cru": "#060#0#0#",
+      "rotulo": "0°"
+    },
+    {
+      "codigo": "060",
+      "canal": 1,
+      "nome": "fase",
+      "valor": 0,
+      "unidade": "graus",
+      "cru": "#060#1#0#",
+      "rotulo": "0°"
+    },
+    {
+      "codigo": "060",
+      "canal": 2,
+      "nome": "fase",
+      "valor": 180,
+      "unidade": "graus",
+      "cru": "#060#2#180#",
+      "rotulo": "180°"
+    },
+    {
+      "codigo": "060",
+      "canal": 3,
+      "nome": "fase",
+      "valor": 180,
+      "unidade": "graus",
+      "cru": "#060#3#180#",
+      "rotulo": "180°"
+    },
+    {
+      "codigo": "040",
+      "canal": 0,
+      "nome": "hpf_freq",
+      "valor": 150,
+      "unidade": "Hz",
+      "cru": "#040#0#150#"
+    },
+    {
+      "codigo": "040",
+      "canal": 1,
+      "nome": "hpf_freq",
+      "valor": 150,
+      "unidade": "Hz",
+      "cru": "#040#1#150#"
+    },
+    {
+      "codigo": "040",
+      "canal": 2,
+      "nome": "hpf_freq",
+      "valor": 40,
+      "unidade": "Hz",
+      "cru": "#040#2#40#"
+    },
+    {
+      "codigo": "040",
+      "canal": 3,
+      "nome": "hpf_freq",
+      "valor": 40,
+      "unidade": "Hz",
+      "cru": "#040#3#40#"
+    },
+    {
+      "codigo": "041",
+      "canal": 0,
+      "nome": "lpf_freq",
+      "valor": 22000,
+      "unidade": "Hz",
+      "cru": "#041#0#22000#"
+    },
+    {
+      "codigo": "041",
+      "canal": 1,
+      "nome": "lpf_freq",
+      "valor": 22000,
+      "unidade": "Hz",
+      "cru": "#041#1#22000#"
+    },
+    {
+      "codigo": "041",
+      "canal": 2,
+      "nome": "lpf_freq",
+      "valor": 150,
+      "unidade": "Hz",
+      "cru": "#041#2#150#"
+    },
+    {
+      "codigo": "041",
+      "canal": 3,
+      "nome": "lpf_freq",
+      "valor": 150,
+      "unidade": "Hz",
+      "cru": "#041#3#150#"
+    },
+    {
+      "codigo": "042",
+      "canal": 0,
+      "nome": "hpf_filtro",
+      "valor": 3,
+      "unidade": null,
+      "cru": "#042#0#3#",
+      "rotulo": "LR24"
+    },
+    {
+      "codigo": "042",
+      "canal": 1,
+      "nome": "hpf_filtro",
+      "valor": 3,
+      "unidade": null,
+      "cru": "#042#1#3#",
+      "rotulo": "LR24"
+    },
+    {
+      "codigo": "042",
+      "canal": 2,
+      "nome": "hpf_filtro",
+      "valor": 11,
+      "unidade": null,
+      "cru": "#042#2#11#",
+      "rotulo": "BT24"
+    },
+    {
+      "codigo": "042",
+      "canal": 3,
+      "nome": "hpf_filtro",
+      "valor": 11,
+      "unidade": null,
+      "cru": "#042#3#11#",
+      "rotulo": "BT24"
+    },
+    {
+      "codigo": "043",
+      "canal": 0,
+      "nome": "lpf_filtro",
+      "valor": 0,
+      "unidade": null,
+      "cru": "#043#0#0#",
+      "rotulo": "OFF"
+    },
+    {
+      "codigo": "043",
+      "canal": 1,
+      "nome": "lpf_filtro",
+      "valor": 0,
+      "unidade": null,
+      "cru": "#043#1#0#",
+      "rotulo": "OFF"
+    },
+    {
+      "codigo": "043",
+      "canal": 2,
+      "nome": "lpf_filtro",
+      "valor": 3,
+      "unidade": null,
+      "cru": "#043#2#3#",
+      "rotulo": "LR24"
+    },
+    {
+      "codigo": "043",
+      "canal": 3,
+      "nome": "lpf_filtro",
+      "valor": 3,
+      "unidade": null,
+      "cru": "#043#3#3#",
+      "rotulo": "LR24"
+    },
+    {
+      "codigo": "050",
+      "canal": 0,
+      "nome": "delay",
+      "valor": 0.0,
+      "unidade": "cm",
+      "cru": "#050#0#0.0#"
+    },
+    {
+      "codigo": "050",
+      "canal": 1,
+      "nome": "delay",
+      "valor": 100.0,
+      "unidade": "cm",
+      "cru": "#050#1#100.0#"
+    },
+    {
+      "codigo": "050",
+      "canal": 2,
+      "nome": "delay",
+      "valor": 80.0,
+      "unidade": "cm",
+      "cru": "#050#2#80.0#"
+    },
+    {
+      "codigo": "050",
+      "canal": 3,
+      "nome": "delay",
+      "valor": 80.0,
+      "unidade": "cm",
+      "cru": "#050#3#80.0#"
+    },
+    {
+      "codigo": "070",
+      "canal": 0,
+      "nome": "limiter_auto",
+      "valor": false,
+      "unidade": null,
+      "cru": "#070#0#0#"
+    },
+    {
+      "codigo": "070",
+      "canal": 1,
+      "nome": "limiter_auto",
+      "valor": false,
+      "unidade": null,
+      "cru": "#070#1#0#"
+    },
+    {
+      "codigo": "070",
+      "canal": 2,
+      "nome": "limiter_auto",
+      "valor": false,
+      "unidade": null,
+      "cru": "#070#2#0#"
+    },
+    {
+      "codigo": "070",
+      "canal": 3,
+      "nome": "limiter_auto",
+      "valor": false,
+      "unidade": null,
+      "cru": "#070#3#0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 0,
+      "nome": "limiter_threshold",
+      "valor": -15.0,
+      "unidade": "dB",
+      "cru": "#071#0#-15.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 1,
+      "nome": "limiter_threshold",
+      "valor": -18.0,
+      "unidade": "dB",
+      "cru": "#071#1#-18.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 2,
+      "nome": "limiter_threshold",
+      "valor": -12.0,
+      "unidade": "dB",
+      "cru": "#071#2#-12.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 3,
+      "nome": "limiter_threshold",
+      "valor": -12.0,
+      "unidade": "dB",
+      "cru": "#071#3#-12.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 0,
+      "nome": "limiter_attack",
+      "valor": 50.0,
+      "unidade": "ms",
+      "cru": "#072#0#50.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 1,
+      "nome": "limiter_attack",
+      "valor": 50.0,
+      "unidade": "ms",
+      "cru": "#072#1#50.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 2,
+      "nome": "limiter_attack",
+      "valor": 50.0,
+      "unidade": "ms",
+      "cru": "#072#2#50.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 3,
+      "nome": "limiter_attack",
+      "valor": 50.0,
+      "unidade": "ms",
+      "cru": "#072#3#50.0#"
+    },
+    {
+      "codigo": "073",
+      "canal": 0,
+      "nome": "limiter_release",
+      "valor": 200,
+      "unidade": "ms",
+      "cru": "#073#0#200#"
+    },
+    {
+      "codigo": "073",
+      "canal": 1,
+      "nome": "limiter_release",
+      "valor": 200,
+      "unidade": "ms",
+      "cru": "#073#1#200#"
+    },
+    {
+      "codigo": "073",
+      "canal": 2,
+      "nome": "limiter_release",
+      "valor": 200,
+      "unidade": "ms",
+      "cru": "#073#2#200#"
+    },
+    {
+      "codigo": "073",
+      "canal": 3,
+      "nome": "limiter_release",
+      "valor": 200,
+      "unidade": "ms",
+      "cru": "#073#3#200#"
+    },
+    {
+      "codigo": "090",
+      "canal": 0,
+      "nome": "eq_saida_freq",
+      "valor": 2000,
+      "unidade": "Hz",
+      "cru": "#090#0#2000#"
+    },
+    {
+      "codigo": "090",
+      "canal": 1,
+      "nome": "eq_saida_freq",
+      "valor": 2000,
+      "unidade": "Hz",
+      "cru": "#090#1#2000#"
+    },
+    {
+      "codigo": "090",
+      "canal": 2,
+      "nome": "eq_saida_freq",
+      "valor": 45,
+      "unidade": "Hz",
+      "cru": "#090#2#45#"
+    },
+    {
+      "codigo": "090",
+      "canal": 3,
+      "nome": "eq_saida_freq",
+      "valor": 45,
+      "unidade": "Hz",
+      "cru": "#090#3#45#"
+    },
+    {
+      "codigo": "091",
+      "canal": 0,
+      "nome": "eq_saida_ganho",
+      "valor": 2.5,
+      "unidade": "dB",
+      "cru": "#091#0#+2.5#"
+    },
+    {
+      "codigo": "091",
+      "canal": 1,
+      "nome": "eq_saida_ganho",
+      "valor": 2.5,
+      "unidade": "dB",
+      "cru": "#091#1#+2.5#"
+    },
+    {
+      "codigo": "091",
+      "canal": 2,
+      "nome": "eq_saida_ganho",
+      "valor": 3.0,
+      "unidade": "dB",
+      "cru": "#091#2#+3.0#"
+    },
+    {
+      "codigo": "091",
+      "canal": 3,
+      "nome": "eq_saida_ganho",
+      "valor": 3.0,
+      "unidade": "dB",
+      "cru": "#091#3#+3.0#"
+    },
+    {
+      "codigo": "092",
+      "canal": 0,
+      "nome": "eq_saida_q",
+      "valor": 0.7,
+      "unidade": null,
+      "cru": "#092#0#+0.7#"
+    },
+    {
+      "codigo": "092",
+      "canal": 1,
+      "nome": "eq_saida_q",
+      "valor": 0.7,
+      "unidade": null,
+      "cru": "#092#1#+0.7#"
+    },
+    {
+      "codigo": "092",
+      "canal": 2,
+      "nome": "eq_saida_q",
+      "valor": 0.7,
+      "unidade": null,
+      "cru": "#092#2#+0.7#"
+    },
+    {
+      "codigo": "092",
+      "canal": 3,
+      "nome": "eq_saida_q",
+      "valor": 0.7,
+      "unidade": null,
+      "cru": "#092#3#+0.7#"
+    },
+    {
+      "codigo": "030",
+      "canal": null,
+      "nome": "eq_entrada_ganho",
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "#030#+0.0#"
+    },
+    {
+      "codigo": "031",
+      "canal": null,
+      "nome": "eq_entrada_freq",
+      "valor": 1000,
+      "unidade": "Hz",
+      "cru": "#031#1000#"
+    },
+    {
+      "codigo": "032",
+      "canal": null,
+      "nome": "eq_entrada_q",
+      "valor": 1.0,
+      "unidade": null,
+      "cru": "#032#+1.0#"
+    },
+    {
+      "codigo": "020",
+      "canal": 0,
+      "nome": "eq_grafico",
+      "banda_hz": 25,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#0#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 1,
+      "nome": "eq_grafico",
+      "banda_hz": 40,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#1#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 2,
+      "nome": "eq_grafico",
+      "banda_hz": 63,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#2#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 3,
+      "nome": "eq_grafico",
+      "banda_hz": 100,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#3#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 4,
+      "nome": "eq_grafico",
+      "banda_hz": 160,
+      "valor": 1.0,
+      "unidade": "dB",
+      "cru": "020#4#+1.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 5,
+      "nome": "eq_grafico",
+      "banda_hz": 250,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#5#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 6,
+      "nome": "eq_grafico",
+      "banda_hz": 400,
+      "valor": -1.0,
+      "unidade": "dB",
+      "cru": "020#6#-1.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 7,
+      "nome": "eq_grafico",
+      "banda_hz": 630,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#7#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 8,
+      "nome": "eq_grafico",
+      "banda_hz": 1000,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#8#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 9,
+      "nome": "eq_grafico",
+      "banda_hz": 1600,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#9#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 10,
+      "nome": "eq_grafico",
+      "banda_hz": 2500,
+      "valor": 0.0,
+      "unidade": "dB",
+      "cru": "020#10#+0.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 11,
+      "nome": "eq_grafico",
+      "banda_hz": 4000,
+      "valor": -1.0,
+      "unidade": "dB",
+      "cru": "020#11#-1.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 12,
+      "nome": "eq_grafico",
+      "banda_hz": 6300,
+      "valor": -2.0,
+      "unidade": "dB",
+      "cru": "020#12#-2.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 13,
+      "nome": "eq_grafico",
+      "banda_hz": 10000,
+      "valor": 2.0,
+      "unidade": "dB",
+      "cru": "020#13#+2.0"
+    },
+    {
+      "codigo": "020",
+      "canal": 14,
+      "nome": "eq_grafico",
+      "banda_hz": 16000,
+      "valor": 2.0,
+      "unidade": "dB",
+      "cru": "020#14#+2.0"
+    },
+    {
+      "codigo": "220",
+      "canal": null,
+      "nome": "preset_eq",
+      "valor": 255,
+      "unidade": null,
+      "cru": "#220#255#",
+      "rotulo": "Custom"
+    }
+  ],
+  "falhas": [],
+  "orfaos": [],
+  "log": "estado/log-ble/2026-10-24_2120-ajuste.log"
+}

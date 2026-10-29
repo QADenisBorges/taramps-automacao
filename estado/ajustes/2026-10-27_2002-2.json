@@ -1,0 +1,116 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-27T20:02:30",
+  "fim": "2026-10-27T20:02:53",
+  "simular": false,
+  "lote": [
+    "071:0=-12.0",
+    "071:1=-15.0",
+    "071:2=-15.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-27_2002-2.json",
+  "log": "estado/log-ble/2026-10-27_2002-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "071:0=-12.0",
+      "071:1=-15.0",
+      "071:2=-15.0",
+      "071:3=-15.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": [
+      "071:3=-15.0"
+    ]
+  },
+  "escritas": [
+    {
+      "codigo": "071",
+      "canal": 0,
+      "escrito": "*071*0*-12.0*",
+      "pedido": -12.0,
+      "relido": -12.0,
+      "cru": "#071#0#-12.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "071",
+      "canal": 1,
+      "escrito": "*071*1*-15.0*",
+      "pedido": -15.0,
+      "relido": -15.0,
+      "cru": "#071#1#-15.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "071",
+      "canal": 2,
+      "escrito": "*071*2*-15.0*",
+      "pedido": -15.0,
+      "relido": -15.0,
+      "cru": "#071#2#-15.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "071",
+      "canal": 3,
+      "escrito": "*071*3*-15.0*",
+      "pedido": -15.0,
+      "relido": -15.0,
+      "cru": "#071#3#-15.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "071:0=-12.0",
+    "071:1=-15.0",
+    "071:2=-15.0",
+    "071:3=-15.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "071:2=-12.0",
+    "071:1=-18.0",
+    "071:0=-15.0"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "071",
+      "canal": 0,
+      "valor": -12.0,
+      "cru": "#071#0#-12.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 1,
+      "valor": -15.0,
+      "cru": "#071#1#-15.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 2,
+      "valor": -15.0,
+      "cru": "#071#2#-15.0#"
+    },
+    {
+      "codigo": "071",
+      "canal": 3,
+      "valor": -15.0,
+      "cru": "#071#3#-15.0#"
+    }
+  ]
+}

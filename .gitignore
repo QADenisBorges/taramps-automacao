@@ -29,3 +29,6 @@ __pycache__/
 
 # Log bruto do BLE (cada quadro enviado e recebido; a senha já sai mascarada).
 estado/log-ble/
+
+# Vídeos de demonstração (pesados, fora do git)
+_bmad-output/videos/

@@ -1,0 +1,190 @@
+{
+  "formato": 1,
+  "inicio": "2026-10-27T19:31:51",
+  "fim": "2026-10-27T19:32:09",
+  "simular": false,
+  "lote": [
+    "090:0=2000",
+    "090:1=2000",
+    "090:2=45",
+    "092:2=0.7",
+    "072:2=15.0"
+  ],
+  "guardiao": {
+    "config": "estado/guardiao.json",
+    "sha256": "95ecb63f4cecfa072e865ac030b6fda9a9ce58298c46c0c19f7fb2f4ccc5d882",
+    "regra6": {
+      "1": false,
+      "2": false,
+      "3": false,
+      "4": false
+    }
+  },
+  "status": "aplicado",
+  "backup": "estado/backups/2026-10-27_1931-2.json",
+  "log": "estado/log-ble/2026-10-27_1931-2-ajuste.log",
+  "decisao": {
+    "aprovado": true,
+    "ordem": [
+      "090:0=2000",
+      "090:1=2000",
+      "090:2=45",
+      "090:3=45",
+      "092:2=0.7",
+      "092:3=0.7",
+      "072:2=15.0",
+      "072:3=15.0"
+    ],
+    "recusas": [],
+    "alertas": [],
+    "sem_mudanca": [],
+    "espelhados": [
+      "090:3=45",
+      "092:3=0.7",
+      "072:3=15.0"
+    ]
+  },
+  "escritas": [
+    {
+      "codigo": "090",
+      "canal": 0,
+      "escrito": "*090*0*2000*",
+      "pedido": 2000,
+      "relido": 2000,
+      "cru": "#090#0#2000#",
+      "status": "igual"
+    },
+    {
+      "codigo": "090",
+      "canal": 1,
+      "escrito": "*090*1*2000*",
+      "pedido": 2000,
+      "relido": 2000,
+      "cru": "#090#1#2000#",
+      "status": "igual"
+    },
+    {
+      "codigo": "090",
+      "canal": 2,
+      "escrito": "*090*2*45*",
+      "pedido": 45,
+      "relido": 45,
+      "cru": "#090#2#45#",
+      "status": "igual"
+    },
+    {
+      "codigo": "090",
+      "canal": 3,
+      "escrito": "*090*3*45*",
+      "pedido": 45,
+      "relido": 45,
+      "cru": "#090#3#45#",
+      "status": "igual"
+    },
+    {
+      "codigo": "092",
+      "canal": 2,
+      "escrito": "*092*2*0.7*",
+      "pedido": 0.7,
+      "relido": 0.7,
+      "cru": "#092#2#+0.7#",
+      "status": "igual"
+    },
+    {
+      "codigo": "092",
+      "canal": 3,
+      "escrito": "*092*3*0.7*",
+      "pedido": 0.7,
+      "relido": 0.7,
+      "cru": "#092#3#+0.7#",
+      "status": "igual"
+    },
+    {
+      "codigo": "072",
+      "canal": 2,
+      "escrito": "*072*2*15.0*",
+      "pedido": 15.0,
+      "relido": 15.0,
+      "cru": "#072#2#15.0#",
+      "status": "igual"
+    },
+    {
+      "codigo": "072",
+      "canal": 3,
+      "escrito": "*072*3*15.0*",
+      "pedido": 15.0,
+      "relido": 15.0,
+      "cru": "#072#3#15.0#",
+      "status": "igual"
+    }
+  ],
+  "aplicados": [
+    "090:0=2000",
+    "090:1=2000",
+    "090:2=45",
+    "090:3=45",
+    "092:2=0.7",
+    "092:3=0.7",
+    "072:2=15.0",
+    "072:3=15.0"
+  ],
+  "nao_aplicados": [],
+  "em_andamento": null,
+  "lote_reverso": [
+    "072:2=10.0",
+    "092:2=1.0",
+    "090:2=50",
+    "090:1=1000",
+    "090:0=1000"
+  ],
+  "estado_relido": [
+    {
+      "codigo": "090",
+      "canal": 0,
+      "valor": 2000,
+      "cru": "#090#0#2000#"
+    },
+    {
+      "codigo": "090",
+      "canal": 1,
+      "valor": 2000,
+      "cru": "#090#1#2000#"
+    },
+    {
+      "codigo": "090",
+      "canal": 2,
+      "valor": 45,
+      "cru": "#090#2#45#"
+    },
+    {
+      "codigo": "090",
+      "canal": 3,
+      "valor": 45,
+      "cru": "#090#3#45#"
+    },
+    {
+      "codigo": "092",
+      "canal": 2,
+      "valor": 0.7,
+      "cru": "#092#2#+0.7#"
+    },
+    {
+      "codigo": "092",
+      "canal": 3,
+      "valor": 0.7,
+      "cru": "#092#3#+0.7#"
+    },
+    {
+      "codigo": "072",
+      "canal": 2,
+      "valor": 15.0,
+      "cru": "#072#2#15.0#"
+    },
+    {
+      "codigo": "072",
+      "canal": 3,
+      "valor": 15.0,
+      "cru": "#072#3#15.0#"
+    }
+  ]
+}
