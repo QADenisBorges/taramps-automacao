@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja do Setup</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2b2420;--muted:#6f645a;--line:#e3d8c6;--seal:#9c2b23;--seal2:#c2483d;--ok:#2f6b3f;--warn:#9a6a12;--kill:#8a2b2b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1917;--card:#26211e;--ink:#efe7dc;--muted:#b3a697;--line:#3a332d;--seal:#b9372e;--seal2:#d9574b;--ok:#7cc48f;--warn:#e0b25a;--kill:#e08a8a}}
+:root[data-theme="dark"]{--bg:#1c1917;--card:#26211e;--ink:#efe7dc;--muted:#b3a697;--line:#3a332d;--seal:#b9372e;--seal2:#d9574b;--ok:#7cc48f;--warn:#e0b25a;--kill:#e08a8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:24px}
+header .t{flex:1;min-width:240px}
+h1{font-size:30px;margin:0 0 6px;line-height:1.2}
+h2{font-size:20px;margin:36px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sub{color:var(--muted);margin:0}
+.seal{width:150px;height:150px;flex:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+ul{margin:6px 0;padding-left:20px}
+li{margin:5px 0}
+.tag{display:inline-block;font:600 12px/1 system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:4px 7px;border-radius:4px;margin-right:6px;vertical-align:2px}
+.lock{color:var(--ok);border:1px solid var(--ok)}
+.kill{color:var(--kill);border:1px solid var(--kill)}
+.crack{color:var(--warn);border:1px solid var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.p{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.p b{display:block}
+.p span{color:var(--muted);font-size:14px}
+code{font-family:Consolas,monospace;font-size:14px}
+footer{margin-top:40px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<svg class="seal" viewBox="0 0 160 160" role="img" aria-label="Selo: forjada">
+  <defs><radialGradient id="g" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="var(--seal2)"/><stop offset="1" stop-color="var(--seal)"/></radialGradient>
+  <path id="arc" d="M80 80 m-52 0 a52 52 0 1 1 104 0 a52 52 0 1 1 -104 0"/></defs>
+  <path fill="url(#g)" d="M80 6c9 0 12 8 20 10s15-3 21 4 1 15 5 22 12 9 12 18-8 11-9 19 6 14 1 21-14 4-20 9-6 14-14 17-13-4-21-4-14 7-21 4-5-12-11-17-15-3-20-9 2-14 0-21-10-11-9-19 9-10 12-17-1-16 5-22 14 0 21-4 11-10 20-10z"/>
+  <circle cx="80" cy="80" r="44" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2"/>
+  <text font-family="Georgia,serif" font-size="11" fill="#fff" fill-opacity=".9" letter-spacing="3"><textPath href="#arc" startOffset="2%">FORJA · 29 OUT 2026 · MONTAGEM DO SETUP ·</textPath></text>
+  <text x="80" y="78" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="17" fill="#fff">FORJADA</text>
+  <text x="80" y="96" text-anchor="middle" font-family="Georgia,serif" font-size="11" fill="#fff" fill-opacity=".85" letter-spacing="2">HARDENED</text>
+</svg>
+<div class="t">
+  <h1>Montagem do Setup e agente que cria a memória</h1>
+  <p class="sub">Forja de 29/10/2026 com o Denis, em modo ataque. Resultado: ideia forjada, pronta para o correct-course da spec do app.</p>
+</div>
+</header>
+
+<h2>O que ficou travado</h2>
+<div class="card"><ul>
+<li><span class="tag lock">trava</span><b>Setup é só o físico</b> (falantes, canais, módulos, ligações, fichas), montado antes. <b>A memória é toda a regulagem</b>, inclusive o atraso.</li>
+<li><span class="tag lock">trava</span>Ao conectar, o app compara com a <b>última memória aplicada</b> naquele Setup.</li>
+<li><span class="tag lock">trava</span>As memórias e calibrações de hoje <b>não são referência</b>.</li>
+<li><span class="tag lock">trava</span>Ficha pelo modelo: a IA busca, <b>confere se fecha</b> e salva com a origem. Só mostra o valor para confirmar, numa tela por equipamento.</li>
+<li><span class="tag lock">trava</span>A IA roda pela <b>porta</b> agora (Claude Code no notebook, acordado por um serviço) e vai <b>para dentro do app</b> depois, com a mesma língua de comandos.</li>
+<li><span class="tag lock">trava</span>A porta vai <b>nos dois sentidos</b>: modal no celular, resposta de volta. O usuário <b>só usa o app</b>.</li>
+<li><span class="tag lock">trava</span><b>Conta fixa</b> protege os equipamentos; a IA escolhe dentro dela.</li>
+<li><span class="tag lock">trava</span>Aplicar com <b>um toque</b> depois do resumo; o refino segue pelas respostas.</li>
+<li><span class="tag lock">trava</span>Melhor resultado = <b>aprovação na escuta</b>.</li>
+<li><span class="tag lock">trava</span>Estratégia das perguntas: variáveis com dúvida, maior impacto primeiro, <b>parar quando nada muda mais de 1 dB</b>, escuta "1 ou 2" no mesmo volume, diagnóstico da queixa, ordem pela física.</li>
+<li><span class="tag lock">trava</span>Perfil do usuário é <b>ponto de partida</b>, por situação; a memória manda.</li>
+<li><span class="tag lock">trava</span>Aprende pelos <b>arquivos</b> (proposto × deixado, retornos, escolhas, contexto); garantido por <b>cerca em código</b> e <b>ouvintes simulados</b>.</li>
+</ul></div>
+
+<h2>O que foi rejeitado e por quê</h2>
+<div class="card"><ul>
+<li><span class="tag kill">morto</span><b>Akinator ao pé da letra:</b> a resposta são números contínuos, não um nome num catálogo.</li>
+<li><span class="tag kill">morto</span><b>Memórias atuais como gabarito:</b> as calibrações de hoje estão mal feitas.</li>
+<li><span class="tag kill">morto</span><b>Aplicar sozinha:</b> contradiz a chave que pede o toque na tela.</li>
+<li><span class="tag kill">morto</span><b>Perguntas no notebook:</b> o usuário só usa o app.</li>
+<li><span class="tag kill">morto</span><b>IA no app já:</b> ~US$ 1,50 por memória, chave da API no APK e correct-course. Fica para depois.</li>
+</ul></div>
+
+<h2>Pontos fracos que sobreviveram</h2>
+<div class="card"><ul>
+<li><span class="tag crack">atenção</span>Sem microfone, a IA só enxerga a tensão no multímetro e a sua escuta.</li>
+<li><span class="tag crack">atenção</span>O volume engana o ouvido: sem igualar, o refino corre atrás do volume.</li>
+<li><span class="tag crack">atenção</span>Espaço, separação e imersão dependem da posição das caixas, hoje no chão e fora do triângulo.</li>
+<li><span class="tag crack">atenção</span>A decisão mexe na SPEC (CAP-16, CAP-12, chaves) e na forja de 22/10.</li>
+</ul></div>
+
+<h2>Quem pressionou a ideia</h2>
+<div class="grid">
+<div class="p"><b>🏗️ Winston</b><span>Arquiteto. Onde a IA mora, o custo do app e a mesma língua de comandos.</span></div>
+<div class="p"><b>🎨 Sally</b><span>UX. Modal contra pergunta que depende da anterior.</span></div>
+<div class="p"><b>📋 John</b><span>PM. Cobrou a trava de 22/10.</span></div>
+<div class="p"><b>📊 Mary</b><span>Analista. Separou o perfil do usuário do perfil da memória.</span></div>
+<div class="p"><b>💻 Amelia</b><span>Dev. "Quem aprende são os arquivos"; o serviço que acorda a IA.</span></div>
+<div class="p"><b>😤 Grumbal</b><span>Adversário. O catálogo do Akinator, a brecha do ajuste por ajuste e a cerca em código.</span></div>
+<div class="p"><b>🔧 Rafael</b><span>Instalador de som em carro (gerado). "Começo pela trena."</span></div>
+<div class="p"><b>📱 Bia</b><span>Usuária no carro (gerada). Sem notebook na garagem.</span></div>
+<div class="p"><b>🎛️ Marta</b><span>Engenheira de som (gerada). O alvo antes da pergunta e o volume que engana.</span></div>
+</div>
+
+<h2>Ramos guardados</h2>
+<div class="card"><ul>
+<li>Som imersivo no filme: primeiro geometria e tempo.</li>
+<li>Abertura estática do app.</li>
+</ul></div>
+
+<footer>Arquivos: <code>forged-idea.md</code>, <code>estrategia-mesa.md</code>, <code>proposta-ia-setup.md</code>, <code>proposta-perguntas.md</code>, <code>.memlog.md</code> em <code>_bmad-output/forge/montagem-do-setup/</code>.</footer>
+</main>
+</body>
+</html>

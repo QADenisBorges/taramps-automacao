@@ -23,3 +23,4 @@ Regras que valem para qualquer chave:
 - Com a chave desligada, a operação é recusada antes de qualquer envio pelo BLE, tanto pela tela quanto pela IA.
 - Ao ligar uma chave, o app mostra o aviso do risco antes de ligar.
 - A IA nunca liga nem desliga uma chave. Só o usuário, pela tela.
+- **Sequência da IA pede o toque.** A cada 3 ajustes da IA sem um toque do usuário no meio, o próximo espera **Continuar** na tela. Um ajuste avulso continua sem confirmação. Isso fecha a brecha de a IA trocar o som inteiro ajuste por ajuste, sem passar pela confirmação de "Aplicar memória do celular" (decisão do Denis, 29/10/2026; o 3 é provisório e do Denis).

@@ -237,6 +237,37 @@
     Cuidados de conhecimento-herdado.md para o app da Taramps. As
     suposições de gerador, clip, voltímetro espontâneo, 251/252 e nome do
     produto ficam para a 12b.
+# Proposta de mudança de 29/10/2026 (forja da montagem do Setup): o Setup fica
+# só com o físico e a memória com toda a regulagem. Entram a 8f e a 10c antes
+# da 12b, para a 12b testar no aparelho o modelo novo.
+- id: "8f"
+  title: Setup só físico, memória com toda a regulagem e fichas com origem
+  description: >-
+    A regra das camadas muda: a regulagem vai para a memória com o valor
+    final, o Setup fica com equipamentos e fichas, o link sai sozinho das
+    ligações e o equilíbrio sai. Conferência ao conectar pela última memória
+    aplicada (muta com corte, atraso, fase ou rota diferentes, ou sem
+    memória; só avisa com ganho, limitador, EQ ou MASTER diferentes). Fichas
+    com os campos novos e a origem de cada dado, base de modelos no celular,
+    herdado sem memórias e sem presets, setups.json no formato 3 (começa do
+    zero: apaga as memórias e os presets do celular e mantém os Setups e os
+    equipamentos), e a regra do Continuar a cada 3 ajustes seguidos da IA.
+  invoke_dev_with: >-
+    _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-29.md e
+    _bmad-output/forge/montagem-do-setup/forged-idea.md. Tudo contra o
+    ProcessadorSimulado. Sem telas. Nenhum 240 ou 23N: as memórias do
+    aparelho são intocáveis.
+- id: "10c"
+  title: Telas do Setup físico e da memória completa
+  description: >-
+    Salvar por camadas sem calibração, Setup em dúvida contra a memória
+    ativa (e sem memória), Ajuste sem equilíbrio, Crossover sem controle de
+    link, folha de equipamento com a ficha nova, o selo de origem e o modelo
+    que se completa pela base, primeira abertura sem memórias e presets, e o
+    aviso do Continuar da IA.
+  invoke_dev_with: >-
+    EXPERIENCE.md atualizado em 29/10/2026 (nota "Mudança de 29/10/2026").
+    Os mocks ainda mostram o modelo antigo nesses pontos; vale o documento.
 - id: "12b"
   title: Telas e aparelho inteiro no aparelho real
   description: >-
@@ -249,15 +280,19 @@
     Gerador só com o RCA dos módulos desconectado, e fechar o app com o tom
     tocando (deferred-work). Voltímetro contra o VC830L, com foto. Reset de
     fábrica, reset de áudio e troca de senha só na recusa. As pendências
-    "no aparelho" das histórias 4 a 11 que são de tela.
+    "no aparelho" das histórias 4 a 11 que são de tela. Conferir no aparelho
+    a conferência nova (muta com corte diferente, só avisa com ganho
+    diferente), o link que sai sozinho do bridge e o app começando sem
+    memórias; as 3 memórias do processador continuam como estavam.
 - id: "12c"
   title: Porta da IA no Wi-Fi e testes 1, 2 e 4
   description: >-
     A porta 8787 no Wi-Fi real, com o Claude Code no notebook por curl
     (parear, ler, ajustar, aplicar memória com confirmação na tela, recusas,
-    PARAR IA, tela ao vivo em até 1 s); a MUSICA ORIG refeita pelo Denis só
-    pelo celular; desligar e religar o processador (guarda o estado ou o app
-    reaplica); o aparelho no estado de outro Setup.
+    PARAR IA, Continuar a cada 3 ajustes seguidos, tela ao vivo em até 1 s);
+    a MUSICA ORIG refeita pelo Denis só pelo celular; desligar e religar o
+    processador (guarda o estado ou o app reaplica); o aparelho com corte,
+    atraso, fase ou rota diferentes da última memória aplicada.
   done_checkpoint: true
   invoke_dev_with: >-
     Testes 1, 2 e 4 do sinal de sucesso do SPEC. Item IA1 da 9b (a porta
@@ -265,3 +300,7 @@
 # Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
 # playlist, teste a seco, teto por preset), a partir de
 # _bmad-output/forge/teste-de-playlist/forged-idea.md.
+# Depois do Rendimento: spec própria do Agente da memória (perguntas
+# adaptativas, escuta "1 ou 2", porta nos dois sentidos com modal, serviço que
+# acorda o agente, skills, aprendizado e ouvintes simulados), a partir de
+# _bmad-output/forge/montagem-do-setup/forged-idea.md.

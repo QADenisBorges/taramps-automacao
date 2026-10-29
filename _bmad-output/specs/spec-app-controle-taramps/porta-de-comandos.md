@@ -10,7 +10,7 @@ As cinco travas foram aceitas pelo Denis na forja de 19/10/2026:
 
 Também valem:
 
-- A IA passa pelas mesmas chaves de acesso que o usuário.
+- A IA passa pelas mesmas chaves de acesso que o usuário, inclusive a regra do **Continuar** a cada 3 ajustes seguidos sem um toque do usuário (`chaves-de-acesso.md`).
 - A senha do processador nunca trafega pela porta.
 - Com firmware diferente de R003, a porta responde só às leituras.
 
