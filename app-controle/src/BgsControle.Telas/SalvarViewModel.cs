@@ -3,11 +3,8 @@ using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>
-/// Uma linha da folha do Salvar: "Calibração → Setup Casa 2.1" e o que mudou, com o antes e o depois.
-/// <see cref="Selo"/> é o HERDADO da linha das 15 bandas de um preset herdado.
-/// </summary>
-public sealed record LinhaSalvarViewModel(string Titulo, IReadOnlyList<string> Mudancas, string? Selo = null)
+/// <summary>Uma linha da folha do Salvar: "Regulagem → memória FILME" e o que mudou, com o antes e o depois.</summary>
+public sealed record LinhaSalvarViewModel(string Titulo, IReadOnlyList<string> Mudancas)
 {
     /// <summary>As mudanças em pedaços, para a tela pintar o valor novo na cor da saída dona.</summary>
     public IReadOnlyList<MudancaSalvarViewModel> Itens { get; init; } = [];
@@ -24,11 +21,11 @@ public sealed record MudancaSalvarViewModel(string Antes, string Novo, int? Cana
 
 /// <summary>
 /// A folha do Salvar por camadas (EXPERIENCE, "Salvar por camadas", mock da 3b, quadro 3): "Salvar o
-/// que mudou?", uma linha por camada com o antes → depois, a pergunta Manter / Atualizar quando a
-/// calibração do aparelho difere da do Setup e a memória em uso não é do celular, o nome da memória
-/// nova, a linha "15 bandas → preset X" com a escolha Atualizar o preset X ("Vale para toda memória
-/// que usa ele.") ou Criar preset novo (com o nome; num preset herdado, Atualizar travado e Criar já
-/// escolhido), e Confirmar travado até escolher e dar os nomes. Nada é guardado antes do botão branco.
+/// que mudou?", uma linha por camada com o antes → depois (a regulagem vai para a memória em uso, ou
+/// uma nova; as 15 bandas para o preset), o nome da memória nova, a linha "15 bandas → preset X" com a
+/// escolha Atualizar o preset X ("Vale para toda memória que usa ele.") ou Criar preset novo (com o
+/// nome), e Confirmar travado até escolher e dar os nomes. Nada é guardado antes do botão branco, e o
+/// Salvar não manda nada ao aparelho.
 /// </summary>
 public sealed class SalvarViewModel : TelaBase, IDisposable
 {
@@ -44,10 +41,8 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     private readonly GerenteSetups _setups;
     private readonly EstadoAparelho _estado;
-    private readonly LinkCanais _link;
 
     private FolhaSalvar? _folha;
-    private EscolhaCalibracao _escolha = EscolhaCalibracao.Nenhuma;
     private EscolhaPreset _escolhaPreset = EscolhaPreset.Nenhuma;
     private string _nome = "";
     private string _nomePreset = "";
@@ -55,24 +50,20 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
     private string? _mensagem;
     private bool _salvando;
 
-    public SalvarViewModel(GerenteSetups setups, EstadoAparelho estado, LinkCanais link, IDespachante despachante, TimeProvider relogio)
+    public SalvarViewModel(GerenteSetups setups, EstadoAparelho estado, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         _setups = setups;
         _estado = estado;
-        _link = link;
         Abrir = new Comando(AbrirFolha);
-        EscolherManter = new Comando(() => Escolher(EscolhaCalibracao.Manter));
-        EscolherAtualizar = new Comando(() => Escolher(EscolhaCalibracao.Atualizar));
         EscolherAtualizarPreset = new Comando(() => EscolherPreset(EscolhaPreset.Atualizar));
         EscolherCriarPreset = new Comando(() => EscolherPreset(EscolhaPreset.Criar));
         Confirmar = new Comando(ConfirmarAsync);
         Cancelar = new Comando(Fechar);
         _setups.Mudou += AoMudar;
-        // Um valor mexido no aparelho (ou o link) muda o que há para salvar.
+        // Um valor mexido no aparelho muda o que há para salvar.
         _estado.Mudou += AoMudarValor;
         _estado.Recarregou += AoMudar;
-        _link.Mudou += AoMudarLink;
     }
 
     // ------------------------------------------------------------------ o botão Salvar
@@ -93,34 +84,12 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     public string? Subtitulo => Aberta ? SubtituloFolha : null;
 
-    /// <summary>Uma por camada: "Calibração → Setup Casa 2.1" com "Atraso · Sub: 80 cm → 85 cm".</summary>
+    /// <summary>Uma por camada: "Regulagem → memória FILME" com "Atraso · Sub: 80 cm → 85 cm".</summary>
     public IReadOnlyList<LinhaSalvarViewModel> Linhas =>
-        _folha?.Linhas.Select(l => new LinhaSalvarViewModel(l.Titulo, l.Mudancas.Select(m => m.Linha).ToArray(),
-            l.Herdado ? HerdadoViewModel.TextoSelo : null)
+        _folha?.Linhas.Select(l => new LinhaSalvarViewModel(l.Titulo, l.Mudancas.Select(m => m.Linha).ToArray())
         {
             Itens = l.Mudancas.Select(MudancaSalvarViewModel.De).ToArray(),
         }).ToArray() ?? [];
-
-    /// <summary>A calibração do aparelho difere da do Setup: Manter ou Atualizar.</summary>
-    public bool Pergunta => _folha?.PerguntaCalibracao == true;
-
-    /// <summary>"Manter a calibração do Casa 2.1".</summary>
-    public string? TextoManter => Pergunta ? $"Manter a calibração do {_folha!.NomeSetup}" : null;
-
-    /// <summary>"O app reaplica a do Setup; a memória guarda só o caráter."</summary>
-    public string? FraseManter => Pergunta ? "O app reaplica a do Setup; a memória guarda só o caráter." : null;
-
-    /// <summary>"Atualizar o Casa 2.1 com a do aparelho".</summary>
-    public string? TextoAtualizar => Pergunta ? $"Atualizar o {_folha!.NomeSetup} com a do aparelho" : null;
-
-    /// <summary>"Vale para todas as memórias do Casa 2.1."</summary>
-    public string? AvisoAtualizar => Pergunta ? $"Vale para todas as memórias do {_folha!.NomeSetup}." : null;
-
-    public EscolhaCalibracao Escolha => _escolha;
-
-    public Comando EscolherManter { get; }
-
-    public Comando EscolherAtualizar { get; }
 
     // ------------------------------------------------------------------ as 15 bandas
 
@@ -133,7 +102,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
     /// <summary>"Vale para toda memória que usa ele."</summary>
     public string? AvisoAtualizarPreset => PerguntaPreset ? AvisoAtualizarPresetTexto : null;
 
-    /// <summary>"Preset herdado não é sobrescrito." quando Atualizar está travado; senão null.</summary>
+    /// <summary>Por que Atualizar está travado; senão null.</summary>
     public string? MotivoAtualizarPresetTravado => PerguntaPreset ? _folha!.MotivoAtualizarTravado : null;
 
     public bool PodeAtualizarPreset => PerguntaPreset && MotivoAtualizarPresetTravado is null;
@@ -162,7 +131,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ a memória nova
 
-    /// <summary>O caráter vai para uma memória nova: o campo do nome.</summary>
+    /// <summary>A regulagem vai para uma memória nova: o campo do nome.</summary>
     public bool PedeNome => _folha?.PedeNome == true;
 
     public string NomeMemoria
@@ -178,7 +147,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>O erro do salvar (nome inválido ou repetido, chave), ou null.</summary>
+    /// <summary>O erro do salvar (nome inválido ou repetido), ou null.</summary>
     public string? Erro
     {
         get => _erro;
@@ -194,7 +163,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
     /// <summary>O botão branco destrava depois de escolher (quando pergunta) e de dar os nomes (quando pede).</summary>
     public bool PodeConfirmar =>
         Aberta && !_salvando
-        && (!Pergunta || _escolha != EscolhaCalibracao.Nenhuma)
         && (!PerguntaPreset || _escolhaPreset != EscolhaPreset.Nenhuma)
         && (!PedeNome || !string.IsNullOrWhiteSpace(_nome))
         && (!PedeNomePreset || !string.IsNullOrWhiteSpace(_nomePreset));
@@ -206,7 +174,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     public Comando Cancelar { get; }
 
-    /// <summary>O aviso final ("Salvo: calibração no Casa 2.1, caráter na MUSICA ORIG.") ou o motivo da trava.</summary>
+    /// <summary>O aviso final ("Salvo: regulagem na MUSICA ORIG, 15 bandas no preset Rock.") ou o motivo da trava.</summary>
     public string? Mensagem
     {
         get => _mensagem;
@@ -228,7 +196,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
             return;
         }
         _folha = folha;
-        _escolha = EscolhaCalibracao.Nenhuma;
         _escolhaPreset = folha.PerguntaPreset ? folha.EscolhaPresetInicial : EscolhaPreset.Nenhuma;
         _nome = "";
         _nomePreset = "";
@@ -237,16 +204,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         AvisarTudo();
     }
 
-    private void Escolher(EscolhaCalibracao escolha)
-    {
-        if (!Pergunta)
-            return;
-        _escolha = escolha;
-        Avisar(nameof(Escolha));
-        Avisar(nameof(PodeConfirmar));
-    }
-
-    /// <summary>Atualizar ou Criar (só quando a folha pergunta; Atualizar travado num preset herdado).</summary>
+    /// <summary>Atualizar ou Criar (só quando a folha pergunta; Atualizar travado quando o preset não se sobrescreve).</summary>
     private void EscolherPreset(EscolhaPreset escolha)
     {
         if (!PerguntaPreset)
@@ -266,11 +224,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
     {
         if (!Aberta || _salvando)
             return;
-        if (Pergunta && _escolha == EscolhaCalibracao.Nenhuma)
-        {
-            Erro = GerenteSetups.MsgEscolha;
-            return;
-        }
         if (PerguntaPreset && _escolhaPreset == EscolhaPreset.Nenhuma)
         {
             Erro = GerenteSetups.MsgEscolhaPreset;
@@ -291,7 +244,7 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         ResultadoSetup r;
         try
         {
-            r = await _setups.SalvarAsync(_escolha, PedeNome ? _nome : null, _escolhaPreset, PedeNomePreset ? _nomePreset : null);
+            r = await _setups.SalvarAsync(PedeNome ? _nome : null, _escolhaPreset, PedeNomePreset ? _nomePreset : null);
         }
         catch (Exception e)
         {
@@ -329,7 +282,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         if (_salvando)
             return;
         _folha = null;
-        _escolha = EscolhaCalibracao.Nenhuma;
         _escolhaPreset = EscolhaPreset.Nenhuma;
         _nome = "";
         _nomePreset = "";
@@ -345,7 +297,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
 
     private void AoMudarValor(Endereco _) => AoMudar();
 
-    private void AoMudarLink(ParCanais _) => AoMudar();
 
     private void AvisarTudo()
     {
@@ -353,12 +304,6 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         Avisar(nameof(Titulo));
         Avisar(nameof(Subtitulo));
         Avisar(nameof(Linhas));
-        Avisar(nameof(Pergunta));
-        Avisar(nameof(TextoManter));
-        Avisar(nameof(FraseManter));
-        Avisar(nameof(TextoAtualizar));
-        Avisar(nameof(AvisoAtualizar));
-        Avisar(nameof(Escolha));
         Avisar(nameof(PerguntaPreset));
         Avisar(nameof(TextoAtualizarPreset));
         Avisar(nameof(AvisoAtualizarPreset));
@@ -381,6 +326,5 @@ public sealed class SalvarViewModel : TelaBase, IDisposable
         _setups.Mudou -= AoMudar;
         _estado.Mudou -= AoMudarValor;
         _estado.Recarregou -= AoMudar;
-        _link.Mudou -= AoMudarLink;
     }
 }

@@ -215,6 +215,34 @@ public sealed class GerentePlaylists
     }
 
     /// <summary>
+    /// Descarta as pendentes do formato antigo (o <c>setups.json</c> migrou ao formato 3 e as memórias
+    /// delas sumiram). Devolve false se não conseguiu gravar (as pendentes ficam).
+    /// </summary>
+    public async Task<bool> DescartarPendentesAsync()
+    {
+        await Carregada;
+        await _porta.WaitAsync();
+        try
+        {
+            var atuais = Dados;
+            if (atuais.Pendentes.Count == 0)
+                return true;
+            if (!await GravarAsync(atuais with { Pendentes = [] }))
+            {
+                _log.Evento("playlist: não consegui descartar as pendentes antigas");
+                return false;
+            }
+            _log.Evento("playlist: as pendentes antigas saíram com as memórias de antes");
+        }
+        finally
+        {
+            _porta.Release();
+        }
+        Notificar();
+        return true;
+    }
+
+    /// <summary>
     /// Cada pendente vai para a primeira memória da lista (na ordem dada) com o mesmo nome, sem
     /// diferença de caixa; as faixas entram no fim da playlist dela. Sem correspondente, a pendente
     /// espera. Devolve quantas foram adotadas (0 se nada mudou ou não gravou).

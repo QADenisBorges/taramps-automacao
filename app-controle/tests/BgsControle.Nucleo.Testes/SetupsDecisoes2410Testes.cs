@@ -27,7 +27,7 @@ public sealed partial class SetupsTestes
 
         // A próxima conexão não bate: dúvida, sem Setup em uso.
         await _sessao.DesconectarAsync();
-        MexerNaCalibracao();
+        MexerNoAtraso();
         await Conectar();
         Assert.Equal(EstadoConferencia.Duvida, _setups.Estado);
 
@@ -36,7 +36,7 @@ public sealed partial class SetupsTestes
 
         Assert.True((await Rodar(_setups.EscolherAsync(Casa))).Ok);
 
-        Assert.Equal((false, true), Links); // como o Setup guarda
+        Assert.Equal((false, true), Links); // tirado das ligações do Casa
         Assert.Equal(["JBL L", "JBL R", "Sub"], _setups.SaidasEmUso.Select(s => s.Nome));
     }
 
@@ -103,8 +103,7 @@ public sealed partial class SetupsTestes
         Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
 
         var carro = _setups.SetupEmUso!;
-        Assert.False(carro.Link12);
-        Assert.False(carro.Link34);
+        Assert.Equal((false, false), GerenteSetups.LinksDe(carro)); // sem equipamentos, sem bridge
         Assert.Equal((false, false), Links);
 
         // Na próxima conexão o Carro confere e o link dele (desligado) vale.
@@ -276,7 +275,7 @@ public sealed partial class SetupsTestes
         var (player, reprodutor) = await FilmeTocandoAFaixa2();
         await Cair(player);
 
-        MexerNaCalibracao();
+        MexerNoAtraso();
         await Conectar();
         Assert.Equal(EstadoConferencia.Duvida, _setups.Estado);
         Assert.Equal(Filme, player.Memoria); // a dúvida não troca a playlist
@@ -351,7 +350,7 @@ public sealed partial class SetupsTestes
     {
         var (player, reprodutor) = await FilmeTocandoAFaixa2();
         await Cair(player);
-        MexerNaCalibracao();
+        MexerNoAtraso();
         await Conectar();
         Assert.Equal(EstadoConferencia.Duvida, _setups.Estado);
         Assert.True(player.Retida);

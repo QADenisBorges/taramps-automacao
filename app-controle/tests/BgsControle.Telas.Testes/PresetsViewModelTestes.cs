@@ -4,6 +4,7 @@ using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Seguranca;
 using System.Text.RegularExpressions;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
@@ -61,30 +62,22 @@ public sealed class PresetsViewModelTestes : IDisposable
     // ----------------------------------------------------------------- primeira abertura
 
     [Fact]
-    public async Task Primeira_abertura_o_Cinema_herdado_as_notas_e_as_secoes_estao_la_sem_arquivo_e_sem_digitar_nada()
+    public async Task Primeira_abertura_sem_presets_nem_memorias_as_notas_e_as_secoes_estao_la_sem_arquivo_e_sem_digitar_nada()
     {
-        await _b.Setups!.Carregada;
-        await _b.Presets.Carregada;
-        await _b.Tela.EsvaziarAsync();
+        var b = new Bancada(setups: true, filme: false);
+        using var vm = b.CriarPresetsViewModel();
+        await b.Setups!.Carregada;
+        await b.Presets.Carregada;
+        await b.Tela.EsvaziarAsync();
         var herdado = new HerdadoViewModel();
-        using var memorias = _b.CriarMemoriasViewModel();
+        using var memorias = b.CriarMemoriasViewModel();
 
-        // Presets: o Cinema herdado, com selo e nota; nenhum próprio.
-        var cinema = Assert.Single(_vm.Itens);
-        Assert.Equal("Cinema", cinema.Nome);
-        Assert.True(cinema.Herdado);
-        Assert.Equal("HERDADO", cinema.Selo);
-        Assert.Contains("15 bandas", cinema.Nota);
-        Assert.Equal("Preset herdado não muda.", cinema.MotivoTravaApagar);
-        Assert.False(cinema.PodeApagar);
-        Assert.Equal("Mexa nas 15 bandas e toque em Salvar para criar um preset.", _vm.TextoVazio);
+        // Presets: nenhum (decisão do Denis, 29/10/2026).
+        Assert.Empty(vm.Itens);
+        Assert.Equal("Mexa nas 15 bandas e toque em Salvar para criar um preset.", vm.TextoVazio);
 
-        // Memórias do celular: a FILME herdada do Casa 2.1, com selo, nota e o preset que ela lembra.
-        var cartao = Assert.Single(memorias.Cartoes);
-        Assert.Equal("FILME", cartao.Nome);
-        Assert.Equal("HERDADO", cartao.Selo);
-        Assert.Contains("caráter", cartao.Nota);
-        Assert.Equal("Preset: Cinema", cartao.TextoPreset);
+        // Memórias do celular: nenhuma no Casa 2.1.
+        Assert.Empty(memorias.Cartoes);
         Assert.Equal("Memórias do Casa 2.1", memorias.TituloCelular);
 
         // Do aparelho: a nota das 3, pela posição, sem selo.
@@ -98,12 +91,13 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.Equal(9, herdado.Secoes.Count);
         Assert.NotNull(herdado.Secao("Cuidados com o app da Taramps"));
         Assert.NotNull(herdado.Secao("Os equipamentos do Casa 2.1")); // história 8e
-        Assert.NotNull(herdado.Secao("A FILME em três camadas"));
+        Assert.Null(herdado.Secao("A FILME em três camadas"));
+        Assert.NotNull(herdado.Secao("Memórias e presets do celular"));
         Assert.Equal("SPL", herdado.NotaMemoria(1)!.NomeNoPrototipo);
 
-        Assert.Empty(_b.Simulador.Escritas);
-        Assert.Null(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
-        Assert.Null(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
+        Assert.Empty(b.Simulador.Escritas);
+        Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
+        Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
     }
 
     [Fact]
@@ -133,7 +127,7 @@ public sealed class PresetsViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Arquivo_estragado_so_o_herdado_na_lista()
+    public async Task Arquivo_estragado_nenhum_preset_na_lista()
     {
         var arquivos = new ArquivosFalso();
         await arquivos.GravarTextoAsync(RepositorioTextoArquivos.ArquivoPresets, "{ lixo");
@@ -141,7 +135,7 @@ public sealed class PresetsViewModelTestes : IDisposable
         using var vm = b.CriarPresetsViewModel();
         await b.Conectar();
 
-        Assert.Equal(["Cinema"], vm.Itens.Select(i => i.Nome));
+        Assert.Empty(vm.Itens);
         Assert.Equal("Mexa nas 15 bandas e toque em Salvar para criar um preset.", vm.TextoVazio);
         ConferirSoAudioEstrito(b);
     }
@@ -181,7 +175,7 @@ public sealed class PresetsViewModelTestes : IDisposable
         foreach (var (chave, valor) in alvo)
             Assert.Equal(valor, _b.Estado.Valor(chave.Codigo, chave.Indice)!.NoFio);
         Assert.Equal("Preset A aplicado na FILME.", _vm.Mensagem);
-        Assert.Equal(_vm.Item("A")!.Id, _b.Setups!.Memoria(ConhecimentoHerdado.IdMemoriaFilme)!.IdPreset);
+        Assert.Equal(_vm.Item("A")!.Id, _b.Setups!.Memoria(CenarioFilme.IdMemoria)!.IdPreset);
         Assert.True(_vm.Item("A")!.EmUso);
         Assert.False(_vm.Item("Cinema")!.EmUso);
         Assert.False(_vm.PelaMetade);
@@ -215,7 +209,7 @@ public sealed class PresetsViewModelTestes : IDisposable
 
         Assert.Equal("Preset Cinema aplicado na FILME.", _vm.Mensagem);
         Assert.Equal("-3.0", _b.Simulador.Valor("081", 0));
-        Assert.Equal(Linhas(ConhecimentoHerdado.BandasCinema.ToDictionary(v => (v.Codigo, v.Indice), v => v.NoFio)), Linhas(Bandas()));
+        Assert.Equal(Linhas(CenarioFilme.Bandas.ToDictionary(v => (v.Codigo, v.Indice), v => v.NoFio)), Linhas(Bandas()));
         Assert.True(_vm.Item("Cinema")!.EmUso);
     }
 
@@ -256,6 +250,8 @@ public sealed class PresetsViewModelTestes : IDisposable
     public async Task Sem_conexao_e_em_modo_so_leitura_o_aplicar_trava_com_o_motivo()
     {
         await _b.Chaves.Carregada;
+        await _b.Presets.Carregada; // o Cinema do cenário vem do presets.json
+        await _b.Tela.EsvaziarAsync();
         await _vm.Item("Cinema")!.Aplicar.ExecutarAsync();
         Assert.Equal("Sem conexão", _vm.Mensagem);
         Assert.Empty(_b.Simulador.Escritas);
@@ -303,21 +299,6 @@ public sealed class PresetsViewModelTestes : IDisposable
         await _vm.CancelarRenomear.ExecutarAsync();
         Assert.False(_vm.RenomearAberto);
         Assert.Equal("NOITE", _vm.Item("NOITE")!.Nome);
-    }
-
-    [Fact]
-    public async Task Renomear_ou_apagar_o_herdado_e_recusado_e_nenhuma_folha_abre()
-    {
-        await _b.Conectar();
-
-        await _vm.Item("Cinema")!.Renomear.ExecutarAsync();
-        Assert.False(_vm.RenomearAberto);
-        Assert.Equal("Preset herdado não muda.", _vm.Mensagem);
-
-        await _vm.Item("Cinema")!.Apagar.ExecutarAsync();
-        Assert.False(_vm.ApagarAberto);
-        Assert.Equal("Preset herdado não muda.", _vm.Mensagem);
-        Assert.Single(_vm.Itens);
     }
 
     [Fact]
@@ -415,7 +396,7 @@ public sealed class PresetsViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Confirmar_apaga_o_preset_fecha_a_folha_e_a_lista_volta_a_so_o_herdado()
+    public async Task Confirmar_apaga_o_preset_fecha_a_folha_e_a_lista_volta_a_so_o_Cinema()
     {
         await _b.Conectar();
         await Criar("NOITE");
@@ -425,7 +406,7 @@ public sealed class PresetsViewModelTestes : IDisposable
 
         Assert.False(_vm.ApagarAberto);
         Assert.Equal(["Cinema"], _vm.Itens.Select(i => i.Nome));
-        Assert.Equal("Mexa nas 15 bandas e toque em Salvar para criar um preset.", _vm.TextoVazio);
+        Assert.Null(_vm.TextoVazio); // o Cinema do cenário é um preset do celular
         Assert.Equal("Preset NOITE apagado.", _vm.Mensagem);
         Assert.DoesNotContain("NOITE", _b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
     }

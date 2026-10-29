@@ -214,8 +214,8 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
 
     public Comando AlternarAvancado { get; }
 
-    /// <summary>"Link 1–2 · Link 3–4" no Avançado do Crossover.</summary>
-    public bool MostrarLink => Funcao == FuncaoAudio.Crossover;
+    /// <summary>A linha só de leitura do link no Avançado do Crossover, quando algum par está ligado.</summary>
+    public bool MostrarLink => Funcao == FuncaoAudio.Crossover && LinkCanais.Pares.Any(_link.Ligado);
 
     public LinkViewModel Link { get; }
 
@@ -369,6 +369,8 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
     {
         RefazerAbas();
         Avisar(nameof(AvisoLink));
+        Avisar(nameof(MostrarLink));
+        Avisar(nameof(TemAvancado));
     });
 
     public void Dispose()

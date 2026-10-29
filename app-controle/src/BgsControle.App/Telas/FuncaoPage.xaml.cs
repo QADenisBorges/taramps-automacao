@@ -21,11 +21,6 @@ public partial class FuncaoPage : ContentPage
             _vm.Salvar.Cancelar.Execute(null);
             return true;
         }
-        if (_vm.Link.FolhaAberta)
-        {
-            _vm.Link.CancelarFolha.Execute(null);
-            return true;
-        }
         return base.OnBackButtonPressed();
     }
 }

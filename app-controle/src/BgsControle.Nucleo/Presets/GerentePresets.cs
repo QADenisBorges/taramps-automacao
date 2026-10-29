@@ -13,8 +13,9 @@ namespace BgsControle.Nucleo.Presets;
 /// <summary>
 /// Os presets no celular (CAP-5): só o EQ de 15 bandas (<c>020</c>). Criar (das bandas atuais),
 /// atualizar as bandas de um próprio, aplicar, renomear, apagar e exportar. Os próprios ficam em
-/// <c>presets.json</c> nos arquivos privados (formato 2); os herdados
-/// (<see cref="ConhecimentoHerdado.Presets"/>, o "Cinema") vêm sempre primeiro e não mudam.
+/// <c>presets.json</c> nos arquivos privados (formato 3). Não há preset herdado
+/// (<see cref="ConhecimentoHerdado.Presets"/> é vazio, decisão do Denis de 29/10/2026); as travas de
+/// herdado continuam valendo para qualquer preset marcado como herdado.
 /// <list type="bullet">
 /// <item><b>Criar</b> e <b>atualizar</b> não mandam nada ao aparelho. O preset novo nasce na folha do
 /// Salvar (<see cref="Setups.GerenteSetups"/>).</item>
@@ -26,16 +27,20 @@ namespace BgsControle.Nucleo.Presets;
 /// <item>Renomear e apagar valem só para os próprios e não mandam nada ao aparelho. Um preset lembrado
 /// por alguma memória não se apaga (<see cref="Lembrados"/>).</item>
 /// </list>
-/// Um <c>presets.json</c> no formato 1 (os 84 valores do Marco 1) é lido assim: cada preset próprio
-/// com as 15 bandas vira um preset de 15 bandas; o que não as tem é descartado. A próxima gravação
-/// já sai no formato 2. Todas as operações do gerente são exclusivas entre si.
+/// Um <c>presets.json</c> nos formatos 1 ou 2 (de antes de 29/10/2026) começa do zero: os presets
+/// próprios somem e o arquivo é regravado no formato 3 (decisão D2 do Denis). Todas as operações do
+/// gerente são exclusivas entre si.
 /// </summary>
 public sealed class GerentePresets
 {
-    public const int Formato = 2;
+    /// <summary>O formato do <c>presets.json</c>: o 3 é o do começo do zero (história 8f); os presets têm as 15 bandas.</summary>
+    public const int Formato = 3;
 
-    /// <summary>O formato antigo (os 84 valores do Marco 1), lido e convertido.</summary>
+    /// <summary>O formato 1 (os 84 valores do Marco 1), de antes de 29/10/2026: lido como nenhum preset e regravado no 3.</summary>
     public const int FormatoAntigo = 1;
+
+    /// <summary>O formato 2 (as 15 bandas, com o Cinema herdado), de antes de 29/10/2026: lido como nenhum preset e regravado no 3.</summary>
+    public const int Formato2 = 2;
 
     /// <summary>O código das 15 bandas do EQ gráfico.</summary>
     public const string CodigoBandas = "020";
@@ -584,11 +589,13 @@ public sealed class GerentePresets
     {
         var json = await Gravacao.LerAsync(_repositorio);
         IReadOnlyList<Preset> lidos = [];
+        var migrar = false;
         if (json is not null)
         {
             try
             {
                 lidos = DeJson(json);
+                migrar = FormatoDe(json) is FormatoAntigo or Formato2;
             }
             catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
             {
@@ -597,10 +604,27 @@ public sealed class GerentePresets
         }
         lock (_trava)
             _proprios = lidos;
+        if (migrar)
+        {
+            // O começo do zero (decisão D2 do Denis, 29/10/2026): os presets de antes somem.
+            _log.Evento("presets.json migrado ao formato 3: os presets do celular de antes saíram");
+            if (!await Gravacao.GravarAsync(_repositorio, ParaJson([])))
+                _log.Evento("não consegui regravar o presets.json no formato 3");
+        }
         Notificar();
     }
 
-    /// <summary>O JSON do <c>presets.json</c> (formato 2): só os presets próprios, cada um com as 15 bandas.</summary>
+    /// <summary>O formato do <c>presets.json</c>, ou null fora da forma.</summary>
+    internal static int? FormatoDe(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.ValueKind == JsonValueKind.Object
+               && doc.RootElement.TryGetProperty("formato", out var f) && f.TryGetInt32(out var formato)
+            ? formato
+            : null;
+    }
+
+    /// <summary>O JSON do <c>presets.json</c> (formato 3): só os presets próprios, cada um com as 15 bandas.</summary>
     public static string ParaJson(IEnumerable<Preset> proprios)
     {
         using var fluxo = new MemoryStream();
@@ -632,11 +656,10 @@ public sealed class GerentePresets
     }
 
     /// <summary>
-    /// Lê o <c>presets.json</c>. Formato 2: cada preset com as bandas que tem (só o <c>020</c>; sem
-    /// nenhuma banda, descartado). Formato 1 (os 84 valores): cada preset com as 15 bandas vira um de
-    /// 15 bandas; o que não as tem é descartado. Outro formato, ou outra forma: lista vazia. Uma
-    /// entrada sem id, com nome inválido, com id ou nome repetido (ou o id ou o nome de um herdado) é
-    /// descartada; as outras ficam.
+    /// Lê o <c>presets.json</c>. Formato 3: cada preset com as bandas que tem (só o <c>020</c>; sem
+    /// nenhuma banda, descartado). Os formatos 1 e 2 (de antes de 29/10/2026), outro formato ou outra
+    /// forma: lista vazia. Uma entrada sem id, com nome inválido, com id ou nome repetido (ou o id ou o
+    /// nome de um herdado) é descartada; as outras ficam.
     /// </summary>
     public static IReadOnlyList<Preset> DeJson(string json)
     {
@@ -644,7 +667,7 @@ public sealed class GerentePresets
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
             || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato)
-            || formato is not (Formato or FormatoAntigo)
+            || formato != Formato
             || !raiz.TryGetProperty("presets", out var lista) || lista.ValueKind != JsonValueKind.Array)
             return [];
 
@@ -659,7 +682,7 @@ public sealed class GerentePresets
                 continue;
             if (NomeValido(Texto(item, "nome")) is not { } nome)
                 continue;
-            // Um nome repetido, entre os próprios ou com um herdado ("Cinema", em qualquer caixa), sai.
+            // Um nome repetido, entre os próprios ou com um herdado (em qualquer caixa), sai.
             if (saida.Concat(ConhecimentoHerdado.Presets).Any(p => string.Equals(p.Nome, nome, StringComparison.OrdinalIgnoreCase)))
                 continue;
             var quando = Texto(item, "quando") is { } q
@@ -679,8 +702,8 @@ public sealed class GerentePresets
                 }
             }
             var bandas = SoBandas(valores);
-            // O formato 1 só passa com as 15 bandas; o 2, com alguma (o aplicar recusa as que faltam).
-            if (bandas.Count == 0 || (formato == FormatoAntigo && FaltamEm(bandas) > 0))
+            // Passa com alguma banda (o aplicar recusa as que faltam).
+            if (bandas.Count == 0)
                 continue;
             ids.Add(id);
             saida.Add(new Preset(id, nome, quando, bandas));

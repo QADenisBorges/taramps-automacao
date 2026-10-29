@@ -125,8 +125,14 @@ public static class MauiProgram
             return playlists;
         });
 
-        // História 8c e 8d: os Setups e as memórias do celular (conferência ao conectar, aplicar com o preset
-        // lembrado, Salvar por camadas), em setups.json, e a marca do mudo da dúvida em setup-mudo.json.
+        // História 8f: a base de modelos (a ficha confirmada de cada modelo), em modelos.json.
+        builder.Services.AddSingleton(sp => new BaseModelos(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoModelos),
+            sp.GetRequiredService<LogBle>()));
+
+        // Histórias 8c, 8d e 8f: os Setups (só o físico) e as memórias do celular (toda a regulagem;
+        // conferência ao conectar, aplicar com o preset lembrado, Salvar por camadas), em setups.json, e a
+        // marca do mudo da dúvida em setup-mudo.json.
         builder.Services.AddSingleton(sp => new GerenteSetups(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<EstadoAparelho>(),
@@ -140,7 +146,8 @@ public static class MauiProgram
             sp.GetRequiredService<IChaves>(),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetups),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetupMudo),
-            sp.GetRequiredService<LogBle>()));
+            sp.GetRequiredService<LogBle>(),
+            modelos: sp.GetRequiredService<BaseModelos>()));
 
         // História 7a: o gerador de sinal, com as regras de falha 1 e 2 (desliga no prazo, no
         // Parar, antes de soltar a conexão, ao sair do app e no fim de cada leitura).

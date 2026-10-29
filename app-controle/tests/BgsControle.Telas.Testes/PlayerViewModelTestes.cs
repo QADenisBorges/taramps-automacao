@@ -3,6 +3,7 @@ using BgsControle.Nucleo;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Setups;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
@@ -196,7 +197,7 @@ public sealed class PlayerViewModelTestes : IDisposable
 
     private static string Uri(int i) => $"content://musica/{i}";
 
-    private static string Filme => ConhecimentoHerdado.IdMemoriaFilme;
+    private static string Filme => CenarioFilme.IdMemoria;
 
     /// <summary>Conecta: a conferência põe a FILME herdada (memória do celular) em uso.</summary>
     private async Task Conectar()

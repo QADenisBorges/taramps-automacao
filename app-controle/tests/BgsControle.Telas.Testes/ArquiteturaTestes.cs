@@ -38,6 +38,38 @@ public sealed class ArquiteturaTestes
         }
     }
 
+    /// <summary>
+    /// História 8f: nenhuma tela mostra o equilíbrio, um toggle de link, o Manter/Atualizar da calibração
+    /// nem o selo de memória e de preset herdados (o selo do Setup herdado fica).
+    /// </summary>
+    [Fact]
+    public void Nenhuma_tela_mostra_equilibrio_toggle_de_link_calibracao_nem_selo_de_memoria_e_preset_herdados()
+    {
+        var telas = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToArray();
+        Assert.NotEmpty(telas);
+        string[] proibidos = ["Equilibrio", "EscolhaCalibracao", "EscolherManter", "TextoManter", "Link.FolhaAberta", "Link.ConfirmarFolha",
+            "ParLinkViewModel"];
+        foreach (var f in telas)
+        {
+            var texto = File.ReadAllText(f);
+            foreach (var p in proibidos)
+                Assert.False(texto.Contains(p, StringComparison.Ordinal), $"{Path.GetFileName(f)} ainda tem {p}");
+        }
+        var funcao = File.ReadAllText(telas.Single(f => Path.GetFileName(f) == "FuncaoPage.xaml"));
+        Assert.DoesNotContain("{Binding Ligar}", funcao, StringComparison.Ordinal); // o link é só de leitura
+        Assert.DoesNotContain("{Binding Desligar}", funcao, StringComparison.Ordinal);
+        foreach (var nome in new[] { "MemoriasPage.xaml", "PresetsPage.xaml", "ListaMemoriasView.xaml", "PresetsFolhaView.xaml", "SalvarFolhaView.xaml" })
+        {
+            var texto = File.ReadAllText(telas.Single(f => Path.GetFileName(f) == nome));
+            Assert.DoesNotContain("{Binding Selo}", texto, StringComparison.Ordinal);
+            Assert.DoesNotContain("{Binding Selo,", texto, StringComparison.Ordinal);
+            Assert.DoesNotContain("IsVisible=\"{Binding Herdado}\"", texto, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public void O_csproj_do_App_nao_referencia_o_simulador()
     {

@@ -342,7 +342,7 @@ public sealed class CenaSetup
     /// </summary>
     public static double RaioCone(Equipamento e, FuncaoAcustica? funcao)
     {
-        var diametro = e.Dados.Diametro ?? Normalizar(e.Categoria) switch
+        var diametro = e.Dados.Diametro?.Valor ?? Normalizar(e.Categoria) switch
         {
             "medio" => 5m,
             "medio-grave" or "medio grave" or "coaxial" => 6.5m,
@@ -587,7 +587,7 @@ public sealed class CenaSetup
         {
             var vias = e.Dados.Vias;
             if (vias.Count == 0)
-                return [Math.Clamp((double)(e.Dados.Diametro ?? 8m) * RaioPorPolegada, 5, 16)];
+                return [Math.Clamp((double)(e.Dados.Diametro?.Valor ?? 8m) * RaioPorPolegada, 5, 16)];
             // Uma via sem diâmetro: um tamanho médio pela descrição (driver e tweeter menores).
             var raios = vias.Select(v => Math.Clamp((double)(v.Diametro ?? DiametroDaVia(v.Descricao)) * RaioPorPolegada, 5, 16)).ToArray();
             var cabe = 2 * MeiaACaixaMaxima - 4 * (raios.Length + 1);

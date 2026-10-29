@@ -74,9 +74,6 @@ public sealed class ItemPresetViewModel : TelaBase
     /// <summary>Veio dos protótipos (CAP-6): não muda.</summary>
     public bool Herdado { get; }
 
-    /// <summary>O selo HERDADO, ou null para um preset próprio.</summary>
-    public string? Selo => Herdado ? HerdadoViewModel.TextoSelo : null;
-
     /// <summary>A nota herdada, ou null.</summary>
     public string? Nota { get; }
 
@@ -95,7 +92,7 @@ public sealed class ItemPresetViewModel : TelaBase
     /// <summary>Exportar: grava o preset como arquivo JSON (não <c>.trps</c>) e abre o compartilhar.</summary>
     public Comando Exportar { get; }
 
-    /// <summary>O detalhe da linha de escolha: "Em uso" ou "Herdado dos protótipos", ou null.</summary>
+    /// <summary>O detalhe da linha de escolha: "Em uso", ou null.</summary>
     public string? Detalhe => EmUso ? PresetsViewModel.TextoEmUso : null;
 }
 

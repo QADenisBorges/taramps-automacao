@@ -1,6 +1,7 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Setups;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
@@ -55,7 +56,7 @@ public sealed class SetupViewModelTestes : IDisposable
         Assert.Equal("Setup em dúvida", _vm.Titulo);
         Assert.Equal("O aparelho não está como o Casa 2.1 deixou da última vez.", _vm.Frase);
         Assert.Equal("Som mutado até você escolher.", _vm.FaixaMudo);
-        Assert.Equal(["Atraso · Sub: 80 cm no Casa 2.1, 0 cm no aparelho"], _vm.Diferencas);
+        Assert.Equal(["Atraso · Sub: 80 cm na FILME, 0 cm no aparelho"], _vm.Diferencas);
         Assert.False(_vm.PodeDesistir);
         Assert.Equal("Sem Setup ›", _vm.Seletor);
         Assert.Equal("O QUE NÃO BATE", SetupViewModel.RotuloDiferencas);
@@ -102,7 +103,7 @@ public sealed class SetupViewModelTestes : IDisposable
         Assert.False(_vm.CriarAberto);
         Assert.False(_vm.Aberta);
         Assert.Equal("Setup Carro ›", _vm.Seletor);
-        Assert.Equal("Setup Carro criado, ainda sem memórias.", _vm.Mensagem);
+        Assert.Equal("Setup Carro criado, com a memória Carro.", _vm.Mensagem);
         Assert.True(Mutados(false));
     }
 
@@ -139,7 +140,7 @@ public sealed class SetupViewModelTestes : IDisposable
         Assert.False(_vm.Aberta);
         Assert.Equal("Setup Casa 2.1 ›", _vm.Seletor);
         Assert.True(Mutados(false));
-        Assert.Equal(SomEmUso.DoCelular(ConhecimentoHerdado.IdMemoriaFilme), _b.Setups!.EmUso);
+        Assert.Equal(SomEmUso.DoCelular(CenarioFilme.IdMemoria), _b.Setups!.EmUso);
     }
 
     [Fact]

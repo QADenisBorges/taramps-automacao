@@ -39,12 +39,23 @@ internal sealed class Bancada
     /// História 8c: os Setups e as memórias do celular (a conferência roda em cada conexão), guardados
     /// em <see cref="Arquivos"/>. Fora disso, nenhuma conferência mexe no mute dos outros testes.
     /// </param>
-    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false, bool setups = false)
+    /// <param name="filme">
+    /// História 8f: o app nasce sem memórias e sem presets; com <c>true</c> (o padrão), os arquivos sem
+    /// <c>setups.json</c> e <c>presets.json</c> recebem a FILME e o Cinema do <see cref="CenarioFilme"/>.
+    /// </param>
+    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false, bool setups = false, bool filme = true)
     {
         // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
         // a senha e as leituras respondem na hora; os ecos e os acks seguem no relógio falso.
         Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         Arquivos = arquivos ?? new ArquivosFalso();
+        if (filme)
+        {
+            if (Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups) is null)
+                Arquivos.Semear(RepositorioTextoArquivos.ArquivoSetups, CenarioFilme.SetupsJson);
+            if (Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets) is null)
+                Arquivos.Semear(RepositorioTextoArquivos.ArquivoPresets, CenarioFilme.PresetsJson);
+        }
         Chaves = new Chaves(new RepositorioChavesArquivos(Arquivos));
         if (usoCompartilhado)
         {
@@ -110,14 +121,14 @@ internal sealed class Bancada
     /// <summary>Os Setups (só com <c>setups: true</c>).</summary>
     public GerenteSetups? Setups { get; }
 
-    public SalvarViewModel CriarSalvarViewModel() => new(Setups!, Estado, Link, Tela, Relogio);
+    public SalvarViewModel CriarSalvarViewModel() => new(Setups!, Estado, Tela, Relogio);
 
     public SetupViewModel CriarSetupViewModel() => new(Setups!, Sessao, Tela, Relogio);
 
     public MemoriasViewModel CriarMemoriasViewModel(SalvarViewModel? salvar = null) =>
         new(Setups!, Memorias, Copia, Sessao, Chaves, Estado, salvar ?? CriarSalvarViewModel(), Tela, Relogio);
 
-    public LinkViewModel CriarLinkViewModel() => new(Link, Sessao, Chaves, Estado, Tela, Relogio);
+    public LinkViewModel CriarLinkViewModel() => new(Link, Tela, Relogio);
 
     public GerentePresets Presets { get; }
 

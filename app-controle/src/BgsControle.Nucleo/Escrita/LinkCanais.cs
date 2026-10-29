@@ -18,10 +18,11 @@ public sealed record ResultadoLink(bool Ok, string? Motivo);
 
 /// <summary>
 /// O link 1–2 e 3–4. É só do app (MAPA §6): o processador não tem comando de link, e o estado
-/// fica nos arquivos privados.
+/// fica nos arquivos privados. Ele sai sozinho das ligações do Setup em uso (o par vizinho que
+/// alimenta os dois canais de um bridge); o usuário não mexe nele (decisão D1 do Denis, 29/10/2026).
 /// <list type="bullet">
-/// <item>Ao vincular, os parâmetros de áudio por canal da saída mestre (1 ou 3) são escritos na
-/// outra (só os que diferem), pelo <see cref="Escritor"/>, e só então o link liga.</item>
+/// <item>Só o <c>GerenteSetups</c> muda o estado (<see cref="DefinirEstadoAsync"/>), sem copiar a
+/// saída mestre.</item>
 /// <item>Com o link ligado, cada escrita na mestre também vai para a outra, com o valor que o
 /// aparelho confirmou. Mexer na outra saída escreve só nela.</item>
 /// </list>
@@ -36,14 +37,12 @@ public sealed class LinkCanais
     public const string MsgNaoGuardou = "Não consegui guardar o link no celular.";
     public const string MsgDesligadoSemGuardar =
         "Não consegui guardar o link no celular. Ele está desligado agora, mas ao reabrir o app ele pode voltar ligado.";
-    public const string MsgOcupado = "O link está copiando os ajustes.";
 
     /// <summary>"Link 1–2: as saídas estão diferentes".</summary>
     public static string MsgDiferentes(ParCanais par) => $"Link {Rotulo(par)}: as saídas estão diferentes";
 
     private readonly Escritor _escritor;
     private readonly EstadoAparelho _estado;
-    private readonly Sessao _sessao;
     private readonly IRepositorioTexto _repositorio;
     private readonly LogBle _log;
 
@@ -54,7 +53,6 @@ public sealed class LinkCanais
 
     public LinkCanais(Sessao sessao, EstadoAparelho estado, Escritor escritor, IRepositorioTexto repositorio, LogBle log)
     {
-        _sessao = sessao;
         _estado = estado;
         _escritor = escritor;
         _repositorio = repositorio;
@@ -104,102 +102,10 @@ public sealed class LinkCanais
     public string? AvisoDiferenca(ParCanais par) => Diferentes(par) ? MsgDiferentes(par) : null;
 
     /// <summary>
-    /// Vincula o par: escreve na outra saída cada parâmetro do link que difere da mestre e só
-    /// então liga e guarda. Se algum ajuste não passar, o link continua desligado.
-    /// </summary>
-    public async Task<ResultadoLink> VincularAsync(ParCanais par)
-    {
-        await Carregada;
-        if (!await _operacao.WaitAsync(0))
-            return new ResultadoLink(false, MsgOcupado);
-        try
-        {
-            if (Ligado(par))
-                return new ResultadoLink(true, null);
-            if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
-                return new ResultadoLink(false, Sessao.MotivoSemConexao);
-            if (_estado.Lendo || !_estado.Pronto)
-                return new ResultadoLink(false, _estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura);
-            // Uma operação de memória anda ou ficou pela metade: a cópia não entra no meio.
-            if (_escritor.MotivoBloqueio() is { } bloqueio)
-                return new ResultadoLink(false, bloqueio);
-
-            var (mestre, outro) = Canais(par);
-            var copias = new List<(Parametro Parametro, Valor Valor, string Quadro)>();
-            foreach (var p in Parametros)
-            {
-                // Sem o valor da mestre, o par não pode ficar igual: não liga.
-                if (_estado.Valor(p.Codigo, mestre) is not { } valor)
-                    return new ResultadoLink(false, Escritor.MsgSemLeitura);
-                if (_estado.Valor(p.Codigo, outro) is { } atual && CopiaAntes.Iguais(atual, valor))
-                    continue;
-                string quadro;
-                try
-                {
-                    quadro = valor.Numero is { } n ? p.CodificarEscrita(outro, n) : p.CodificarEscrita(outro, valor.Texto ?? "");
-                }
-                catch (Exception e) when (e is ArgumentException or InvalidOperationException)
-                {
-                    return new ResultadoLink(false, $"O {p.Nome} da saída {mestre + 1} não pode ser copiado ({valor.Exibicao}).");
-                }
-                copias.Add((p, valor, quadro));
-            }
-
-            if (copias.Count > 0 && _sessao.Conferir(copias[0].Quadro) is { } motivo)
-            {
-                _log.Recusado(copias[0].Quadro, motivo);
-                return new ResultadoLink(false, motivo);
-            }
-
-            _log.Evento($"link {Rotulo(par)}: copiando {copias.Count} ajustes da saída {mestre + 1} para a {outro + 1}");
-            var falhas = 0;
-            string? ultimo = null;
-            foreach (var (p, valor, _) in copias)
-            {
-                var r = await _escritor.EscreverAsync(p, outro, valor, espelhar: false);
-                if (!r.Ok || r.Diferente)
-                {
-                    falhas++;
-                    ultimo = r.Motivo ?? $"o aparelho ficou em {r.Valor?.NoFio}";
-                }
-            }
-            if (falhas > 0)
-            {
-                _log.Evento($"link {Rotulo(par)}: {falhas} ajustes não foram copiados ({ultimo}); o link continua desligado");
-                return new ResultadoLink(false, falhas == 1
-                    ? $"1 ajuste não foi copiado: {ultimo}. O link continua desligado."
-                    : $"{falhas} ajustes não foram copiados: {ultimo}. O link continua desligado.");
-            }
-
-            return await DefinirAsync(par, true);
-        }
-        finally
-        {
-            _operacao.Release();
-        }
-    }
-
-    /// <summary>Desliga o link. Não mexe no aparelho.</summary>
-    public async Task<ResultadoLink> DesvincularAsync(ParCanais par)
-    {
-        await Carregada;
-        await _operacao.WaitAsync();
-        try
-        {
-            if (!Ligado(par))
-                return new ResultadoLink(true, null);
-            return await DefinirAsync(par, false);
-        }
-        finally
-        {
-            _operacao.Release();
-        }
-    }
-
-    /// <summary>
-    /// Põe o estado do link de um Setup (história 8c), sem copiar a saída mestre: quem aplicou o
-    /// Setup já escreveu as duas saídas. Não manda nada ao aparelho. Devolve o motivo, se não
-    /// conseguiu guardar algum par, ou null.
+    /// Põe o estado do link, o tirado das ligações do Setup em uso (decisão D1 do Denis, 29/10/2026):
+    /// é o caminho único, e só o <c>GerenteSetups</c> o usa; o usuário não mexe no link. Não copia a
+    /// saída mestre nem manda nada ao aparelho (quem aplica a memória escreve as duas saídas). Devolve
+    /// o motivo, se não conseguiu guardar algum par, ou null.
     /// </summary>
     internal async Task<string?> DefinirEstadoAsync(bool link12, bool link34)
     {
@@ -241,15 +147,23 @@ public sealed class LinkCanais
     private async Task<ResultadoLink> DefinirAsync(ParCanais par, bool ligado)
     {
         string json;
+        bool diferente;
         lock (_trava)
         {
             if (ligado)
                 _ligados.Add(par);
             else
                 _ligados.Remove(par);
-            _diferentes.Remove(par); // ligado agora = acabou de copiar; desligado = sem aviso
+            // Nada é copiado ao ligar (o link sai das ligações): o aviso vem do espelho de agora.
+            diferente = ligado && _estado.Pronto && !_estado.Lendo && ParDiferente(par);
+            if (diferente)
+                _diferentes.Add(par);
+            else
+                _diferentes.Remove(par);
             json = ParaJson();
         }
+        if (diferente)
+            _log.Evento(MsgDiferentes(par));
 
         if (!await Gravacao.GravarAsync(_repositorio, json))
         {
@@ -257,7 +171,10 @@ public sealed class LinkCanais
             {
                 // Ligar só vale guardado; desligar vale mesmo sem guardar (o lado seguro).
                 lock (_trava)
+                {
                     _ligados.Remove(par);
+                    _diferentes.Remove(par);
+                }
                 return new ResultadoLink(false, MsgNaoGuardou);
             }
             _log.Evento($"link {Rotulo(par)} desligado sem guardar");

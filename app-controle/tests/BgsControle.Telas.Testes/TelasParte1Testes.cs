@@ -26,7 +26,7 @@ internal sealed class Telas10 : IDisposable
         Inicio = new InicioViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio);
         Mesa = new MesaViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio);
         Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
-        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, Link, b.Fabrica, Nav, b.Tela, b.Relogio);
+        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, b.Fabrica, Nav, b.Tela, b.Relogio);
         Setups = new SetupsViewModel(setups, b.Sessao, Nav, b.Tela, b.Relogio);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio);
     }
@@ -212,7 +212,6 @@ public sealed class TelasParte1Testes : IDisposable
         Assert.Equal("Só leitura · firmware R004", _t.Casca.TextoStatus);
         Assert.Equal("Firmware diferente do R003. O app só lê; nada é enviado.", _t.Inicio.AvisoFixo);
         Assert.Equal(ControleParametroViewModel.MsgSoLeitura, _t.Mesa.Canal(L)!.Ganho.MotivoTrava);
-        Assert.Equal(ControleParametroViewModel.MsgSoLeitura, _t.Ajuste(R).EquilibrioGanho!.MotivoTrava);
         Assert.Equal(ControleParametroViewModel.MsgSoLeitura, _t.Audio.Tela(FuncaoAudio.Fase).Controle("060")!.MotivoTrava);
     }
 
@@ -248,7 +247,7 @@ public sealed class TelasParte1Testes : IDisposable
         Assert.False(_t.Setup.PodeDesistir); // na dúvida não há ‹ (nem o Voltar do Android)
         var linha = Assert.Single(_t.Setup.LinhasDiferenca);
         Assert.Equal("Atraso · Sub", linha.Rotulo);
-        Assert.Equal("80 cm no Casa 2.1, 0 cm no aparelho", linha.Detalhe);
+        Assert.Equal("80 cm na FILME, 0 cm no aparelho", linha.Detalhe);
         Assert.Equal(Sub, linha.Canal);
         await _b.Rodar(_t.Setup.Desistir.ExecutarAsync());
         Assert.True(_t.Setup.Aberta);
@@ -356,7 +355,6 @@ public sealed class TelasParte1Testes : IDisposable
         var filme = Assert.Single(_t.Botoes.LinhasCelular);
         Assert.Equal("FILME", filme.Nome);
         Assert.Equal("Preset: Cinema", filme.Detalhe);
-        Assert.Equal("HERDADO", filme.Selo);
         Assert.True(filme.EmUso);
         Assert.Equal(3, _t.Botoes.LinhasAparelho.Count);
         Assert.Equal("Memória 2 do aparelho", _t.Botoes.LinhasAparelho[1].Detalhe);
@@ -519,112 +517,67 @@ public sealed class TelasParte1Testes : IDisposable
     }
 
     [Fact]
-    public async Task Crossover_com_o_link_1_2_ligado_no_Avancado_mexer_na_JBL_L_muda_a_JBL_R()
+    public async Task Crossover_no_Avancado_mostra_o_Link_3_4_so_de_leitura_e_mexer_no_Sub_muda_o_CH3_e_o_CH4()
     {
         await _b.Conectar();
         var x = _t.Audio.Tela(FuncaoAudio.Crossover);
         await x.AlternarAvancado.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
         Assert.True(x.AvancadoAberto);
         Assert.True(x.MostrarLink);
 
-        await x.Link.Par(ParCanais.Saidas12).Ligar.ExecutarAsync();
-        Assert.True(x.Link.FolhaAberta);
-        Assert.Equal("Os ajustes da saída 1 vão para a saída 2", x.Link.FolhaAviso);
-        await _b.Rodar(x.Link.ConfirmarFolha.ExecutarAsync());
-        Assert.True(x.Link.Par(ParCanais.Saidas12).Ligado);
-        await _b.Tela.EsvaziarAsync();
-        // O par 1–2 vira uma saída só, na cor do CH1.
-        Assert.Equal(["JBL L + JBL R", "Sub"], x.Abas.Select(a => a.Nome));
-        Assert.Equal("Link 1–2 ligado: mexer em JBL L + JBL R muda o CH1 e o CH2.", x.AvisoLink);
+        // O link sai das ligações do Casa 2.1: uma linha só de leitura, sem Lig./Desl.
+        var linha = Assert.Single(x.Link.Linhas);
+        Assert.Equal("CH3 e CH4 ligados: alimentam o mesmo bridge", linha.Frase);
+        Assert.Equal(["JBL L", "JBL R", "Sub"], x.Abas.Select(a => a.Nome));
 
-        x.EscolherSaida(L);
+        x.EscolherSaida(Sub);
+        Assert.Equal("Link 3–4 ligado: mexer em Sub muda o CH3 e o CH4.", x.AvisoLink);
         var pa = x.Controle("040")!;
         pa.Expandir();
         pa.AbrirCampo();
-        pa.TextoCampo = "123";
+        pa.TextoCampo = "45";
         await _b.Rodar(pa.Confirmar.ExecutarAsync());
         await _b.Rodar(pa.UltimaEscrita);
         await _b.Andar(TimeSpan.FromMilliseconds(500));
 
-        Assert.Equal("123", _b.Simulador.Valor("040", 0));
-        Assert.Equal("123", _b.Simulador.Valor("040", 1));
-        x.EscolherSaida(R);
-        Assert.Equal("123 Hz", x.Controle("040")!.TextoValor);
+        Assert.Equal("45", _b.Simulador.Valor("040", 2));
+        Assert.Equal("45", _b.Simulador.Valor("040", 3));
     }
 
     // ----------------------------------------------------------------- Ajuste da saída
 
     [Fact]
-    public async Task Ajuste_da_JBL_R_equilibrio_de_menos_3_para_menos_4_desce_1_dB_e_o_Salvar_leva_para_o_Setup()
+    public async Task Ajuste_da_JBL_R_o_ganho_e_o_valor_final_e_o_Salvar_leva_para_a_memoria()
     {
         await _b.Conectar();
         var r = _t.Ajuste(R);
         Assert.Equal("JBL R", r.Titulo);
         Assert.Equal("CH2 · rota " + TextosParametro.Rota(_b.Estado, R) + " · FILME", r.Subtitulo);
-        var eq = r.EquilibrioGanho!;
-        Assert.Equal("Equilíbrio do Casa 2.1 · ganho", eq.Titulo);
-        Assert.Equal("−3,0 dB", eq.TextoValor);
-        Assert.Equal("+7.0", _b.Simulador.Valor("081", 1));
+        Assert.Equal("+7,0 dB", r.Ganho.TextoValor);
         Assert.Equal("Nada para salvar.", r.Salvar.MotivoTrava);
 
-        await eq.TocarNoValor.ExecutarAsync();
-        Assert.True(eq.EditandoCampo);
-        eq.TextoCampo = "-4";
-        await _b.Rodar(eq.Confirmar.ExecutarAsync());
-        await _b.Rodar(eq.UltimoEnvio);
+        r.Ganho.AbrirCampo();
+        r.Ganho.TextoCampo = "6";
+        await _b.Rodar(r.Ganho.Confirmar.ExecutarAsync());
+        await _b.Rodar(r.Ganho.UltimaEscrita);
 
         Assert.Equal("+6.0", _b.Simulador.Valor("081", 1));
-        Assert.Equal("−4,0 dB", eq.TextoValor);
         Assert.Equal("+6,0 dB", r.Ganho.TextoValor);
-        Assert.Null(eq.Aviso);
 
         await r.Salvar.Abrir.ExecutarAsync();
         var linha = Assert.Single(r.Salvar.Linhas);
-        Assert.Equal("Calibração → Setup Casa 2.1", linha.Titulo);
-        Assert.Contains("Equilíbrio · JBL R · ganho: −3,0 dB → −4,0 dB", linha.Mudancas);
+        Assert.Equal("Regulagem → memória FILME", linha.Titulo);
+        Assert.Contains("Ganho · JBL R: +7,0 dB → +6,0 dB", linha.Mudancas);
         await r.Salvar.Cancelar.ExecutarAsync();
     }
 
     [Fact]
-    public async Task Equilibrio_no_limite_da_faixa_avisa_com_o_nome_do_Setup()
-    {
-        await _b.Conectar();
-        var eq = _t.Ajuste(R).EquilibrioGanho!;
-
-        await eq.TocarNoValor.ExecutarAsync();
-        eq.TextoCampo = "6";
-        await _b.Rodar(eq.Confirmar.ExecutarAsync());
-        await _b.Rodar(eq.UltimoEnvio);
-
-        Assert.Equal("+15.0", _b.Simulador.Valor("081", 1));
-        Assert.Equal("No limite da faixa com o equilíbrio do Casa 2.1.", eq.Aviso);
-    }
-
-    [Fact]
-    public async Task Equilibrio_com_mais_e_menos_anda_0_1_e_fora_da_faixa_recusa()
-    {
-        await _b.Conectar();
-        var eq = _t.Ajuste(L).EquilibrioLimitador!;
-        Assert.Equal("0,0 dB", eq.TextoValor);
-
-        await _b.Rodar(eq.Diminuir.ExecutarAsync());
-        await _b.Rodar(eq.UltimoEnvio);
-        Assert.Equal("−0,1 dB", eq.TextoValor);
-
-        await eq.TocarNoValor.ExecutarAsync();
-        eq.TextoCampo = "13";
-        await eq.Confirmar.ExecutarAsync();
-        Assert.Equal("Fora da faixa: −12,0 a +12,0 dB", eq.ErroCampo);
-        Assert.True(eq.EditandoCampo);
-    }
-
-    [Fact]
-    public async Task Ajuste_do_Sub_tem_o_equilibrio_do_par_e_o_Avancado_tem_o_resto()
+    public async Task Ajuste_do_Sub_tem_o_par_e_o_Avancado_tem_o_resto_sem_equilibrio()
     {
         await _b.Conectar();
         var sub = _t.Ajuste(Sub);
 
-        Assert.True(sub.TemEquilibrio);
         Assert.Equal("Sub", sub.Titulo);
         Assert.StartsWith("CH3 + CH4 · rota ", sub.Subtitulo);
         Assert.Equal(2, sub.Ganho.Indice);
@@ -632,7 +585,6 @@ public sealed class TelasParte1Testes : IDisposable
         Assert.Equal(["040", "042", "041", "043", "071"], sub.Vista.Select(i => i.Controle.Parametro.Codigo));
         Assert.Equal(["050", "060"], sub.AvancadoInicio.Select(i => i.Controle.Parametro.Codigo));
         Assert.Equal(["090", "091", "092", "072", "073", "070", "100"], sub.AvancadoFim.Select(i => i.Controle.Parametro.Codigo));
-        Assert.True(_t.Ajuste(L).TemEquilibrio);
     }
 
     [Fact]
@@ -657,10 +609,14 @@ public sealed class TelasParte1Testes : IDisposable
     [Fact]
     public async Task Configuracoes_abre_Setups_e_Memorias()
     {
+        await _b.Setups!.Carregada; // o setups.json lido: a casca já se acertou antes do toque
+        await _b.Tela.EsvaziarAsync();
+        var antes = _t.Nav.Pedidos.Count;
+
         await _t.Configuracoes.AbrirSetups.ExecutarAsync();
         await _t.Configuracoes.AbrirMemorias.ExecutarAsync();
 
-        Assert.Equal(["setups", "memorias"], _t.Nav.Pedidos);
+        Assert.Equal(["setups", "memorias"], _t.Nav.Pedidos.Skip(antes));
     }
 
     [Fact]
@@ -684,15 +640,14 @@ public sealed class TelasParte1Testes : IDisposable
         _t.Setup.NomeNovo = "Carro";
         await _b.Rodar(_t.Setup.ConfirmarCriar.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
-        Assert.Equal("Nenhuma memória", _t.Inicio.NomeMemoria);
-        Assert.True(_t.Inicio.MostrarCriarMemoria);
+        Assert.Equal("Carro", _t.Inicio.NomeMemoria); // o som do aparelho vira a primeira memória do Carro
         await _b.Rodar(_t.Inicio.TrocarSetup.ExecutarAsync());
         await _b.Rodar(_t.Setup.Item("Casa 2.1")!.Escolher.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
 
         var carro = _t.Setups.Linha("Carro")!;
         Assert.False(carro.EmUso);
-        Assert.Equal("0 memórias", carro.Detalhe);
+        Assert.Equal("1 memória", carro.Detalhe);
         await _t.Setups.Linha("Casa 2.1")!.Apagar.ExecutarAsync();
         Assert.Equal("Este Setup está em uso.", _t.Setups.Mensagem);
 

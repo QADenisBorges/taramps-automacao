@@ -2,7 +2,7 @@ using BgsControle.Nucleo.Escrita;
 
 namespace BgsControle.Telas;
 
-/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, os Setups e as memórias do celular, a marca do mudo, as playlists, o histórico, o modo do toque, o cliente da porta da IA) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
+/// <summary>Um texto do núcleo (a cópia antes, o link, os presets, os Setups e as memórias do celular, a base de modelos, a marca do mudo, as playlists, o histórico, o modo do toque, o cliente da porta da IA) num arquivo dos arquivos privados do app (allowBackup=false).</summary>
 public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arquivo) : IRepositorioTexto
 {
     /// <summary>A cópia antes de mexer e a marca da operação em andamento.</summary>
@@ -16,6 +16,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
 
     /// <summary>Os Setups, as memórias do celular, o último Setup usado e os 3 botões de cada Setup (história 8c).</summary>
     public const string ArquivoSetups = "setups.json";
+
+    /// <summary>A base de modelos: a ficha confirmada de cada modelo (só os dados oficiais e de outra fonte), história 8f.</summary>
+    public const string ArquivoModelos = "modelos.json";
 
     /// <summary>A marca do mudo da dúvida: o mute anterior dos 4 canais e o Setup que era a referência.</summary>
     public const string ArquivoSetupMudo = "setup-mudo.json";

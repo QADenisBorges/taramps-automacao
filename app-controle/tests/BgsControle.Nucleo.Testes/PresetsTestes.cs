@@ -12,9 +12,10 @@ using BgsControle.Simulador;
 namespace BgsControle.Nucleo.Testes;
 
 /// <summary>
-/// As histórias 8 e 8d no núcleo, contra o processador simulado: o conhecimento herdado (CAP-6) e os
-/// presets de 15 bandas do celular (CAP-5): o herdado Cinema, criar, atualizar, renomear, apagar (com
-/// a trava do preset lembrado), o <c>presets.json</c> nos formatos 2 e 1, e o aplicar só das bandas.
+/// As histórias 8, 8d e 8f no núcleo, contra o processador simulado: o conhecimento herdado (CAP-6) e os
+/// presets de 15 bandas do celular (CAP-5): o app nasce sem presets (29/10/2026); criar, atualizar,
+/// renomear, apagar (com a trava do preset lembrado), o <c>presets.json</c> no formato 3 (os formatos 1
+/// e 2 começam do zero), e o aplicar só das bandas.
 /// </summary>
 public sealed class PresetsTestes : IDisposable
 {
@@ -148,6 +149,14 @@ public sealed class PresetsTestes : IDisposable
             .Where(v => Catalogo.ConsultasMarco1.Any(c => c.Parametro.Codigo == v.Codigo && c.Indice == v.Indice))
             .ToDictionary(v => (v.Codigo, v.Indice), v => v.NoFio);
 
+    /// <summary>O "Cinema" do cenário de teste: as 15 bandas de 18/10, guardado como preset próprio.</summary>
+    private async Task<Preset> CriarCinema()
+    {
+        var r = await _presets.CriarAsync(CenarioFilme.NomePreset, CenarioFilme.Bandas);
+        Assert.True(r.Ok, r.Mensagem);
+        return r.Preset!;
+    }
+
     private async Task<Preset> Criar(string nome)
     {
         var r = await _presets.CriarAsync(nome);
@@ -167,48 +176,46 @@ public sealed class PresetsTestes : IDisposable
     // ----------------------------------------------------------------- conhecimento herdado
 
     [Fact]
-    public void Primeira_abertura_o_Cinema_herdado_tem_as_15_bandas_da_leitura_de_18_10_sem_arquivo_nenhum()
+    public void Primeira_abertura_nenhum_preset_sem_arquivo_nenhum()
     {
-        var cinema = _presets.Presets[0];
-
-        Assert.Equal("herdado-cinema-2026-10-18", cinema.Id);
-        Assert.Equal(ConhecimentoHerdado.IdCinema, cinema.Id);
-        Assert.Equal("Cinema", cinema.Nome);
-        Assert.True(cinema.Herdado);
-        Assert.NotNull(cinema.Nota);
-        Assert.Equal(15, cinema.Valores.Count);
-        Assert.All(cinema.Valores, v => Assert.Equal("020", v.Codigo)); // sem o 220
-        // As mesmas 15 bandas do simulador semeado com a leitura de 18/10.
-        Assert.Equal(Linhas(SoBandas(_simulador.EstadoMarco1())), Linhas(cinema));
-        Assert.Equal("+1.0", cinema.Valores.Single(v => v.Indice == 4).NoFio);   // 160 Hz
-        Assert.Equal("-2.0", cinema.Valores.Single(v => v.Indice == 12).NoFio);  // 6,3 kHz
-        Assert.Equal(Enumerable.Range(0, 15).Select(i => (int?)i), cinema.Valores.Select(v => v.Indice)); // na ordem do catálogo
-        Assert.Equal(ConhecimentoHerdado.BandasCinema, cinema.Valores);
-        Assert.Equal(["Cinema"], ConhecimentoHerdado.Presets.Select(p => p.Nome));
+        Assert.Empty(_presets.Presets);
+        Assert.Empty(ConhecimentoHerdado.Presets);
         Assert.Empty(_presets.Proprios);
         Assert.Equal(0, _guardadoPresets.Gravacoes);
         Assert.Empty(_simulador.Escritas);
     }
 
     [Fact]
-    public void A_leitura_de_18_10_inteira_fica_com_os_84_valores_para_o_Setup_e_a_memoria()
+    public async Task O_Cinema_do_cenario_tem_as_15_bandas_da_leitura_de_18_10_na_ordem_do_catalogo()
     {
-        Assert.Equal(Catalogo.TotalMarco1, ConhecimentoHerdado.LeituraFilme.Count);
-        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(ConhecimentoHerdado.LeituraFilme));
-        Assert.Equal(ConhecimentoHerdado.IdCinema, ConhecimentoHerdado.MemoriaFilme.IdPreset); // a FILME lembra o Cinema
+        var cinema = await CriarCinema();
+
+        Assert.False(cinema.Herdado);
+        Assert.Equal(15, cinema.Valores.Count);
+        Assert.All(cinema.Valores, v => Assert.Equal("020", v.Codigo)); // sem o 220
+        Assert.Equal(Linhas(SoBandas(_simulador.EstadoMarco1())), Linhas(cinema));
+        Assert.Equal("+1.0", cinema.Valores.Single(v => v.Indice == 4).NoFio);   // 160 Hz
+        Assert.Equal("-2.0", cinema.Valores.Single(v => v.Indice == 12).NoFio);  // 6,3 kHz
+        Assert.Equal(Enumerable.Range(0, 15).Select(i => (int?)i), cinema.Valores.Select(v => v.Indice));
     }
 
     [Fact]
-    public async Task Os_herdados_vem_sempre_primeiro_e_nao_vao_para_o_arquivo()
+    public void A_leitura_de_18_10_inteira_fica_com_os_84_valores_para_o_simulador_e_a_paridade()
+    {
+        Assert.Equal(Catalogo.TotalMarco1, ConhecimentoHerdado.LeituraFilme.Count);
+        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(ConhecimentoHerdado.LeituraFilme));
+    }
+
+    [Fact]
+    public async Task So_os_proprios_vao_para_o_arquivo()
     {
         await Conectar();
         await Mudar3();
         await Criar("NOITE");
 
-        Assert.Equal(["Cinema", "NOITE"], _presets.Presets.Select(p => p.Nome));
+        Assert.Equal(["NOITE"], _presets.Presets.Select(p => p.Nome));
         var guardados = GerentePresets.DeJson(_guardadoPresets.Texto!);
         Assert.Equal(["NOITE"], guardados.Select(p => p.Nome));
-        Assert.DoesNotContain("herdado-cinema", _guardadoPresets.Texto!);
     }
 
     [Theory]
@@ -237,12 +244,13 @@ public sealed class PresetsTestes : IDisposable
         var secoes = ConhecimentoHerdado.Secoes;
 
         Assert.Equal(
-            ["Protocolo", "O sistema do Denis", "As 3 memórias", "A FILME em três camadas", "Os equipamentos do Casa 2.1", "Presets", "Preferências e método", "Cuidados com o app da Taramps", "Situação registrada"],
+            ["Protocolo", "O sistema do Denis", "Os equipamentos do Casa 2.1", "As 3 memórias do aparelho", "Memórias e presets do celular", "Presets", "Preferências e método", "Cuidados com o app da Taramps", "Situação registrada"],
             secoes.Select(s => s.Titulo));
         Assert.All(secoes, s => Assert.NotEmpty(s.Linhas));
         var presets = string.Join(' ', secoes.Single(s => s.Titulo == "Presets").Linhas);
         Assert.Contains("15 bandas", presets);
-        Assert.Contains("Cinema", presets);
+        Assert.Contains("Não há preset herdado", presets);
+        Assert.DoesNotContain("Cinema", presets);
         Assert.Contains("DIALOGO", presets);
         Assert.Contains("NOITE", presets);
         Assert.Contains("cifrados", presets);
@@ -258,7 +266,7 @@ public sealed class PresetsTestes : IDisposable
     // ----------------------------------------------------------------- criar
 
     [Fact]
-    public async Task Criar_NOITE_guarda_so_as_15_bandas_atuais_em_presets_json_formato_2_e_nada_vai_ao_aparelho()
+    public async Task Criar_NOITE_guarda_so_as_15_bandas_atuais_em_presets_json_formato_3_e_nada_vai_ao_aparelho()
     {
         await Conectar();
         await Mudar3();
@@ -277,9 +285,9 @@ public sealed class PresetsTestes : IDisposable
         Assert.Equal(inicio, _simulador.Escritas.Count); // nem escrita, nem leitura nova
         Assert.Equal(1, _guardadoPresets.Gravacoes);
 
-        // O arquivo: formato 2, só o preset próprio, com as 15 bandas.
+        // O arquivo: formato 3, só o preset próprio, com as 15 bandas.
         using var doc = JsonDocument.Parse(_guardadoPresets.Texto!);
-        Assert.Equal(2, doc.RootElement.GetProperty("formato").GetInt32());
+        Assert.Equal(3, doc.RootElement.GetProperty("formato").GetInt32());
         var item = Assert.Single(doc.RootElement.GetProperty("presets").EnumerateArray());
         Assert.Equal(preset.Id, item.GetProperty("id").GetString());
         Assert.Equal("NOITE", item.GetProperty("nome").GetString());
@@ -340,7 +348,7 @@ public sealed class PresetsTestes : IDisposable
         Assert.Equal(Linhas(a), Linhas(reaberto.Proprios[0]));
         Assert.Equal(Linhas(b), Linhas(reaberto.Proprios[1]));
         Assert.Equal(a.Quando, reaberto.Proprios[0].Quando);
-        Assert.Equal(["Cinema", "A", "B"], reaberto.Presets.Select(p => p.Nome));
+        Assert.Equal(["A", "B"], reaberto.Presets.Select(p => p.Nome));
     }
 
     [Theory]
@@ -396,9 +404,8 @@ public sealed class PresetsTestes : IDisposable
     [Theory]
     [InlineData("noite")]
     [InlineData(" NOITE ")]
-    [InlineData("cinema")] // o herdado
-    [InlineData("CINEMA")]
-    public async Task Nome_repetido_de_um_proprio_ou_de_um_herdado_nada_e_guardado(string repetido)
+    [InlineData("noite ")]
+    public async Task Nome_repetido_de_um_proprio_nada_e_guardado(string repetido)
     {
         await Conectar();
         await Criar("NOITE");
@@ -497,60 +504,46 @@ public sealed class PresetsTestes : IDisposable
     [InlineData("{ isto não é json")]
     [InlineData("")]
     [InlineData("[]")]
-    [InlineData("{\"formato\":2,\"presets\":[{\"id\":\"x\",\"nome\":\"X\",\"valores\":[{\"codigo\":\"081\",\"indice\":0,\"noFio\":\"+1.0\"}]}]}")]
-    [InlineData("{\"formato\":3,\"presets\":[]}")]
+    [InlineData("{\"formato\":3,\"presets\":[{\"id\":\"x\",\"nome\":\"X\",\"valores\":[{\"codigo\":\"081\",\"indice\":0,\"noFio\":\"+1.0\"}]}]}")]
+    [InlineData("{\"formato\":4,\"presets\":[]}")]
     [InlineData("{\"formato\":\"um\",\"presets\":[]}")]
-    [InlineData("{\"formato\":2,\"presets\":{}}")]
-    public async Task Arquivo_estragado_ou_de_outro_formato_so_os_herdados_e_criar_funciona(string conteudo)
+    [InlineData("{\"formato\":3,\"presets\":{}}")]
+    public async Task Arquivo_estragado_ou_de_outro_formato_nenhum_preset_e_criar_funciona(string conteudo)
     {
         var estragado = new TextoMemoria(conteudo);
         _presets = NovoGerente(estragado);
         await _presets.Carregada;
 
         Assert.Empty(_presets.Proprios);
-        Assert.Equal(["Cinema"], _presets.Presets.Select(p => p.Nome));
+        Assert.Empty(_presets.Presets);
 
         await Conectar();
         var r = await _presets.CriarAsync("NOVO");
         Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal(["Cinema", "NOVO"], _presets.Presets.Select(p => p.Nome));
+        Assert.Equal(["NOVO"], _presets.Presets.Select(p => p.Nome));
         Assert.Equal(["NOVO"], GerentePresets.DeJson(estragado.Texto!).Select(p => p.Nome));
     }
 
-    [Fact]
-    public async Task Formato_1_os_presets_com_as_15_bandas_viram_presets_de_15_bandas_e_o_resto_e_descartado()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Os_formatos_1_e_2_comecam_do_zero_e_o_arquivo_e_regravado_no_formato_3(int formato)
     {
-        // Dois presets com os 84 valores (um deles com bandas próprias) e um sem bandas.
-        var leitura = ConhecimentoHerdado.LeituraFilme;
-        var outro = leitura.Select(v => v is { Codigo: "020", Indice: 0 } ? v with { NoFio = "+4.0" } : v).ToArray();
-        static string Valores(IEnumerable<ValorCopiado> vs) => "[" + string.Join(",", vs.Select(v =>
-            v.Indice is { } i
-                ? $"{{\"codigo\":\"{v.Codigo}\",\"indice\":{i},\"noFio\":\"{v.NoFio}\"}}"
-                : $"{{\"codigo\":\"{v.Codigo}\",\"noFio\":\"{v.NoFio}\"}}")) + "]";
+        var bandas = string.Join(",", CenarioFilme.Bandas.Select(v => $"{{\"codigo\":\"020\",\"indice\":{v.Indice},\"noFio\":\"{v.NoFio}\"}}"));
         var antigo = $$"""
-            {"formato":1,"presets":[
-              {"id":"p1","nome":"NOITE","quando":"2026-10-17T21:00:00-03:00","valores":{{Valores(leitura)}}},
-              {"id":"p2","nome":"DIALOGO","valores":{{Valores(outro)}}},
-              {"id":"p3","nome":"SEM BANDAS","valores":{{Valores(leitura.Where(v => v.Codigo != "020"))}}}
+            {"formato":{{formato}},"presets":[
+              {"id":"p1","nome":"NOITE","quando":"2026-10-17T21:00:00-03:00","valores":[{{bandas}}]},
+              {"id":"p2","nome":"DIALOGO","valores":[{{bandas}}]}
             ]}
             """;
         var repo = new TextoMemoria(antigo);
         _presets = NovoGerente(repo);
         await _presets.Carregada;
 
-        Assert.Equal(["NOITE", "DIALOGO"], _presets.Proprios.Select(p => p.Nome));
-        Assert.All(_presets.Proprios, p => Assert.Equal(15, p.Valores.Count));
-        Assert.Equal(Linhas(ConhecimentoHerdado.BandasCinema), Linhas(_presets.Proprios[0]));
-        Assert.Equal("+4.0", _presets.Proprios[1].Valores[0].NoFio);
-        Assert.Equal(DateTimeOffset.Parse("2026-10-17T21:00:00-03:00"), _presets.Proprios[0].Quando);
-        Assert.Equal(0, repo.Gravacoes); // ler não grava
-
-        // A próxima gravação sai no formato 2, só com as bandas.
-        Assert.True((await _presets.RenomearAsync("p2", "DIALOGO 2")).Ok);
-        using var doc = JsonDocument.Parse(repo.Texto!);
-        Assert.Equal(2, doc.RootElement.GetProperty("formato").GetInt32());
-        Assert.All(doc.RootElement.GetProperty("presets").EnumerateArray(),
-            p => Assert.Equal(15, p.GetProperty("valores").GetArrayLength()));
+        Assert.Empty(_presets.Proprios);
+        Assert.Equal(1, repo.Gravacoes);
+        Assert.Equal(GerentePresets.Formato, GerentePresets.FormatoDe(repo.Texto!));
+        Assert.Empty(GerentePresets.DeJson(repo.Texto!));
     }
 
     [Fact]
@@ -560,14 +553,13 @@ public sealed class PresetsTestes : IDisposable
         using var doc = JsonDocument.Parse(valores);
         var bandas = doc.RootElement.GetProperty("presets")[0].GetProperty("valores").GetRawText();
         var texto = $$"""
-            {"formato":2,"presets":[
+            {"formato":3,"presets":[
               {"id":"boa","nome":"BOA","valores":{{bandas}}},
               {"nome":"SEM ID","valores":{{bandas}}},
               {"id":"p2","nome":"nome#ruim","valores":{{bandas}}},
               {"id":"p3","nome":"SEM VALORES","valores":[]},
               {"id":"boa","nome":"REPETIDA","valores":{{bandas}}},
               {"id":"p4","nome":"boa","valores":{{bandas}}},
-              {"id":"herdado-cinema-2026-10-18","nome":"OUTRO CINEMA","valores":{{bandas}}},
               "lixo"
             ]}
             """;
@@ -599,14 +591,12 @@ public sealed class PresetsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Atualizar_o_herdado_ou_um_que_nao_existe_e_recusado()
+    public async Task Atualizar_um_que_nao_existe_e_recusado()
     {
         await Conectar();
         await Mudar3();
 
-        Assert.Equal("Preset herdado não é sobrescrito.", (await _presets.AtualizarAsync(ConhecimentoHerdado.IdCinema)).Motivo);
         Assert.Equal("O preset não existe mais.", (await _presets.AtualizarAsync("nao-existe")).Motivo);
-        Assert.Equal(Linhas(ConhecimentoHerdado.BandasCinema), Linhas(_presets.Presets[0]));
         Assert.Equal(0, _guardadoPresets.Gravacoes);
     }
 
@@ -645,7 +635,7 @@ public sealed class PresetsTestes : IDisposable
     [InlineData("a#b", "Use de 1 a 24 letras, números, espaço, _ ou -")]
     [InlineData("", "Use de 1 a 24 letras, números, espaço, _ ou -")]
     [InlineData("b", "Já existe um preset com esse nome.")]
-    [InlineData("cinema", "Já existe um preset com esse nome.")]
+    [InlineData(" B ", "Já existe um preset com esse nome.")]
     public async Task Renomear_com_nome_ruim_ou_repetido_nada_muda(string novo, string esperado)
     {
         await Conectar();
@@ -658,22 +648,6 @@ public sealed class PresetsTestes : IDisposable
         Assert.False(r.Ok);
         Assert.Equal(esperado, r.Motivo);
         Assert.Equal(["A", "B"], _presets.Proprios.Select(p => p.Nome));
-        Assert.Equal(gravacoes, _guardadoPresets.Gravacoes);
-    }
-
-    [Fact]
-    public async Task Renomear_ou_apagar_o_Cinema_herdado_e_recusado()
-    {
-        await Conectar();
-        var gravacoes = _guardadoPresets.Gravacoes;
-
-        var renomear = await _presets.RenomearAsync(ConhecimentoHerdado.IdCinema, "OUTRO");
-        var apagar = await _presets.ApagarAsync(ConhecimentoHerdado.IdCinema);
-
-        Assert.Equal("Preset herdado não muda.", renomear.Motivo);
-        Assert.Equal("Preset herdado não muda.", apagar.Motivo);
-        Assert.Equal("Preset herdado não muda.", _presets.MotivoTravaApagar(ConhecimentoHerdado.IdCinema));
-        Assert.Equal("Cinema", _presets.Presets[0].Nome);
         Assert.Equal(gravacoes, _guardadoPresets.Gravacoes);
     }
 
@@ -776,25 +750,19 @@ public sealed class PresetsTestes : IDisposable
     // ----------------------------------------------------------------- exportar
 
     [Fact]
-    public async Task Exportar_devolve_o_json_de_um_proprio_e_do_herdado_com_nome_nota_e_as_15_bandas()
+    public async Task Exportar_devolve_o_json_de_um_proprio_com_o_nome_e_as_15_bandas()
     {
         await Conectar();
         var a = await Criar("A");
 
         using var proprio = JsonDocument.Parse(_presets.ExportarJson(a.Id)!);
-        using var herdado = JsonDocument.Parse(_presets.ExportarJson(ConhecimentoHerdado.IdCinema)!);
 
-        Assert.Equal(2, proprio.RootElement.GetProperty("formato").GetInt32());
+        Assert.Equal(3, proprio.RootElement.GetProperty("formato").GetInt32());
         Assert.Equal("A", proprio.RootElement.GetProperty("nome").GetString());
         Assert.False(proprio.RootElement.GetProperty("herdado").GetBoolean());
         Assert.False(proprio.RootElement.TryGetProperty("nota", out _));
         Assert.Equal(15, proprio.RootElement.GetProperty("valores").GetArrayLength());
 
-        Assert.Equal(2, herdado.RootElement.GetProperty("formato").GetInt32());
-        Assert.Equal("Cinema", herdado.RootElement.GetProperty("nome").GetString());
-        Assert.True(herdado.RootElement.GetProperty("herdado").GetBoolean());
-        Assert.Contains("15 bandas", herdado.RootElement.GetProperty("nota").GetString());
-        Assert.Equal(15, herdado.RootElement.GetProperty("valores").GetArrayLength());
         Assert.Null(_presets.ExportarJson("nao-existe"));
     }
 
@@ -937,13 +905,14 @@ public sealed class PresetsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_o_Cinema_herdado_depois_de_mexer_nas_bandas_volta_as_15_bandas_de_18_10()
+    public async Task Aplicar_o_Cinema_depois_de_mexer_nas_bandas_volta_as_15_bandas_de_18_10()
     {
         await Conectar();
+        var cinema = await CriarCinema();
         await Mudar3();
-        Assert.NotEqual(Linhas(ConhecimentoHerdado.BandasCinema), Linhas(SoBandas(_simulador.EstadoMarco1())));
+        Assert.NotEqual(Linhas(CenarioFilme.Bandas), Linhas(SoBandas(_simulador.EstadoMarco1())));
 
-        var r = await Rodar(_presets.AplicarAsync(ConhecimentoHerdado.IdCinema));
+        var r = await Rodar(_presets.AplicarAsync(cinema.Id));
 
         Assert.True(r.Ok, r.Mensagem);
         Assert.Equal("Preset Cinema aplicado.", r.Mensagem);
@@ -954,7 +923,8 @@ public sealed class PresetsTestes : IDisposable
     [Fact]
     public async Task Aplicar_sem_leitura_ou_preset_que_nao_existe_nada_sai()
     {
-        var semLeitura = await _presets.AplicarAsync(ConhecimentoHerdado.IdCinema);
+        var cinema = await CriarCinema();
+        var semLeitura = await _presets.AplicarAsync(cinema.Id);
         Assert.Equal(Escritor.MsgSemLeitura, semLeitura.Motivo);
 
         await Conectar();
@@ -1223,6 +1193,7 @@ public sealed class PresetsTestes : IDisposable
     {
         _liberaMemoria = true; // o único teste que deixa o 241 passar
         await Conectar();
+        var cinema = await CriarCinema();
         await Mudar3(); // o espelho difere do Cinema: haveria o que escrever
         _simulador.Silenciar.Add("*241*2*"); // o 241 sai, mas o ack não vem: o carregar fica preso
         var carga = _memorias.CarregarAsync(2);
@@ -1230,7 +1201,7 @@ public sealed class PresetsTestes : IDisposable
         Assert.False(carga.IsCompleted);
         var inicio = _simulador.Escritas.Count;
 
-        var r = await _presets.AplicarAsync(ConhecimentoHerdado.IdCinema);
+        var r = await _presets.AplicarAsync(cinema.Id);
 
         Assert.False(r.Ok);
         Assert.Equal(CopiaAntes.MsgOutraOperacao, r.Motivo);
@@ -1256,20 +1227,20 @@ public sealed class PresetsTestes : IDisposable
         Assert.Equal("Aplicar o preset ANTIGO", reaberta.PelaMetade!.Descricao);
         var terminar = await Rodar(reaberta.TerminarAsync());
         Assert.Equal("O preset não existe mais; use Voltar à cópia.", terminar.Motivo);
-        var aplicar = await gerente.AplicarAsync(ConhecimentoHerdado.IdCinema);
+        var cinema = await gerente.CriarAsync("Cinema", CenarioFilme.Bandas);
+        Assert.True(cinema.Ok, cinema.Mensagem);
+        var aplicar = await gerente.AplicarAsync(cinema.Preset!.Id);
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, aplicar.Motivo);
     }
 
-    [Theory]
-    [InlineData("Cinema")]
-    [InlineData("CINEMA")]
-    [InlineData("cinema")]
-    public void Um_proprio_com_o_nome_do_herdado_num_arquivo_antigo_e_descartado_ao_ler(string nome)
+    [Fact]
+    public void Sem_herdados_um_proprio_chamado_Cinema_e_lido_e_um_nome_repetido_sai()
     {
         var json = GerentePresets.ParaJson([
-            new Preset("p1", nome, DateTimeOffset.UnixEpoch, GerentePresets.BandasPlanas),
-            new Preset("p2", "ROCK", DateTimeOffset.UnixEpoch, GerentePresets.BandasPlanas)]);
+            new Preset("p1", "Cinema", DateTimeOffset.UnixEpoch, GerentePresets.BandasPlanas),
+            new Preset("p2", "CINEMA", DateTimeOffset.UnixEpoch, GerentePresets.BandasPlanas),
+            new Preset("p3", "ROCK", DateTimeOffset.UnixEpoch, GerentePresets.BandasPlanas)]);
 
-        Assert.Equal(["ROCK"], GerentePresets.DeJson(json).Select(p => p.Nome));
+        Assert.Equal(["Cinema", "ROCK"], GerentePresets.DeJson(json).Select(p => p.Nome));
     }
 }

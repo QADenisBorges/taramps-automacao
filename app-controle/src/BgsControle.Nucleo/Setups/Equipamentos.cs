@@ -71,34 +71,215 @@ public sealed record LigacaoAltoFalante(string IdModulo, int? Canal, Bridge? Bri
     public static LigacaoAltoFalante NoBridge(string idModulo, Bridge bridge) => new(idModulo, null, bridge);
 }
 
+/// <summary>De onde veio um dado da ficha (CAP-16; forja de 29/10/2026).</summary>
+public enum OrigemDado
+{
+    /// <summary>O manual ou a ficha do fabricante (com o endereço, na <see cref="DadoTecnico.Fonte"/>).</summary>
+    Oficial,
+
+    /// <summary>Outra fonte (uma loja, um fórum, uma revisão), com o endereço ou a descrição.</summary>
+    OutraFonte,
+
+    /// <summary>Medido na instalação (a Re de 3,6 Ω da JBL do Casa 2.1).</summary>
+    Medido,
+
+    /// <summary>Estimado (o volume da caixa por foto e régua).</summary>
+    Estimado,
+
+    /// <summary>Digitado pelo usuário, sem fonte confirmada.</summary>
+    Digitado,
+}
+
+/// <summary>
+/// Um dado numérico da ficha, com a origem dele. Um dado sem origem confirmada nunca aparece como
+/// verificado (<see cref="Verificado"/>).
+/// </summary>
+/// <param name="Valor">Maior que zero.</param>
+/// <param name="Origem">De onde ele veio.</param>
+/// <param name="Fonte">O endereço ou a descrição da fonte (até 120 caracteres), ou null.</param>
+public sealed record DadoTecnico(decimal Valor, OrigemDado Origem, string? Fonte = null)
+{
+    /// <summary>Oficial ou medido: o dado conferido.</summary>
+    public bool Verificado => Origem is OrigemDado.Oficial or OrigemDado.Medido;
+
+    /// <summary>Um dado digitado pelo usuário (sem fonte), ou null sem valor.</summary>
+    public static DadoTecnico? Digitado(decimal? valor) => valor is { } v ? new DadoTecnico(v, OrigemDado.Digitado) : null;
+}
+
+/// <summary>Um dado de texto da ficha (o tipo da caixa: "selada", "dutada"), com a origem dele.</summary>
+public sealed record DadoTexto(string Valor, OrigemDado Origem, string? Fonte = null)
+{
+    /// <summary>Oficial ou medido: o dado conferido.</summary>
+    public bool Verificado => Origem is OrigemDado.Oficial or OrigemDado.Medido;
+}
+
 /// <summary>Uma via de dentro de uma caixa ativa ("woofer de 12"", "driver"), com o diâmetro em polegadas, se se sabe.</summary>
 public sealed record Via(string Descricao, decimal? Diametro);
 
 /// <summary>
-/// Os dados técnicos de um equipamento, todos opcionais (o que não se sabe fica genérico).
+/// A ficha de um equipamento: os dados técnicos, todos opcionais e cada um com a origem (o que não se
+/// sabe fica em branco). Os números são maiores que zero.
 /// </summary>
-/// <param name="Diametro">Em polegadas.</param>
-/// <param name="Impedancia">Em Ω.</param>
-/// <param name="PotenciaRms">Em W.</param>
-/// <param name="Sensibilidade">Em dB.</param>
-/// <param name="FaixaMinima">O começo da faixa, em Hz.</param>
-/// <param name="FaixaMaxima">O fim da faixa, em Hz.</param>
-/// <param name="Ganho">O ganho do amplificador, em × (19,6 no módulo do Casa 2.1).</param>
-/// <param name="Canais">O número de canais (informativo; num módulo, os canais são as <see cref="Equipamento.Entradas"/>).</param>
-public sealed record DadosTecnicos(
-    decimal? Diametro = null,
-    decimal? Impedancia = null,
-    decimal? PotenciaRms = null,
-    decimal? Sensibilidade = null,
-    decimal? FaixaMinima = null,
-    decimal? FaixaMaxima = null,
-    decimal? Ganho = null,
-    int? Canais = null)
+public sealed record DadosTecnicos
 {
     public static DadosTecnicos Nenhum { get; } = new();
 
+    // ------------------------------------------------------------------ gerais
+
+    /// <summary>Em polegadas.</summary>
+    public DadoTecnico? Diametro { get; init; }
+
+    /// <summary>A impedância nominal, em Ω.</summary>
+    public DadoTecnico? Impedancia { get; init; }
+
+    /// <summary>Em W.</summary>
+    public DadoTecnico? PotenciaRms { get; init; }
+
+    /// <summary>Em dB.</summary>
+    public DadoTecnico? Sensibilidade { get; init; }
+
+    /// <summary>O começo da faixa, em Hz.</summary>
+    public DadoTecnico? FaixaMinima { get; init; }
+
+    /// <summary>O fim da faixa, em Hz.</summary>
+    public DadoTecnico? FaixaMaxima { get; init; }
+
+    /// <summary>O ganho do amplificador por canal, em × (19,5 no módulo do Casa 2.1).</summary>
+    public DadoTecnico? Ganho { get; init; }
+
+    /// <summary>O número de canais (informativo, inteiro; num módulo, os canais são as <see cref="Equipamento.Entradas"/>).</summary>
+    public DadoTecnico? Canais { get; init; }
+
+    // ------------------------------------------------------------------ alto-falante
+
+    /// <summary>A resistência da bobina, em Ω.</summary>
+    public DadoTecnico? Re { get; init; }
+
+    /// <summary>A frequência de ressonância, em Hz.</summary>
+    public DadoTecnico? Fs { get; init; }
+
+    public DadoTecnico? Qes { get; init; }
+
+    public DadoTecnico? Qms { get; init; }
+
+    /// <summary>Em L.</summary>
+    public DadoTecnico? Vas { get; init; }
+
+    /// <summary>Em T·m.</summary>
+    public DadoTecnico? Bl { get; init; }
+
+    /// <summary>Em cm².</summary>
+    public DadoTecnico? Sd { get; init; }
+
+    /// <summary>Em mm.</summary>
+    public DadoTecnico? Xmax { get; init; }
+
+    /// <summary>Em mH.</summary>
+    public DadoTecnico? Le { get; init; }
+
+    // ------------------------------------------------------------------ caixa
+
+    /// <summary>"selada", "dutada", "radiador passivo"… (até 32 caracteres).</summary>
+    public DadoTexto? TipoCaixa { get; init; }
+
+    /// <summary>O volume interno, em L.</summary>
+    public DadoTecnico? VolumeCaixa { get; init; }
+
+    /// <summary>A sintonia do duto, em Hz.</summary>
+    public DadoTecnico? Fb { get; init; }
+
+    /// <summary>A área do duto, em cm².</summary>
+    public DadoTecnico? AreaDuto { get; init; }
+
+    // ------------------------------------------------------------------ módulo
+
+    /// <summary>A potência por canal, em W.</summary>
+    public DadoTecnico? PotenciaCanal { get; init; }
+
+    /// <summary>A tensão de ceifamento por canal, em V.</summary>
+    public DadoTecnico? TensaoCeifamentoCanal { get; init; }
+
+    /// <summary>A potência em ponte, em W.</summary>
+    public DadoTecnico? PotenciaPonte { get; init; }
+
+    /// <summary>A tensão de ceifamento em ponte, em V.</summary>
+    public DadoTecnico? TensaoCeifamentoPonte { get; init; }
+
+    /// <summary>O ganho em ponte, em ×.</summary>
+    public DadoTecnico? GanhoPonte { get; init; }
+
+    // ------------------------------------------------------------------ alimentação
+
+    /// <summary>A tensão da alimentação, em V.</summary>
+    public DadoTecnico? TensaoAlimentacao { get; init; }
+
+    /// <summary>A corrente da alimentação, em A.</summary>
+    public DadoTecnico? CorrenteAlimentacao { get; init; }
+
     /// <summary>As vias de dentro de uma caixa ativa, na ordem.</summary>
     public IReadOnlyList<Via> Vias { get; init; } = [];
+
+    /// <summary>Um campo numérico da ficha: o nome guardado no JSON, como ler e como trocar.</summary>
+    public sealed record Campo(string Nome, Func<DadosTecnicos, DadoTecnico?> Ler, Func<DadosTecnicos, DadoTecnico?, DadosTecnicos> Com);
+
+    /// <summary>Os campos numéricos, na ordem da ficha. O nome é a chave no <c>setups.json</c> e no <c>modelos.json</c>.</summary>
+    public static IReadOnlyList<Campo> Campos { get; } =
+    [
+        new("diametro", d => d.Diametro, (d, v) => d with { Diametro = v }),
+        new("impedancia", d => d.Impedancia, (d, v) => d with { Impedancia = v }),
+        new("potenciaRms", d => d.PotenciaRms, (d, v) => d with { PotenciaRms = v }),
+        new("sensibilidade", d => d.Sensibilidade, (d, v) => d with { Sensibilidade = v }),
+        new("faixaMinima", d => d.FaixaMinima, (d, v) => d with { FaixaMinima = v }),
+        new("faixaMaxima", d => d.FaixaMaxima, (d, v) => d with { FaixaMaxima = v }),
+        new("ganho", d => d.Ganho, (d, v) => d with { Ganho = v }),
+        new("canais", d => d.Canais, (d, v) => d with { Canais = v }),
+        new("re", d => d.Re, (d, v) => d with { Re = v }),
+        new("fs", d => d.Fs, (d, v) => d with { Fs = v }),
+        new("qes", d => d.Qes, (d, v) => d with { Qes = v }),
+        new("qms", d => d.Qms, (d, v) => d with { Qms = v }),
+        new("vas", d => d.Vas, (d, v) => d with { Vas = v }),
+        new("bl", d => d.Bl, (d, v) => d with { Bl = v }),
+        new("sd", d => d.Sd, (d, v) => d with { Sd = v }),
+        new("xmax", d => d.Xmax, (d, v) => d with { Xmax = v }),
+        new("le", d => d.Le, (d, v) => d with { Le = v }),
+        new("volumeCaixa", d => d.VolumeCaixa, (d, v) => d with { VolumeCaixa = v }),
+        new("fb", d => d.Fb, (d, v) => d with { Fb = v }),
+        new("areaDuto", d => d.AreaDuto, (d, v) => d with { AreaDuto = v }),
+        new("potenciaCanal", d => d.PotenciaCanal, (d, v) => d with { PotenciaCanal = v }),
+        new("tensaoCeifamentoCanal", d => d.TensaoCeifamentoCanal, (d, v) => d with { TensaoCeifamentoCanal = v }),
+        new("potenciaPonte", d => d.PotenciaPonte, (d, v) => d with { PotenciaPonte = v }),
+        new("tensaoCeifamentoPonte", d => d.TensaoCeifamentoPonte, (d, v) => d with { TensaoCeifamentoPonte = v }),
+        new("ganhoPonte", d => d.GanhoPonte, (d, v) => d with { GanhoPonte = v }),
+        new("tensaoAlimentacao", d => d.TensaoAlimentacao, (d, v) => d with { TensaoAlimentacao = v }),
+        new("correnteAlimentacao", d => d.CorrenteAlimentacao, (d, v) => d with { CorrenteAlimentacao = v }),
+    ];
+
+    /// <summary>A ficha só com os dados das origens dadas (o tipo da caixa também); as vias ficam de fora.</summary>
+    public DadosTecnicos So(params OrigemDado[] origens)
+    {
+        var d = Nenhum;
+        foreach (var c in Campos)
+        {
+            if (c.Ler(this) is { } v && origens.Contains(v.Origem))
+                d = c.Com(d, v);
+        }
+        return TipoCaixa is { } t && origens.Contains(t.Origem) ? d with { TipoCaixa = t } : d;
+    }
+
+    /// <summary>A mesma ficha com cada dado (e o tipo da caixa) como digitado, sem a fonte; as vias ficam.</summary>
+    public DadosTecnicos ComoDigitados()
+    {
+        var d = this;
+        foreach (var c in Campos)
+        {
+            if (c.Ler(d) is { } v)
+                d = c.Com(d, new DadoTecnico(v.Valor, OrigemDado.Digitado));
+        }
+        return d.TipoCaixa is { } t ? d with { TipoCaixa = new DadoTexto(t.Valor, OrigemDado.Digitado) } : d;
+    }
+
+    /// <summary>Nenhum dado (nem o tipo da caixa, nem as vias).</summary>
+    public bool Vazia => Campos.All(c => c.Ler(this) is null) && TipoCaixa is null && Vias.Count == 0;
 }
 
 /// <summary>
@@ -209,6 +390,9 @@ public static class Ligacoes
     public const string MsgCanalModuloNaoExiste = "O módulo não tem esse canal.";
     public const string MsgBridgeNaoExiste = "O módulo não tem esse bridge.";
     public const string MsgNumeroInvalido = "Os dados técnicos são números maiores que zero.";
+    public const string MsgCanaisInteiro = "O número de canais é inteiro.";
+    public const string MsgFonteDadoInvalida = "A fonte de cada dado vai até 120 caracteres.";
+    public const string MsgTipoCaixaInvalido = "O tipo da caixa vai até 32 caracteres.";
 
     /// <summary>"O Sub está ligado no bridge 3+4 deste módulo: religue ou tire o Sub antes."</summary>
     public static string MsgAltoFalantePerdeLigacao(IReadOnlyList<(string Nome, string Onde)> perdem) => perdem.Count == 1
@@ -222,10 +406,6 @@ public static class Ligacoes
     /// <summary>"O bridge 3+4 do Módulo só recebe sinal no canal 3: ligue os dois canais do bridge."</summary>
     public static string MsgBridgeUmCanal(string modulo, Bridge bridge, int canalComSinal) =>
         $"O bridge {bridge.Rotulo} do {modulo} só recebe sinal no canal {canalComSinal}: ligue os dois canais do bridge.";
-
-    /// <summary>"CH1 e CH2 alimentam o mesmo bridge: ligue o Link 1–2 para ficarem iguais."</summary>
-    public static string MsgBridgeSemLink(int a, int b) =>
-        $"CH{a + 1} e CH{b + 1} alimentam o mesmo bridge: ligue o Link {a + 1}–{b + 1} para ficarem iguais.";
 
     // ------------------------------------------------------------------ rótulos
 
@@ -348,7 +528,35 @@ public static class Ligacoes
                 return (null, MsgViaInvalida);
             vias.Add(v with { Descricao = descricao });
         }
-        return (e with { Nome = nome, Categoria = categoria, Modelo = modelo, Nota = nota, Dados = e.Dados with { Vias = vias } }, null);
+        var dados = e.Dados with { Vias = vias };
+        foreach (var c in DadosTecnicos.Campos)
+        {
+            if (c.Ler(dados) is not { Fonte: { } fonte } v)
+                continue;
+            if (string.IsNullOrWhiteSpace(fonte))
+                dados = c.Com(dados, v with { Fonte = null });
+            else if (TextoLongoValido(fonte) is { } limpa)
+                dados = c.Com(dados, v with { Fonte = limpa });
+            else
+                return (null, MsgFonteDadoInvalida);
+        }
+        if (dados.TipoCaixa is { } tipo)
+        {
+            if (string.IsNullOrWhiteSpace(tipo.Valor))
+            {
+                dados = dados with { TipoCaixa = null };
+            }
+            else
+            {
+                if (TextoValido(tipo.Valor) is not { } valor)
+                    return (null, MsgTipoCaixaInvalido);
+                string? fonteTipo = null;
+                if (!string.IsNullOrWhiteSpace(tipo.Fonte) && (fonteTipo = TextoLongoValido(tipo.Fonte)) is null)
+                    return (null, MsgFonteDadoInvalida);
+                dados = dados with { TipoCaixa = tipo with { Valor = valor, Fonte = fonteTipo } };
+            }
+        }
+        return (e with { Nome = nome, Categoria = categoria, Modelo = modelo, Nota = nota, Dados = dados }, null);
     }
 
     // ------------------------------------------------------------------ validação
@@ -369,8 +577,16 @@ public static class Ligacoes
             return MsgModeloInvalido;
         if (!DadosValidos(e.Dados))
             return MsgNumeroInvalido;
-        if (e.Dados.FaixaMinima is { } minimo && e.Dados.FaixaMaxima is { } maximo && minimo >= maximo)
+        if (e.Dados.Canais is { } canais && decimal.Truncate(canais.Valor) != canais.Valor)
+            return MsgCanaisInteiro;
+        if (e.Dados.FaixaMinima is { } minimo && e.Dados.FaixaMaxima is { } maximo && minimo.Valor >= maximo.Valor)
             return MsgFaixaInvertida;
+        if (DadosTecnicos.Campos.Any(c => c.Ler(e.Dados)?.Fonte is { } fonte && TextoLongoValido(fonte) is null))
+            return MsgFonteDadoInvalida;
+        if (e.Dados.TipoCaixa is { } tipo && TextoValido(tipo.Valor) is null)
+            return MsgTipoCaixaInvalido;
+        if (e.Dados.TipoCaixa?.Fonte is { } fonteTipo && TextoLongoValido(fonteTipo) is null)
+            return MsgFonteDadoInvalida;
         if (e.Nota is not null && TextoLongoValido(e.Nota) is null)
             return MsgNotaInvalida;
         if (e.Dados.Vias.Any(v => TextoLongoValido(v.Descricao) is null))
@@ -420,9 +636,8 @@ public static class Ligacoes
     }
 
     private static bool DadosValidos(DadosTecnicos d) =>
-        new[] { d.Diametro, d.Impedancia, d.PotenciaRms, d.Sensibilidade, d.FaixaMinima, d.FaixaMaxima, d.Ganho }
-            .All(v => v is null or > 0m)
-        && d.Canais is null or > 0
+        DadosTecnicos.Campos.All(c => c.Ler(d) is not { } v || (v.Valor > 0m && Enum.IsDefined(v.Origem)))
+        && (d.TipoCaixa is null || Enum.IsDefined(d.TipoCaixa.Origem))
         && d.Vias.All(v => v.Diametro is null or > 0m);
 
     /// <summary>
@@ -649,12 +864,48 @@ public static class Ligacoes
     // ------------------------------------------------------------------ saídas do app
 
     /// <summary>
+    /// O link automático (decisão D1 do Denis, 29/10/2026): o par vizinho do processador (CH1+CH2 →
+    /// Link 1–2; CH3+CH4 → Link 3–4) fica ligado quando os dois canais de um bridge de um equipamento
+    /// do grupo 2 são alimentados, cada um, por um dos dois canais do par (um pelo CH3 e o outro pelo
+    /// CH4, direto ou pela cadeia do grupo 3, e por nenhum outro canal). Senão, sem link. O usuário
+    /// não mexe nele.
+    /// </summary>
+    public static (bool Link12, bool Link34) Links(IReadOnlyList<Equipamento> lista)
+    {
+        var porCanal = Enumerable.Range(0, CanaisProcessador).Select(c => Seguir(lista, [c])).ToArray();
+        bool Ligado(int a, int b)
+        {
+            foreach (var m in lista.Where(e => e.Grupo == GrupoEquipamento.Amplificador))
+            {
+                foreach (var br in m.Bridges)
+                {
+                    int[] Quem(int canalModulo) => Enumerable.Range(0, CanaisProcessador)
+                        .Where(c => porCanal[c].CanaisModulo.TryGetValue(m.Id, out var x) && x.Contains(canalModulo)).ToArray();
+                    var deA = Quem(br.A);
+                    var deB = Quem(br.B);
+                    if (deA.Length == 1 && deB.Length == 1 && deA[0] != deB[0] && deA.Concat(deB).All(c => c == a || c == b))
+                        return true;
+                }
+            }
+            return false;
+        }
+        return (Ligado(0, 1), Ligado(2, 3));
+    }
+
+    /// <summary>As saídas do app com o link tirado das ligações (<see cref="Links"/>).</summary>
+    public static IReadOnlyList<SaidaApp> Saidas(IReadOnlyList<Equipamento> lista)
+    {
+        var (link12, link34) = Links(lista);
+        return Saidas(lista, link12, link34);
+    }
+
+    /// <summary>
     /// As saídas do app, na ordem dos canais: cada par vizinho (1–2, 3–4) com o link ligado vira uma
     /// saída só, com o mestre no canal ímpar; senão, cada canal é uma saída. O nome vem dos que tocam
     /// e que a saída alimenta (sem repetir, na ordem de criação); sem nenhum que toca, dos outros que
     /// ela alimenta; sem nada, "CH1" ou "CH3 + CH4". Os avisos dos bridges vão para as saídas que os
-    /// alimentam: os dois canais de um par sem link no mesmo bridge; um bridge com canais de saídas
-    /// diferentes; um bridge com sinal num canal só.
+    /// alimentam: um bridge com canais de saídas diferentes; um bridge com sinal num canal só. O link
+    /// vem de quem chama (o que vale agora no app: sem Setup em uso, desligado).
     /// </summary>
     public static IReadOnlyList<SaidaApp> Saidas(IReadOnlyList<Equipamento> lista, bool link12, bool link34)
     {
@@ -704,9 +955,7 @@ public static class Ligacoes
                 if (saidasA.Count == 1 && saidasA.SetEquals(saidasB))
                     continue;
                 var todos = deA.Union(deB).Order().ToArray();
-                Avisar(todos, todos is [0, 1] or [2, 3]
-                    ? MsgBridgeSemLink(todos[0], todos[1])
-                    : MsgBridgeCanaisDiferentes(m.Nome, b, todos));
+                Avisar(todos, MsgBridgeCanaisDiferentes(m.Nome, b, todos));
             }
         }
 

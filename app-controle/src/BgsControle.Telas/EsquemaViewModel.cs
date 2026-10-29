@@ -206,7 +206,7 @@ public sealed class EsquemaViewModel : TelaBase, IDisposable
         }
         _cena = setup is null
             ? CenaSetup.Montar([])
-            : CenaSetup.Montar(setup.Equipamentos, e => e.Funcao ?? GerenteSetups.FuncaoSugerida(setup, e));
+            : CenaSetup.Montar(setup.Equipamentos, e => e.Funcao ?? _equipamentos.FuncaoSugeridaNo(setup, e));
         if (_selecionada is not null && _cena.Peca(_selecionada) is null)
             _selecionada = null;
         _projecao = null;

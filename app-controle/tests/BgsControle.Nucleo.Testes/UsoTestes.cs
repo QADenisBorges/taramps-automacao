@@ -244,8 +244,8 @@ public sealed class UsoTestes : IDisposable
         var link = new LinkCanais(_sessao, _estado, _escritor, new TextoMemoria(), _log);
         await link.Carregada;
         await Conectar();
-        Assert.True((await Rodar(link.VincularAsync(ParCanais.Saidas12))).Ok);
-        await Andar(TimeSpan.FromSeconds(11)); // a cópia do vincular foi da tela
+        Assert.Null(await link.DefinirEstadoAsync(true, false)); // o link sai das ligações: não copia nada
+        await Andar(TimeSpan.FromSeconds(11));
 
         // A fila do ganho 1 começa com um pedido do app; o da IA sai depois, com a cópia na saída 2.
         var primeiro = Escrever(0, 1.0m, OrigemComando.App);

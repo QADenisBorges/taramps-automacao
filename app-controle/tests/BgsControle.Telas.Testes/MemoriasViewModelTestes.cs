@@ -3,6 +3,7 @@ using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
@@ -46,7 +47,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
     // ----------------------------------------------------------------- memórias do celular
 
     [Fact]
-    public async Task Os_cartoes_sao_as_memorias_do_Setup_em_uso_com_EM_USO_e_HERDADO()
+    public async Task Os_cartoes_sao_as_memorias_do_Setup_em_uso_com_EM_USO_sem_selo_de_herdado()
     {
         await _b.Conectar();
 
@@ -55,7 +56,6 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.Equal("FILME", filme.Nome);
         Assert.True(filme.EmUso);
         Assert.Equal("EM USO", filme.SeloEmUso);
-        Assert.Equal("HERDADO", filme.Selo);
         Assert.Equal("Esta memória está em uso.", filme.MotivoTravaApagar);
         Assert.Null(_vm.TextoVazio);
         Assert.Null(_vm.MotivoTravaAplicar);
@@ -76,7 +76,6 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.Equal(["FILME", "MUSICA ORIG"], _vm.Cartoes.Select(c => c.Nome));
         Assert.True(_vm.Cartao("MUSICA ORIG")!.EmUso);
         Assert.False(_vm.Cartao("FILME")!.EmUso);
-        Assert.Null(_vm.Cartao("MUSICA ORIG")!.Selo);
         Assert.Equal(antes, _b.Simulador.Escritas.Count);
         Assert.Contains("MUSICA ORIG", _b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
     }
@@ -325,7 +324,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.True(_vm.Cartao("FILME")!.EmUso);
         Assert.Equal("+10.0", _b.Simulador.Valor("081", 0));
         Assert.Equal("+6.0", _b.Simulador.Valor("081", 2));
-        Assert.Equal(ConhecimentoHerdado.IdMemoriaFilme, Setups.EmUso.IdMemoria);
+        Assert.Equal(CenarioFilme.IdMemoria, Setups.EmUso.IdMemoria);
     }
 
     // ----------------------------------------------------------------- 8d: o preset lembrado e a playlist
@@ -340,7 +339,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
 
         Assert.Equal("Preset: Cinema", _vm.Cartao("NOITE")!.TextoPreset);
-        var rock = (await _b.Presets.CriarAsync("Rock", ConhecimentoHerdado.BandasCinema.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
+        var rock = (await _b.Presets.CriarAsync("Rock", CenarioFilme.Bandas.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
         await _b.Rodar(_b.Presets.AplicarAsync(rock.Id)); // a NOITE, em uso, passa a lembrar o Rock
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("Preset: Rock", _vm.Cartao("NOITE")!.TextoPreset);

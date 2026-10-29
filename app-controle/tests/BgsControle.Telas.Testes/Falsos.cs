@@ -56,6 +56,9 @@ internal sealed class ArquivosFalso : IArquivosApp
 
     public string? Conteudo(string nome) => _arquivos.GetValueOrDefault(nome);
 
+    /// <summary>Põe um arquivo como se já estivesse no celular (não conta como gravação).</summary>
+    public void Semear(string nome, string conteudo) => _arquivos[nome] = conteudo;
+
     public Task GravarTextoAsync(string nome, string conteudo)
     {
         if (Falhar)

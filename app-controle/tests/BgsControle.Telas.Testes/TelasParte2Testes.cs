@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
@@ -38,7 +39,7 @@ internal sealed class Telas11 : IDisposable
         Pedidos = new PedidosConfirmacao(b.Relogio, b.Log);
         Confirmacao = new ConfirmacaoIaViewModel(Pedidos, b.Tela, b.Relogio);
         IaAtiva = b.CriarIaAtivaViewModel();
-        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, Link, b.Fabrica, Nav, b.Tela, b.Relogio,
+        Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, b.Fabrica, Nav, b.Tela, b.Relogio,
             PlayerTela, IaAtiva, Confirmacao, Gerador);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio, Aparelho);
     }
@@ -121,7 +122,7 @@ public sealed class TelasParte2Testes : IDisposable
     private async Task Conectar()
     {
         await _b.Conectar();
-        await Apoio.Esperar(() => _t.Player.Memoria == ConhecimentoHerdado.IdMemoriaFilme);
+        await Apoio.Esperar(() => _t.Player.Memoria == CenarioFilme.IdMemoria);
         await _b.Tela.EsvaziarAsync();
     }
 
@@ -323,7 +324,7 @@ public sealed class TelasParte2Testes : IDisposable
     public async Task Chip_de_preset_abre_a_folha_e_escolher_Rock_aplica_so_as_15_bandas_na_FILME()
     {
         await Conectar();
-        var bandas = ConhecimentoHerdado.BandasCinema.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray();
+        var bandas = CenarioFilme.Bandas.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray();
         Assert.True((await _b.Presets.CriarAsync("Rock", bandas)).Ok);
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("Cinema", _t.Inicio.NomePreset);

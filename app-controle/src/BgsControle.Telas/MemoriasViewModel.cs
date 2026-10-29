@@ -7,28 +7,21 @@ using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>O cartão de uma memória do celular na tela Memórias: nome, o preset lembrado, EM USO, selo HERDADO, Aplicar, Renomear e Apagar.</summary>
+/// <summary>O cartão de uma memória do celular na tela Memórias: nome, o preset lembrado, EM USO, Aplicar, Renomear e Apagar.</summary>
 public sealed class CartaoMemoriaCelularViewModel : TelaBase
 {
     private string _nome;
     private string? _textoPreset;
     private bool _emUso;
-    private bool _notaVisivel;
 
     internal CartaoMemoriaCelularViewModel(MemoriaCelular memoria, MemoriasViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Id = memoria.Id;
         _nome = memoria.Nome;
-        Herdado = memoria.Herdado;
-        Nota = memoria.Nota;
         Aplicar = new Comando(() => tela.AplicarAsync(Id));
         Renomear = new Comando(() => tela.AbrirRenomear(Id));
         Apagar = new Comando(() => tela.AbrirApagar(Id));
-        AlternarNota = new Comando(() =>
-        {
-            NotaVisivel = !NotaVisivel;
-        });
     }
 
     public string Id { get; }
@@ -45,7 +38,7 @@ public sealed class CartaoMemoriaCelularViewModel : TelaBase
         }
     }
 
-    /// <summary>"Preset: Cinema" (o preset que ela lembra e aplica junto), ou null sem preset lembrado.</summary>
+    /// <summary>"Preset: Rock" (o preset que ela lembra e aplica junto), ou null sem preset lembrado.</summary>
     public string? TextoPreset
     {
         get => _textoPreset;
@@ -78,28 +71,6 @@ public sealed class CartaoMemoriaCelularViewModel : TelaBase
 
     /// <summary>"Esta memória está em uso." na que toca, ou null.</summary>
     public string? MotivoTravaApagar => EmUso ? GerenteSetups.MsgMemoriaEmUso : null;
-
-    public bool Herdado { get; }
-
-    /// <summary>O selo HERDADO (a FILME de 18/10), ou null.</summary>
-    public string? Selo => Herdado ? HerdadoViewModel.TextoSelo : null;
-
-    public string? Nota { get; }
-
-    /// <summary>A nota herdada está à mostra (tocar no selo).</summary>
-    public bool NotaVisivel
-    {
-        get => _notaVisivel;
-        private set
-        {
-            if (_notaVisivel == value)
-                return;
-            _notaVisivel = value;
-            Avisar();
-        }
-    }
-
-    public Comando AlternarNota { get; }
 
     /// <summary>Aplica, sem confirmação (cópia antes, escreve, relê).</summary>
     public Comando Aplicar { get; }

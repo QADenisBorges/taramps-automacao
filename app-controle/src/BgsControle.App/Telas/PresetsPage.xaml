@@ -57,11 +57,6 @@
                                                 <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource sobre-escolhido}"
                                                        Text="EM USO" VerticalTextAlignment="Center" />
                                             </Border>
-                                            <Border IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
-                                                    StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0">
-                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
-                                                       VerticalTextAlignment="Center" />
-                                            </Border>
                                         </HorizontalStackLayout>
                                         <Label Style="{StaticResource tipo-memoria-lista}" FontSize="28" Text="{Binding Nome}" />
                                         <Label Style="{StaticResource tipo-apoio}" Text="{Binding Nota}"

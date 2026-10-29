@@ -44,35 +44,36 @@ public sealed class EquipamentosTestes
         var casa = ConhecimentoHerdado.SetupCasa;
 
         Assert.Null(Ligacoes.Validar(casa.Equipamentos));
-        Assert.True(casa.Link34);
+        Assert.Equal((false, true), Ligacoes.Links(casa.Equipamentos)); // o link sai do bridge 3+4
         Assert.Equal<(string, string, int, string?)>(
             [("JBL L", "CH1", 1, null), ("JBL R", "CH2", 2, null), ("Sub", "CH3 + CH4", 3, null)],
-            Resumo(Ligacoes.Saidas(casa.Equipamentos, casa.Link12, casa.Link34)));
+            Resumo(Ligacoes.Saidas(casa.Equipamentos)));
         Assert.Equal([2, 3], Ligacoes.Saidas(casa.Equipamentos, false, true)[2].Canais);
     }
 
     [Fact]
-    public void Os_equipamentos_herdados_tem_o_modulo_generico_as_JBL_e_o_Sub_no_bridge()
+    public void Os_equipamentos_herdados_tem_o_SD800_4_EVO_as_JBL_e_o_Protech_no_bridge()
     {
         var e = ConhecimentoHerdado.EquipamentosCasa;
 
-        Assert.Equal(["Módulo genérico", "JBL L", "JBL R", "Sub"], e.Select(x => x.Nome));
+        Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], e.Select(x => x.Nome));
         var modulo = e[0];
         Assert.Equal(GrupoEquipamento.Amplificador, modulo.Grupo);
-        Assert.Equal("genérico", modulo.ModeloExibido);
-        Assert.Equal(19.6m, modulo.Dados.Ganho);
+        Assert.Equal("SD800.4 EVO", modulo.ModeloExibido);
+        Assert.Equal(new DadoTecnico(19.5m, OrigemDado.Medido, "Medido em 17 e 18/10/2026"), modulo.Dados.Ganho);
         Assert.Equal<FonteSinal?>([Ch(1), Ch(2), Ch(3), Ch(4)], modulo.Entradas.Select(x => x.Fonte));
         Assert.Equal([new Bridge(3, 4)], modulo.Bridges);
         Assert.All(e.Skip(1).Take(2), j =>
         {
             Assert.Equal("JBL 4TRMS80", j.Modelo);
-            Assert.Equal(3.6m, j.Dados.Impedancia);
+            Assert.Equal(4m, j.Dados.Impedancia!.Valor);
+            Assert.Equal(3.6m, j.Dados.Re!.Valor);
             Assert.Contains("100 Hz a 24 dB/oit", j.Nota);
         });
         Assert.Equal(LigacaoAltoFalante.NoCanal(ConhecimentoHerdado.IdModuloCasa, 1), e[1].Ligado);
         Assert.Equal(LigacaoAltoFalante.NoCanal(ConhecimentoHerdado.IdModuloCasa, 2), e[2].Ligado);
         Assert.Equal(LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4)), e[3].Ligado);
-        Assert.Equal("genérico", e[3].ModeloExibido);
+        Assert.Equal("Protech Light 8\"", e[3].ModeloExibido);
         Assert.Equal([2, 3], Ligacoes.CanaisQueAlimentam(e, ConhecimentoHerdado.IdSubCasa));
     }
 
@@ -168,7 +169,7 @@ public sealed class EquipamentosTestes
     }
 
     [Fact]
-    public void Bridge_sem_link_os_dois_canais_do_par_no_mesmo_bridge_levam_o_aviso()
+    public void Bridge_com_o_link_forcado_desligado_avisa_que_os_dois_canais_precisam_ser_iguais_sem_pedir_o_link()
     {
         var casa = ConhecimentoHerdado.EquipamentosCasa;
 
@@ -177,7 +178,8 @@ public sealed class EquipamentosTestes
         Assert.Equal(["JBL L", "JBL R", "Sub", "Sub"], saidas.Select(s => s.Nome));
         Assert.Null(saidas[0].Aviso);
         Assert.Null(saidas[1].Aviso);
-        Assert.Equal("CH3 e CH4 alimentam o mesmo bridge: ligue o Link 3–4 para ficarem iguais.", saidas[2].Aviso);
+        // O usuário não mexe no link (decisão D1, 29/10/2026): o aviso não pede para ligá-lo.
+        Assert.Equal("O bridge 3+4 do Módulo SD800.4 EVO recebe o CH3 e o CH4: os dois canais precisam ser iguais.", saidas[2].Aviso);
         Assert.Equal(saidas[2].Aviso, saidas[3].Aviso);
         Assert.Equal(3, saidas[2].Cor);
         Assert.Equal(4, saidas[3].Cor);
@@ -224,7 +226,7 @@ public sealed class EquipamentosTestes
         Assert.Equal(Ligacoes.MsgIdRepetido, Ligacoes.Validar([modulo, modulo]));
         Assert.Equal(Ligacoes.MsgSemEntrada, Ligacoes.Validar([new Equipamento("cx", GrupoEquipamento.AmplificaETocam, "soundbar", "Barra")]));
         Assert.Equal(Ligacoes.MsgNumeroInvalido,
-            Ligacoes.Validar([AltoFalante("w", "W", "m", 1) with { Ligado = null, Dados = new DadosTecnicos(Diametro: 0m) }]));
+            Ligacoes.Validar([AltoFalante("w", "W", "m", 1) with { Ligado = null, Dados = new DadosTecnicos { Diametro = new DadoTecnico(0m, OrigemDado.Digitado) } }]));
     }
 
     [Fact]
@@ -352,7 +354,7 @@ public sealed class EquipamentosTestes
 
         var saneada = Ligacoes.Sanear(lista);
 
-        Assert.Equal(["Módulo genérico", "JBL L", "JBL R", "Sub"], saneada.Select(e => e.Nome));
+        Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], saneada.Select(e => e.Nome));
         Assert.Equal([new Bridge(3, 4)], saneada[0].Bridges);
         Assert.NotNull(saneada[3].Ligado);
         Assert.Null(Ligacoes.Validar(saneada));
@@ -384,8 +386,9 @@ public sealed class EquipamentosTestes
             Ligacoes.Saidas(umCanal, false, false).Select(s => s.Aviso));
 
         var comLink = new[] { ComFontes(Modulo("m", "Módulo", 2, new Bridge(1, 2)), Ch(1), Ch(2)) };
-        Assert.All(Ligacoes.Saidas(comLink, true, false), s => Assert.Null(s.Aviso));
-        Assert.Equal("CH1 e CH2 alimentam o mesmo bridge: ligue o Link 1–2 para ficarem iguais.", Ligacoes.Saidas(comLink, false, false)[0].Aviso);
+        Assert.Equal((true, false), Ligacoes.Links(comLink));
+        Assert.All(Ligacoes.Saidas(comLink), s => Assert.Null(s.Aviso));
+        Assert.Equal("CH1 + CH2", Ligacoes.Saidas(comLink)[0].Rotulo);
     }
 
     [Fact]
@@ -401,8 +404,8 @@ public sealed class EquipamentosTestes
         var viaLonga = caixa with { Dados = new DadosTecnicos { Vias = [new Via(longo, null)] } };
         Assert.Equal(Ligacoes.MsgViaInvalida, Ligacoes.ValidarUm(viaLonga));
         Assert.Equal(Ligacoes.MsgViaInvalida, Ligacoes.Limpar(viaLonga).Motivo);
-        Assert.Equal(Ligacoes.MsgFaixaInvertida, Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos(FaixaMinima: 200m, FaixaMaxima: 100m) }));
-        Assert.Equal(Ligacoes.MsgFaixaInvertida, Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos(FaixaMinima: 100m, FaixaMaxima: 100m) }));
-        Assert.Null(Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos(FaixaMinima: 45m, FaixaMaxima: 20000m) }));
+        Assert.Equal(Ligacoes.MsgFaixaInvertida, Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos { FaixaMinima = DadoTecnico.Digitado(200m), FaixaMaxima = DadoTecnico.Digitado(100m) } }));
+        Assert.Equal(Ligacoes.MsgFaixaInvertida, Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos { FaixaMinima = DadoTecnico.Digitado(100m), FaixaMaxima = DadoTecnico.Digitado(100m) } }));
+        Assert.Null(Ligacoes.ValidarUm(w with { Dados = new DadosTecnicos { FaixaMinima = DadoTecnico.Digitado(45m), FaixaMaxima = DadoTecnico.Digitado(20000m) } }));
     }
 }

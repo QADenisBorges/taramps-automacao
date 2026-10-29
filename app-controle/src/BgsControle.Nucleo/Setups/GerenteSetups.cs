@@ -30,43 +30,47 @@ public sealed record DadosSetups(
 }
 
 /// <summary>
-/// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5). Guarda tudo em
-/// <c>setups.json</c> (formato 2; lê também o 1) e a marca do mudo da dúvida em <c>setup-mudo.json</c>;
-/// sem arquivo (ou com ele estragado), começa com o herdado: o Setup "Casa 2.1" (com os equipamentos e
-/// o Link 3–4 ligado) e a memória FILME.
+/// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5), no modelo de 29/10/2026:
+/// o Setup é só o físico (os equipamentos e as fichas) e a memória guarda toda a regulagem, com o valor
+/// final. Guarda tudo em <c>setups.json</c> (formato 3; os formatos 1 e 2 são migrados) e a marca do
+/// mudo da dúvida em <c>setup-mudo.json</c>; sem arquivo (ou com ele estragado), começa com o herdado:
+/// o Setup "Casa 2.1" com os equipamentos e as fichas, sem memórias.
 /// <list type="bullet">
 /// <item><b>Conferência:</b> na primeira leitura completa de cada conexão nova (depois da regra 2 do
-/// gerador), compara a calibração lida com a do último Setup usado. Bate: "Setup confere", ou "som
-/// diferente" se só o caráter difere da memória ativa (sem mutar). Não bate: guarda a marca, muta os
-/// 4 canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
-/// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.
-/// Quando o Setup confere, o link dele passa a valer no app.</item>
-/// <item><b>Links sem Setup</b> (decisão do Denis, 24/10/2026): sem Setup em uso (na dúvida, ao trocar de
-/// Setup, em Seguir sem Setup, ou sem Setup de referência), os links 1–2 e 3–4 ficam desligados: cada
-/// canal é uma saída, e nada é espelhado sem querer numa instalação desconhecida. Desistir da troca
-/// devolve os links do Setup em uso; um Setup criado do aparelho nasce com os links desligados.</item>
-/// <item><b>Aplicar</b> uma memória, <b>escolher</b> um Setup e o <b>Manter a calibração</b> do Salvar
-/// passam pela <see cref="CopiaAntes"/> (regra 3): escrevem só o que difere, relêem e conferem.</item>
+/// gerador), compara a regulagem lida com a da memória ativa do último Setup usado. Bate: "Setup
+/// confere". Só o ganho, o limitador, o EQ ou o MASTER diferem: "som diferente", sem mutar. A rota, o
+/// atraso, a fase ou um corte diferem, ou o Setup não tem memória ativa: guarda a marca, muta os 4
+/// canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
+/// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.</item>
+/// <item><b>Link automático</b> (decisão D1 do Denis, 29/10/2026): o link sai das ligações do Setup em
+/// uso (<see cref="Ligacoes.Links"/>) e vai para o <see cref="LinkCanais"/> sempre que o Setup passa a
+/// valer e quando os equipamentos dele mudam. Sem Setup em uso (na dúvida, ao trocar de Setup, em Seguir
+/// sem Setup, ou sem Setup de referência), os links ficam desligados (decisão de 24/10/2026).</item>
+/// <item><b>Aplicar</b> uma memória e <b>escolher</b> um Setup passam pela <see cref="CopiaAntes"/>
+/// (regra 3): escrevem só o que difere (a regulagem e as bandas do preset lembrado), relêem e conferem.</item>
 /// <item>Criar, renomear e apagar Setups e memórias não mandam nada ao aparelho; nem adicionar, editar
-/// ou tirar equipamentos (história 8e), que não têm chave.</item>
+/// ou tirar equipamentos (história 8e), que não têm chave. Um equipamento confirmado com modelo vai
+/// para a <see cref="BaseModelos"/>.</item>
 /// <item>As <b>saídas do app</b> (<see cref="SaidasEmUso"/>) vêm dos equipamentos do Setup em uso e do
-/// link (<see cref="Ligacoes.Saidas"/>): um canal, ou um par com link, que é uma saída só.</item>
-/// <item>O <b>Salvar</b> leva cada mudança para a camada dona dela (<see cref="Camadas"/>); as 15
-/// bandas vão para um preset (<see cref="GerentePresets"/>).</item>
+/// link (<see cref="Ligacoes.Saidas(IReadOnlyList{Equipamento}, bool, bool)"/>): um canal, ou um par com link, que é uma saída só.</item>
+/// <item>O <b>Salvar</b> leva a regulagem para a memória em uso (ou uma nova) e as 15 bandas para um
+/// preset (<see cref="GerentePresets"/>). Não manda nada pelo BLE.</item>
 /// <item>Cada memória do celular <b>lembra um preset</b> (as 15 bandas), que volta junto quando ela é
 /// aplicada; aplicar um preset com uma memória do celular em uso faz ela lembrar esse preset.</item>
 /// <item>As <b>playlists</b> (<see cref="GerentePlaylists"/>) são por memória: apagar a memória (ou o
 /// Setup dela) apaga a playlist; criar ou renomear memórias, e carregar, adota as pendentes pelo nome.</item>
 /// </list>
-/// Uma operação por vez. O ganho e o limiter finais de cada canal são a memória mais o equilíbrio
-/// do Setup naquele canal (<see cref="Camadas.Somar"/>).
+/// Uma operação por vez.
 /// </summary>
 public sealed class GerenteSetups
 {
-    /// <summary>O formato do <c>setups.json</c>: o 2 tem o equilíbrio por canal e os equipamentos (história 8e).</summary>
-    public const int Formato = 2;
+    /// <summary>O formato do <c>setups.json</c>: o 3 tem o Setup só físico, as fichas com origem e a memória com a regulagem (história 8f).</summary>
+    public const int Formato = 3;
 
-    /// <summary>O formato da 8c e da 8d: o equilíbrio L/R e sem equipamentos. Ainda se lê.</summary>
+    /// <summary>O formato da 8e (o equilíbrio por canal, a calibração no Setup). É migrado: ficam os Setups e os equipamentos.</summary>
+    public const int Formato2 = 2;
+
+    /// <summary>O formato da 8c e da 8d. É migrado como o 2.</summary>
     public const int FormatoAntigo = 1;
 
     /// <summary>O formato do <c>setup-mudo.json</c> (não mudou na 8e).</summary>
@@ -76,6 +80,8 @@ public sealed class GerenteSetups
     public const string TipoAplicarMemoria = "aplicar-memoria-celular";
 
     public const string TipoAplicarSetup = "aplicar-setup";
+
+    /// <summary>O tipo do "Manter a calibração" de antes da 8f: uma marca antiga é retomada como aplicar a memória.</summary>
     public const string TipoManterCalibracao = "manter-calibracao";
 
     public const int QuantosBotoes = 3;
@@ -97,12 +103,9 @@ public sealed class GerenteSetups
     public const string MsgSoNaEscolha = "Isso só se faz na tela de escolha do Setup.";
     public const string MsgOutroSetup = "A memória é de outro Setup.";
     public const string MsgPedeFolha = "Este som não é de uma memória do celular. Toque em Salvar para guardá-lo.";
-    public const string MsgEscolha = "Escolha manter ou atualizar a calibração.";
     public const string MsgEscolhaPreset = "Escolha atualizar o preset ou criar um preset novo.";
     public const string MsgPresetSumiu = "O preset lembrado não existe mais; as 15 bandas ficaram como estavam.";
     public const string MsgSemConexao = "Sem conexão com o aparelho.";
-    public const string MsgEquilibrioCanal = "O canal vai de CH1 a CH4.";
-    public const string MsgEquilibrioFaixa = "Fora da faixa: −12,0 a +12,0 dB";
     public const string MsgCaiu = "A conexão caiu no meio. Ao reconectar, o app mostra o que ficou.";
     public const string MsgSemMudo = "O som não estava mutado.";
 
@@ -130,15 +133,14 @@ public sealed class GerenteSetups
 
     public static string MsgSetupEscolhido(string nome) => $"Setup {nome} em uso.";
 
-    public static string MsgSetupCriado(string nome) => $"Setup {nome} criado, ainda sem memórias.";
+    /// <summary>"Setup Carro criado, com a memória ESTRADA." (o som do aparelho vira a primeira memória dele).</summary>
+    public static string MsgSetupCriado(string nome, string memoria) => $"Setup {nome} criado, com a memória {memoria}.";
 
     public const string MsgSeguiuSemSetup = "Seguindo sem Setup. As memórias do celular ficam travadas até escolher um Setup.";
 
     public static string MsgContinuaMutado(string motivo) => $"O som continua mutado: {motivo}";
 
     public static string MsgNaoMutou(string motivo) => $"O som não foi mutado: {motivo}";
-
-    public static string MsgNoLimite(string setup) => $"No limite da faixa com o equilíbrio do {setup}.";
 
     public static string MsgIncompleta(int n) => n == 1
         ? "A leitura está incompleta (1 ajuste sem valor)."
@@ -153,6 +155,7 @@ public sealed class GerenteSetups
     public static string MsgSetupApagado(string nome) => $"Setup {nome} apagado.";
 
     public const string MsgEquipamentoNaoExiste = "O equipamento não existe mais.";
+    public const string MsgModeloNaoGuardado = "Não consegui guardar o modelo na base.";
 
     public static string MsgEquipamentoAdicionado(string nome, string setup) => $"{nome} adicionado ao {setup}.";
 
@@ -196,10 +199,9 @@ public sealed class GerenteSetups
     private SomEmUso _emUso = SomEmUso.Nenhum;
     private string? _referencia;
     private string? _ultimoPreset;
-    private IReadOnlyList<DiferencaCalibracao> _diferencas = [];
+    private IReadOnlyList<DiferencaConferencia> _diferencas = [];
     private string? _motivoMudo;
     private string? _aviso;
-    private Equilibrio? _pendente;
     private Antes? _antes;
     private bool _aberta;
     private bool _conferiu;
@@ -219,9 +221,11 @@ public sealed class GerenteSetups
         IRepositorioTexto repositorio,
         IRepositorioTexto repositorioMudo,
         LogBle log,
-        TimeProvider? relogio = null)
+        TimeProvider? relogio = null,
+        BaseModelos? modelos = null)
     {
         _sessao = sessao;
+        Modelos = modelos;
         _estado = estado;
         _escritor = escritor;
         _leitura = leitura;
@@ -251,9 +255,10 @@ public sealed class GerenteSetups
         _copia.Registrar(TipoAplicarMemoria,
             _ => Task.FromResult(Retomada.PelaMetade),
             async op => ParaCopia(await AplicarMemoriaComTravaAsync(op.Alvo, TipoAplicarMemoria, refazendo: true)));
+        // Uma marca do "Manter a calibração" de antes da 8f: o Terminar reaplica a memória (se ainda existe).
         _copia.Registrar(TipoManterCalibracao,
             _ => Task.FromResult(Retomada.PelaMetade),
-            async op => ParaCopia(await AplicarMemoriaComTravaAsync(op.Alvo, TipoManterCalibracao, refazendo: true)));
+            async op => ParaCopia(await AplicarMemoriaComTravaAsync(op.Alvo, TipoAplicarMemoria, refazendo: true)));
         _copia.Registrar(TipoAplicarSetup,
             _ => Task.FromResult(Retomada.PelaMetade),
             async op => ParaCopia(await EscolherInternoAsync(op.Alvo, refazendo: true)));
@@ -263,6 +268,9 @@ public sealed class GerenteSetups
 
     /// <summary>Completa quando <c>setups.json</c> e <c>setup-mudo.json</c> foram lidos.</summary>
     public Task Carregada { get; }
+
+    /// <summary>A base de modelos, onde vai a ficha de cada equipamento confirmado com modelo (null nos testes que não a usam).</summary>
+    public BaseModelos? Modelos { get; }
 
     /// <summary>Os Setups, as memórias, a conferência ou o som em uso mudaram. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
@@ -387,8 +395,17 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>As diferenças de calibração da dúvida (ou da troca), para "O que não bate".</summary>
-    public IReadOnlyList<DiferencaCalibracao> Diferencas
+    /// <summary>
+    /// A memória ativa do Setup que era a referência da dúvida (ou da troca): a das diferenças de "O que
+    /// não bate" ("80 cm na FILME"), ou null (sem referência, ou o Setup não tem memória).
+    /// </summary>
+    public MemoriaCelular? MemoriaDaReferencia => Ativa(Referencia?.Id);
+
+    /// <summary>
+    /// As diferenças da dúvida (ou da troca) entre a memória ativa da referência e o aparelho, só nos
+    /// códigos que mutam (rota, atraso, fase, cortes), para "O que não bate". Vazio sem memória ativa.
+    /// </summary>
+    public IReadOnlyList<DiferencaConferencia> Diferencas
     {
         get
         {
@@ -472,38 +489,21 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>O equilíbrio mexido e ainda não salvo (do Setup em uso), ou null.</summary>
-    public Equilibrio? EquilibrioPendente
-    {
-        get
-        {
-            lock (_trava)
-                return _pendente;
-        }
-    }
-
-    /// <summary>O equilíbrio que vale agora no Setup em uso: o pendente, ou o guardado; zero sem Setup.</summary>
-    public Equilibrio EquilibrioEfetivo
-    {
-        get
-        {
-            lock (_trava)
-                return _pendente ?? (_setupEmUso is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id)?.Equilibrio : null) ?? Equilibrio.Zero;
-        }
-    }
-
     // ------------------------------------------------------------------ saídas do app (história 8e)
 
     /// <summary>
-    /// As saídas do app no Setup em uso, com o link que vale agora no app: cada par com link é uma
-    /// saída só. Sem Setup em uso, CH1 a CH4 (também com os pares do link).
+    /// As saídas do app no Setup em uso, com o link que vale agora no app (o tirado das ligações do
+    /// Setup em uso): cada par com link é uma saída só. Sem Setup em uso, CH1 a CH4.
     /// </summary>
     public IReadOnlyList<SaidaApp> SaidasEmUso =>
         Ligacoes.Saidas(SetupEmUso?.Equipamentos ?? [], _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34));
 
-    /// <summary>As saídas de um Setup guardado, com o link dele (vazio se o Setup não existe).</summary>
+    /// <summary>As saídas de um Setup guardado, com o link tirado das ligações dele (vazio se o Setup não existe).</summary>
     public IReadOnlyList<SaidaApp> Saidas(string? idSetup) =>
-        Setup(idSetup) is { } setup ? Ligacoes.Saidas(setup.Equipamentos, setup.Link12, setup.Link34) : [];
+        Setup(idSetup) is { } setup ? Ligacoes.Saidas(setup.Equipamentos) : [];
+
+    /// <summary>O link do Setup, tirado das ligações dele (<see cref="Ligacoes.Links"/>); desligado sem Setup.</summary>
+    public static (bool Link12, bool Link34) LinksDe(Setup? setup) => setup is null ? (false, false) : Ligacoes.Links(setup.Equipamentos);
 
     /// <summary>A saída do app em uso que tem o canal (0 a 3), ou null.</summary>
     public SaidaApp? SaidaDe(int canal) => SaidasEmUso.FirstOrDefault(s => s.Canais.Contains(canal));
@@ -514,10 +514,11 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// A função acústica sugerida para o equipamento (que pode ainda não estar guardado) no Setup:
-    /// pela categoria, senão pelo corte guardado na calibração do Setup (não o do aparelho) no primeiro
-    /// canal que o alimenta. Só para quem toca (grupo 1 e alto-falante passivo); os outros, null.
+    /// pela categoria, senão pelo corte da memória ativa do Setup (não o do aparelho) no primeiro canal
+    /// que o alimenta; sem memória, só pela categoria. Só para quem toca (grupo 1 e alto-falante
+    /// passivo); os outros, null.
     /// </summary>
-    public static FuncaoAcustica? FuncaoSugerida(Setup? setup, Equipamento equipamento)
+    public static FuncaoAcustica? FuncaoSugerida(Setup? setup, MemoriaCelular? ativa, Equipamento equipamento)
     {
         if (!equipamento.Toca)
             return null;
@@ -526,21 +527,25 @@ public sealed class GerenteSetups
             ? equipamentos.Select(e => e.Id == equipamento.Id ? equipamento : e).ToArray()
             : [.. equipamentos, equipamento];
         var canais = Ligacoes.CanaisQueAlimentam(lista, equipamento.Id);
-        return Ligacoes.SugerirFuncao(equipamento.Categoria, setup is not null && canais.Count > 0 ? Corte(setup, canais[0]) : null);
+        return Ligacoes.SugerirFuncao(equipamento.Categoria, ativa is not null && canais.Count > 0 ? Corte(ativa, canais[0]) : null);
     }
+
+    /// <summary>A função sugerida no Setup guardado, pelo corte da memória ativa dele.</summary>
+    public FuncaoAcustica? FuncaoSugerida(string? idSetup, Equipamento equipamento) =>
+        FuncaoSugerida(Setup(idSetup), Ativa(idSetup), equipamento);
 
     /// <summary>A função que vale: a escolhida pelo usuário, ou a sugerida. Só para quem toca; os outros, null.</summary>
     public FuncaoAcustica? Funcao(string? idSetup, Equipamento equipamento) =>
-        !equipamento.Toca ? null : equipamento.Funcao ?? FuncaoSugerida(Setup(idSetup), equipamento);
+        !equipamento.Toca ? null : equipamento.Funcao ?? FuncaoSugerida(idSetup, equipamento);
 
     /// <summary>
-    /// O corte guardado na calibração do Setup para o canal (0 a 3): a frequência de cada filtro, ou
-    /// null com o filtro em OFF (ou sem o valor guardado).
+    /// O corte guardado na memória para o canal (0 a 3): a frequência de cada filtro, ou null com o
+    /// filtro em OFF (ou sem o valor guardado).
     /// </summary>
-    public static CorteCanal Corte(Setup setup, int canal)
+    public static CorteCanal Corte(MemoriaCelular memoria, int canal)
     {
         decimal? Numero(string codigo) =>
-            setup.Calibracao.FirstOrDefault(v => v.Codigo == codigo && v.Indice == canal) is { } v
+            memoria.Regulagem.FirstOrDefault(v => v.Codigo == codigo && v.Indice == canal) is { } v
                 ? Catalogo.ParametroDe(codigo)?.Decodificar(v.NoFio).Valor?.Numero
                 : null;
         decimal? Frequencia(string tipo, string frequencia) => Numero(tipo) is { } t && t != 0 ? Numero(frequencia) : null;
@@ -572,7 +577,6 @@ public sealed class GerenteSetups
                 _diferencas = [];
                 _referencia = null;
                 _ultimoPreset = null;
-                _pendente = null;
                 _antes = null;
                 _motivoMudo = null;
             }
@@ -639,7 +643,7 @@ public sealed class GerenteSetups
                 if (TodosMutados(espelho))
                 {
                     var alvo = dados.Setups.FirstOrDefault(s => s.Id == marca.IdSetup) ?? referencia;
-                    var diferencas = alvo is null ? [] : DiferencasDeCalibracao(alvo, espelho);
+                    var diferencas = alvo is null ? [] : DiferencasDaConferencia(alvo, AtivaEm(dados, alvo.Id), espelho);
                     lock (_trava)
                     {
                         _situacao = EstadoConferencia.Duvida;
@@ -671,37 +675,35 @@ public sealed class GerenteSetups
                 return true;
             }
 
-            var lista = DiferencasDeCalibracao(referencia, espelho);
-            if (lista.Count == 0)
+            // A regulagem lida contra a da memória ativa do Setup (as bandas não entram).
+            var ativa = AtivaEm(dados, referencia.Id);
+            var diferentes = ativa is null ? [] : Camadas.Diferentes(ativa.Regulagem, espelho);
+            if (ativa is not null && !diferentes.Any(v => Camadas.MutaNaConferencia(v.Codigo)))
             {
-                var ativa = AtivaEm(dados, referencia.Id);
-                var situacao = EstadoConferencia.Confere;
-                var emUso = SomEmUso.Nenhum;
-                if (ativa is not null)
-                {
-                    var bate = Camadas.Diferentes(Camadas.Compor(ativa.Carater, referencia.Equilibrio), espelho).Count == 0;
-                    situacao = bate ? EstadoConferencia.Confere : EstadoConferencia.SomDiferente;
-                    emUso = bate ? SomEmUso.DoCelular(ativa.Id) : SomEmUso.SomDoAparelho;
-                }
+                var bate = diferentes.Count == 0;
+                var situacao = bate ? EstadoConferencia.Confere : EstadoConferencia.SomDiferente;
                 lock (_trava)
                 {
                     _situacao = situacao;
                     _setupEmUso = referencia.Id;
-                    _emUso = emUso;
+                    _emUso = bate ? SomEmUso.DoCelular(ativa.Id) : SomEmUso.SomDoAparelho;
                     _diferencas = [];
                     _referencia = null;
                     _motivoMudo = null;
                 }
-                _log.Evento(situacao == EstadoConferencia.Confere
-                    ? $"setup: {referencia.Nome} confere"
-                    : $"setup: {referencia.Nome} confere; o caráter difere da {ativa!.Nome}");
-                // O Setup em uso manda no link (as saídas do app vêm dele). Não manda nada ao aparelho.
-                if (await _link.DefinirEstadoAsync(referencia.Link12, referencia.Link34) is { } motivoLink)
+                _log.Evento(bate
+                    ? $"setup: {referencia.Nome} confere com a {ativa.Nome}"
+                    : $"setup: {referencia.Nome} confere; {diferentes.Count} ajustes de ganho, limitador, EQ ou MASTER diferem da {ativa.Nome}");
+                // O Setup em uso manda no link (tirado das ligações dele). Não manda nada ao aparelho.
+                var (link12, link34) = LinksDe(referencia);
+                if (await _link.DefinirEstadoAsync(link12, link34) is { } motivoLink)
                     _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
                 return true;
             }
 
-            // A calibração não bate: muta (como o app, não como a tela nem a IA) e pede a escolha.
+            // A rota, o atraso, a fase ou um corte não batem (ou não há memória para comparar): muta
+            // (como o app, não como a tela nem a IA) e pede a escolha.
+            var lista = DiferencasDaConferencia(referencia, ativa, espelho);
             string? motivo;
             using (Origem.Como(OrigemComando.App))
                 motivo = await MutarAsync(referencia.Id, espelho);
@@ -715,7 +717,9 @@ public sealed class GerenteSetups
                 _motivoMudo = motivo is null ? null : MsgNaoMutou(motivo);
                 _antes = null;
             }
-            _log.Evento($"setup: em dúvida ({lista.Count} diferenças de calibração com o {referencia.Nome})"
+            _log.Evento((ativa is null
+                            ? $"setup: em dúvida (o {referencia.Nome} não tem memória para comparar)"
+                            : $"setup: em dúvida ({lista.Count} diferenças de rota, atraso, fase ou corte com a {ativa.Nome})")
                         + (motivo is null ? "; mutado" : $"; não mutou ({motivo})"));
             await DesligarLinksNaConferenciaAsync();
             return true;
@@ -813,24 +817,30 @@ public sealed class GerenteSetups
             espelho.TryGetValue(new Endereco(Camadas.CodigoMute, c), out var v) && v.Ligado == true);
 
     /// <summary>
-    /// A calibração lida contra a do Setup: uma linha por valor diferente (ou sem leitura), pelo nome da
-    /// saída do Setup ("Atraso · Sub"); o par com link que difere igual nos dois canais é uma linha só.
+    /// A regulagem lida contra a da memória ativa, só nos códigos que mutam (rota, atraso, fase,
+    /// cortes): uma linha por valor diferente (ou sem leitura), pelo nome da saída do Setup ("Atraso ·
+    /// Sub"); o par com link que difere igual nos dois canais é uma linha só. Sem memória, nenhuma.
     /// </summary>
-    private static IReadOnlyList<DiferencaCalibracao> DiferencasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho) =>
-        RotulosSaida.Juntar(
-                Camadas.Diferentes(setup.Calibracao, espelho)
-                    .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
-                        Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
-                Ligacoes.Saidas(setup.Equipamentos, setup.Link12, setup.Link34))
-            .Select(l => new DiferencaCalibracao(l.Codigo, l.Indice, l.Rotulo, l.Antes, l.Depois, l.Canal))
-            .ToArray();
+    private static IReadOnlyList<DiferencaConferencia> DiferencasDaConferencia(Setup setup, MemoriaCelular? ativa,
+        IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        ativa is null
+            ? []
+            : RotulosSaida.Juntar(
+                    Camadas.Diferentes(ativa.Regulagem, espelho)
+                        .Where(v => Camadas.MutaNaConferencia(v.Codigo))
+                        .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
+                            Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
+                    Ligacoes.Saidas(setup.Equipamentos))
+                .Select(l => new DiferencaConferencia(l.Codigo, l.Indice, l.Rotulo, l.Antes, l.Depois, l.Canal))
+                .ToArray();
 
     // ------------------------------------------------------------------ escolher, criar, seguir, trocar
 
     /// <summary>
-    /// Escolher o Setup (na dúvida ou na troca): cópia antes, escreve a calibração dele e a memória
-    /// ativa (com o equilíbrio), relê, põe o link dele, desmuta para o mute anterior e apaga a marca.
-    /// Passa pela chave "Aplicar memória do celular".
+    /// Escolher o Setup (na dúvida ou na troca): cópia antes, escreve a memória ativa dele (a regulagem
+    /// e as bandas do preset lembrado), relê, põe o link tirado das ligações, desmuta para o mute
+    /// anterior e apaga a marca. Passa pela chave "Aplicar memória do celular". Num Setup sem memórias,
+    /// desmuta sem escrever nada.
     /// </summary>
     public Task<ResultadoSetup> EscolherAsync(string idSetup) => EscolherInternoAsync(idSetup, refazendo: false);
 
@@ -844,20 +854,31 @@ public sealed class GerenteSetups
             var setup = Setup(idSetup);
             if (setup is null)
                 return Terminar(ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgSetupNaoExiste));
+            var ativa = Ativa(setup.Id);
             if (!refazendo)
             {
                 if (!EmEscolha)
                     return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
-                if (!_chaves.Ligada(Chave.AplicarMemoriaCelular))
+                // Sem memória, nada é aplicado: a chave do aplicar não entra.
+                if (ativa is not null && !_chaves.Ligada(Chave.AplicarMemoriaCelular))
                     return Terminar(ResultadoSetup.Falha(Sessao.MotivoChaveDesligada));
             }
 
-            var ativa = Ativa(setup.Id);
-            var (alvo, sumiu) = Alvo(setup, ativa);
-            var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
-            var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
-            if (!aplicado.Ok)
-                return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
+            var aplicado = new Aplicado(true, null, Iniciou: false, Restam: 0);
+            var sumiu = false;
+            if (ativa is not null)
+            {
+                (var alvo, sumiu) = Alvo(ativa);
+                var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
+                aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
+                if (!aplicado.Ok)
+                    return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
+            }
+            else if (refazendo)
+            {
+                // O Terminar de uma escolha de um Setup que perdeu as memórias: só a marca sai.
+                aplicado = aplicado with { Iniciou = true };
+            }
 
             var (falhou, link) = await FecharEscolhaAsync(setup, ativa, aplicado.Iniciou);
             if (falhou is not null)
@@ -879,13 +900,14 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Depois de a calibração (e a memória ativa) estar no aparelho: o link do Setup, o desmutar, a
-    /// marca da cópia concluída, o Setup em uso. Devolve o motivo se não desmutou (fica pela metade)
-    /// e o motivo se o link do Setup não foi guardado.
+    /// Depois de a memória ativa estar no aparelho (ou sem memória): o link tirado das ligações do
+    /// Setup, o desmutar, a marca da cópia concluída, o Setup em uso. Devolve o motivo se não desmutou
+    /// (fica pela metade) e o motivo se o link do Setup não foi guardado.
     /// </summary>
     private async Task<(string? Desmutar, string? Link)> FecharEscolhaAsync(Setup setup, MemoriaCelular? ativa, bool iniciou)
     {
-        var link = await _link.DefinirEstadoAsync(setup.Link12, setup.Link34);
+        var (link12, link34) = LinksDe(setup);
+        var link = await _link.DefinirEstadoAsync(link12, link34);
         var desmutar = await DesmutarAsync();
         if (desmutar is not null)
         {
@@ -911,18 +933,19 @@ public sealed class GerenteSetups
             _referencia = null;
             _motivoMudo = null;
             _antes = null;
-            _pendente = null;
         }
         await GravarUsoAsync(d => d with { UltimoSetup = setup.Id });
         return (null, link);
     }
 
     /// <summary>
-    /// Criar Setup novo (na dúvida ou na troca): nasce com a calibração lida, equilíbrio 0 e os links
-    /// desligados (decisão do Denis, 24/10/2026); fica em uso, sem memórias; desmuta. Não manda nada
-    /// ao aparelho além do desmutar.
+    /// Criar Setup novo (na dúvida ou na troca): o Setup nasce sem equipamentos, e a regulagem lida vira
+    /// a primeira memória dele, com o nome dado (nulo ou vazio = o nome do Setup); ela lembra o preset
+    /// que tem as mesmas 15 bandas lidas, se há. O Setup e a memória ficam em uso, os links desligados
+    /// (sem equipamentos não há bridge), e desmuta. Não manda nada ao aparelho além do desmutar. Um nome
+    /// inválido ou repetido recusa sem guardar nada.
     /// </summary>
-    public async Task<ResultadoSetup> CriarSetupAsync(string? nomeDigitado)
+    public async Task<ResultadoSetup> CriarSetupAsync(string? nomeSetup, string? nomeMemoria = null)
     {
         await Carregada;
         if (!await _operacao.WaitAsync(0))
@@ -931,24 +954,26 @@ public sealed class GerenteSetups
         {
             if (!EmEscolha)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
-            if (NomeValido(nomeDigitado) is not { } nome)
+            if (NomeValido(nomeSetup) is not { } nome)
                 return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
             if (Dados.Setups.Any(s => MesmoNome(s.Nome, nome)))
                 return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoSetup));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
-            var (calibracao, faltam) = Camadas.Tirar(_estado.Copiar(), Camada.Calibracao);
-            if (faltam > 0)
-                return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
+            var espelho = _estado.Copiar();
+            var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow());
+            var igual = _presets.ComAsBandas(espelho);
+            var (memoria, motivo) = NovaMemoria(setup, string.IsNullOrWhiteSpace(nomeMemoria) ? nome : nomeMemoria, espelho, igual?.Id);
+            if (memoria is null)
+                return Terminar(ResultadoSetup.Falha(motivo!));
 
-            var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), calibracao, Equilibrio.Zero,
-                Link12: false, Link34: false);
             var dados = Dados;
             var novos = dados with
             {
                 Setups = [.. dados.Setups, setup],
+                Memorias = [.. dados.Memorias, memoria],
                 UltimoSetup = setup.Id,
-                Uso = Com(dados.Uso, setup.Id, UsoDoSetup.Vazio),
+                Uso = Com(dados.Uso, setup.Id, Usar(UsoDoSetup.Vazio, memoria.Id)),
             };
             if (!await GravarAsync(novos))
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
@@ -959,15 +984,16 @@ public sealed class GerenteSetups
             {
                 _situacao = EstadoConferencia.Confere;
                 _setupEmUso = setup.Id;
-                _emUso = SomEmUso.Nenhum;
+                _emUso = SomEmUso.DoCelular(memoria.Id);
+                _ultimoPreset = igual?.Id;
                 _diferencas = [];
                 _referencia = null;
                 _motivoMudo = null;
                 _antes = null;
-                _pendente = null;
             }
-            _log.Evento($"setup: {nome} criado com a calibração do aparelho");
-            var frase = MsgSetupCriado(nome);
+            _log.Evento($"setup: {nome} criado, com a memória {memoria.Nome} do som do aparelho");
+            await AdotarPlaylistsAsync();
+            var frase = MsgSetupCriado(nome, memoria.Nome);
             if (desmutar is not null)
                 frase += $" {MsgContinuaMutado(desmutar)}";
             return Terminar(ResultadoSetup.Feito(Juntar(frase, links)));
@@ -1002,7 +1028,6 @@ public sealed class GerenteSetups
                 _referencia = null;
                 _motivoMudo = null;
                 _antes = null;
-                _pendente = null;
             }
             _log.Evento("setup: seguindo sem Setup");
             return Terminar(ResultadoSetup.Feito(Juntar(
@@ -1040,7 +1065,7 @@ public sealed class GerenteSetups
                 referencia = _setupEmUso is { } id ? _dados.Setups.FirstOrDefault(s => s.Id == id) : null;
             }
             var motivo = await MutarAsync(referencia?.Id, espelho);
-            var lista = referencia is null ? [] : DiferencasDeCalibracao(referencia, espelho);
+            var lista = referencia is null ? [] : DiferencasDaConferencia(referencia, Ativa(referencia.Id), espelho);
             lock (_trava)
             {
                 _situacao = EstadoConferencia.Trocando;
@@ -1075,9 +1100,9 @@ public sealed class GerenteSetups
             if (antes is null)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
             var desmutar = await DesmutarAsync();
-            var setupAntes = Setup(antes.SetupEmUso);
+            var (link12, link34) = LinksDe(Setup(antes.SetupEmUso));
             string? links = null;
-            if (await _link.DefinirEstadoAsync(setupAntes?.Link12 ?? false, setupAntes?.Link34 ?? false) is { } motivoLink)
+            if (await _link.DefinirEstadoAsync(link12, link34) is { } motivoLink)
             {
                 links = MsgLinkNaoGuardado(motivoLink);
                 _log.Evento($"setup: {links}");
@@ -1175,7 +1200,8 @@ public sealed class GerenteSetups
             var (limpo, motivo) = Ligacoes.Limpar(rascunho with { Id = $"equipamento-{Guid.NewGuid():N}" });
             if (limpo is null)
                 return new Mudanca(null, motivo, null, null);
-            return new Mudanca([.. setup.Equipamentos, limpo], null, MsgEquipamentoAdicionado(limpo.Nome, setup.Nome), limpo.Id);
+            return new Mudanca([.. setup.Equipamentos, limpo], null, MsgEquipamentoAdicionado(limpo.Nome, setup.Nome), limpo.Id,
+                Confirmado: limpo);
         });
 
     /// <summary>Guarda o equipamento editado (pelo id), com as mesmas regras do adicionar.</summary>
@@ -1188,7 +1214,7 @@ public sealed class GerenteSetups
             if (limpo is null)
                 return new Mudanca(null, motivo, null, null);
             return new Mudanca(setup.Equipamentos.Select(e => e.Id == limpo.Id ? limpo : e).ToArray(), null,
-                MsgEquipamentoGuardado(limpo.Nome), limpo.Id, Editado: limpo.Id);
+                MsgEquipamentoGuardado(limpo.Nome), limpo.Id, Editado: limpo.Id, Confirmado: limpo);
         });
 
     /// <summary>
@@ -1210,9 +1236,15 @@ public sealed class GerenteSetups
         });
 
     /// <param name="Editado">O equipamento editado: os alto-falantes que perderiam a ligação nele vêm na recusa.</param>
-    private sealed record Mudanca(IReadOnlyList<Equipamento>? Lista, string? Motivo, string? Mensagem, string? Id, string? Editado = null);
+    /// <param name="Confirmado">O equipamento adicionado ou editado: com modelo, a ficha vai para a base de modelos.</param>
+    private sealed record Mudanca(IReadOnlyList<Equipamento>? Lista, string? Motivo, string? Mensagem, string? Id, string? Editado = null,
+        Equipamento? Confirmado = null);
 
-    /// <summary>Uma mudança nos equipamentos de um Setup: confere a lista inteira e só guarda se ela vale. Uma operação por vez.</summary>
+    /// <summary>
+    /// Uma mudança nos equipamentos de um Setup: confere a lista inteira e só guarda se ela vale. No
+    /// Setup em uso, o link tirado das ligações novas passa a valer. Um equipamento confirmado com
+    /// modelo vai para a base de modelos. Uma operação por vez.
+    /// </summary>
     private async Task<ResultadoEquipamento> MudarEquipamentosAsync(string idSetup, Func<Setup, Mudanca> mudar)
     {
         await Carregada;
@@ -1235,7 +1267,20 @@ public sealed class GerenteSetups
             if (!await GravarAsync(novos))
                 return TerminarEquipamento(ResultadoEquipamento.Falha(MsgNaoGuardou));
             _log.Evento($"setup {setup.Nome}: {m.Mensagem}");
-            return TerminarEquipamento(new ResultadoEquipamento(true, null, m.Mensagem, m.Id));
+            var frase = m.Mensagem;
+            if (SetupEmUso?.Id == setup.Id)
+            {
+                // O link sai das ligações do Setup em uso (decisão D1 do Denis, 29/10/2026).
+                var (link12, link34) = Ligacoes.Links(m.Lista);
+                if (await _link.DefinirEstadoAsync(link12, link34) is { } motivoLink)
+                {
+                    frase = $"{frase} {MsgLinkNaoGuardado(motivoLink)}";
+                    _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
+                }
+            }
+            if (m.Confirmado is { Modelo: not null } confirmado && Modelos is { } modelos && !await modelos.GuardarAsync(confirmado))
+                frase = $"{frase} {MsgModeloNaoGuardado}";
+            return TerminarEquipamento(new ResultadoEquipamento(true, null, frase, m.Id));
         }
         finally
         {
@@ -1256,7 +1301,7 @@ public sealed class GerenteSetups
     // ------------------------------------------------------------------ memórias do celular
 
     /// <summary>
-    /// Criar memória do som atual, no Setup em uso: guarda o caráter lido menos o equilíbrio. Vira a
+    /// Criar memória do som atual, no Setup em uso: guarda a regulagem lida, com o valor final. Vira a
     /// memória em uso e a ativa e entra nos botões. Com uma memória do aparelho (ou o som do aparelho)
     /// em uso, não cria: o caminho é a folha do Salvar.
     /// </summary>
@@ -1276,7 +1321,7 @@ public sealed class GerenteSetups
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
             // A memória nova lembra o preset em uso.
-            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), EquilibrioEfetivo, PresetEmUso?.Id);
+            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), PresetEmUso?.Id);
             if (memoria is null)
                 return Terminar(ResultadoSetup.Falha(motivo!));
 
@@ -1305,9 +1350,9 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Aplica a memória do celular (do Setup em uso): cópia antes, escreve a calibração do Setup e o
-    /// caráter da memória somado ao equilíbrio (só o que difere), relê e confere. As bandas, o mute e
-    /// os extras não entram. Passa pela chave "Aplicar memória do celular".
+    /// Aplica a memória do celular (do Setup em uso): cópia antes, escreve a regulagem dela e as 15
+    /// bandas do preset que ela lembra (só o que difere; sem preset, as bandas ficam), relê e confere.
+    /// O mute e os extras não entram. Passa pela chave "Aplicar memória do celular".
     /// </summary>
     public Task<ResultadoSetup> AplicarAsync(string idMemoria) => AplicarMemoriaComTravaAsync(idMemoria, TipoAplicarMemoria, refazendo: false);
 
@@ -1355,11 +1400,8 @@ public sealed class GerenteSetups
         if (Setup(memoria.IdSetup) is not { } setup)
             return ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgSetupNaoExiste);
 
-        var descricao = tipo == TipoManterCalibracao
-            ? $"Reaplicar a calibração do {setup.Nome} com a {memoria.Nome}"
-            : $"Aplicar a memória {memoria.Nome}";
-        var op = new OperacaoPendente(tipo, memoria.Id, descricao, memoria.Nome);
-        var (alvo, sumiu) = Alvo(setup, memoria);
+        var op = new OperacaoPendente(tipo, memoria.Id, $"Aplicar a memória {memoria.Nome}", memoria.Nome);
+        var (alvo, sumiu) = Alvo(memoria);
         var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
         if (!aplicado.Ok)
             return ResultadoSetup.Falha(aplicado.Motivo!);
@@ -1367,7 +1409,7 @@ public sealed class GerenteSetups
         string? link;
         if (Marca is not null)
         {
-            // Um Terminar com a dúvida aberta: a calibração do Setup está no aparelho; a dúvida fecha.
+            // Um Terminar com a dúvida aberta: a memória está no aparelho; a dúvida fecha.
             (var falhou, link) = await FecharEscolhaAsync(setup, memoria, aplicado.Iniciou);
             if (falhou is not null)
                 return ResultadoSetup.Falha(MsgContinuaMutado(falhou));
@@ -1376,7 +1418,8 @@ public sealed class GerenteSetups
         {
             if (aplicado.Iniciou)
                 await _copia.ConcluirAsync();
-            link = await _link.DefinirEstadoAsync(setup.Link12, setup.Link34);
+            var (link12, link34) = LinksDe(setup);
+            link = await _link.DefinirEstadoAsync(link12, link34);
         }
 
         lock (_trava)
@@ -1385,7 +1428,6 @@ public sealed class GerenteSetups
             _setupEmUso = setup.Id;
             _emUso = SomEmUso.DoCelular(memoria.Id);
             _ultimoPreset = sumiu ? null : memoria.IdPreset;
-            _pendente = null;
         }
         await GravarUsoAsync(d => d with { Uso = Com(d.Uso, setup.Id, Usar(d.UsoDe(setup.Id), memoria.Id)) });
         _log.Evento($"memória {memoria.Nome} aplicada");
@@ -1453,66 +1495,6 @@ public sealed class GerenteSetups
         }
     }
 
-    // ------------------------------------------------------------------ equilíbrio
-
-    /// <summary>
-    /// Mexe no equilíbrio da saída do app que tem o <paramref name="canal"/> (0 a 3), no Setup em uso
-    /// (ganho ou limiter): o mesmo valor vai para todos os canais da saída (os dois, num par com link).
-    /// Escreve no canal mestre o valor final (a parte da memória mais o equilíbrio novo, presa à
-    /// faixa); com o link ligado, o aparelho repete no outro canal. Guarda o equilíbrio como pendente
-    /// até o Salvar. O limiter em OFF fica OFF (só o equilíbrio muda).
-    /// </summary>
-    public async Task<ResultadoSetup> AjustarEquilibrioAsync(int canal, bool limiter, decimal valor)
-    {
-        await Carregada;
-        if (!await _operacao.WaitAsync(0))
-            return Terminar(ResultadoSetup.Falha(MsgOcupado));
-        try
-        {
-            if (!SessaoAberta)
-                return Terminar(ResultadoSetup.Falha(MsgSemConexao));
-            if (EmEscolha)
-                return Terminar(ResultadoSetup.Falha(MsgDuvida));
-            if (SetupEmUso is not { } setup)
-                return Terminar(ResultadoSetup.Falha(MsgSemSetup));
-            if (canal is < 0 or >= Equilibrio.Canais || SaidaDe(canal) is not { } saidaApp)
-                return Terminar(ResultadoSetup.Falha(MsgEquilibrioCanal));
-            if (valor is < Camadas.EquilibrioMinimo or > Camadas.EquilibrioMaximo || decimal.Round(valor, 1) != valor)
-                return Terminar(ResultadoSetup.Falha(MsgEquilibrioFaixa));
-
-            var saida = saidaApp.Mestre;
-            var codigo = limiter ? Camadas.CodigoLimiter : Camadas.CodigoGanho;
-            if (_estado.Valor(codigo, saida) is not { } lido)
-                return Terminar(ResultadoSetup.Falha(Escritor.MsgSemLeitura));
-            var atual = EquilibrioEfetivo;
-            var novo = atual;
-            foreach (var c in saidaApp.Canais)
-                novo = novo.Com(c, limiter, valor);
-            string? aviso = null;
-            if (!(limiter && lido.Numero == Camadas.LimiterOff))
-            {
-                var parte = Camadas.Subtrair(codigo, saida, lido.NoFio, atual);
-                var final = Camadas.Numero(Camadas.Somar(codigo, saida, parte, novo))!.Value;
-                if (Camadas.Numero(parte)!.Value + valor != final)
-                    aviso = MsgNoLimite(setup.Nome);
-                var r = await _escritor.EscreverAsync(Catalogo.ParametroDe(codigo)!, saida, final);
-                if (!r.Ok)
-                    return Terminar(ResultadoSetup.Falha(r.Motivo ?? Sessao.MotivoFalhaEscrita));
-                aviso ??= r.Aviso;
-            }
-            lock (_trava)
-            {
-                if (_setupEmUso == setup.Id)
-                    _pendente = novo == setup.Equilibrio ? null : novo;
-            }
-            return Terminar(ResultadoSetup.Feito(aviso));
-        }
-        finally
-        {
-            _operacao.Release();
-        }
-    }
-
     // ------------------------------------------------------------------ Salvar por camadas
 
     /// <summary>A folha do Salvar agora: o que mudou em cada camada, as perguntas e a trava.</summary>
@@ -1526,74 +1508,45 @@ public sealed class GerenteSetups
             return FolhaSalvar.Travada(SessaoAberta ? (_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura) : MsgSemConexao, setup.Nome);
 
         var espelho = _estado.Copiar();
-        var equilibrio = EquilibrioEfetivo;
-        var calibracao = MudancasDeCalibracao(setup, espelho, equilibrio);
         var linhas = new List<LinhaSalvar>();
         var emUso = EmUso;
-        switch (emUso.Tipo)
+        if (emUso.Tipo == TipoSomEmUso.MemoriaCelular && Memoria(emUso.IdMemoria) is { } memoria)
         {
-            case TipoSomEmUso.MemoriaCelular when Memoria(emUso.IdMemoria) is { } memoria:
-            {
-                var carater = MudancasDeCarater(memoria, espelho, setup.Equilibrio, equilibrio);
-                if (calibracao.Count > 0)
-                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
-                if (carater.Count > 0)
-                    linhas.Add(new LinhaSalvar(Camada.Carater, $"Caráter → memória {memoria.Nome}", carater));
+            var regulagem = MudancasDaRegulagem(memoria, espelho);
+            if (regulagem.Count > 0)
+                linhas.Add(new LinhaSalvar(Camada.Regulagem, $"Regulagem → memória {memoria.Nome}", regulagem));
 
-                // As 15 bandas contra o preset lembrado (sem ele, contra o EQ plano).
-                var lembrado = PresetDe(memoria);
-                var bandas = MudancasDeBandas(lembrado?.Valores ?? GerentePresets.BandasPlanas, espelho);
-                if (bandas.Count > 0)
-                {
-                    if (lembrado is null)
-                        linhas.Add(new LinhaSalvar(Camada.Bandas, "15 bandas → preset novo", bandas));
-                    else
-                        linhas.Add(new LinhaSalvar(Camada.Bandas, $"15 bandas → preset {lembrado.Nome}", bandas, lembrado.Herdado));
-                }
-                if (linhas.Count == 0)
-                    return FolhaSalvar.Travada(MsgNadaParaSalvar, setup.Nome);
-                var folha = new FolhaSalvar(null, linhas, PedeNome: false, PerguntaCalibracao: false, setup.Nome, []);
-                if (bandas.Count == 0)
-                    return folha;
-                if (lembrado is null)
-                    return folha with { PedeNomePreset = true };
-                return folha with
-                {
-                    PerguntaPreset = true,
-                    NomePreset = lembrado.Nome,
-                    MotivoAtualizarTravado = lembrado.Herdado ? GerentePresets.MsgHerdadoNaoSobrescrito : null,
-                    EscolhaPresetInicial = lembrado.Herdado ? EscolhaPreset.Criar : EscolhaPreset.Nenhuma,
-                };
-            }
-            case TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho:
+            // As 15 bandas contra o preset lembrado (sem ele, contra o EQ plano).
+            var lembrado = PresetDe(memoria);
+            var bandas = MudancasDeBandas(lembrado?.Valores ?? GerentePresets.BandasPlanas, espelho);
+            if (bandas.Count > 0)
+                linhas.Add(new LinhaSalvar(Camada.Bandas, lembrado is null ? "15 bandas → preset novo" : $"15 bandas → preset {lembrado.Nome}", bandas));
+            if (linhas.Count == 0)
+                return FolhaSalvar.Travada(MsgNadaParaSalvar, setup.Nome);
+            var folha = new FolhaSalvar(null, linhas, PedeNome: false, setup.Nome);
+            if (bandas.Count == 0)
+                return folha;
+            if (lembrado is null)
+                return folha with { PedeNomePreset = true };
+            return folha with
             {
-                linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
-                if (calibracao.Count > 0)
-                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração do aparelho × Setup {setup.Nome}", calibracao));
-                var (linha, igual) = LinhaBandasMemoriaNova(espelho);
-                linhas.Add(linha);
-                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: calibracao.Count > 0, setup.Nome,
-                    DiferencasDeCalibracao(setup, espelho))
-                {
-                    NomePreset = igual?.Nome,
-                    PedeNomePreset = igual is null,
-                };
-            }
-            default:
-            {
-                // Setup sem memórias: a calibração vai para o Setup; o caráter, para uma memória nova.
-                if (calibracao.Count > 0)
-                    linhas.Add(new LinhaSalvar(Camada.Calibracao, $"Calibração → Setup {setup.Nome}", calibracao));
-                linhas.Add(new LinhaSalvar(Camada.Carater, "Caráter → memória nova", []));
-                var (linha, igual) = LinhaBandasMemoriaNova(espelho);
-                linhas.Add(linha);
-                return new FolhaSalvar(null, linhas, PedeNome: true, PerguntaCalibracao: false, setup.Nome, [])
-                {
-                    NomePreset = igual?.Nome,
-                    PedeNomePreset = igual is null,
-                };
-            }
+                PerguntaPreset = true,
+                NomePreset = lembrado.Nome,
+                MotivoAtualizarTravado = lembrado.Herdado ? GerentePresets.MsgHerdadoNaoSobrescrito : null,
+                EscolhaPresetInicial = lembrado.Herdado ? EscolhaPreset.Criar : EscolhaPreset.Nenhuma,
+            };
         }
+
+        // Uma memória do aparelho, o som do aparelho, ou o Setup sem memórias: a regulagem vai para uma
+        // memória nova; as 15 bandas, para o preset igual ou um novo.
+        linhas.Add(new LinhaSalvar(Camada.Regulagem, "Regulagem → memória nova", []));
+        var (linha, igual) = LinhaBandasMemoriaNova(espelho);
+        linhas.Add(linha);
+        return new FolhaSalvar(null, linhas, PedeNome: true, setup.Nome)
+        {
+            NomePreset = igual?.Nome,
+            PedeNomePreset = igual is null,
+        };
     }
 
     /// <summary>
@@ -1603,18 +1556,17 @@ public sealed class GerenteSetups
     private (LinhaSalvar Linha, Preset? Igual) LinhaBandasMemoriaNova(IReadOnlyDictionary<Endereco, Valor> espelho)
     {
         if (_presets.ComAsBandas(espelho) is { } igual)
-            return (new LinhaSalvar(Camada.Bandas, $"15 bandas → preset {igual.Nome}", [], igual.Herdado), igual);
+            return (new LinhaSalvar(Camada.Bandas, $"15 bandas → preset {igual.Nome}", []), igual);
         return (new LinhaSalvar(Camada.Bandas, "15 bandas → preset novo", []), null);
     }
 
     /// <summary>
-    /// Salva o que a folha mostra, cada mudança na sua camada; as 15 bandas vão para o preset
-    /// (atualizar o lembrado, criar um novo com o nome, ou lembrar o igual). Só o
-    /// <see cref="EscolhaCalibracao.Manter"/> manda algo ao aparelho: guarda a memória nova e reaplica
-    /// a calibração do Setup, com cópia antes. Nomes inválidos ou repetidos recusam antes de guardar
-    /// qualquer coisa.
+    /// Salva o que a folha mostra, cada mudança na sua camada: a regulagem na memória em uso (ou numa
+    /// nova, com o nome) e as 15 bandas no preset (atualizar o lembrado, criar um novo com o nome, ou
+    /// lembrar o igual). Não manda nada ao aparelho. Nomes inválidos ou repetidos recusam antes de
+    /// guardar qualquer coisa.
     /// </summary>
-    public async Task<ResultadoSetup> SalvarAsync(EscolhaCalibracao escolha, string? nomeMemoriaNova,
+    public async Task<ResultadoSetup> SalvarAsync(string? nomeMemoriaNova,
         EscolhaPreset escolhaPreset = EscolhaPreset.Nenhuma, string? nomePresetNovo = null)
     {
         await Carregada;
@@ -1625,10 +1577,6 @@ public sealed class GerenteSetups
             var folha = PrepararSalvar();
             if (folha.Trava is { } trava)
                 return Terminar(ResultadoSetup.Falha(trava));
-            if (!folha.PerguntaCalibracao)
-                escolha = EscolhaCalibracao.Nenhuma; // uma escolha velha não vale quando a folha não pergunta
-            else if (escolha == EscolhaCalibracao.Nenhuma)
-                return Terminar(ResultadoSetup.Falha(MsgEscolha));
 
             // As 15 bandas: a escolha (com a memória do celular em uso) ou o caminho sem pergunta.
             if (folha.PerguntaPreset)
@@ -1645,14 +1593,8 @@ public sealed class GerenteSetups
                 escolhaPreset = folha.PedeNomePreset ? EscolhaPreset.Criar : EscolhaPreset.Nenhuma;
             }
 
-            // Manter reaplica a calibração pelo BLE: a chave vale antes de guardar qualquer coisa.
-            if (escolha == EscolhaCalibracao.Manter && !_chaves.Ligada(Chave.AplicarMemoriaCelular))
-                return Terminar(ResultadoSetup.Falha(Sessao.MotivoChaveDesligada));
-
             var setup = SetupEmUso!;
             var espelho = _estado.Copiar();
-            var equilibrio = EquilibrioEfetivo;
-            var calibracaoMudou = MudancasDeCalibracao(setup, espelho, equilibrio).Count > 0;
             var dados = Dados;
             var emUso = EmUso;
             var memoriaEmUso = emUso.Tipo == TipoSomEmUso.MemoriaCelular ? Memoria(emUso.IdMemoria) : null;
@@ -1662,7 +1604,7 @@ public sealed class GerenteSetups
             MemoriaCelular? nova = null;
             if (folha.PedeNome)
             {
-                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, equilibrio, idPreset: null);
+                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, idPreset: null);
                 if (memoria is null)
                     return Terminar(ResultadoSetup.Falha(motivo!));
                 nova = memoria;
@@ -1684,32 +1626,13 @@ public sealed class GerenteSetups
                     return Terminar(ResultadoSetup.Falha(GerentePresets.MsgIncompleta(faltamBandas)));
             }
 
-            var atualizarSetup = calibracaoMudou && escolha != EscolhaCalibracao.Manter;
-            var setupNovo = setup;
-            if (atualizarSetup)
+            IReadOnlyList<ValorCopiado>? regulagemNova = null;
+            if (nova is null && memoriaEmUso is not null && MudancasDaRegulagem(memoriaEmUso, espelho).Count > 0)
             {
-                var (calibracao, faltam) = Camadas.Tirar(espelho, Camada.Calibracao);
+                var (regulagem, faltam) = Camadas.Tirar(espelho, Camada.Regulagem);
                 if (faltam > 0)
                     return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
-                await _link.Carregada;
-                setupNovo = setup with
-                {
-                    Calibracao = calibracao,
-                    Equilibrio = equilibrio,
-                    Link12 = _link.Ligado(ParCanais.Saidas12),
-                    Link34 = _link.Ligado(ParCanais.Saidas34),
-                    Quando = _relogio.GetLocalNow(),
-                };
-                partes.Add($"calibração no {setup.Nome}");
-            }
-
-            IReadOnlyList<ValorCopiado>? caraterNovo = null;
-            if (nova is null && memoriaEmUso is not null && MudancasDeCarater(memoriaEmUso, espelho, setup.Equilibrio, equilibrio).Count > 0)
-            {
-                var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
-                if (faltam > 0)
-                    return Terminar(ResultadoSetup.Falha(MsgIncompleta(faltam)));
-                caraterNovo = Camadas.Separar(carater, equilibrio);
+                regulagemNova = regulagem;
             }
 
             // O preset: criar (com o nome), atualizar o lembrado, ou lembrar o que tem as mesmas bandas.
@@ -1752,15 +1675,15 @@ public sealed class GerenteSetups
                 memorias.Add(nova);
                 uso = Usar(uso, nova.Id);
                 idEmUso = nova.Id;
-                partes.Add($"caráter na {nova.Nome}");
+                partes.Add($"regulagem na {nova.Nome}");
             }
             else if (memoriaEmUso is not null)
             {
                 var atualizada = memoriaEmUso;
-                if (caraterNovo is not null)
+                if (regulagemNova is not null)
                 {
-                    atualizada = atualizada with { Carater = caraterNovo, Quando = _relogio.GetLocalNow() };
-                    partes.Add($"caráter na {memoriaEmUso.Nome}");
+                    atualizada = atualizada with { Regulagem = regulagemNova, Quando = _relogio.GetLocalNow() };
+                    partes.Add($"regulagem na {memoriaEmUso.Nome}");
                 }
                 if (escolhaPreset == EscolhaPreset.Criar)
                     atualizada = atualizada with { IdPreset = idPreset };
@@ -1772,7 +1695,6 @@ public sealed class GerenteSetups
 
             var novos = dados with
             {
-                Setups = dados.Setups.Select(s => s.Id == setup.Id ? setupNovo : s).ToArray(),
                 Memorias = memorias,
                 Uso = Com(dados.Uso, setup.Id, uso),
             };
@@ -1780,8 +1702,6 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
             lock (_trava)
             {
-                if (atualizarSetup || escolha == EscolhaCalibracao.Manter)
-                    _pendente = null;
                 if (idEmUso is not null)
                     _emUso = SomEmUso.DoCelular(idEmUso);
                 if (idPreset is not null)
@@ -1793,17 +1713,6 @@ public sealed class GerenteSetups
                 await AdotarPlaylistsAsync();
             var frase = $"Salvo: {string.Join(", ", partes)}.";
             _log.Evento($"setup: {frase}");
-
-            if (escolha == EscolhaCalibracao.Manter && calibracaoMudou && nova is not null)
-            {
-                // Manter: a calibração do Setup volta ao aparelho, com a memória nova por cima.
-                // A memória já está guardada: o Salvar valeu mesmo se a calibração não voltar (o
-                // "aplicado pela metade" da cópia cuida do resto).
-                var r = await AplicarMemoriaAsync(nova.Id, TipoManterCalibracao, refazendo: false);
-                return Terminar(ResultadoSetup.Feito(r.Ok
-                    ? $"{frase} Calibração do {setup.Nome} reaplicada."
-                    : $"{frase} A calibração do {setup.Nome} não voltou: {r.Motivo}"));
-            }
             return Terminar(ResultadoSetup.Feito(frase));
         }
         finally
@@ -1869,77 +1778,32 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>
-    /// A calibração do aparelho contra a do Setup, mais o link e o equilíbrio pendente, pelo nome das
-    /// saídas em uso ("Atraso · Sub: 80 cm → 85 cm"; o par com link que muda igual é uma linha só).
-    /// </summary>
-    private List<MudancaSalvar> MudancasDeCalibracao(Setup setup, IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio)
-    {
-        var saidas = SaidasEmUso;
-        var lista = Linhas(Camadas.Diferentes(setup.Calibracao, espelho)
-                .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
-                    Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
-            saidas);
-        foreach (var (par, antes) in new[] { (ParCanais.Saidas12, setup.Link12), (ParCanais.Saidas34, setup.Link34) })
-        {
-            var agora = _link.Ligado(par);
-            if (agora != antes)
-                lista.Add(new MudancaSalvar($"Link {LinkCanais.Rotulo(par)}", antes ? "ligado" : "desligado", agora ? "ligado" : "desligado"));
-        }
-        var equilibrios = new List<DiferencaPorCanal>();
-        for (var canal = 0; canal < Equilibrio.Canais; canal++)
-        {
-            foreach (var limiter in new[] { false, true })
-            {
-                var antes = setup.Equilibrio.Valor(canal, limiter);
-                var agora = equilibrio.Valor(canal, limiter);
-                if (antes != agora)
-                    equilibrios.Add(new DiferencaPorCanal(limiter ? "equilibrio-limitador" : "equilibrio-ganho", canal, canal, "Equilíbrio",
-                        Camadas.ExibirDb(antes), Camadas.ExibirDb(agora), limiter ? " · limitador" : " · ganho"));
-            }
-        }
-        lista.AddRange(Linhas(equilibrios, saidas));
-        return lista;
-    }
-
     /// <summary>As diferenças por canal em linhas da folha do Salvar, pelo nome das saídas.</summary>
     private static List<MudancaSalvar> Linhas(IEnumerable<DiferencaPorCanal> diferencas, IReadOnlyList<SaidaApp> saidas) =>
         RotulosSaida.Juntar(diferencas, saidas).Select(l => new MudancaSalvar(l.Rotulo, l.Antes, l.Depois, l.Canal)).ToList();
 
     /// <summary>
-    /// O caráter da memória contra o lido (a parte da memória: o lido menos o equilíbrio de agora). O
-    /// antes e o depois são o valor da tela, o final no aparelho.
+    /// A regulagem da memória contra a lida, pelo nome das saídas em uso ("Atraso · Sub: 80 cm → 85 cm";
+    /// o par com link que muda igual é uma linha só). O antes é o valor guardado; o depois, o lido.
     /// </summary>
-    private List<MudancaSalvar> MudancasDeCarater(MemoriaCelular memoria, IReadOnlyDictionary<Endereco, Valor> espelho,
-        Equilibrio guardado, Equilibrio efetivo)
-    {
-        var lista = new List<DiferencaPorCanal>();
-        foreach (var v in memoria.Carater)
-        {
-            var lido = espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio;
-            var parte = lido is null ? null : Camadas.Subtrair(v.Codigo, v.Indice, lido, efetivo);
-            if (parte is not null && Camadas.Iguais(v.Codigo, parte, v.NoFio))
-                continue;
-            lista.Add(DiferencaPorCanal.De(v.Codigo, v.Indice,
-                Camadas.Exibir(v.Codigo, Camadas.Somar(v.Codigo, v.Indice, v.NoFio, guardado)),
-                Camadas.Exibir(v.Codigo, lido)));
-        }
-        return Linhas(lista, SaidasEmUso);
-    }
+    private List<MudancaSalvar> MudancasDaRegulagem(MemoriaCelular memoria, IReadOnlyDictionary<Endereco, Valor> espelho) =>
+        Linhas(Camadas.Diferentes(memoria.Regulagem, espelho)
+                .Select(v => DiferencaPorCanal.De(v.Codigo, v.Indice, Camadas.Exibir(v.Codigo, v.NoFio),
+                    Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
+            SaidasEmUso);
 
-    /// <summary>Uma memória nova com o caráter lido (menos o equilíbrio) e o preset lembrado, ou o motivo de não poder.</summary>
+    /// <summary>Uma memória nova com a regulagem lida e o preset lembrado, ou o motivo de não poder.</summary>
     private (MemoriaCelular? Memoria, string? Motivo) NovaMemoria(Setup setup, string? nomeDigitado,
-        IReadOnlyDictionary<Endereco, Valor> espelho, Equilibrio equilibrio, string? idPreset)
+        IReadOnlyDictionary<Endereco, Valor> espelho, string? idPreset)
     {
         if (NomeValido(nomeDigitado) is not { } nome)
             return (null, GerentePresets.MsgNomeInvalido);
         if (Dados.Memorias.Any(m => m.IdSetup == setup.Id && MesmoNome(m.Nome, nome)))
             return (null, MsgNomeRepetidoMemoria(setup.Nome));
-        var (carater, faltam) = Camadas.Tirar(espelho, Camada.Carater);
+        var (regulagem, faltam) = Camadas.Tirar(espelho, Camada.Regulagem);
         if (faltam > 0)
             return (null, MsgIncompleta(faltam));
-        return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(),
-            Camadas.Separar(carater, equilibrio), IdPreset: idPreset), null);
+        return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(), regulagem, idPreset), null);
     }
 
     // ------------------------------------------------------------------ memória do aparelho
@@ -1950,7 +1814,6 @@ public sealed class GerenteSetups
         {
             _emUso = SomEmUso.DoAparelho(n);
             _ultimoPreset = null; // o som do aparelho: nenhum preset em uso
-            _pendente = null;
             if (_situacao == EstadoConferencia.SomDiferente)
                 _situacao = EstadoConferencia.Confere;
         }
@@ -1965,23 +1828,20 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// A calibração do Setup e, se há memória, o caráter dela somado ao equilíbrio do Setup e as 15
-    /// bandas do preset que ela lembra. <c>Sumiu</c>: ela lembra um preset que não existe mais (o
-    /// arquivo foi editado); o alvo vai sem as bandas.
+    /// A regulagem da memória (os valores finais) e as 15 bandas do preset que ela lembra; sem preset,
+    /// as bandas não entram. <c>Sumiu</c>: ela lembra um preset que não existe mais (o arquivo foi
+    /// editado); o alvo vai sem as bandas.
     /// </summary>
-    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu) Alvo(Setup setup, MemoriaCelular? memoria)
+    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu) Alvo(MemoriaCelular memoria)
     {
-        if (memoria is null)
-            return (setup.Calibracao, false);
-        IReadOnlyList<ValorCopiado> carater = [.. setup.Calibracao, .. Camadas.Compor(memoria.Carater, setup.Equilibrio)];
         if (memoria.IdPreset is null)
-            return (carater, false);
+            return (memoria.Regulagem, false);
         if (_presets.Obter(memoria.IdPreset) is not { } preset)
         {
             _log.Evento($"memória {memoria.Nome}: o preset lembrado não existe mais; aplica sem as bandas");
-            return (carater, true);
+            return (memoria.Regulagem, true);
         }
-        return ([.. carater, .. preset.Valores], false);
+        return ([.. memoria.Regulagem, .. preset.Valores], false);
     }
 
     /// <summary>
@@ -2126,15 +1986,12 @@ public sealed class GerenteSetups
 
     // ------------------------------------------------------------------ guardado
 
-    /// <summary>O que vem dos protótipos (CAP-6): o Casa 2.1 com a FILME, ativa e no primeiro botão.</summary>
+    /// <summary>O que vem dos protótipos (CAP-6): só o Casa 2.1, com os equipamentos e as fichas, sem memórias.</summary>
     public static DadosSetups Herdados() => new(
         [ConhecimentoHerdado.SetupCasa],
-        [ConhecimentoHerdado.MemoriaFilme],
+        [],
         ConhecimentoHerdado.IdSetupCasa,
-        new Dictionary<string, UsoDoSetup>
-        {
-            [ConhecimentoHerdado.IdSetupCasa] = new([ConhecimentoHerdado.IdMemoriaFilme], [ConhecimentoHerdado.IdMemoriaFilme, null, null]),
-        });
+        new Dictionary<string, UsoDoSetup> { [ConhecimentoHerdado.IdSetupCasa] = UsoDoSetup.Vazio });
 
     /// <summary>Grava os dados (com duas tentativas); só se gravou eles passam a valer.</summary>
     private async Task<bool> GravarAsync(DadosSetups novos)
@@ -2198,18 +2055,25 @@ public sealed class GerenteSetups
     private async Task CarregarAsync()
     {
         DadosSetups? lidos = null;
+        var migrou = false;
+        IReadOnlyList<string> memoriasQueSumiram = [];
         if (await Gravacao.LerAsync(_repositorio) is { } json)
         {
             try
             {
                 lidos = DeJson(json);
+                if (lidos is not null && FormatoDe(json) != Formato)
+                {
+                    migrou = true;
+                    memoriasQueSumiram = IdsDasMemorias(json);
+                }
             }
             catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
             {
                 // Arquivo estragado: volta ao herdado, sem erro.
             }
             if (lidos is null)
-                _log.Evento("setups.json ilegível: voltei ao herdado (Casa 2.1 e FILME)");
+                _log.Evento("setups.json ilegível: voltei ao herdado (Casa 2.1, sem memórias)");
         }
         MarcaMudo? marca = null;
         if (await Gravacao.LerAsync(_repositorioMudo) is { } textoMarca)
@@ -2229,12 +2093,35 @@ public sealed class GerenteSetups
                 _dados = lidos;
             _marca ??= marca;
         }
+        if (migrou)
+        {
+            // O formato 3 começa do zero (decisão D2 do Denis, 29/10/2026): ficam os Setups e os
+            // equipamentos; as memórias, os botões e as playlists delas somem. O arquivo já sai no 3.
+            _log.Evento("setups.json migrado ao formato 3: ficaram os Setups e os equipamentos; as memórias do celular saíram");
+            await _gravacao.WaitAsync();
+            try
+            {
+                if (!await Gravacao.GravarAsync(_repositorio, ParaJson(Dados)))
+                    _log.Evento("não consegui regravar o setups.json no formato 3");
+            }
+            finally
+            {
+                _gravacao.Release();
+            }
+            if (memoriasQueSumiram.Count > 0)
+                await _playlists.ApagarAsync(memoriasQueSumiram);
+            // As pendentes do playlists.json antigo eram das memórias de antes: somem também.
+            await _playlists.DescartarPendentesAsync();
+        }
         Notificar();
         // As playlists que esperam a memória delas (as do playlists.json antigo) procuram pelo nome.
         await AdotarPlaylistsAsync();
     }
 
-    /// <summary>O JSON do <c>setups.json</c> (formato 2: o equilíbrio por canal e os equipamentos de cada Setup).</summary>
+    /// <summary>
+    /// O JSON do <c>setups.json</c> (formato 3): cada Setup com os equipamentos e as fichas (cada dado
+    /// com a origem) e o uso das memórias; cada memória com a regulagem e o preset lembrado.
+    /// </summary>
     public static string ParaJson(DadosSetups dados)
     {
         using var fluxo = new MemoryStream();
@@ -2253,19 +2140,6 @@ public sealed class GerenteSetups
                 w.WriteString("id", s.Id);
                 w.WriteString("nome", s.Nome);
                 w.WriteString("quando", s.Quando.ToString("O", Fio));
-                // O equilíbrio por canal: CH1 a CH4, na ordem.
-                w.WriteStartObject("equilibrio");
-                foreach (var limiter in new[] { false, true })
-                {
-                    w.WriteStartArray(limiter ? "limiter" : "ganho");
-                    for (var c = 0; c < Equilibrio.Canais; c++)
-                        w.WriteNumberValue(s.Equilibrio.Valor(c, limiter));
-                    w.WriteEndArray();
-                }
-                w.WriteEndObject();
-                w.WriteBoolean("link12", s.Link12);
-                w.WriteBoolean("link34", s.Link34);
-                EscreverValores(w, "calibracao", s.Calibracao);
                 EscreverEquipamentos(w, s.Equipamentos);
                 var uso = dados.UsoDe(s.Id);
                 w.WriteStartArray("recentes");
@@ -2294,7 +2168,7 @@ public sealed class GerenteSetups
                 w.WriteString("quando", m.Quando.ToString("O", Fio));
                 if (m.IdPreset is { } preset)
                     w.WriteString("preset", preset);
-                EscreverValores(w, "carater", m.Carater);
+                EscreverValores(w, "regulagem", m.Regulagem);
                 w.WriteEndObject();
             }
             w.WriteEndArray();
@@ -2303,19 +2177,43 @@ public sealed class GerenteSetups
         return Encoding.UTF8.GetString(fluxo.ToArray());
     }
 
+    /// <summary>O formato do <c>setups.json</c>, ou null fora da forma.</summary>
+    internal static int? FormatoDe(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.ValueKind == JsonValueKind.Object
+               && doc.RootElement.TryGetProperty("formato", out var f) && f.TryGetInt32(out var formato)
+            ? formato
+            : null;
+    }
+
+    /// <summary>Os ids das memórias de um <c>setups.json</c> (para apagar as playlists delas na migração).</summary>
+    private static IReadOnlyList<string> IdsDasMemorias(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object
+            || !doc.RootElement.TryGetProperty("memorias", out var memorias) || memorias.ValueKind != JsonValueKind.Array)
+            return [];
+        return memorias.EnumerateArray()
+            .Select(m => m.ValueKind == JsonValueKind.Object ? Texto(m, "id") : null)
+            .OfType<string>()
+            .Where(id => id.Length > 0)
+            .Distinct()
+            .ToArray();
+    }
+
     /// <summary>
-    /// Lê o <c>setups.json</c>. Fora dos formatos 1 e 2, sem nenhum Setup válido ou com outra forma:
+    /// Lê o <c>setups.json</c>. Fora dos formatos 1, 2 e 3, sem nenhum Setup válido ou com outra forma:
     /// null (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória
-    /// de um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo
-    /// id. O preset lembrado de cada memória vem do campo <c>preset</c> (ausente = nenhum; na FILME
-    /// herdada, ausente = o Cinema, como num <c>setups.json</c> gravado pela 8c).
+    /// de um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo id.
     /// <list type="bullet">
-    /// <item><b>Formato 2</b> (história 8e): o equilíbrio por canal (<c>ganho</c> e <c>limiter</c>, CH1 a
-    /// CH4) e os equipamentos de cada Setup. Um equipamento ilegível é descartado; os outros ficam, e
-    /// as ligações para ele se desfazem (<see cref="Ligacoes.Sanear"/>).</item>
-    /// <item><b>Formato 1</b> (8c e 8d): <c>ganho1</c>/<c>limiter1</c>/<c>ganho2</c>/<c>limiter2</c> viram os
-    /// canais 1 e 2, e os outros ficam 0. O Casa 2.1 herdado recebe os equipamentos do herdado e passa
-    /// ao Link 3–4 ligado; um Setup próprio fica sem equipamentos.</item>
+    /// <item><b>Formato 3</b> (história 8f): o Setup só físico (os equipamentos e as fichas com origem) e
+    /// as memórias com a regulagem. Um equipamento ilegível é descartado; os outros ficam, e as
+    /// ligações para ele se desfazem (<see cref="Ligacoes.Sanear"/>).</item>
+    /// <item><b>Formatos 1 e 2</b> (a migração da 8f, decisão D2 do Denis): ficam os Setups, os
+    /// equipamentos e o último Setup usado; somem as memórias, os botões, as memórias ativas, a
+    /// calibração, o equilíbrio e o link. Os dados das fichas viram dados digitados, menos os do Casa 2.1
+    /// herdado, que vêm do herdado. No formato 1, o Casa 2.1 ganha os equipamentos do herdado.</item>
     /// </list>
     /// </summary>
     public static DadosSetups? DeJson(string json)
@@ -2323,9 +2221,10 @@ public sealed class GerenteSetups
         using var doc = JsonDocument.Parse(json);
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
-            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato is not (Formato or FormatoAntigo)
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato is not (Formato or Formato2 or FormatoAntigo)
             || !raiz.TryGetProperty("setups", out var setupsJson) || setupsJson.ValueKind != JsonValueKind.Array)
             return null;
+        var migrando = formato != Formato;
 
         var setups = new List<Setup>();
         var usos = new Dictionary<string, (List<string> Recentes, List<string?> Botoes)>();
@@ -2335,55 +2234,24 @@ public sealed class GerenteSetups
                 || setups.Any(s => s.Id == id) || NomeGuardado(Texto(item, "nome"), id) is not { } nome
                 || setups.Any(s => MesmoNome(s.Nome, nome)))
                 continue;
-            var eq = Equilibrio.Zero;
-            if (item.TryGetProperty("equilibrio", out var e) && e.ValueKind == JsonValueKind.Object)
-            {
-                if (formato == FormatoAntigo)
-                {
-                    eq = new Equilibrio(NumeroEq(e, "ganho1"), NumeroEq(e, "limiter1"), NumeroEq(e, "ganho2"), NumeroEq(e, "limiter2"));
-                }
-                else
-                {
-                    for (var c = 0; c < Equilibrio.Canais; c++)
-                    {
-                        eq = eq.Com(c, limiter: false, NumeroEq(e, "ganho", c));
-                        eq = eq.Com(c, limiter: true, NumeroEq(e, "limiter", c));
-                    }
-                }
-            }
             var herdado = id == ConhecimentoHerdado.IdSetupCasa;
-            var link34 = Booleano(item, "link34");
-            IReadOnlyList<Equipamento> equipamentos;
-            if (formato == FormatoAntigo)
+            IReadOnlyList<Equipamento> equipamentos = formato switch
             {
-                // A migração da 8e: o Casa 2.1 herdado ganha os equipamentos e o Link 3–4 ligado. Um
-                // par com link é uma saída só: o segundo canal fica com o equilíbrio do mestre.
-                equipamentos = herdado ? ConhecimentoHerdado.EquipamentosCasa : [];
-                link34 = link34 || herdado;
-                foreach (var (mestre, ligado) in new[] { (0, Booleano(item, "link12")), (2, link34) })
-                {
-                    if (!ligado)
-                        continue;
-                    foreach (var limiter in new[] { false, true })
-                        eq = eq.Com(mestre + 1, limiter, eq.Valor(mestre, limiter));
-                }
-            }
-            else
-            {
-                equipamentos = LerEquipamentos(item);
-            }
-            setups.Add(new Setup(id, nome, Quando(item), LerValores(item, "calibracao", Camada.Calibracao), eq,
-                Booleano(item, "link12"), link34, herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null)
+                FormatoAntigo => herdado ? ConhecimentoHerdado.EquipamentosCasa : [],
+                Formato2 => herdado ? ComFichasHerdadas(LerEquipamentos(item, legado: true)) : LerEquipamentos(item, legado: true),
+                _ => LerEquipamentos(item, legado: false),
+            };
+            setups.Add(new Setup(id, nome, FichaJson.Quando(item), herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null)
             {
                 Equipamentos = equipamentos,
             });
-            usos[id] = (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
+            usos[id] = migrando ? (new List<string>(), new List<string?>()) : (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
         if (setups.Count == 0)
             return null;
 
         var memorias = new List<MemoriaCelular>();
-        if (raiz.TryGetProperty("memorias", out var memoriasJson) && memoriasJson.ValueKind == JsonValueKind.Array)
+        if (!migrando && raiz.TryGetProperty("memorias", out var memoriasJson) && memoriasJson.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in memoriasJson.EnumerateArray())
             {
@@ -2392,13 +2260,8 @@ public sealed class GerenteSetups
                     || setups.All(s => s.Id != idSetup) || NomeValido(Texto(item, "nome")) is not { } nome
                     || memorias.Any(m => m.IdSetup == idSetup && MesmoNome(m.Nome, nome)))
                     continue;
-                var herdada = id == ConhecimentoHerdado.IdMemoriaFilme;
-                // Sem o campo "preset" (um setups.json da 8c), a FILME herdada lembra o Cinema; as outras, nenhum.
-                var idPreset = Texto(item, "preset") is { Length: > 0 } preset ? preset
-                    : herdada && !item.TryGetProperty("preset", out _) ? ConhecimentoHerdado.IdCinema
-                    : null;
-                memorias.Add(new MemoriaCelular(id, idSetup, nome, Quando(item), LerValores(item, "carater", Camada.Carater),
-                    herdada, herdada ? ConhecimentoHerdado.NotaMemoriaFilme : null, idPreset));
+                var idPreset = Texto(item, "preset") is { Length: > 0 } preset ? preset : null;
+                memorias.Add(new MemoriaCelular(id, idSetup, nome, FichaJson.Quando(item), LerValores(item, "regulagem", Camada.Regulagem), idPreset));
             }
         }
 
@@ -2416,6 +2279,24 @@ public sealed class GerenteSetups
         var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
         return new DadosSetups(setups, memorias, ultimo, uso);
     }
+
+    /// <summary>
+    /// Na migração, os equipamentos herdados do Casa 2.1 (pelo id) recebem a ficha e o modelo do herdado;
+    /// a nota e o nome ficam os do usuário, menos a nota herdada de antes e o "Módulo genérico", que viram
+    /// os novos. As ligações e a função ficam como estavam.
+    /// </summary>
+    private static IReadOnlyList<Equipamento> ComFichasHerdadas(IReadOnlyList<Equipamento> lista) =>
+        lista.Select(e => ConhecimentoHerdado.EquipamentoCasa(e.Id) is { } h && h.Grupo == e.Grupo
+                ? e with
+                {
+                    Dados = h.Dados,
+                    Modelo = h.Modelo,
+                    // A nota que o usuário escreveu fica; a nota herdada de antes da 8f vira a nova.
+                    Nota = string.IsNullOrWhiteSpace(e.Nota) || ConhecimentoHerdado.NotasAntigas.Contains(e.Nota) ? h.Nota : e.Nota,
+                    Nome = e.Nome == ConhecimentoHerdado.NomeModuloAntigo ? h.Nome : e.Nome,
+                }
+                : e)
+            .ToArray();
 
     /// <summary>O JSON do <c>setup-mudo.json</c>: a marca, ou <c>"marca": null</c> quando não há.</summary>
     public static string MarcaParaJson(MarcaMudo? marca)
@@ -2461,7 +2342,7 @@ public sealed class GerenteSetups
         var mutes = anterior.EnumerateArray().Select(v => v.ValueKind == JsonValueKind.String ? v.GetString()! : "0").ToList();
         while (mutes.Count < Parametro.Canais)
             mutes.Add("0");
-        return new MarcaMudo(Texto(m, "setup"), mutes.Take(Parametro.Canais).ToArray(), Quando(m));
+        return new MarcaMudo(Texto(m, "setup"), mutes.Take(Parametro.Canais).ToArray(), FichaJson.Quando(m));
     }
 
     private static void EscreverValores(Utf8JsonWriter w, string nome, IEnumerable<ValorCopiado> valores)
@@ -2517,44 +2398,7 @@ public sealed class GerenteSetups
         return lista;
     }
 
-    private static decimal NumeroEq(JsonElement o, string nome)
-    {
-        if (!o.TryGetProperty(nome, out var p) || p.ValueKind != JsonValueKind.Number || !p.TryGetDecimal(out var v))
-            return 0m;
-        return Eq(v);
-    }
-
-    /// <summary>O valor do canal (0 a 3) na lista <paramref name="nome"/> do equilíbrio (formato 2), ou 0.</summary>
-    private static decimal NumeroEq(JsonElement o, string nome, int canal)
-    {
-        if (!o.TryGetProperty(nome, out var a) || a.ValueKind != JsonValueKind.Array || a.GetArrayLength() <= canal)
-            return 0m;
-        var p = a[canal];
-        return p.ValueKind == JsonValueKind.Number && p.TryGetDecimal(out var v) ? Eq(v) : 0m;
-    }
-
-    private static decimal Eq(decimal v) => Math.Clamp(decimal.Round(v, 1), Camadas.EquilibrioMinimo, Camadas.EquilibrioMaximo);
-
-    // ------------------------------------------------------------------ equipamentos no JSON (formato 2)
-
-    private static string NomeGrupo(GrupoEquipamento g) => g switch
-    {
-        GrupoEquipamento.AmplificaETocam => "ativo",
-        GrupoEquipamento.Amplificador => "amplificador",
-        GrupoEquipamento.Repassa => "repasse",
-        GrupoEquipamento.SoRecebe => "receptor",
-        _ => "alto-falante",
-    };
-
-    private static GrupoEquipamento? GrupoDe(string? nome) => nome switch
-    {
-        "ativo" => GrupoEquipamento.AmplificaETocam,
-        "amplificador" => GrupoEquipamento.Amplificador,
-        "repasse" => GrupoEquipamento.Repassa,
-        "receptor" => GrupoEquipamento.SoRecebe,
-        "alto-falante" => GrupoEquipamento.AltoFalante,
-        _ => null,
-    };
+    // ------------------------------------------------------------------ equipamentos no JSON
 
     private static string NomeFuncao(FuncaoAcustica f) => f switch
     {
@@ -2578,7 +2422,7 @@ public sealed class GerenteSetups
         {
             w.WriteStartObject();
             w.WriteString("id", e.Id);
-            w.WriteString("grupo", NomeGrupo(e.Grupo));
+            w.WriteString("grupo", FichaJson.NomeGrupo(e.Grupo));
             w.WriteString("categoria", e.Categoria);
             w.WriteString("nome", e.Nome);
             if (e.Modelo is { } modelo)
@@ -2587,7 +2431,7 @@ public sealed class GerenteSetups
                 w.WriteString("funcao", NomeFuncao(funcao));
             if (e.Nota is { } nota)
                 w.WriteString("nota", nota);
-            EscreverDados(w, e.Dados);
+            FichaJson.EscreverDados(w, e.Dados);
             if (e.Grupo != GrupoEquipamento.AltoFalante)
             {
                 w.WriteStartArray(e.Grupo == GrupoEquipamento.Amplificador ? "canais" : "entradas");
@@ -2659,44 +2503,13 @@ public sealed class GerenteSetups
         }
     }
 
-    private static void EscreverDados(Utf8JsonWriter w, DadosTecnicos d)
-    {
-        w.WriteStartObject("dados");
-        void Numero(string nome, decimal? v)
-        {
-            if (v is { } n)
-                w.WriteNumber(nome, n);
-        }
-        Numero("diametro", d.Diametro);
-        Numero("impedancia", d.Impedancia);
-        Numero("potenciaRms", d.PotenciaRms);
-        Numero("sensibilidade", d.Sensibilidade);
-        Numero("faixaMinima", d.FaixaMinima);
-        Numero("faixaMaxima", d.FaixaMaxima);
-        Numero("ganho", d.Ganho);
-        if (d.Canais is { } canais)
-            w.WriteNumber("canais", canais);
-        if (d.Vias.Count > 0)
-        {
-            w.WriteStartArray("vias");
-            foreach (var v in d.Vias)
-            {
-                w.WriteStartObject();
-                w.WriteString("descricao", v.Descricao);
-                Numero("diametro", v.Diametro);
-                w.WriteEndObject();
-            }
-            w.WriteEndArray();
-        }
-        w.WriteEndObject();
-    }
-
     /// <summary>
-    /// Os equipamentos de um Setup (formato 2). Fica o primeiro de cada id. Um bridge que não vale sai
-    /// (o módulo fica). Um equipamento ilegível (sem id, grupo, nome ou categoria válidos, ou com um
-    /// campo de outra forma) é descartado; os outros ficam, e as ligações para ele se desfazem.
+    /// Os equipamentos de um Setup. Fica o primeiro de cada id. Um bridge que não vale sai (o módulo
+    /// fica). Um equipamento ilegível (sem id, grupo, nome ou categoria válidos, ou com um campo de outra
+    /// forma) é descartado; os outros ficam, e as ligações para ele se desfazem. <paramref name="legado"/>
+    /// (formato 2): os dados da ficha são números, que viram dados digitados.
     /// </summary>
-    private static IReadOnlyList<Equipamento> LerEquipamentos(JsonElement setup)
+    private static IReadOnlyList<Equipamento> LerEquipamentos(JsonElement setup, bool legado)
     {
         var lista = new List<Equipamento>();
         var vistos = new HashSet<string>();
@@ -2710,7 +2523,7 @@ public sealed class GerenteSetups
             Equipamento? e = null;
             try
             {
-                e = LerEquipamento(item);
+                e = LerEquipamento(item, legado);
             }
             catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException)
             {
@@ -2722,10 +2535,10 @@ public sealed class GerenteSetups
         return Ligacoes.Sanear(lista);
     }
 
-    private static Equipamento? LerEquipamento(JsonElement item)
+    private static Equipamento? LerEquipamento(JsonElement item, bool legado)
     {
         if (item.ValueKind != JsonValueKind.Object || Texto(item, "id") is not { Length: > 0 } id
-            || GrupoDe(Texto(item, "grupo")) is not { } grupo
+            || FichaJson.GrupoDe(Texto(item, "grupo")) is not { } grupo
             || Ligacoes.TextoValido(Texto(item, "nome")) is not { } nome
             || Ligacoes.TextoValido(Texto(item, "categoria")) is not { } categoria)
             return null;
@@ -2782,7 +2595,7 @@ public sealed class GerenteSetups
         var modelo = Texto(item, "modelo");
         return new Equipamento(id, grupo, categoria, nome, string.IsNullOrWhiteSpace(modelo) ? null : modelo.Trim(), funcao)
         {
-            Dados = LerDados(item),
+            Dados = FichaJson.LerDados(item, legado),
             Entradas = entradas,
             Bridges = bridges,
             Ligado = ligado,
@@ -2806,35 +2619,6 @@ public sealed class GerenteSetups
         b.ValueKind == JsonValueKind.Array && b.GetArrayLength() == 2 && b[0].TryGetInt32(out var x) && b[1].TryGetInt32(out var y)
             ? new Bridge(x, y)
             : null;
-
-    private static DadosTecnicos LerDados(JsonElement item)
-    {
-        if (!item.TryGetProperty("dados", out var d) || d.ValueKind != JsonValueKind.Object)
-            return DadosTecnicos.Nenhum;
-        decimal? Numero(JsonElement o, string nome) =>
-            o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.Number && p.TryGetDecimal(out var v) ? v : null;
-        int? canais = d.TryGetProperty("canais", out var c) && c.ValueKind == JsonValueKind.Number && c.TryGetInt32(out var n) ? n : null;
-        var vias = new List<Via>();
-        if (d.TryGetProperty("vias", out var vs) && vs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var v in vs.EnumerateArray())
-            {
-                if (v.ValueKind == JsonValueKind.Object && Texto(v, "descricao") is { Length: > 0 } descricao)
-                    vias.Add(new Via(descricao, Numero(v, "diametro")));
-            }
-        }
-        return new DadosTecnicos(Numero(d, "diametro"), Numero(d, "impedancia"), Numero(d, "potenciaRms"), Numero(d, "sensibilidade"),
-            Numero(d, "faixaMinima"), Numero(d, "faixaMaxima"), Numero(d, "ganho"), canais)
-        {
-            Vias = vias,
-        };
-    }
-
-    private static bool Booleano(JsonElement o, string nome) =>
-        o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.True;
-
-    private static DateTimeOffset Quando(JsonElement o) =>
-        Texto(o, "quando") is { } q && DateTimeOffset.TryParse(q, Fio, DateTimeStyles.RoundtripKind, out var d) ? d : DateTimeOffset.MinValue;
 
     private static string? Texto(JsonElement o, string nome) =>
         o.TryGetProperty(nome, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;

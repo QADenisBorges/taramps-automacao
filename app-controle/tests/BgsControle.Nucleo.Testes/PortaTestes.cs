@@ -126,10 +126,11 @@ public sealed class PortaTestes : IDisposable
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
         _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, Escrita, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, new TextoMemoria(), _log);
-        _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio);
+        // História 8f: o app nasce sem memórias; a porta testa com a FILME e o Cinema do cenário de teste.
+        _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio);
         _playlists = new GerentePlaylists(new TextoMemoria(), _log);
         _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _presets, _playlists, _chaves,
-            new TextoMemoria(), new TextoMemoria(), _log, _relogio);
+            new TextoMemoria(CenarioFilme.SetupsJson), new TextoMemoria(), _log, _relogio);
         _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, _memorias, Escrita, TemposDoGerador, _relogio);
         _monitor = new MonitorAparelho(_sessao, _leitura, _relogio);
         _comandos = new ComandosAparelho(_sessao, _estado, _leitura, _copia, _cofre, _log, _memorias, _gerador, Escrita, _relogio);
@@ -503,9 +504,9 @@ public sealed class PortaTestes : IDisposable
     public async Task Antes_de_a_conferencia_terminar_todo_POST_recebe_409_e_nada_sai()
     {
         // Um segundo gerente cujo setups.json só se lê no fim: a conferência dele fica pendente.
-        var guardado = new TextoSegurado(null);
+        var guardado = new TextoSegurado(CenarioFilme.SetupsJson);
         var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias,
-            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio),
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio),
             new GerentePlaylists(new TextoMemoria(), _log), _chaves, guardado, new TextoMemoria(), _log, _relogio);
         using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
         await Conectar();
@@ -1237,11 +1238,11 @@ public sealed class PortaTestes : IDisposable
         var estado = Json(await Pedir("GET", "/estado", chave: chave)).GetProperty("setup");
         Assert.Equal("confere", estado.GetProperty("estado").GetString());
         var filme = Assert.Single(estado.GetProperty("memorias").EnumerateArray());
-        Assert.Equal(ConhecimentoHerdado.IdMemoriaFilme, filme.GetProperty("id").GetString());
+        Assert.Equal(CenarioFilme.IdMemoria, filme.GetProperty("id").GetString());
         Assert.Equal("FILME", filme.GetProperty("nome").GetString());
         Assert.True(filme.GetProperty("emUso").GetBoolean());
         Assert.Equal("Cinema", filme.GetProperty("preset").GetString());
-        Assert.Equal(ConhecimentoHerdado.IdCinema, filme.GetProperty("idPreset").GetString());
+        Assert.Equal(CenarioFilme.IdPreset, filme.GetProperty("idPreset").GetString());
         Assert.Equal("Cinema", estado.GetProperty("presetEmUso").GetProperty("nome").GetString());
     }
 
@@ -1252,7 +1253,7 @@ public sealed class PortaTestes : IDisposable
         var chave = await Pronto();
         var antes = _simulador.Escritas.Count;
 
-        var pedido = Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{ConhecimentoHerdado.IdMemoriaFilme}}"}""", chave);
+        var pedido = Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{CenarioFilme.IdMemoria}}"}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
         _confirmacoes.Recusar();
         var r = await pedido;
@@ -1318,8 +1319,7 @@ public sealed class PortaTestes : IDisposable
         _simulador.Definir("050", 2, "0.0"); // a dúvida: dá para criar o Setup Carro
         await Conectar();
         await AndarAte(() => _setups.Estado == EstadoConferencia.Duvida && !_setups.Ocupado);
-        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro"))).Ok);
-        Assert.True((await Rodar(_setups.CriarMemoriaAsync("ESTRADA"))).Ok);
+        Assert.True((await Rodar(_setups.CriarSetupAsync("Carro", "ESTRADA"))).Ok);
         var estrada = _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single().Id;
         Assert.True((await Rodar(_setups.TrocarAsync())).Ok);
         Assert.True((await Rodar(_setups.EscolherAsync(ConhecimentoHerdado.IdSetupCasa))).Ok);
@@ -1345,10 +1345,192 @@ public sealed class PortaTestes : IDisposable
         await LigarPorta();
         var chave = await Parear();
 
-        var r = await Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{ConhecimentoHerdado.IdMemoriaFilme}}"}""", chave);
+        var r = await Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{CenarioFilme.IdMemoria}}"}""", chave);
 
         Assert.Equal(400, r.Status);
         Assert.Equal("Sem Setup em uso, nenhuma memória do celular se aplica. Escolha um Setup na tela.", Motivo(r));
+        Assert.Null(_confirmacoes.Atual);
+    }
+
+    // ----------------------------------------------------------------- a sequência da IA pede o toque (8f)
+
+    private Task<RespostaPorta> Ajuste(string chave, decimal valor) =>
+        Pedir("POST", "/ajuste", $$"""{"codigo":"081","indice":2,"valor":{{valor.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}""", chave);
+
+    private async Task TresAjustes(string chave, decimal desde = 1.0m)
+    {
+        for (var i = 0; i < PortaComandos.AjustesSemToque; i++)
+            Assert.Equal(200, (await Rodar(Ajuste(chave, desde + i))).Status);
+        Assert.Null(_confirmacoes.Atual);
+    }
+
+    [Fact]
+    public async Task Tres_ajustes_seguidos_da_IA_o_quarto_espera_o_Continuar_e_confirmar_executa_e_zera()
+    {
+        var chave = await Pronto();
+        await TresAjustes(chave);
+        Assert.Equal(3, _porta.AjustesSeguidos);
+
+        var quarto = Ajuste(chave, 7.0m);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+
+        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Continuar", _confirmacoes.Atual.TextoBotao);
+        Assert.NotNull(_confirmacoes.Atual.Risco);
+        Assert.DoesNotContain("*081*2*7.0*", _simulador.Escritas); // nada antes do toque
+        _confirmacoes.Confirmar();
+        var r = await Rodar(quarto);
+
+        Assert.Equal(200, r.Status);
+        Assert.Contains("*081*2*7.0*", _simulador.Escritas);
+        Assert.Equal(0, _porta.AjustesSeguidos);
+        // Depois do Continuar, mais 3 passam sem folha.
+        await TresAjustes(chave, 8.0m);
+    }
+
+    [Fact]
+    public async Task Ajustes_da_IA_ao_mesmo_tempo_so_3_passam_sem_a_folha()
+    {
+        var chave = await Pronto();
+        var antes = _simulador.Escritas.Count;
+        // Cinco /ajuste chegam juntos (o servidor atende as conexões ao mesmo tempo), cada um num endereço.
+        (string Codigo, int Indice)[] enderecos = [("081", 0), ("081", 1), ("081", 2), ("071", 0), ("071", 1)];
+        var pedidos = enderecos
+            .Select(e => Pedir("POST", "/ajuste", $$"""{"codigo":"{{e.Codigo}}","indice":{{e.Indice}},"valor":-1.0}""", chave))
+            .ToArray();
+
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
+        _confirmacoes.Recusar();
+        var respostas = await Rodar(Task.WhenAll(pedidos));
+
+        Assert.Equal(3, respostas.Count(r => r.Status == 200));
+        Assert.Equal(2, respostas.Count(r => r.Status == 409));
+        Assert.Equal(3, _porta.AjustesSeguidos);
+        Assert.Equal(3, _simulador.Escritas.Skip(antes).Count(e => e.EndsWith("*-1.0*", StringComparison.Ordinal)
+                                                                   && !e.StartsWith("*081*3*", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Um_ajuste_recusado_devolve_a_vaga_da_conta()
+    {
+        var chave = await Pronto();
+        Assert.True((await _chaves.DefinirAsync(Chave.AjustesAudio, false, OrigemComando.Tela)).Ok);
+
+        Assert.Equal(409, (await Ajuste(chave, 1.0m)).Status);
+
+        Assert.Equal(0, _porta.AjustesSeguidos);
+    }
+
+    [Fact]
+    public async Task Recusar_o_Continuar_recusa_so_aquele_pedido_e_o_proximo_pergunta_de_novo()
+    {
+        var chave = await Pronto();
+        await TresAjustes(chave);
+        var antes = _simulador.Escritas.Count;
+
+        var quarto = Ajuste(chave, 7.0m);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        _confirmacoes.Recusar();
+        var r = await quarto;
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(PedidosConfirmacao.MsgRecusou, Motivo(r));
+        Assert.Equal(antes, _simulador.Escritas.Count);
+        Assert.Equal((OrigemComando.Ia, false, PedidosConfirmacao.MsgRecusou), (Ultima().Origem, Ultima().Enviado, Ultima().Motivo));
+        Assert.Equal(3, _porta.AjustesSeguidos);
+
+        var outro = Ajuste(chave, 7.0m);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
+        _confirmacoes.Recusar();
+        Assert.Equal(409, (await outro).Status);
+    }
+
+    [Fact]
+    public async Task O_prazo_do_Continuar_vencido_e_uma_recusa()
+    {
+        var chave = await Pronto();
+        await TresAjustes(chave);
+        var antes = _simulador.Escritas.Count;
+
+        var quarto = Ajuste(chave, 7.0m);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        _relogio.Avancar(PedidosConfirmacao.Prazo + TimeSpan.FromSeconds(1));
+        var r = await Rodar(quarto);
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(PedidosConfirmacao.MsgSemResposta, Motivo(r));
+        Assert.Equal(antes, _simulador.Escritas.Count);
+    }
+
+    [Fact]
+    public async Task Uma_escrita_da_tela_no_meio_zera_a_conta_e_nenhuma_folha_abre()
+    {
+        await _uso.Carregado;
+        Assert.True((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok); // o toque pausa a IA
+        var chave = await Pronto();
+        Assert.Equal(200, (await Rodar(Ajuste(chave, 1.0m))).Status);
+        Assert.Equal(200, (await Rodar(Ajuste(chave, 2.0m))).Status);
+
+        Assert.True((await Rodar(_escritor.EscreverAsync(Catalogo.ParametroDe("081")!, 0, 4.0m))).Ok); // o toque na tela
+
+        Assert.Equal(0, _porta.AjustesSeguidos);
+        await AndarAte(() => _uso.Estado == EstadoIa.Ativa); // 10 s sem toques: a IA retoma
+        Assert.Equal(200, (await Rodar(Ajuste(chave, 3.0m))).Status);
+        Assert.Equal(200, (await Rodar(Ajuste(chave, 4.0m))).Status);
+        Assert.Null(_confirmacoes.Atual);
+        Assert.Equal(2, _porta.AjustesSeguidos);
+    }
+
+    [Fact]
+    public async Task Uma_confirmacao_na_tela_de_outra_operacao_zera_a_conta()
+    {
+        _simulador.Definir("081", 0, "+1.0"); // a FILME terá o que escrever
+        var chave = await Pronto();
+        await TresAjustes(chave);
+
+        var aplicar = Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        _confirmacoes.Confirmar();
+        Assert.Equal(200, (await Rodar(aplicar)).Status);
+
+        Assert.Equal(0, _porta.AjustesSeguidos);
+        await TresAjustes(chave, 10.0m);
+    }
+
+    [Fact]
+    public async Task PARAR_IA_desconectar_e_revogar_zeram_a_conta()
+    {
+        var chave = await Pronto();
+        await TresAjustes(chave);
+
+        _uso.PararIa();
+        Assert.Equal(0, _porta.AjustesSeguidos);
+
+        _uso.Liberar();
+        chave = await Parear();
+        await TresAjustes(chave);
+        await _porta.RevogarAsync();
+        Assert.Equal(0, _porta.AjustesSeguidos);
+
+        _uso.Liberar();
+        chave = await Parear();
+        await TresAjustes(chave);
+        await _sessao.DesconectarAsync();
+        Assert.Equal(0, _porta.AjustesSeguidos);
+    }
+
+    [Fact]
+    public async Task Os_outros_pedidos_da_IA_nao_entram_na_conta()
+    {
+        var chave = await Pronto();
+        await TresAjustes(chave);
+
+        Assert.Equal(200, (await Pedir("POST", "/tarefa", """{"frase":"IA ajustando"}""", chave)).Status);
+        Assert.Equal(200, (await Pedir("GET", "/estado", chave: chave)).Status);
+
+        Assert.Equal(3, _porta.AjustesSeguidos);
         Assert.Null(_confirmacoes.Atual);
     }
 }

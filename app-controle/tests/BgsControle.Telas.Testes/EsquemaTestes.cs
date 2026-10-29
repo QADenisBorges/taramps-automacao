@@ -54,7 +54,7 @@ public sealed class EsquemaTestes : IDisposable
         decimal? diametro = null, FuncaoAcustica? funcao = null) =>
         new(id, GrupoEquipamento.AltoFalante, categoria, nome, Funcao: funcao)
         {
-            Dados = new DadosTecnicos(Diametro: diametro),
+            Dados = new DadosTecnicos { Diametro = DadoTecnico.Digitado(diametro) },
             Ligado = ligado,
         };
 
@@ -91,7 +91,7 @@ public sealed class EsquemaTestes : IDisposable
     {
         var cena = CenaSetup.Montar(ConhecimentoHerdado.EquipamentosCasa);
 
-        Assert.Equal(["Processador", "Módulo genérico", "JBL L", "JBL R", "Sub"], cena.Pecas.Select(p => p.Nome));
+        Assert.Equal(["Processador", "Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], cena.Pecas.Select(p => p.Nome));
         var processador = cena.Processador;
         var modulo = cena.Peca(ConhecimentoHerdado.IdModuloCasa)!;
         var jblL = cena.PecaPorNome("JBL L")!;
@@ -127,9 +127,9 @@ public sealed class EsquemaTestes : IDisposable
         Assert.Equal(bridge.Saida, caboSub.Pontos[0]);
         Assert.Equal(2, caboSub.Canal);
 
-        // Rótulos: o Sub e o módulo sem modelo são "genérico"; as JBL têm modelo.
-        Assert.Equal("genérico", sub.Detalhe);
-        Assert.Equal("genérico", modulo.Detalhe);
+        // Rótulos: só quem não tem modelo é "genérico"; desde a 8f, o módulo e o Sub têm modelo.
+        Assert.Null(sub.Detalhe);
+        Assert.Null(modulo.Detalhe);
         Assert.Null(jblL.Detalhe);
         Assert.False(cena.Vazia);
     }
@@ -410,7 +410,7 @@ public sealed class EsquemaTestes : IDisposable
         Assert.Equal(2, _vm.Destaque);
         Assert.False(_lista.FolhaAberta);
         double Op(string nome) => _vm.Opacidade(cena.PecaPorNome(nome)!);
-        Assert.Equal(1, Op("Módulo genérico"));
+        Assert.Equal(1, Op("Módulo SD800.4 EVO"));
         Assert.Equal(1, Op("Sub"));
         Assert.Equal(1, Op("Processador"));
         Assert.Equal(EsquemaViewModel.OpacidadeApagada, Op("JBL L"));
@@ -451,7 +451,7 @@ public sealed class EsquemaTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
 
         Assert.Null(_vm.Cena.PecaPorNome("JBL R"));
-        Assert.Equal(["Processador", "Módulo genérico", "JBL L", "Sub"], _vm.Cena.Pecas.Select(p => p.Nome));
+        Assert.Equal(["Processador", "Módulo SD800.4 EVO", "JBL L", "Sub"], _vm.Cena.Pecas.Select(p => p.Nome));
         Assert.True(_vm.Versao > versao);
         Assert.Equal(20, _vm.Angulo, 9);
         Assert.Equal(1.5, _vm.Aproximacao, 9);
@@ -726,7 +726,7 @@ public sealed class EsquemaTestes : IDisposable
         var setup = _b.Setups.Setup(Casa)!;
         var shaker = setup.Equipamentos.Single(e => e.Nome == "Shaker");
         Assert.Null(shaker.Funcao);
-        var sugerida = GerenteSetups.FuncaoSugerida(setup, shaker);
+        var sugerida = _b.Setups.FuncaoSugerida(Casa, shaker);
         Assert.Equal(FuncaoAcustica.Sub, sugerida); // o passa-baixa do CH3 em 150 Hz
         var forma = _vm.Cena.PecaPorNome("Shaker")!.Forma;
         Assert.Equal(CenaSetup.FormaDe(shaker, sugerida), forma);

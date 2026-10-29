@@ -97,46 +97,21 @@
                                     </BindableLayout.ItemTemplate>
                                 </VerticalStackLayout>
 
-                                <!-- O link 1–2 e 3–4 (Crossover). -->
+                                <!-- O link 1–2 e 3–4 (Crossover), só de leitura: sai sozinho das ligações do Setup. -->
                                 <ContentView IsVisible="{Binding MostrarLink}">
                                 <VerticalStackLayout Spacing="8" BindingContext="{Binding Link}">
                                     <VerticalStackLayout x:DataType="telas:LinkViewModel" Spacing="8"
-                                                         BindableLayout.ItemsSource="{Binding Pares}">
+                                                         BindableLayout.ItemsSource="{Binding Linhas}">
                                         <BindableLayout.ItemTemplate>
-                                            <DataTemplate x:DataType="telas:ParLinkViewModel">
-                                                <Border Style="{StaticResource cartao}" Padding="14,8">
-                                                    <VerticalStackLayout Spacing="4">
-                                                        <Grid ColumnDefinitions="*,56,56" ColumnSpacing="6" MinimumHeightRequest="44">
-                                                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Rotulo}"
-                                                                   VerticalTextAlignment="Center" />
-                                                            <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Desl."
-                                                                    Command="{Binding Desligar}">
-                                                                <Button.Triggers>
-                                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligado}" Value="False">
-                                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
-                                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
-                                                                    </DataTrigger>
-                                                                </Button.Triggers>
-                                                            </Button>
-                                                            <Button Grid.Column="2" Style="{StaticResource botao-contornado-pequeno}" Text="Lig."
-                                                                    Command="{Binding Ligar}">
-                                                                <Button.Triggers>
-                                                                    <DataTrigger TargetType="Button" Binding="{Binding Ligado}" Value="True">
-                                                                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
-                                                                        <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
-                                                                    </DataTrigger>
-                                                                </Button.Triggers>
-                                                            </Button>
-                                                        </Grid>
-                                                        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding AvisoDiferenca}"
-                                                               IsVisible="{Binding AvisoDiferenca, Converter={StaticResource TemTexto}}" />
-                                                    </VerticalStackLayout>
-                                                </Border>
+                                            <DataTemplate x:DataType="telas:LinhaLinkViewModel">
+                                                <VerticalStackLayout Spacing="4">
+                                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Frase}" />
+                                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding AvisoDiferenca}"
+                                                           IsVisible="{Binding AvisoDiferenca, Converter={StaticResource TemTexto}}" />
+                                                </VerticalStackLayout>
                                             </DataTemplate>
                                         </BindableLayout.ItemTemplate>
                                     </VerticalStackLayout>
-                                    <Label x:DataType="telas:LinkViewModel" Style="{StaticResource tipo-detalhe}" Text="{Binding Mensagem}"
-                                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
                                 </VerticalStackLayout>
                                 </ContentView>
                             </VerticalStackLayout>
@@ -156,17 +131,6 @@
             <!-- O Salvar fixo no pé. -->
             <c:SalvarPeView Grid.Row="3" BindingContext="{Binding Salvar}" />
         </Grid>
-
-        <!-- A folha do link ("Os ajustes da saída 1 vão para a saída 2"). -->
-        <c:FolhaView Aberta="{Binding Link.FolhaAberta}" Fechar="{Binding Link.CancelarFolha}">
-            <VerticalStackLayout Spacing="12">
-                <Label Style="{StaticResource tipo-titulo-folha}" Text="Ligar o link?" />
-                <Label Style="{StaticResource tipo-corpo}" Text="{Binding Link.FolhaAviso}" />
-                <Label Style="{StaticResource tipo-apoio}" Text="Depois, mexer na mestre muda o par." />
-                <Button Style="{StaticResource botao-principal}" Text="Ligar e copiar" Command="{Binding Link.ConfirmarFolha}" />
-                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding Link.CancelarFolha}" />
-            </VerticalStackLayout>
-        </c:FolhaView>
 
         <!-- A folha do Salvar. -->
         <c:SalvarFolhaView BindingContext="{Binding Salvar}" />

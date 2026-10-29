@@ -20,7 +20,7 @@
                     <DataTemplate x:DataType="telas:ItemPresetViewModel">
                         <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="14,8" MinimumHeightRequest="52"
                                 BackgroundColor="{StaticResource sup-2}" Margin="0,0,0,6">
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Grid>
                                 <VerticalStackLayout VerticalOptions="Center" Spacing="2">
                                     <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}">
                                         <Label.Triggers>
@@ -38,11 +38,6 @@
                                         </Label.Triggers>
                                     </Label>
                                 </VerticalStackLayout>
-                                <Border Grid.Column="1" IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
-                                        StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center">
-                                    <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
-                                           VerticalTextAlignment="Center" />
-                                </Border>
                             </Grid>
                             <Border.Triggers>
                                 <DataTrigger TargetType="Border" Binding="{Binding EmUso}" Value="True">

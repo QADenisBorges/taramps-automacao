@@ -48,19 +48,10 @@
                                                 <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource sobre-escolhido}"
                                                        Text="{Binding SeloEmUso}" VerticalTextAlignment="Center" />
                                             </Border>
-                                            <Border IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}" StrokeThickness="1"
-                                                    StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0">
-                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
-                                                       VerticalTextAlignment="Center" />
-                                                <Border.GestureRecognizers>
-                                                    <TapGestureRecognizer Command="{Binding AlternarNota}" />
-                                                </Border.GestureRecognizers>
-                                            </Border>
                                         </HorizontalStackLayout>
                                         <Label Style="{StaticResource tipo-memoria-lista}" Text="{Binding Nome}" />
                                         <Label Style="{StaticResource tipo-detalhe}" Text="{Binding TextoPreset}"
                                                IsVisible="{Binding TextoPreset, Converter={StaticResource TemTexto}}" />
-                                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding Nota}" IsVisible="{Binding NotaVisivel}" />
                                         <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                                             <Button Style="{StaticResource botao-pequeno}" Text="Aplicar" Command="{Binding Aplicar}" />
                                             <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Renomear" Command="{Binding Renomear}" />

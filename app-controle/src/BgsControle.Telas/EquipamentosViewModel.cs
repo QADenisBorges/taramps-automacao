@@ -521,10 +521,14 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     public string DicaModelo => Ligacoes.TextoGenerico;
 
     /// <summary>
-    /// A função sugerida pela categoria e pelo corte guardado no Setup para o canal que alimenta o
+    /// A função sugerida pela categoria e pelo corte da memória ativa do Setup no canal que alimenta o
     /// rascunho; null para quem não toca (grupos 2 a 4).
     /// </summary>
-    public FuncaoAcustica? FuncaoSugerida => GerenteSetups.FuncaoSugerida(Setup, Montar(exigir: false).Equipamento!);
+    public FuncaoAcustica? FuncaoSugerida => GerenteSetups.FuncaoSugerida(Setup, _setups.Ativa(Setup?.Id), Montar(exigir: false).Equipamento!);
+
+    /// <summary>A função sugerida de um equipamento do Setup (o esquema), pelo corte da memória ativa dele.</summary>
+    internal FuncaoAcustica? FuncaoSugeridaNo(Setup setup, Equipamento equipamento) =>
+        GerenteSetups.FuncaoSugerida(setup, _setups.Ativa(setup.Id), equipamento);
 
     /// <summary>A função acústica aparece: só para quem toca (grupo 1 e alto-falante passivo).</summary>
     public bool MostraFuncao => _grupo is GrupoEquipamento.AmplificaETocam or GrupoEquipamento.AltoFalante;
@@ -728,13 +732,13 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         _nomeSugerido = null;
         _modelo = e.Modelo ?? "";
         _funcao = e.Funcao;
-        _diametro = Texto(e.Dados.Diametro);
-        _impedancia = Texto(e.Dados.Impedancia);
-        _potencia = Texto(e.Dados.PotenciaRms);
-        _sensibilidade = Texto(e.Dados.Sensibilidade);
-        _faixaMinima = Texto(e.Dados.FaixaMinima);
-        _faixaMaxima = Texto(e.Dados.FaixaMaxima);
-        _ganho = Texto(e.Dados.Ganho);
+        _diametro = Texto(e.Dados.Diametro?.Valor);
+        _impedancia = Texto(e.Dados.Impedancia?.Valor);
+        _potencia = Texto(e.Dados.PotenciaRms?.Valor);
+        _sensibilidade = Texto(e.Dados.Sensibilidade?.Valor);
+        _faixaMinima = Texto(e.Dados.FaixaMinima?.Valor);
+        _faixaMaxima = Texto(e.Dados.FaixaMaxima?.Valor);
+        _ganho = Texto(e.Dados.Ganho?.Valor);
         _vias = e.Dados.Vias.Select(v => new ViaViewModel(v.Descricao, Texto(v.Diametro), Despachante, Relogio)).ToArray();
         PrepararLigacoes(e);
         AbrirFolha();
@@ -852,7 +856,11 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// O equipamento da folha. Com <paramref name="exigir"/>, um dado técnico que não é número maior
-    /// que zero recusa com o motivo; sem, ele fica de fora (para a função sugerida).
+    /// que zero recusa com o motivo; sem, ele fica de fora (para a função sugerida). Cada dado digitado
+    /// vira um <see cref="DadoTecnico"/> com a origem "digitado"; um dado que não mudou fica com a origem
+    /// e a fonte que tinha, e os dados que a folha ainda não mostra (os da ficha de 29/10, história 10c)
+    /// ficam como estavam. Com o modelo ou o grupo trocados, a origem de antes não vale para o
+    /// equipamento novo: os dados que ficam passam a digitados.
     /// </summary>
     private (Equipamento? Equipamento, string? Erro) Montar(bool exigir)
     {
@@ -867,11 +875,22 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             return null;
         }
 
-        var dados = new DadosTecnicos(
-            Numero(_diametro, "Diâmetro"), Numero(_impedancia, "Impedância"), Numero(_potencia, "Potência RMS"),
-            Numero(_sensibilidade, "Sensibilidade"), Numero(_faixaMinima, "Faixa, início"), Numero(_faixaMaxima, "Faixa, fim"),
-            Numero(_ganho, "Ganho"), _grupo == GrupoEquipamento.Amplificador ? _entradas.Count : null)
+        static DadoTecnico? Dado(DadoTecnico? antes, decimal? digitado) =>
+            digitado is not { } v ? null : antes is { } a && a.Valor == v ? a : new DadoTecnico(v, OrigemDado.Digitado);
+
+        var mesmoModelo = _editando is not null && _editando.Grupo == _grupo
+                          && BaseModelos.Chave(_editando.Modelo) == BaseModelos.Chave(_modelo);
+        var antes = _editando is null ? DadosTecnicos.Nenhum : mesmoModelo ? _editando.Dados : _editando.Dados.ComoDigitados();
+        var dados = antes with
         {
+            Diametro = Dado(antes.Diametro, Numero(_diametro, "Diâmetro")),
+            Impedancia = Dado(antes.Impedancia, Numero(_impedancia, "Impedância")),
+            PotenciaRms = Dado(antes.PotenciaRms, Numero(_potencia, "Potência RMS")),
+            Sensibilidade = Dado(antes.Sensibilidade, Numero(_sensibilidade, "Sensibilidade")),
+            FaixaMinima = Dado(antes.FaixaMinima, Numero(_faixaMinima, "Faixa, início")),
+            FaixaMaxima = Dado(antes.FaixaMaxima, Numero(_faixaMaxima, "Faixa, fim")),
+            Ganho = Dado(antes.Ganho, Numero(_ganho, "Ganho")),
+            Canais = _grupo == GrupoEquipamento.Amplificador ? Dado(antes.Canais, _entradas.Count) : null,
             Vias = MostraVias
                 ? _vias.Where(v => !string.IsNullOrWhiteSpace(v.Descricao)).Select(v => new Via(v.Descricao, Numero(v.Diametro, "Diâmetro da via"))).ToArray()
                 : [],

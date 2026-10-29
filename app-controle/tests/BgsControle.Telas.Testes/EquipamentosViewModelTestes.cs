@@ -35,16 +35,16 @@ public sealed class EquipamentosViewModelTestes : IDisposable
 
         Assert.Equal("Casa 2.1", _vm.Titulo);
         Assert.Null(_vm.TextoVazio);
-        Assert.Equal(["Módulo genérico", "JBL L", "JBL R", "Sub"], _vm.Itens.Select(i => i.Nome));
+        Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], _vm.Itens.Select(i => i.Nome));
         var jblR = _vm.Item("JBL R")!;
-        Assert.Equal("Alto-falante passivo · canal 2 do Módulo genérico · CH2", jblR.Detalhe);
+        Assert.Equal("Alto-falante passivo · canal 2 do Módulo SD800.4 EVO · CH2", jblR.Detalhe);
         Assert.Equal("JBL 4TRMS80", jblR.Modelo);
         Assert.Equal("médio-grave", jblR.Funcao);
         var sub = _vm.Item("Sub")!;
-        Assert.Equal("Alto-falante passivo · bridge 3+4 do Módulo genérico · CH3 + CH4", sub.Detalhe);
-        Assert.Equal("genérico", sub.Modelo);
+        Assert.Equal("Alto-falante passivo · bridge 3+4 do Módulo SD800.4 EVO · CH3 + CH4", sub.Detalhe);
+        Assert.Equal("Protech Light 8\"", sub.Modelo);
         Assert.Equal("sub", sub.Funcao);
-        Assert.Equal("Amplificador · 4 canais · bridge 3+4 · CH1 + CH2 + CH3 + CH4", _vm.Item("Módulo genérico")!.Detalhe);
+        Assert.Equal("Amplificador · 4 canais · bridge 3+4 · CH1 + CH2 + CH3 + CH4", _vm.Item("Módulo SD800.4 EVO")!.Detalhe);
         Assert.Equal(["JBL L", "JBL R", "Sub"], _vm.Saidas.Select(s => s.Nome));
     }
 
@@ -54,27 +54,27 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         await MostrarCasa();
         var inicio = _b.Simulador.Escritas.Count;
 
-        _vm.Item("Módulo genérico")!.Editar.Execute(null);
+        _vm.Item("Módulo SD800.4 EVO")!.Editar.Execute(null);
         Assert.True(_vm.FolhaAberta);
         Assert.False(_vm.Nova);
-        Assert.Equal("Módulo genérico", _vm.TituloFolha);
+        Assert.Equal("Módulo SD800.4 EVO", _vm.TituloFolha);
         Assert.Equal(GrupoEquipamento.Amplificador, _vm.Grupo);
         Assert.Equal(4, _vm.NumeroCanais);
-        Assert.Equal("19,6", _vm.Ganho);
+        Assert.Equal("19,5", _vm.Ganho);
         Assert.Equal(["Bridge 1+2", "Bridge 3+4"], _vm.Bridges.Select(b => b.Rotulo));
         Assert.Equal([false, true], _vm.Bridges.Select(b => b.Ligado));
         Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _vm.Entradas.Select(e => e.Fonte.Rotulo));
 
         await _vm.Tirar.ExecutarAsync();
-        Assert.Equal("Tirar Módulo genérico do Casa 2.1?", _vm.ConfirmacaoTirar);
+        Assert.Equal("Tirar Módulo SD800.4 EVO do Casa 2.1?", _vm.ConfirmacaoTirar);
         Assert.Equal("Os alto-falantes ligados nele ficam sem ligação: JBL L, JBL R e Sub.", _vm.AvisoTirar);
         await _b.Rodar(_vm.ConfirmarTirar.ExecutarAsync());
 
         Assert.False(_vm.FolhaAberta);
-        Assert.Equal("Módulo genérico tirado do Casa 2.1. Ficaram sem ligação: JBL L, JBL R e Sub.", _vm.Mensagem);
+        Assert.Equal("Módulo SD800.4 EVO tirado do Casa 2.1. Ficaram sem ligação: JBL L, JBL R e Sub.", _vm.Mensagem);
         Assert.Equal(["JBL L", "JBL R", "Sub"], _vm.Itens.Select(i => i.Nome));
         Assert.Equal("Alto-falante passivo · sem ligação", _vm.Item("JBL R")!.Detalhe);
-        Assert.Equal(["CH1", "CH2", "CH3 + CH4"], _vm.Saidas.Select(s => s.Nome));
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _vm.Saidas.Select(s => s.Nome)); // sem o bridge, o link sai sozinho
         Assert.Equal(inicio, _b.Simulador.Escritas.Count); // nada pelo BLE
 
         // Sem módulo no Setup: o "ligado em" de um alto-falante passivo não tem opções.
@@ -139,8 +139,8 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("SW 12", item.Modelo);
         Assert.Equal("JBL L + Sub ativo", _vm.Saidas[0].Nome);
         var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Sub ativo");
-        Assert.Equal(250.5m, guardado.Dados.PotenciaRms);
-        Assert.Equal(12m, guardado.Dados.Diametro);
+        Assert.Equal(new DadoTecnico(250.5m, OrigemDado.Digitado), guardado.Dados.PotenciaRms); // a ficha monta o dado digitado
+        Assert.Equal(new DadoTecnico(12m, OrigemDado.Digitado), guardado.Dados.Diametro);
         Assert.Null(guardado.Funcao); // vale a sugerida
     }
 
@@ -154,8 +154,8 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.True(_vm.CategoriaLivre);
         _vm.Categoria = "Outra";
         _vm.Nome = "Shaker do sofá";
-        Assert.Equal(["Sem ligação", "canal 1 do Módulo genérico", "canal 2 do Módulo genérico", "canal 3 do Módulo genérico",
-            "canal 4 do Módulo genérico", "bridge 3+4 do Módulo genérico"], _vm.OpcoesLigado.Select(o => o.Rotulo));
+        Assert.Equal(["Sem ligação", "canal 1 do Módulo SD800.4 EVO", "canal 2 do Módulo SD800.4 EVO", "canal 3 do Módulo SD800.4 EVO",
+            "canal 4 do Módulo SD800.4 EVO", "bridge 3+4 do Módulo SD800.4 EVO"], _vm.OpcoesLigado.Select(o => o.Rotulo));
         _vm.Ligado = _vm.OpcoesLigado[^1];
         Assert.Equal("Sugerida: sub", _vm.Funcoes[0].Rotulo); // o passa-baixa do CH3 em 150 Hz
         Assert.Equal("sub", _vm.FuncaoQueVale);
@@ -202,15 +202,20 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("JBL 4TRMS80", _vm.Modelo);
         Assert.Equal("médio-grave", _vm.Categoria);
         Assert.False(_vm.CategoriaLivre);
-        Assert.Equal("3,6", _vm.Impedancia);
-        Assert.Equal("canal 2 do Módulo genérico", _vm.Ligado!.Rotulo);
+        Assert.Equal("4", _vm.Impedancia); // a nominal; a Re medida (3,6 Ω) fica na ficha
+        Assert.Equal("canal 2 do Módulo SD800.4 EVO", _vm.Ligado!.Rotulo);
         _vm.Nome = "JBL R frente";
 
         await _vm.Confirmar.ExecutarAsync();
 
         Assert.Equal("JBL R frente guardado.", _vm.Mensagem);
         Assert.Equal("JBL R frente", _vm.Saidas[1].Nome);
-        Assert.Contains("100 Hz", _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblR)!.Nota);
+        var guardada = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblR)!;
+        Assert.Contains("100 Hz", guardada.Nota);
+        // Os dados que a folha não mostra ficam, com a origem; o que não mudou também.
+        Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Medido, "Medido em 18/10/2026"), guardada.Dados.Re);
+        Assert.Equal(OrigemDado.Oficial, guardada.Dados.Impedancia!.Origem);
+        Assert.Equal(OrigemDado.Oficial, guardada.Dados.Fs!.Origem);
     }
 
     [Fact]
@@ -280,11 +285,27 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     }
 
     [Fact]
+    public async Task Trocar_o_modelo_ao_editar_os_dados_que_ficam_viram_digitados_e_nao_vao_como_oficiais()
+    {
+        await MostrarCasa();
+        _vm.AbrirEditar(ConhecimentoHerdado.IdJblR);
+
+        _vm.Modelo = "Outra JBL";
+        await _vm.Confirmar.ExecutarAsync();
+
+        var guardada = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblR)!;
+        Assert.Equal("Outra JBL", guardada.Modelo);
+        Assert.Equal(new DadoTecnico(4m, OrigemDado.Digitado), guardada.Dados.Impedancia); // o que a folha mostra
+        Assert.Equal(new DadoTecnico(98m, OrigemDado.Digitado), guardada.Dados.Fs); // o que a folha ainda não mostra
+        Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Digitado), guardada.Dados.Re);
+    }
+
+    [Fact]
     public async Task Quem_nao_toca_nao_mostra_funcao_acustica()
     {
         await MostrarCasa();
 
-        Assert.Null(_vm.Item("Módulo genérico")!.Funcao);
+        Assert.Null(_vm.Item("Módulo SD800.4 EVO")!.Funcao);
         _vm.AbrirEditar(ConhecimentoHerdado.IdModuloCasa);
         Assert.False(_vm.MostraFuncao);
         Assert.Empty(_vm.Funcoes);

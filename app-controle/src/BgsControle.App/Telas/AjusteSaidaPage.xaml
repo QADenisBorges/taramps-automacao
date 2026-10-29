@@ -2,8 +2,8 @@
 <!--
     O Ajuste da saída (EXPERIENCE, Ajuste da saída; DESIGN, botao-giratorio, avancado): cabeçalho com ‹ e o
     nome da saída na cor dela; o ganho no giratório, com − e + grandes; à vista o passa-alta, o passa-baixa e o
-    limitador; em Avançado o atraso, a fase, o equilíbrio do Setup desta saída (em toda saída; num par, nos
-    dois canais), o EQ de saída, o ataque, a liberação, o Auto e o mute. O Salvar fica fixo no pé.
+    limitador; em Avançado o atraso, a fase, o EQ de saída, o ataque, a liberação, o Auto e o mute. O Salvar
+    fica fixo no pé.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -83,7 +83,7 @@
                             <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
                                 <VerticalStackLayout VerticalOptions="Center">
                                     <Label Style="{StaticResource tipo-rotulo}" Text="AVANÇADO" />
-                                    <Label Style="{StaticResource tipo-detalhe}" Text="Atraso, fase, equilíbrio, EQ de saída, ataque e liberação" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="Atraso, fase, EQ de saída, ataque e liberação" />
                                 </VerticalStackLayout>
                                 <Label Grid.Column="1" Text="{Binding IndicadorAvancado}" TextColor="{StaticResource apoio}" FontSize="18"
                                        VerticalTextAlignment="Center" />
@@ -94,48 +94,6 @@
                             <VerticalStackLayout IsVisible="{Binding AvancadoAberto}" Spacing="10" Padding="0,0,0,14">
                                 <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding AvancadoInicio}"
                                                      BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
-
-                                <!-- O equilíbrio do Setup desta saída (ganho e limitador; em toda saída). -->
-                                <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Equilibrio}">
-                                    <BindableLayout.ItemTemplate>
-                                        <DataTemplate x:DataType="telas:ControleEquilibrioViewModel">
-                                            <Border Style="{StaticResource cartao}" Padding="14,12">
-                                                <VerticalStackLayout Spacing="10">
-                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                                        <VerticalStackLayout VerticalOptions="Center" Spacing="2">
-                                                            <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}" />
-                                                            <Label Style="{StaticResource tipo-escala}" Text="{Binding FaixaEPasso}" />
-                                                        </VerticalStackLayout>
-                                                        <Border Grid.Column="1" Style="{StaticResource campo-numerico}">
-                                                            <Grid>
-                                                                <Label Style="{StaticResource tipo-valor-campo}" Text="{Binding TextoValor}"
-                                                                       HorizontalTextAlignment="End" VerticalTextAlignment="Center" />
-                                                                <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0"
-                                                                         Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />
-                                                            </Grid>
-                                                            <Border.GestureRecognizers>
-                                                                <TapGestureRecognizer Command="{Binding TocarNoValor}" />
-                                                            </Border.GestureRecognizers>
-                                                        </Border>
-                                                    </Grid>
-                                                    <c:CampoEdicaoView />
-                                                    <Grid ColumnDefinitions="48,*,48" ColumnSpacing="8">
-                                                        <c:BotaoSegurar Style="{StaticResource botao-passo}" Text="−"
-                                                                        ComandoApertar="{Binding ApertarMenos}" ComandoSoltar="{Binding SoltarPasso}" />
-                                                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" HorizontalTextAlignment="Center"
-                                                               VerticalTextAlignment="Center" Text="Somado ao valor da memória" />
-                                                        <c:BotaoSegurar Grid.Column="2" Style="{StaticResource botao-passo}" Text="+"
-                                                                        ComandoApertar="{Binding ApertarMais}" ComandoSoltar="{Binding SoltarPasso}" />
-                                                    </Grid>
-                                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTrava}"
-                                                           IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
-                                                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Aviso}"
-                                                           IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
-                                                </VerticalStackLayout>
-                                            </Border>
-                                        </DataTemplate>
-                                    </BindableLayout.ItemTemplate>
-                                </VerticalStackLayout>
 
                                 <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding AvancadoFim}"
                                                      BindableLayout.ItemTemplate="{StaticResource ItemControle}" />

@@ -68,14 +68,13 @@ public sealed class BotaoMemoriaViewModel : TelaBase
     }
 }
 
-/// <summary>Uma linha de escolha da lista de memórias ("…"): nome, detalhe, selo HERDADO, em uso, travada.</summary>
+/// <summary>Uma linha de escolha da lista de memórias ("…"): nome, detalhe, em uso, travada.</summary>
 public sealed class LinhaMemoriaViewModel
 {
-    internal LinhaMemoriaViewModel(string nome, string? detalhe, bool herdado, bool emUso, bool travada, Func<Task> tocar)
+    internal LinhaMemoriaViewModel(string nome, string? detalhe, bool emUso, bool travada, Func<Task> tocar)
     {
         Nome = nome;
         Detalhe = detalhe;
-        Selo = herdado ? HerdadoViewModel.TextoSelo : null;
         EmUso = emUso;
         Travada = travada;
         Tocar = new Comando(tocar);
@@ -85,9 +84,6 @@ public sealed class LinhaMemoriaViewModel
 
     /// <summary>"Preset: Cinema", "Memória 2 do aparelho", ou null.</summary>
     public string? Detalhe { get; }
-
-    /// <summary>"HERDADO", ou null.</summary>
-    public string? Selo { get; }
 
     /// <summary>A que está em uso fica em branco.</summary>
     public bool EmUso { get; }
@@ -307,13 +303,12 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         _celular = _setups.MemoriasDe(setup?.Id)
             .Select(m => new LinhaMemoriaViewModel(m.Nome,
                 _setups.PresetDe(m) is { } p ? MemoriasViewModel.TextoPresetDe(p.Nome) : null,
-                m.Herdado, m.Id == emUso, travado, () => AplicarAsync(m.Id)))
+                m.Id == emUso, travado, () => AplicarAsync(m.Id)))
             .ToArray();
         _aparelho = Enumerable.Range(0, Catalogo.Memorias)
             .Select(n => new LinhaMemoriaViewModel(
                 _memorias.Nome(n) is { Length: > 0 } nome ? nome : MemoriasViewModel.SemNome,
                 $"Memória {n + 1} do aparelho",
-                false,
                 uso.Tipo == TipoSomEmUso.MemoriaAparelho && uso.MemoriaAparelho == n,
                 false,
                 () => CarregarAsync(n)))

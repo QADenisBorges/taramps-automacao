@@ -33,6 +33,11 @@ public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, 
 /// <see cref="ConfirmacaoIa.Sempre"/>. Antes da folha, o <see cref="Sessao.Conferir"/> do primeiro
 /// quadro recusa na hora.</item>
 /// </list>
+/// <b>Sequência da IA pede o toque</b> (<c>chaves-de-acesso.md</c>, decisão D4 do Denis de 29/10/2026): a
+/// cada <see cref="AjustesSemToque"/> <c>/ajuste</c> da IA sem um toque do usuário no meio (uma escrita
+/// da tela, uma confirmação na tela ou o PARAR IA), o próximo espera "Continuar" na folha; confirmar
+/// zera a conta e executa; recusar ou deixar vencer o prazo recusa só aquele pedido. A conta zera
+/// também ao desconectar e ao revogar o cliente.
 /// Com firmware diferente de R003, só os GET respondem. Com o Setup em dúvida (ou trocando, ou
 /// ainda sem conferir nesta conexão), todo POST de um cliente pareado é recusado com 409 "Setup em
 /// dúvida; escolha na tela." (CAP-16). A IA não salva: a porta não tem comando de salvar. Um
@@ -51,6 +56,15 @@ public sealed class PortaComandos : IDisposable
     public const string MsgCaminho = "Caminho desconhecido. Veja GET /ajuda.";
     public const string MsgChaveDesligada = "A chave IA pela rede está desligada.";
     public const string MsgErroInesperado = "Erro inesperado no app.";
+
+    /// <summary>Quantos <c>/ajuste</c> seguidos da IA passam sem o toque; o próximo espera Continuar (o 3 é provisório, do Denis).</summary>
+    public const int AjustesSemToque = 3;
+
+    public const string TituloContinuar = "A IA quer seguir mexendo";
+    public const string BotaoContinuar = "Continuar";
+
+    /// <summary>O risco da folha do Continuar.</summary>
+    public static string RiscoContinuar => $"A IA já fez {AjustesSemToque} ajustes seguidos sem um toque seu. Ajuste por ajuste, ela pode trocar o som inteiro.";
 
     public static string MsgNaoAbriu(int porta) => $"Não consegui abrir a porta {porta}.";
 
@@ -89,6 +103,8 @@ public sealed class PortaComandos : IDisposable
     private DateTimeOffset? _ultimoPedido;
     private ITimer? _vigia;
     private bool _descartada;
+    private int _ajustesSeguidos;
+    private long _geracaoSequencia;
 
     public PortaComandos(
         Sessao sessao,
@@ -134,7 +150,8 @@ public sealed class PortaComandos : IDisposable
         _uso.Pausou += AoPausar;
         _uso.Retomou += AoRetomar;
         _historico.Registrou += AoRegistrar;
-        Pareamento.Mudou += Avisar;
+        Pareamento.Mudou += AoMudarPareamento;
+        _sessao.Mudou += AoMudarSessao;
         // A chave pode já estar carregada (sem o aviso de agora): confere uma vez.
         Inicio = ServidorHttp.SemFluxo(AtualizarSeguroAsync);
     }
@@ -151,6 +168,16 @@ public sealed class PortaComandos : IDisposable
 
     /// <summary>A porta está escutando.</summary>
     public bool Aberta => _servidor.Aberto;
+
+    /// <summary>Quantos <c>/ajuste</c> da IA passaram desde o último toque do usuário (a conta do Continuar).</summary>
+    public int AjustesSeguidos
+    {
+        get
+        {
+            lock (_trava)
+                return _ajustesSeguidos;
+        }
+    }
 
     /// <summary>"Não consegui abrir a porta 8787.", ou null.</summary>
     public string? Erro
@@ -278,6 +305,7 @@ public sealed class PortaComandos : IDisposable
         if (novaParada)
         {
             // PARAR IA (na tela IA ativa, ou daqui): o pedido esperando é recusado e o cliente sai.
+            ZerarSequencia();
             Registrar("parada", null);
             Confirmacoes.Cancelar();
             _ = Pareamento.RevogarAsync();
@@ -300,7 +328,59 @@ public sealed class PortaComandos : IDisposable
     private void AoRegistrar(EntradaHistorico entrada)
     {
         if (entrada.Origem == OrigemComando.Tela && entrada.Enviado)
+        {
+            ZerarSequencia(); // uma escrita da tela é um toque do usuário no meio
             Registrar("comando", entrada);
+        }
+    }
+
+    /// <summary>O cliente foi revogado (ou um novo pareou): a conta do Continuar recomeça.</summary>
+    private void AoMudarPareamento()
+    {
+        ZerarSequencia();
+        Avisar();
+    }
+
+    /// <summary>Ao desconectar, a conta do Continuar recomeça.</summary>
+    private void AoMudarSessao()
+    {
+        if (!(_sessao.Estado == EstadoSessao.Conectado && _sessao.SegurandoConexao))
+            ZerarSequencia();
+    }
+
+    private void ZerarSequencia()
+    {
+        lock (_trava)
+        {
+            _ajustesSeguidos = 0;
+            _geracaoSequencia++;
+        }
+    }
+
+    /// <summary>
+    /// Reserva a vaga de um <c>/ajuste</c> na conta, na mesma trava da conferência (pedidos chegam ao
+    /// mesmo tempo). Devolve a geração da conta reservada, ou null quando a conta já chegou a
+    /// <see cref="AjustesSemToque"/> e o pedido precisa do Continuar.
+    /// </summary>
+    private long? ReservarAjuste()
+    {
+        lock (_trava)
+        {
+            if (_ajustesSeguidos >= AjustesSemToque)
+                return null;
+            _ajustesSeguidos++;
+            return _geracaoSequencia;
+        }
+    }
+
+    /// <summary>Devolve a vaga de um ajuste que não passou (se a conta não recomeçou no meio).</summary>
+    private void DevolverAjuste(long geracao)
+    {
+        lock (_trava)
+        {
+            if (_geracaoSequencia == geracao && _ajustesSeguidos > 0)
+                _ajustesSeguidos--;
+        }
     }
 
     private void Registrar(string tipo, EntradaHistorico? comando)
@@ -495,6 +575,19 @@ public sealed class PortaComandos : IDisposable
 
         using (Origem.Como(OrigemComando.Ia))
         {
+            long? vaga = null;
+            if (op.ContaSequencia && (vaga = ReservarAjuste()) is null)
+            {
+                // A sequência da IA pede o toque: o Continuar, antes do ajuste (chaves-de-acesso.md).
+                if (op.Quadro is { } quadroSequencia && _sessao.Conferir(quadroSequencia) is { } motivoSequencia)
+                    return RecusaDaPorta(op, motivoSequencia);
+                var continuar = await Confirmacoes.PedirAsync(new PedidoConfirmacao(TituloContinuar, RiscoContinuar, BotaoContinuar));
+                if (Recusada(continuar) is { } recusaSequencia)
+                    return RecusaDaPorta(op, recusaSequencia);
+                ZerarSequencia();
+                _log.Evento("porta: o usuário deixou a IA continuar");
+                return await op.Executar(); // o ajuste do Continuar já veio com o toque: não conta
+            }
             if (op.Confirmacao is { } pedido)
             {
                 // A chave, o só leitura, a conexão e o uso compartilhado recusam já, sem folha.
@@ -503,20 +596,34 @@ public sealed class PortaComandos : IDisposable
                 if (op.Quadro is { } quadro && _sessao.Conferir(quadro) is { } motivo)
                     return RecusaDaPorta(op, motivo); // o Conferir não registra: entra aqui, uma vez
                 var decisao = await Confirmacoes.PedirAsync(pedido);
-                var recusa = decisao switch
-                {
-                    DecisaoConfirmacao.Confirmou => null,
-                    DecisaoConfirmacao.Recusou => PedidosConfirmacao.MsgRecusou,
-                    DecisaoConfirmacao.SemResposta => PedidosConfirmacao.MsgSemResposta,
-                    DecisaoConfirmacao.Parada => UsoCompartilhado.MsgParada,
-                    _ => PedidosConfirmacao.MsgOcupado,
-                };
-                if (recusa is not null)
+                if (Recusada(decisao) is { } recusa)
                     return RecusaDaPorta(op, recusa);
+                ZerarSequencia(); // uma confirmação na tela é um toque do usuário no meio
             }
-            return await op.Executar();
+            RespostaPorta? resposta = null;
+            try
+            {
+                resposta = await op.Executar();
+                return resposta;
+            }
+            finally
+            {
+                // O ajuste que não passou não conta: a vaga reservada volta.
+                if (vaga is { } geracao && resposta?.Status != 200)
+                    DevolverAjuste(geracao);
+            }
         }
     }
+
+    /// <summary>O motivo da recusa de uma folha, ou null se o usuário confirmou.</summary>
+    private static string? Recusada(DecisaoConfirmacao decisao) => decisao switch
+    {
+        DecisaoConfirmacao.Confirmou => null,
+        DecisaoConfirmacao.Recusou => PedidosConfirmacao.MsgRecusou,
+        DecisaoConfirmacao.SemResposta => PedidosConfirmacao.MsgSemResposta,
+        DecisaoConfirmacao.Parada => UsoCompartilhado.MsgParada,
+        _ => PedidosConfirmacao.MsgOcupado,
+    };
 
     /// <summary>Uma recusa da própria porta a um cliente pareado: vai ao histórico como IA, recusado.</summary>
     private RespostaPorta RecusaDaPorta(Operacao op, string motivo)
@@ -543,9 +650,10 @@ public sealed class PortaComandos : IDisposable
     /// Uma operação montada do corpo: o comando para o histórico das recusas da porta, o primeiro
     /// quadro para o <see cref="Sessao.Conferir"/>, a folha (null = não confirma), o que ela faz e,
     /// quando há, a chave própria dela, conferida antes da folha (a de aplicar memória do celular).
+    /// <see cref="ContaSequencia"/>: um <c>/ajuste</c>, que entra na conta do Continuar.
     /// </summary>
     private sealed record Operacao(ComandoNaPorta? Comando, string? Quadro, PedidoConfirmacao? Confirmacao, Func<Task<RespostaPorta>> Executar,
-        Chave? ChaveAntes = null);
+        Chave? ChaveAntes = null, bool ContaSequencia = false);
 
     private static bool Confirma(Chave chave) => ChavesPadrao.De(chave).ConfirmacaoIa == ConfirmacaoIa.Sempre;
 
@@ -589,8 +697,8 @@ public sealed class PortaComandos : IDisposable
             quadro = Codificar(() => p.CodificarEscrita(indice, numero));
             escrever = () => _escritor.EscreverAsync(p, indice, numero);
         }
-        // Os ajustes de áudio nunca pedem o toque (ConfirmacaoIa.Nunca).
-        return new Operacao(ComandoNaPorta.Ler(quadro), quadro, null, async () =>
+        // Os ajustes de áudio não pedem o toque (ConfirmacaoIa.Nunca), menos o Continuar da sequência.
+        return new Operacao(ComandoNaPorta.Ler(quadro), quadro, null, ContaSequencia: true, Executar: async () =>
         {
             var r = await escrever();
             if (!r.Ok)
@@ -1016,8 +1124,8 @@ public sealed class PortaComandos : IDisposable
     }
 
     /// <summary>O texto do <c>GET /ajuda</c>: os caminhos e os corpos.</summary>
-    public const string TextoAjuda =
-        """
+    public static readonly string TextoAjuda =
+        $$"""
         Porta de comandos da IA (BGS Controle). JSON UTF-8; as respostas trazem {"ok":true,...} ou {"ok":false,"motivo":"..."}.
         Só a rede local da casa. Todo caminho, menos /parear e /ajuda, exige o cabeçalho Authorization: Bearer <chave>.
 
@@ -1029,7 +1137,7 @@ public sealed class PortaComandos : IDisposable
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
         POST /memoria/carregar {"memoria":1}: carrega a memória do aparelho de 1 a 3. Pede o toque do usuário na tela.
-        POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a calibração do Setup, o caráter da memória e o preset que ela lembra. Pede o toque do usuário na tela. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
+        POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na tela. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na tela. O gerador desliga sozinho em 30 s.
         POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque.
         POST /gerador/parar: desliga o gerador. Não pede o toque nem a chave do gerador, e a pausa da IA não o trava; com firmware diferente do R003, recusa como todo POST.
@@ -1044,6 +1152,7 @@ public sealed class PortaComandos : IDisposable
         A IA não salva nem renomeia memórias: a porta não tem esse comando.
         Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
+        A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela, uma confirmação na tela ou o PARAR IA), o próximo espera o Continuar na tela; recusado ou sem resposta, só ele é recusado (409).
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
         Com firmware diferente do R003, só os GET respondem.
         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e do PARAR IA.
@@ -1075,7 +1184,8 @@ public sealed class PortaComandos : IDisposable
         _uso.Pausou -= AoPausar;
         _uso.Retomou -= AoRetomar;
         _historico.Registrou -= AoRegistrar;
-        Pareamento.Mudou -= Avisar;
+        Pareamento.Mudou -= AoMudarPareamento;
+        _sessao.Mudou -= AoMudarSessao;
         _servidor.Fechar();
     }
 }

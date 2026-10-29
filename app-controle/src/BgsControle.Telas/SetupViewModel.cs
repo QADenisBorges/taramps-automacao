@@ -4,10 +4,10 @@ using BgsControle.Nucleo.Setups;
 namespace BgsControle.Telas;
 
 /// <summary>Uma linha do que não bate: o nome do ajuste pela saída do Setup, o valor no Setup e no aparelho, e o canal mestre da saída dona (a cor; null quando não é de uma saída).</summary>
-public sealed record LinhaDiferencaViewModel(string Rotulo, string NoSetup, string NoAparelho, string NomeSetup, int? Canal)
+public sealed record LinhaDiferencaViewModel(string Rotulo, string NaMemoria, string NoAparelho, string NomeMemoria, int? Canal)
 {
-    /// <summary>"80 cm no Casa 2.1, 0 cm no aparelho".</summary>
-    public string Detalhe => $"{NoSetup} no {NomeSetup}, {NoAparelho} no aparelho";
+    /// <summary>"80 cm na FILME, 0 cm no aparelho".</summary>
+    public string Detalhe => $"{NaMemoria} na {NomeMemoria}, {NoAparelho} no aparelho";
 }
 
 /// <summary>Uma linha da lista de Setups: nome, selo HERDADO, em uso, e o toque que escolhe.</summary>
@@ -156,19 +156,19 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     /// <summary>Por que o som não foi mutado ("O som não foi mutado: chave desligada"), ou null.</summary>
     public string? MotivoMudo => Aberta ? _setups.MotivoMudo : null;
 
-    /// <summary>"Atraso da saída 3: 80 cm no Casa 2.1, 0 cm no aparelho", uma por diferença.</summary>
+    /// <summary>"Atraso · Sub: 80 cm na FILME, 0 cm no aparelho", uma por diferença (contra a memória ativa da referência).</summary>
     public IReadOnlyList<string> Diferencas
     {
         get
         {
-            var nome = _setups.Referencia?.Nome ?? "Setup";
+            var nome = _setups.MemoriaDaReferencia?.Nome ?? "memória";
             return Aberta ? _setups.Diferencas.Select(d => d.Linha(nome)).ToArray() : [];
         }
     }
 
     /// <summary>
     /// A lista do que não bate em duas linhas, com a saída dona (a barra na cor dela): "Atraso · Sub"
-    /// e "80 cm no Casa 2.1, 0 cm no aparelho".
+    /// e "80 cm na FILME, 0 cm no aparelho".
     /// </summary>
     public IReadOnlyList<LinhaDiferencaViewModel> LinhasDiferenca
     {
@@ -176,9 +176,9 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         {
             if (!Aberta)
                 return [];
-            var nome = _setups.Referencia?.Nome ?? "Setup";
+            var nome = _setups.MemoriaDaReferencia?.Nome ?? "memória";
             return _setups.Diferencas
-                .Select(d => new LinhaDiferencaViewModel(d.Rotulo, d.NoSetup, d.NoAparelho, nome, d.Canal))
+                .Select(d => new LinhaDiferencaViewModel(d.Rotulo, d.NaMemoria, d.NoAparelho, nome, d.Canal))
                 .ToArray();
         }
     }
@@ -270,7 +270,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
 
     public Comando AbrirCriar { get; }
 
-    /// <summary>O ✓ do nome: cria o Setup com a calibração do aparelho e desmuta.</summary>
+    /// <summary>O ✓ do nome: cria o Setup com o som do aparelho como a primeira memória dele (com o nome do Setup) e desmuta.</summary>
     public Comando ConfirmarCriar { get; }
 
     public Comando CancelarCriar { get; }

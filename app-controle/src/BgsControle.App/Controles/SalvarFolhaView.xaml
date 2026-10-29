@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     A folha do Salvar (DESIGN, folha-do-salvar; EXPERIENCE, Salvar por camadas; mock da 3b, quadro 3):
-    "Salvar o que mudou?", o bloco das camadas com o antes e o depois, as perguntas (calibração, preset) em
-    opções de duas linhas, os nomes, e no pé Salvar (branco) e Voltar (contornado). Nada é guardado antes do
-    botão branco.
+    "Salvar o que mudou?", o bloco das camadas com o antes e o depois (a regulagem vai para a memória, as 15
+    bandas para o preset), a pergunta do preset em opções de duas linhas, os nomes, e no pé Salvar (branco) e
+    Voltar (contornado). Nada é guardado antes do botão branco.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -23,15 +23,7 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="telas:LinhaSalvarViewModel">
                             <VerticalStackLayout Spacing="4">
-                                <HorizontalStackLayout Spacing="8">
-                                    <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}" VerticalTextAlignment="Center" />
-                                    <Border IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}"
-                                            Stroke="{StaticResource campo-borda}" StrokeThickness="1" StrokeShape="RoundRectangle 11"
-                                            HeightRequest="22" Padding="8,0" VerticalOptions="Center">
-                                        <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
-                                               VerticalTextAlignment="Center" />
-                                    </Border>
-                                </HorizontalStackLayout>
+                                <Label Style="{StaticResource tipo-titulo-parametro}" Text="{Binding Titulo}" VerticalTextAlignment="Center" />
                                 <!-- "Atraso · Sub: 80 cm → 85 cm": o valor novo em peso 700 na cor da saída dona. -->
                                 <VerticalStackLayout BindableLayout.ItemsSource="{Binding Itens}">
                                     <BindableLayout.ItemTemplate>
@@ -55,67 +47,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- A calibração do aparelho difere da do Setup: Manter ou Atualizar. -->
-            <VerticalStackLayout Spacing="8" IsVisible="{Binding Pergunta}">
-            <Border StrokeShape="RoundRectangle 14" Stroke="{StaticResource sup-2}" StrokeThickness="1"
-                    Padding="14,8" MinimumHeightRequest="52" BackgroundColor="Transparent">
-                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
-                    <Label Style="{StaticResource tipo-botao-medio}" Text="{Binding TextoManter}">
-                        <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Manter}">
-                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
-                            </DataTrigger>
-                        </Label.Triggers>
-                    </Label>
-                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding FraseManter}">
-                        <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Manter}">
-                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido-apoio}" />
-                            </DataTrigger>
-                        </Label.Triggers>
-                    </Label>
-                </VerticalStackLayout>
-                <Border.Triggers>
-                    <DataTrigger TargetType="Border" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Manter}">
-                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
-                        <Setter Property="Stroke" Value="{StaticResource texto}" />
-                    </DataTrigger>
-                </Border.Triggers>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding EscolherManter}" />
-                </Border.GestureRecognizers>
-            </Border>
-            <Border StrokeShape="RoundRectangle 14" Stroke="{StaticResource sup-2}" StrokeThickness="1"
-                    Padding="14,8" MinimumHeightRequest="52" BackgroundColor="Transparent">
-                <VerticalStackLayout Spacing="2" VerticalOptions="Center">
-                    <Label Style="{StaticResource tipo-botao-medio}" Text="{Binding TextoAtualizar}">
-                        <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Atualizar}">
-                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
-                            </DataTrigger>
-                        </Label.Triggers>
-                    </Label>
-                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding AvisoAtualizar}">
-                        <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Atualizar}">
-                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido-apoio}" />
-                            </DataTrigger>
-                        </Label.Triggers>
-                    </Label>
-                </VerticalStackLayout>
-                <Border.Triggers>
-                    <DataTrigger TargetType="Border" Binding="{Binding Escolha}" Value="{x:Static setups:EscolhaCalibracao.Atualizar}">
-                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
-                        <Setter Property="Stroke" Value="{StaticResource texto}" />
-                    </DataTrigger>
-                </Border.Triggers>
-                <Border.GestureRecognizers>
-                    <TapGestureRecognizer Command="{Binding EscolherAtualizar}" />
-                </Border.GestureRecognizers>
-            </Border>
-            </VerticalStackLayout>
-
-            <!-- As 15 bandas mudaram: Atualizar o preset (travado no herdado) ou Criar preset novo. -->
+            <!-- As 15 bandas mudaram: Atualizar o preset ou Criar preset novo. -->
             <VerticalStackLayout Spacing="8" IsVisible="{Binding PerguntaPreset}">
             <Border StrokeShape="RoundRectangle 14" Stroke="{StaticResource sup-2}" StrokeThickness="1"
                     Padding="14,8" MinimumHeightRequest="52" BackgroundColor="Transparent" IsVisible="{Binding PodeAtualizarPreset}">

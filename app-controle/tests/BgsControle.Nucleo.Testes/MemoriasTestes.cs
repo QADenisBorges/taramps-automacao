@@ -466,12 +466,9 @@ public sealed class MemoriasTestes : IDisposable
         var inicio = _simulador.Escritas.Count;
 
         var escrita = await Rodar(_escritor.EscreverAsync(Ganho, 0, -1.0m));
-        var link = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
         var carregar = await Rodar(_memorias.CarregarAsync(0));
 
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, escrita.Motivo);
-        Assert.Equal(CopiaAntes.MsgPelaMetadePendente, link.Motivo);
-        Assert.False(_link.Ligado(ParCanais.Saidas12));
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, carregar.Motivo);
         Assert.Equal(inicio, _simulador.Escritas.Count);
         Assert.NotNull(_copia.PelaMetade);
@@ -639,25 +636,26 @@ public sealed class MemoriasTestes : IDisposable
 
     // ----------------------------------------------------------------- link
 
+    /// <summary>Liga ou desliga um par como o GerenteSetups faz (o link sai das ligações do Setup; história 8f).</summary>
+    private async Task<string?> Ligar(ParCanais par, bool ligado = true)
+    {
+        await _link.Carregada;
+        var l12 = par == ParCanais.Saidas12 ? ligado : _link.Ligado(ParCanais.Saidas12);
+        var l34 = par == ParCanais.Saidas34 ? ligado : _link.Ligado(ParCanais.Saidas34);
+        return await _link.DefinirEstadoAsync(l12, l34);
+    }
+
     [Fact]
-    public async Task Vincular_1_2_copia_a_saida_1_na_2_e_o_link_fica_guardado()
+    public async Task Definir_o_estado_liga_o_link_sem_copiar_nada_e_fica_guardado()
     {
         await Conectar();
-        var rotaSaida2 = _simulador.Valor("010", 1);
+        var inicio = _simulador.Escritas.Count;
 
-        var r = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
+        Assert.Null(await Ligar(ParCanais.Saidas12));
 
-        Assert.True(r.Ok, r.Motivo);
         Assert.True(_link.Ligado(ParCanais.Saidas12));
         Assert.False(_link.Ligado(ParCanais.Saidas34));
-        foreach (var p in LinkCanais.Parametros)
-        {
-            var mestre = p.Decodificar(_simulador.Valor(p.Codigo, 0)!).Valor!;
-            var outro = p.Decodificar(_simulador.Valor(p.Codigo, 1)!).Valor!;
-            Assert.True(CopiaAntes.Iguais(mestre, outro), $"{p.Codigo}: {mestre.NoFio} × {outro.NoFio}");
-        }
-        Assert.Equal(rotaSaida2, _simulador.Valor("010", 1)); // o roteamento não vai (o par continua estéreo)
-        Assert.Equal(0, _simulador.Escritas.Count(e => e.StartsWith("*", StringComparison.Ordinal) && Catalogo.EscritaDeAudio(e) is { Indice: not 1 }));
+        Assert.Equal(inicio, _simulador.Escritas.Count); // o link sai das ligações: não copia a mestre
         Assert.Contains("\"1-2\": true", _guardadoLink.Texto);
 
         // Um link novo lê o guardado.
@@ -670,7 +668,7 @@ public sealed class MemoriasTestes : IDisposable
     public async Task Link_ligado_ganho_da_saida_1_em_menos_2_as_duas_saidas_ficam_em_menos_2()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
 
         var r = await Rodar(_escritor.EscreverAsync(Ganho, 0, -2.0m));
 
@@ -684,7 +682,7 @@ public sealed class MemoriasTestes : IDisposable
     public async Task Link_ligado_mexer_na_outra_saida_escreve_so_nela()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
         var mestre = _simulador.Valor("081", 0);
 
         Assert.True((await Rodar(_escritor.EscreverAsync(Ganho, 1, -4.0m))).Ok);
@@ -707,30 +705,14 @@ public sealed class MemoriasTestes : IDisposable
     }
 
     [Fact]
-    public async Task Vincular_com_a_chave_de_ajustes_desligada_nada_sai_e_o_link_fica_desligado()
+    public async Task Desligar_nao_mexe_no_aparelho_e_guarda()
     {
         await Conectar();
-        await _chaves.DefinirAsync(Chave.AjustesAudio, false, OrigemComando.Tela);
+        Assert.Null(await Ligar(ParCanais.Saidas34));
         var inicio = _simulador.Escritas.Count;
 
-        var r = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
+        Assert.Null(await Ligar(ParCanais.Saidas34, false));
 
-        Assert.False(r.Ok);
-        Assert.Equal(Sessao.MotivoChaveDesligada, r.Motivo);
-        Assert.False(_link.Ligado(ParCanais.Saidas12));
-        Assert.Equal(inicio, _simulador.Escritas.Count);
-    }
-
-    [Fact]
-    public async Task Desvincular_nao_mexe_no_aparelho_e_guarda()
-    {
-        await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas34))).Ok);
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await _link.DesvincularAsync(ParCanais.Saidas34);
-
-        Assert.True(r.Ok);
         Assert.False(_link.Ligado(ParCanais.Saidas34));
         Assert.Equal(inicio, _simulador.Escritas.Count);
         Assert.Contains("\"3-4\": false", _guardadoLink.Texto);
@@ -741,7 +723,7 @@ public sealed class MemoriasTestes : IDisposable
     {
         await _link.Carregada;
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
         await _sessao.DesconectarAsync();
         var hpfOriginal = await CarregarComQueda();
         var inicio = _simulador.Escritas.Count;
@@ -749,12 +731,12 @@ public sealed class MemoriasTestes : IDisposable
         Assert.True((await Rodar(_copia.VoltarAsync())).Ok);
         await Andar(TimeSpan.FromMilliseconds(500));
 
-        // A cópia tem as saídas 1 e 2 iguais (link): cada uma é escrita uma vez, pela cópia; a
-        // escrita na mestre não é repetida pelo link.
+        // Cada saída é escrita uma vez, pela cópia; a escrita na mestre não é repetida pelo link (a
+        // saída 2 volta ao valor dela na cópia, não ao da mestre).
         Assert.Equal(1, EscritasDesde(inicio).Count(e => e.StartsWith("*081*0*", StringComparison.Ordinal)));
         Assert.True(EscritasDesde(inicio).Count(e => e.StartsWith("*081*1*", StringComparison.Ordinal)) <= 1);
         Assert.Equal("+10.0", _simulador.Valor("081", 0));
-        Assert.Equal("+10.0", _simulador.Valor("081", 1));
+        Assert.Equal("+7.0", _simulador.Valor("081", 1));
         Assert.Equal(hpfOriginal, _simulador.Valor("040", 0));
     }
 
@@ -764,7 +746,7 @@ public sealed class MemoriasTestes : IDisposable
     public async Task Link_1_2_ligado_o_roteamento_da_saida_1_nao_vai_para_a_2()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
         var rota1 = _simulador.Valor("010", 0)!;
         var rota2 = _simulador.Valor("010", 1)!;
         var nova = rota1 == "a" ? "b" : "a";
@@ -782,7 +764,7 @@ public sealed class MemoriasTestes : IDisposable
     public async Task Link_3_4_ligado_ganho_da_saida_3_vai_para_a_4()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas34))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas34));
         var saida1 = _simulador.Valor("081", 0);
 
         var r = await Rodar(_escritor.EscreverAsync(Ganho, 2, -5.0m));
@@ -798,7 +780,7 @@ public sealed class MemoriasTestes : IDisposable
     public async Task Link_ligado_a_saida_2_diferente_volta_como_aviso_no_resultado_da_mestre()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
         _simulador.EcosDiferentes["*081*1*-2.0*"] = "#081#1#-1.0#";
 
         var r = await Rodar(_escritor.EscreverAsync(Ganho, 0, -2.0m));
@@ -821,61 +803,28 @@ public sealed class MemoriasTestes : IDisposable
     }
 
     [Fact]
-    public async Task Vincular_sem_conseguir_guardar_fica_desligado()
+    public async Task Ligar_sem_conseguir_guardar_fica_desligado()
     {
         await Conectar();
         _guardadoLink.FalharAoGravar = true;
 
-        var r = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
+        var r = await Ligar(ParCanais.Saidas12);
 
-        Assert.False(r.Ok);
-        Assert.Equal(LinkCanais.MsgNaoGuardou, r.Motivo);
+        Assert.Equal(LinkCanais.MsgNaoGuardou, r);
         Assert.False(_link.Ligado(ParCanais.Saidas12));
     }
 
     [Fact]
-    public async Task Desvincular_sem_conseguir_guardar_desliga_e_avisa()
+    public async Task Desligar_sem_conseguir_guardar_desliga_e_avisa()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
+        Assert.Null(await Ligar(ParCanais.Saidas12));
         _guardadoLink.FalharAoGravar = true;
 
-        var r = await _link.DesvincularAsync(ParCanais.Saidas12);
+        var r = await Ligar(ParCanais.Saidas12, false);
 
-        Assert.True(r.Ok);
-        Assert.Equal(LinkCanais.MsgDesligadoSemGuardar, r.Motivo);
+        Assert.Equal(LinkCanais.MsgDesligadoSemGuardar, r);
         Assert.False(_link.Ligado(ParCanais.Saidas12));
-    }
-
-    [Fact]
-    public async Task Queda_no_meio_da_copia_do_link_fica_desligado_e_nada_guardado()
-    {
-        _simulador.Definir("081", 1, "-7.0"); // a saída 2 diferente da 1: há o que copiar
-        await Conectar();
-        _simulador.CairDepoisDaEscrita = _simulador.Escritas.Count + 1;
-
-        var r = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
-
-        Assert.False(r.Ok);
-        Assert.False(_link.Ligado(ParCanais.Saidas12));
-        Assert.Equal(0, _guardadoLink.Gravacoes);
-    }
-
-    [Fact]
-    public async Task Vincular_sem_o_valor_da_mestre_no_espelho_e_recusado()
-    {
-        var p = LinkCanais.Parametros[0];
-        _simulador.Silenciar.Add(Catalogo.Consultas.First(c => c.Parametro == p && c.Indice == 0).Texto);
-        await Conectar();
-        Assert.Null(_estado.Valor(p.Codigo, 0));
-        var inicio = _simulador.Escritas.Count;
-
-        var r = await Rodar(_link.VincularAsync(ParCanais.Saidas12));
-
-        Assert.False(r.Ok);
-        Assert.Equal(Escritor.MsgSemLeitura, r.Motivo);
-        Assert.False(_link.Ligado(ParCanais.Saidas12));
-        Assert.Equal(inicio, _simulador.Escritas.Count);
     }
 
     [Fact]
@@ -890,21 +839,33 @@ public sealed class MemoriasTestes : IDisposable
     }
 
     [Fact]
+    public async Task Ligar_o_par_com_as_saidas_ja_diferentes_avisa_na_hora_sem_escrever()
+    {
+        await Conectar(); // na leitura de 18/10, o ganho do CH1 (+10) e o do CH2 (+7) diferem
+        var inicio = _simulador.Escritas.Count;
+
+        Assert.Null(await Ligar(ParCanais.Saidas12));
+
+        Assert.True(_link.Diferentes(ParCanais.Saidas12));
+        Assert.Equal(inicio, _simulador.Escritas.Count);
+    }
+
+    [Fact]
     public async Task Link_ligado_com_as_saidas_diferentes_depois_da_leitura_avisa_sem_escrever()
     {
         await Conectar();
-        Assert.True((await Rodar(_link.VincularAsync(ParCanais.Saidas12))).Ok);
-        Assert.False(_link.Diferentes(ParCanais.Saidas12));
+        Assert.Null(await Ligar(ParCanais.Saidas34));
+        Assert.False(_link.Diferentes(ParCanais.Saidas34)); // na leitura de 18/10, o CH3 e o CH4 são iguais
         await _sessao.DesconectarAsync();
-        _simulador.Definir("081", 1, "-7.0"); // mudou fora do app
+        _simulador.Definir("081", 3, "-7.0"); // mudou fora do app
         var inicio = _simulador.Escritas.Count;
 
         await Conectar();
-        await Esperar(() => _link.Diferentes(ParCanais.Saidas12));
+        await Esperar(() => _link.Diferentes(ParCanais.Saidas34));
 
-        Assert.Equal("Link 1–2: as saídas estão diferentes", _link.AvisoDiferenca(ParCanais.Saidas12));
-        Assert.Null(_link.AvisoDiferenca(ParCanais.Saidas34));
+        Assert.Equal("Link 3–4: as saídas estão diferentes", _link.AvisoDiferenca(ParCanais.Saidas34));
+        Assert.Null(_link.AvisoDiferenca(ParCanais.Saidas12));
         Assert.All(EscritasDesde(inicio), e => Assert.True(Catalogo.EhLeitura(e) || Senha.IsMatch(e), e)); // nada escrito
-        Assert.True(_link.Ligado(ParCanais.Saidas12));
+        Assert.True(_link.Ligado(ParCanais.Saidas34));
     }
 }

@@ -2,10 +2,15 @@ using BgsControle.Nucleo;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Setups;
+using BgsControle.Simulador;
 
 namespace BgsControle.Telas.Testes;
 
-/// <summary>A folha do Salvar por camadas (histórias 8c e 8d, com a linha das 15 bandas), contra o processador simulado.</summary>
+/// <summary>
+/// A folha do Salvar por camadas (histórias 8c, 8d e 8f): a regulagem vai para a memória (em uso, ou
+/// uma nova) e as 15 bandas para o preset; não há mais calibração no Setup nem Manter/Atualizar.
+/// Contra o processador simulado, com a FILME e o Cinema do cenário de teste.
+/// </summary>
 public sealed class SalvarViewModelTestes : IDisposable
 {
     private readonly Bancada _b = new(setups: true);
@@ -26,6 +31,9 @@ public sealed class SalvarViewModelTestes : IDisposable
     private static Parametro Atraso => Catalogo.ParametroDe("050")!;
     private static Parametro Banda => Catalogo.ParametroDe("020")!;
 
+    private static string? Valor(MemoriaCelular m, string codigo, int indice) =>
+        m.Regulagem.SingleOrDefault(v => v.Codigo == codigo && v.Indice == indice)?.NoFio;
+
     [Fact]
     public async Task Nada_mudou_o_Salvar_fica_travado_e_nao_abre()
     {
@@ -40,7 +48,7 @@ public sealed class SalvarViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Com_a_memoria_do_celular_em_uso_a_folha_diz_o_que_vai_para_onde_e_salva_sem_mandar_nada()
+    public async Task Com_a_memoria_do_celular_em_uso_a_regulagem_vai_para_ela_e_nada_vai_ao_aparelho()
     {
         await _b.Conectar();
         await _b.Rodar(_b.Escritor.EscreverAsync(Atraso, 2, 85.0m));
@@ -53,13 +61,11 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.True(_vm.Aberta);
         Assert.Equal("Salvar o que mudou?", _vm.Titulo);
         Assert.Equal("Cada mudança vai para o lugar dela.", _vm.Subtitulo);
-        Assert.Equal(["Calibração → Setup Casa 2.1", "Caráter → memória FILME"], _vm.Linhas.Select(l => l.Titulo));
-        // O Link 3–4 do Casa 2.1 (história 8e) repete o atraso no CH4.
-        // O par CH3 + CH4 (o Sub, com o Link 3–4) muda igual: uma linha só, pelo nome da saída (história 10).
-        Assert.Equal(["Atraso · Sub: 80 cm → 85 cm"], _vm.Linhas[0].Mudancas);
-        Assert.Equal(2, Assert.Single(_vm.Linhas[0].Itens).Canal);
-        Assert.Equal(["Ganho · JBL L: +10,0 dB → +8,0 dB"], _vm.Linhas[1].Mudancas);
-        Assert.False(_vm.Pergunta);
+        var linha = Assert.Single(_vm.Linhas);
+        Assert.Equal("Regulagem → memória FILME", linha.Titulo);
+        // O par CH3 + CH4 (o Sub, com o Link 3–4) muda igual: uma linha só, pelo nome da saída.
+        Assert.Equal(["Atraso · Sub: 80 cm → 85 cm", "Ganho · JBL L: +10,0 dB → +8,0 dB"], linha.Mudancas.Order());
+        Assert.Equal(2, linha.Itens.Single(i => i.Antes.StartsWith("Atraso", StringComparison.Ordinal)).Canal);
         Assert.False(_vm.PedeNome);
         Assert.True(_vm.PodeConfirmar);
         var antes = _b.Simulador.Escritas.Count;
@@ -67,13 +73,14 @@ public sealed class SalvarViewModelTestes : IDisposable
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
 
         Assert.False(_vm.Aberta);
-        Assert.Equal("Salvo: calibração no Casa 2.1, caráter na FILME.", _vm.Mensagem);
+        Assert.Equal("Salvo: regulagem na FILME.", _vm.Mensagem);
         Assert.Equal(antes, _b.Simulador.Escritas.Count);
-        Assert.Equal("85.0", Setups.Setup(ConhecimentoHerdado.IdSetupCasa)!.Calibracao.Single(v => v.Codigo == "050" && v.Indice == 2).NoFio);
+        Assert.Equal("85.0", Valor(Setups.Memoria(CenarioFilme.IdMemoria)!, "050", 2));
+        Assert.Equal("+8.0", Valor(Setups.Memoria(CenarioFilme.IdMemoria)!, "081", 0));
     }
 
     [Fact]
-    public async Task Com_memoria_do_aparelho_e_calibracao_diferente_o_confirmar_trava_ate_escolher_e_dar_nome()
+    public async Task Com_memoria_do_aparelho_o_confirmar_trava_ate_dar_o_nome_e_a_regulagem_vai_para_uma_memoria_nova()
     {
         _b.Simulador.DefinirMemoria(1, "050", 2, "60.0");
         await _b.Conectar();
@@ -83,80 +90,24 @@ public sealed class SalvarViewModelTestes : IDisposable
 
         await _vm.Abrir.ExecutarAsync();
 
-        Assert.True(_vm.Pergunta);
         Assert.True(_vm.PedeNome);
-        Assert.Equal("Manter a calibração do Casa 2.1", _vm.TextoManter);
-        Assert.Equal("Atualizar o Casa 2.1 com a do aparelho", _vm.TextoAtualizar);
-        Assert.Equal("Vale para todas as memórias do Casa 2.1.", _vm.AvisoAtualizar);
-        Assert.Contains(_vm.Linhas, l => l.Titulo == "Caráter → memória nova");
+        Assert.Equal(["Regulagem → memória nova", "15 bandas → preset Cinema"], _vm.Linhas.Select(l => l.Titulo));
         Assert.False(_vm.PodeConfirmar);
-
-        _vm.NomeMemoria = "MUSICA ORIG";
-        Assert.False(_vm.PodeConfirmar); // falta escolher
         await _vm.Confirmar.ExecutarAsync();
         Assert.True(_vm.Aberta);
-        Assert.Equal(GerenteSetups.MsgEscolha, _vm.Erro);
+        Assert.Equal(SalvarViewModel.MsgFalteNome, _vm.Erro);
 
-        await _vm.EscolherAtualizar.ExecutarAsync();
-        Assert.Equal(EscolhaCalibracao.Atualizar, _vm.Escolha);
+        _vm.NomeMemoria = "MUSICA ORIG";
         Assert.True(_vm.PodeConfirmar);
-        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
-
-        Assert.False(_vm.Aberta);
-        Assert.Equal("Salvo: calibração no Casa 2.1, caráter na MUSICA ORIG.", _vm.Mensagem);
-        Assert.Contains(Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa), m => m.Nome == "MUSICA ORIG");
-    }
-
-    [Fact]
-    public async Task Manter_a_calibracao_reaplica_a_do_Setup_pelo_BLE()
-    {
-        _b.Simulador.DefinirMemoria(1, "050", 2, "60.0");
-        await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(1));
-        await _vm.Abrir.ExecutarAsync();
-        _vm.NomeMemoria = "MUSICA ORIG";
-        await _vm.EscolherManter.ExecutarAsync();
         var antes = _b.Simulador.Escritas.Count;
-
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
 
         Assert.False(_vm.Aberta);
-        Assert.Equal("Salvo: caráter na MUSICA ORIG. Calibração do Casa 2.1 reaplicada.", _vm.Mensagem);
-        Assert.Equal(["*050*2*80.0*"], _b.Simulador.Escritas.Skip(antes).Where(e => Catalogo.EscritaDeAudio(e) is not null));
-    }
-
-    [Fact]
-    public async Task Mexer_num_valor_no_aparelho_destrava_o_Salvar_e_avisa_a_tela()
-    {
-        await _b.Conectar();
-        await _b.Tela.EsvaziarAsync();
-        Assert.Equal("Nada para salvar.", _vm.MotivoTrava);
-        var avisos = new List<string?>();
-        _vm.PropertyChanged += (_, e) => avisos.Add(e.PropertyName);
-
-        await _b.Rodar(_b.Escritor.EscreverAsync(Ganho, 0, 8.0m));
-        await _b.Tela.EsvaziarAsync();
-
-        Assert.Contains(nameof(SalvarViewModel.MotivoTrava), avisos);
-        Assert.Contains(nameof(SalvarViewModel.PodeSalvar), avisos);
-        Assert.True(_vm.PodeSalvar);
-    }
-
-    [Fact]
-    public async Task Manter_com_a_reaplicacao_falhando_fecha_a_folha_e_diz_o_que_ficou()
-    {
-        _b.Simulador.DefinirMemoria(1, "050", 2, "60.0");
-        await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(1));
-        await _vm.Abrir.ExecutarAsync();
-        _vm.NomeMemoria = "MUSICA ORIG";
-        await _vm.EscolherManter.ExecutarAsync();
-        _b.Simulador.CairNaEscrita = _b.Simulador.Escritas.Count + 1;
-
-        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
-
-        Assert.False(_vm.Aberta);
-        Assert.StartsWith("Salvo: caráter na MUSICA ORIG. A calibração do Casa 2.1 não voltou:", _vm.Mensagem);
+        Assert.Equal("Salvo: regulagem na MUSICA ORIG.", _vm.Mensagem);
+        Assert.Equal(antes, _b.Simulador.Escritas.Count); // o Salvar não manda nada pelo BLE
+        var nova = Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG");
+        Assert.Equal("60.0", Valor(nova, "050", 2));
+        Assert.Equal(CenarioFilme.IdPreset, nova.IdPreset);
     }
 
     [Fact]
@@ -186,6 +137,23 @@ public sealed class SalvarViewModelTestes : IDisposable
     }
 
     [Fact]
+    public async Task Mexer_num_valor_no_aparelho_destrava_o_Salvar_e_avisa_a_tela()
+    {
+        await _b.Conectar();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("Nada para salvar.", _vm.MotivoTrava);
+        var avisos = new List<string?>();
+        _vm.PropertyChanged += (_, e) => avisos.Add(e.PropertyName);
+
+        await _b.Rodar(_b.Escritor.EscreverAsync(Ganho, 0, 8.0m));
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Contains(nameof(SalvarViewModel.MotivoTrava), avisos);
+        Assert.Contains(nameof(SalvarViewModel.PodeSalvar), avisos);
+        Assert.True(_vm.PodeSalvar);
+    }
+
+    [Fact]
     public async Task Cancelar_nao_guarda_nada()
     {
         await _b.Conectar();
@@ -197,13 +165,13 @@ public sealed class SalvarViewModelTestes : IDisposable
 
         Assert.False(_vm.Aberta);
         Assert.Equal(gravacoes, _b.Arquivos.Gravacoes);
-        Assert.Equal("+10.0", Setups.Memoria(ConhecimentoHerdado.IdMemoriaFilme)!.Carater.Single(v => v.Codigo == "081" && v.Indice == 0).NoFio);
+        Assert.Equal("+10.0", Valor(Setups.Memoria(CenarioFilme.IdMemoria)!, "081", 0));
     }
 
     // ----------------------------------------------------------------- 8d: a linha das 15 bandas
 
     [Fact]
-    public async Task Bandas_mexidas_na_FILME_com_o_Cinema_Atualizar_travado_Criar_ja_escolhido_e_o_nome_do_preset()
+    public async Task Bandas_mexidas_na_FILME_com_o_Cinema_pergunta_Atualizar_ou_Criar_e_Criar_pede_o_nome()
     {
         await _b.Conectar();
         await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 4, 3.0m)); // 160 Hz
@@ -214,37 +182,33 @@ public sealed class SalvarViewModelTestes : IDisposable
 
         var linha = Assert.Single(_vm.Linhas);
         Assert.Equal("15 bandas → preset Cinema", linha.Titulo);
-        Assert.Equal("HERDADO", linha.Selo);
         Assert.Equal(["Banda 160 Hz: +1,0 dB → +3,0 dB"], linha.Mudancas);
         Assert.True(_vm.PerguntaPreset);
         Assert.Equal("Atualizar o preset Cinema", _vm.TextoAtualizarPreset);
         Assert.Equal("Vale para toda memória que usa ele.", _vm.AvisoAtualizarPreset);
-        Assert.Equal("Preset herdado não é sobrescrito.", _vm.MotivoAtualizarPresetTravado);
-        Assert.False(_vm.PodeAtualizarPreset);
-        Assert.Equal(EscolhaPreset.Criar, _vm.EscolhaPreset); // já vem escolhido
-        Assert.True(_vm.PedeNomePreset);
+        Assert.Null(_vm.MotivoAtualizarPresetTravado); // não há mais preset herdado
+        Assert.True(_vm.PodeAtualizarPreset);
+        Assert.Equal(EscolhaPreset.Nenhuma, _vm.EscolhaPreset);
         Assert.False(_vm.PedeNome);
-        Assert.False(_vm.PodeConfirmar); // falta o nome do preset
+        Assert.False(_vm.PodeConfirmar); // falta escolher
 
-        await _vm.EscolherAtualizarPreset.ExecutarAsync();
-        Assert.Equal("Preset herdado não é sobrescrito.", _vm.Erro);
-        Assert.Equal(EscolhaPreset.Criar, _vm.EscolhaPreset);
-
+        await _vm.EscolherCriarPreset.ExecutarAsync();
+        Assert.True(_vm.PedeNomePreset);
         // Nome repetido: a folha fica, nada guardado.
         _vm.NomePreset = "cinema";
         Assert.True(_vm.PodeConfirmar);
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
         Assert.True(_vm.Aberta);
         Assert.Equal("Nome do preset: Já existe um preset com esse nome.", _vm.Erro);
-        Assert.Empty(_b.Presets.Proprios);
+        Assert.Single(_b.Presets.Proprios);
 
         _vm.NomePreset = "CINEMA 2";
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
 
         Assert.False(_vm.Aberta);
         Assert.Equal("Salvo: 15 bandas no preset CINEMA 2.", _vm.Mensagem);
-        var novo = Assert.Single(_b.Presets.Proprios);
-        Assert.Equal(novo.Id, Setups.Memoria(ConhecimentoHerdado.IdMemoriaFilme)!.IdPreset);
+        var novo = _b.Presets.Proprios.Single(p => p.Nome == "CINEMA 2");
+        Assert.Equal(novo.Id, Setups.Memoria(CenarioFilme.IdMemoria)!.IdPreset);
         Assert.Equal("Nada para salvar.", _vm.MotivoTrava);
     }
 
@@ -252,7 +216,7 @@ public sealed class SalvarViewModelTestes : IDisposable
     public async Task Bandas_mexidas_com_um_preset_proprio_nenhuma_escolha_vem_marcada_e_Atualizar_vale_para_ele()
     {
         await _b.Conectar();
-        var rock = (await _b.Presets.CriarAsync("Rock", ConhecimentoHerdado.BandasCinema.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
+        var rock = (await _b.Presets.CriarAsync("Rock", CenarioFilme.Bandas.Select(v => v.Indice == 0 ? v with { NoFio = "+4.0" } : v).ToArray())).Preset!;
         await _b.Rodar(_b.Presets.AplicarAsync(rock.Id)); // a FILME lembra o Rock
         await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 1, -2.0m));
         await _b.Tela.EsvaziarAsync();
@@ -260,7 +224,6 @@ public sealed class SalvarViewModelTestes : IDisposable
         await _vm.Abrir.ExecutarAsync();
 
         Assert.Equal(["15 bandas → preset Rock"], _vm.Linhas.Select(l => l.Titulo));
-        Assert.Null(_vm.Linhas[0].Selo);
         Assert.True(_vm.PodeAtualizarPreset);
         Assert.Equal(EscolhaPreset.Nenhuma, _vm.EscolhaPreset);
         Assert.False(_vm.PedeNomePreset);
@@ -297,29 +260,9 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.True(_vm.PodeConfirmar);
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
 
-        Assert.Equal("Salvo: caráter na MUSICA ORIG, 15 bandas no preset ORIG EQ.", _vm.Mensagem);
-        Assert.Equal(_b.Presets.Proprios.Single().Id, Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
-    }
-
-    [Fact]
-    public async Task Memoria_nova_com_as_bandas_do_Cinema_so_pede_o_nome_da_memoria()
-    {
-        await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(1));
-        await _b.Tela.EsvaziarAsync();
-
-        await _vm.Abrir.ExecutarAsync();
-
-        var bandas = _vm.Linhas.Single(l => l.Titulo.StartsWith("15 bandas", StringComparison.Ordinal));
-        Assert.Equal("15 bandas → preset Cinema", bandas.Titulo);
-        Assert.Equal("HERDADO", bandas.Selo);
-        Assert.False(_vm.PedeNomePreset);
-        _vm.NomeMemoria = "MUSICA ORIG";
-        Assert.True(_vm.PodeConfirmar);
-        await _b.Rodar(_vm.Confirmar.ExecutarAsync());
-
-        Assert.Equal("Salvo: caráter na MUSICA ORIG.", _vm.Mensagem);
-        Assert.Equal(ConhecimentoHerdado.IdCinema, Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
+        Assert.Equal("Salvo: regulagem na MUSICA ORIG, 15 bandas no preset ORIG EQ.", _vm.Mensagem);
+        Assert.Equal(_b.Presets.Proprios.Single(p => p.Nome == "ORIG EQ").Id,
+            Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
     }
 
     [Fact]
@@ -329,6 +272,7 @@ public sealed class SalvarViewModelTestes : IDisposable
         await _b.Rodar(_b.Escritor.EscreverAsync(Banda, 4, 3.0m));
         await _b.Tela.EsvaziarAsync();
         await _vm.Abrir.ExecutarAsync();
+        await _vm.EscolherCriarPreset.ExecutarAsync();
 
         _vm.NomePreset = "a#b";
         await _b.Rodar(_vm.Confirmar.ExecutarAsync());
@@ -336,6 +280,6 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.True(_vm.Aberta);
         Assert.Equal("Nome do preset: Use de 1 a 24 letras, números, espaço, _ ou -", _vm.Erro);
         Assert.Equal("a#b", _vm.NomePreset);
-        Assert.Empty(_b.Presets.Proprios);
+        Assert.Single(_b.Presets.Proprios);
     }
 }
