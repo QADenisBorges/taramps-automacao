@@ -2,7 +2,7 @@
 name: BGS Controle
 description: App Android de controle do PRO 2.4BT + AUDIO (POC 1). Preto de estúdio, uma luz por saída, branco para o que está escolhido e uma só capa de fader. Família visual do BGS Sound Lab; o resto é próprio.
 status: final
-updated: 2026-10-23
+updated: 2026-10-29
 sources:
   - ../ux-taramps-automacao-2026-10-16/DESIGN.md
 colors:
@@ -581,6 +581,22 @@ components:
     foreground: '{colors.apoio}'
     radius: '{rounded.full}'
     typography: '{typography.rotulo}'
+  selo-de-origem:             # cada dado da ficha (história 10c): a mesma forma do selo-herdado
+    height: 22px
+    toque: '{spacing.alvo-min} (área estendida em volta do selo)'
+    border: '{colors.campo-borda}'
+    foreground: '{colors.apoio}'
+    radius: '{rounded.full}'
+    typography: '{typography.rotulo}'
+    textos: 'oficial ✓ · outra fonte · medido ✓ · estimado · digitado (só oficial e medido com ✓)'
+    escolha-aberta: 'as 5 origens em pílulas {rounded.md} de {spacing.alvo-min} (a que vale em branco) e o campo Fonte'
+  linha-de-sugestao-de-modelo: # embaixo do campo Modelo, na folha de equipamento
+    min-height: '{spacing.alvo-lista}'
+    background: '{colors.sup-1}'
+    radius: '{rounded.card}'
+    divisoria: '{colors.sup-3}'
+    nome: '{typography.linha-titulo}'
+    detalhe: '{typography.detalhe} em {colors.apoio}'
   cartao-de-conexao:
     background: '{colors.sup-1}'
     radius: '{rounded.card-lg}'
@@ -876,7 +892,7 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 
 - **Cartão de memória** (`cartao-de-memoria`) — Tela Memórias, memórias do celular do Setup em uso: {colors.sup-1}, {rounded.card-lg}; selo EM USO branco quando é a que toca, nome em {typography.memoria-lista}, o preset lembrado em {typography.detalhe} {colors.apoio} ("Preset: Rock"), **Aplicar** em botão secundário pequeno e **Renomear** · **Apagar** contornados. Apagar travado (memória em uso) fica sem fundo, com o texto em {colors.apagado}. No fim da lista, **Criar memória do som atual** em botão secundário. Na seção **DO APARELHO** ({typography.rotulo}), o mesmo cartão com "MEMÓRIA N DO APARELHO" em {typography.rotulo} {colors.apagado}, o nome lido e só **Carregar**; sem selo.
 - **Linha de escolha** (`linha-de-escolha`) — [ASSUMPTION] A linha das listas que sobem como folha: lista de memórias ("…"), folha de presets (chip de preset) e lista de Setups. Linhas de {spacing.alvo-lista} num grupo {colors.sup-1}, separadas por {colors.sup-3}: nome em {typography.linha-titulo}, detalhe embaixo em {typography.detalhe} {colors.apoio} ("Preset: Rock", "Memória 2 do aparelho") e, à direita, o **selo HERDADO** quando o item é herdado. A que está em uso fica em branco, com o nome preto e o detalhe em {colors.sobre-escolhido-apoio}. Travada: nome em {colors.apagado}. Seções com rótulo em {typography.rotulo} {colors.apagado} (DO APARELHO).
-- **Selo herdado** (`selo-herdado`) — Pílula contornada "HERDADO" de 22 px de altura, contorno {colors.campo-borda}, texto {colors.apoio} em {typography.rotulo}, com a área de toque estendida a {spacing.alvo-min}. Marca o Setup Casa 2.1, a memória FILME e o preset Cinema, que vieram do conhecimento dos protótipos, nas telas Setups, Memórias e Presets e na folha do Salvar. **Não aparece no Início.**
+- **Selo herdado** (`selo-herdado`) — Pílula contornada "HERDADO" de 22 px de altura, contorno {colors.campo-borda}, texto {colors.apoio} em {typography.rotulo}, com a área de toque estendida a {spacing.alvo-min}. Marca só o Setup Casa 2.1, que veio do conhecimento dos protótipos, na tela Setups, na lista de Setups e na tela Setup; não há memória nem preset herdados (decisão do Denis, 29/10/2026). **Não aparece no Início.**
 - **Cartão de conexão** (`cartao-de-conexao`) — {colors.sup-1}: rótulo PROCESSADOR, "Desconectado" em {typography.estado-hero}, frase de ajuda e o botão principal Conectar. As saídas embaixo ficam vazias: barra lateral a 40 %, nome em {colors.apoio} e "—" no lugar do valor.
 - **Caixas da senha** (`caixas-da-senha`) — Quatro caixas de 64 px, fundo {colors.campo}, sublinhado em {colors.apagado}; a caixa atual com contorno branco de 2 px; os caracteres viram • na hora.
 - **Faixa do som mutado** (`faixa-som-mutado`) — Na tela Setup em dúvida ([mock da 3b, quadro 2](mockups/key-screens-3b.html)), logo abaixo do título: faixa de {spacing.alvo-lista} de altura mínima, {colors.sup-1}, contorno {colors.campo-borda}, {rounded.lg}; ícone de alto-falante cortado em traço {colors.texto} e "**Som mutado** até você escolher." em {typography.corpo} {colors.apoio}, com "Som mutado" em peso 800 {colors.texto}. Não é vermelha: mutar é proteção, não erro.
@@ -891,7 +907,9 @@ Cada peça traz entre parênteses a chave do bloco correspondente no frontmatter
 
 - **Esquema do Setup** (`esquema-do-setup`) — Área de 280 px de altura mínima no alto da tela Setup, fundo {colors.palco} com uma grade isométrica muito fraca em {colors.sup-3}. Peças em perspectiva isométrica (30°), com três tons por peça para dar volume (topo {colors.sup-2}, lados {colors.sup-1} e {colors.registro-fundo}) e uma sombra elíptica a 40 % embaixo. Cabos em traço de 2 px na cor do canal, com a junção em Y marcada por um ponto. Rótulos curtos em {typography.detalhe} {colors.apoio}, com o nome em {colors.texto}. O equipamento tocado ganha contorno branco de 2 px. Nunca pinta uma peça inteira com a cor do canal: a cor fica no cabo, na borda da entrada e no pequeno rótulo CHn.
 - **Linha de equipamento** (`linha-de-equipamento`) — Na lista embaixo do esquema: ícone isométrico pequeno da categoria (32 px), nome em {typography.linha-titulo}, detalhe em {typography.detalhe} {colors.apoio} ("Alto-falante passivo · saída 2 do Módulo genérico · CH2") e, à esquerda, a barra de 4 px na cor do canal. O "genérico" aparece em {colors.apagado}.
-- **Folha de equipamento** (`folha-de-equipamento`) — A folha padrão, com os campos em linhas de {spacing.alvo-lista}; grupo e categoria em linhas de escolha; dados técnicos em Avançado, recolhido; "Onde está ligado" com os canais como pílulas (a escolhida em branco) e o bridge como par de pílulas unidas.
+- **Folha de equipamento** (`folha-de-equipamento`) — A folha padrão, com os campos em linhas de {spacing.alvo-lista}; grupo e categoria em linhas de escolha; dados técnicos em Avançado, recolhido; "Onde está ligado" com os canais como pílulas (a escolhida em branco) e o bridge como par de pílulas unidas. Os dados técnicos vêm em blocos com rótulo em {typography.rotulo} {colors.apagado}, só os que valem para o grupo: GERAIS, ALTO-FALANTE e CAIXA para quem toca (alto-falante passivo e grupo 1); MÓDULO e ALIMENTAÇÃO no grupo 2; GERAIS (a potência RMS) nos grupos 3 e 4. Cada dado é uma **linha de dado**: o rótulo com a unidade em {typography.detalhe} {colors.apoio} ("Fs (Hz)"), embaixo o campo ({colors.campo}, {spacing.alvo-min}) e, à direita dele, o **selo de origem**. Os canais do módulo ficam só de leitura na ficha (mudam em "Onde está ligado").
+- **Selo de origem** (`selo-de-origem`) — A mesma forma do **selo herdado**: pílula contornada de 22 px, contorno {colors.campo-borda}, texto {colors.apoio} em {typography.rotulo}, área de toque de {spacing.alvo-min}. Diz de onde veio o dado: "oficial ✓", "outra fonte", "medido ✓", "estimado" ou "digitado"; só oficial e medido levam o ✓ (verificado). Um campo vazio não tem selo. Tocar no selo abre, embaixo da linha, as 5 origens em pílulas (a que vale em branco, com o texto preto) e o campo **Fonte** (até 120 caracteres; a dica diz "Endereço do manual ou da ficha" para oficial). Uma escolha aberta por vez. A cor nunca é a única pista: o ✓ e a palavra dizem a origem.
+- **Linha de sugestão de modelo** (`linha-de-sugestao-de-modelo`) — Embaixo do campo Modelo, com 2 letras ou mais escritas: até 5 linhas de {spacing.alvo-lista} num grupo {colors.sup-1}, {rounded.card}, com o modelo da base em {typography.linha-titulo} e a categoria em {typography.detalhe} {colors.apoio} ("JBL 4TRMS80" · "médio-grave"). Tocar numa linha põe o nome no Modelo, preenche os dados que a base tem com os selos dela e fecha a lista. Sem toque, nada é preenchido.
 
 ### Avisos
 

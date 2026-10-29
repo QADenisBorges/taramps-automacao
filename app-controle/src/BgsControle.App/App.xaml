@@ -46,6 +46,10 @@
             <Color x:Key="ia-texto">#D6C6F5</Color>
             <Color x:Key="ia-halo">#40C495FF</Color>
 
+            <!-- ============================================================ alvos de toque (DESIGN, spacing) -->
+            <x:Double x:Key="alvo-min">44</x:Double>
+            <x:Double x:Key="alvo-lista">52</x:Double>
+
             <!-- ============================================================ conversores -->
             <r:CorDaSaida x:Key="CorDaSaida" />
             <r:Inverso x:Key="Inverso" />

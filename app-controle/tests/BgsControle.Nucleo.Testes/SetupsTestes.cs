@@ -603,7 +603,10 @@ public sealed partial class SetupsTestes : IDisposable
         var r = await _setups.CriarSetupAsync(nome, memoria);
 
         Assert.False(r.Ok);
-        Assert.Equal(GerentePresets.MsgNomeInvalido, r.Motivo);
+        // História 10c: o nome da memória tem a recusa própria, para a tela pôr o erro embaixo do campo dela.
+        Assert.Equal(memoria is null ? GerentePresets.MsgNomeInvalido : GerenteSetups.MsgNomeMemoria(GerentePresets.MsgNomeInvalido), r.Motivo);
+        Assert.Equal(memoria is not null, r.ErroNomeMemoria);
+        Assert.Equal(memoria is null, r.ErroNomeSetup);
         Assert.Single(_setups.Setups);
         Assert.Equal(gravacoes, _guardadoSetups.Gravacoes);
         Assert.Equal(EstadoConferencia.Duvida, _setups.Estado);
@@ -623,6 +626,8 @@ public sealed partial class SetupsTestes : IDisposable
 
         Assert.False(r.Ok);
         Assert.Equal(GerenteSetups.MsgNomeRepetidoSetup, r.Motivo);
+        Assert.True(r.ErroNomeSetup);
+        Assert.False(r.ErroNomeMemoria);
         Assert.Equal(2, _setups.Setups.Count);
         Assert.Equal(gravacoes, _guardadoSetups.Gravacoes);
         Assert.Equal(EstadoConferencia.Trocando, _setups.Estado);

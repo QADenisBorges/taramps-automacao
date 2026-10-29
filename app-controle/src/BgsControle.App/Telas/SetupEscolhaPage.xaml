@@ -55,8 +55,8 @@
 
                     <!-- O que não bate (só leitura). -->
                     <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding TemDiferencas}">
-                        <Label Style="{StaticResource tipo-rotulo}" Text="O QUE NÃO BATE" />
-                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" Text="lido agora no aparelho" />
+                        <Label Style="{StaticResource tipo-rotulo}" Text="{Binding TituloDiferencas}" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" Text="{Binding SubtituloDiferencas}" />
                     </Grid>
                     <Border IsVisible="{Binding TemDiferencas}" Style="{StaticResource cartao}" Padding="0">
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding LinhasDiferenca}">
@@ -97,7 +97,7 @@
         <!-- A lista de Setups. -->
         <c:FolhaView Aberta="{Binding ListaAberta}" Fechar="{Binding FecharLista}">
             <VerticalStackLayout Spacing="8">
-                <Label Style="{StaticResource tipo-titulo-folha}" Text="Escolher o Setup" />
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{x:Static telas:SetupViewModel.TextoEscolher}" />
                 <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding Setups}">
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="telas:ItemSetupViewModel">
@@ -131,22 +131,36 @@
                 </VerticalStackLayout>
                 <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
                        IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
-                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding FecharLista}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:SetupViewModel.TextoCancelar}" Command="{Binding FecharLista}" />
             </VerticalStackLayout>
         </c:FolhaView>
 
-        <!-- Criar Setup novo: o nome. -->
+        <!-- Criar Setup novo: o nome do Setup e o da primeira memória, cada um com o erro embaixo. -->
         <c:FolhaView Aberta="{Binding CriarAberto}" Fechar="{Binding CancelarCriar}">
             <VerticalStackLayout Spacing="10">
-                <Label Style="{StaticResource tipo-titulo-folha}" Text="Criar Setup novo" />
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{x:Static telas:SetupViewModel.TextoCriar}" />
                 <Label Style="{StaticResource tipo-corpo}" TextColor="{StaticResource apoio}"
-                       Text="O Setup nasce com a calibração que está no aparelho, ainda sem memórias." />
+                       Text="{x:Static telas:SetupViewModel.LinhaFolhaCriar}" />
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}"
+                       Text="{x:Static telas:SetupViewModel.RotuloNomeSetup}" />
                 <Entry x:Name="CampoNome" Style="{StaticResource entrada}" Text="{Binding NomeNovo}" MaxLength="24"
-                       Placeholder="Carro" ReturnType="Done" ReturnCommand="{Binding ConfirmarCriar}" />
+                       Placeholder="{x:Static telas:SetupViewModel.DicaNomeSetup}" ReturnType="Next"
+                       Completed="AoTerminarNomeSetup" />
                 <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroNome}"
                        IsVisible="{Binding ErroNome, Converter={StaticResource TemTexto}}" />
-                <Button Style="{StaticResource botao-principal}" Text="Criar Setup" Command="{Binding ConfirmarCriar}" />
-                <Button Style="{StaticResource botao-secundario}" Text="Cancelar" Command="{Binding CancelarCriar}" />
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}"
+                       Text="{x:Static telas:SetupViewModel.RotuloNomeMemoria}" />
+                <Entry x:Name="CampoMemoria" Style="{StaticResource entrada}" Text="{Binding NomeMemoriaNova}" MaxLength="24"
+                       Placeholder="{Binding DicaNomeMemoria}" ReturnType="Done" ReturnCommand="{Binding ConfirmarCriar}" />
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}"
+                       Text="{x:Static telas:SetupViewModel.LinhaNomeMemoria}" />
+                <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroNomeMemoria}"
+                       IsVisible="{Binding ErroNomeMemoria, Converter={StaticResource TemTexto}}" />
+                <!-- O que não é de um nome (ocupado, sem leitura, não guardou). -->
+                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
+                       IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                <Button Style="{StaticResource botao-principal}" Text="{x:Static telas:SetupViewModel.TextoConfirmarCriar}" Command="{Binding ConfirmarCriar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:SetupViewModel.TextoCancelar}" Command="{Binding CancelarCriar}" />
             </VerticalStackLayout>
         </c:FolhaView>
     </Grid>

@@ -70,6 +70,37 @@ public sealed class ArquiteturaTestes
         }
     }
 
+    /// <summary>
+    /// História 10c: nenhum XAML escreve à mão o O QUE NÃO BATE, a frase e a linha do Criar Setup novo ou o
+    /// Criar memória: os textos vêm do ViewModel (e a calibração do Setup não aparece mais na escolha).
+    /// </summary>
+    [Fact]
+    public void Nenhum_XAML_tem_texto_fixo_do_que_nao_bate_do_Criar_Setup_ou_do_Criar_memoria()
+    {
+        var telas = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToArray();
+        string[] fixos =
+        [
+            SetupViewModel.RotuloDiferencas, SetupViewModel.SubRotuloDiferencas, SetupViewModel.FraseCriar, SetupViewModel.FraseEscolher,
+            SetupViewModel.LinhaFolhaCriar, InicioViewModel.TextoCriarMemoria, MemoriasViewModel.TextoCriar,
+            "O Setup nasce com a calibração", "Nasce com a calibração",
+        ];
+        foreach (var f in telas)
+        {
+            // Só os atributos (os comentários podem citar o texto).
+            var atributos = XDocument.Load(f).Descendants().SelectMany(e => e.Attributes()).Select(a => a.Value).ToArray();
+            foreach (var texto in fixos)
+                Assert.DoesNotContain(atributos, a => a.Contains(texto, StringComparison.Ordinal));
+        }
+        var escolha = File.ReadAllText(telas.Single(f => Path.GetFileName(f) == "SetupEscolhaPage.xaml"));
+        Assert.DoesNotContain(XDocument.Parse(escolha).Descendants().SelectMany(e => e.Attributes()).Select(a => a.Value),
+            a => a.Contains("calibração", StringComparison.Ordinal));
+        Assert.Contains("{Binding NomeMemoriaNova}", escolha, StringComparison.Ordinal);
+        Assert.Contains("{Binding ErroNomeMemoria}", escolha, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void O_csproj_do_App_nao_referencia_o_simulador()
     {

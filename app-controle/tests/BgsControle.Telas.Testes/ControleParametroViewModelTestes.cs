@@ -81,9 +81,11 @@ internal sealed class Bancada
         Playlists = new GerentePlaylists(new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPlaylists), Log);
         if (setups)
         {
+            // História 10c: a base de modelos, como no MauiProgram (o modelo que se completa na folha).
+            Modelos = new BaseModelos(new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoModelos), Log, Relogio);
             Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Memorias, Presets, Playlists, Chaves,
                 new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetups),
-                new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetupMudo), Log, Relogio);
+                new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetupMudo), Log, Relogio, modelos: Modelos);
         }
         // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
         Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
@@ -120,6 +122,9 @@ internal sealed class Bancada
 
     /// <summary>Os Setups (só com <c>setups: true</c>).</summary>
     public GerenteSetups? Setups { get; }
+
+    /// <summary>A base de modelos dos Setups (só com <c>setups: true</c>), em <c>modelos.json</c> nos <see cref="Arquivos"/>.</summary>
+    public BaseModelos? Modelos { get; }
 
     public SalvarViewModel CriarSalvarViewModel() => new(Setups!, Estado, Tela, Relogio);
 

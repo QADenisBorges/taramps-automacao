@@ -4,7 +4,8 @@
     e folha-de-equipamento): Configurações › Setups › tocar num Setup. O nome com o selo HERDADO, as saídas que
     o Setup dá (na cor do canal mestre), a lista de equipamentos e "Adicionar equipamento". No alto, o esquema do
     Setup (história 10b; DESIGN, esquema-do-setup), posto pelo código no LugarDoEsquema. A folha de equipamento
-    sobe de baixo; nada vai pelo BLE.
+    sobe de baixo; nada vai pelo BLE. Na folha (história 10c), o modelo se completa pela base de modelos
+    (DESIGN, linha-de-sugestao-de-modelo) e cada dado da ficha tem o selo de origem (DESIGN, selo-de-origem).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -173,6 +174,27 @@
 
                 <Label Style="{StaticResource tipo-rotulo}" Text="MODELO" />
                 <Entry Style="{StaticResource entrada}" Text="{Binding Modelo}" Placeholder="{Binding DicaModelo}" MaxLength="32" />
+                <!-- O modelo que se completa: até 5 modelos da base; tocar num preenche a ficha com as origens dela. -->
+                <!-- As divisórias em sup-3: o fundo da lista aparece no espaço de 1 entre as linhas. -->
+                <Border Style="{StaticResource cartao}" Padding="0" IsVisible="{Binding TemSugestoes}">
+                    <VerticalStackLayout Spacing="1" BackgroundColor="{StaticResource sup-3}" BindableLayout.ItemsSource="{Binding SugestoesModelo}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="telas:EscolhaViewModel">
+                                <VerticalStackLayout Padding="14,8" Spacing="2" MinimumHeightRequest="{StaticResource alvo-lista}"
+                                                     BackgroundColor="{StaticResource sup-1}"
+                                                     SemanticProperties.Description="{Binding Rotulo}"
+                                                     SemanticProperties.Hint="{x:Static telas:EquipamentosViewModel.DicaSugestao}">
+                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Rotulo}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Detalhe}"
+                                           IsVisible="{Binding Detalhe, Converter={StaticResource TemTexto}}" />
+                                    <VerticalStackLayout.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Escolher}" />
+                                    </VerticalStackLayout.GestureRecognizers>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
 
                 <!-- Função acústica (só para quem toca): a sugerida primeiro. -->
                 <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraFuncao}">
@@ -247,8 +269,8 @@
                     <VerticalStackLayout Spacing="10" Padding="0,0,0,10">
                         <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="52">
                             <VerticalStackLayout VerticalOptions="Center">
-                                <Label Style="{StaticResource tipo-rotulo}" Text="DADOS TÉCNICOS" />
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Todos opcionais" />
+                                <Label Style="{StaticResource tipo-rotulo}" Text="{Binding TituloDadosTela}" />
+                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="{Binding LinhaDadosTela}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="1" Style="{StaticResource tipo-titulo-parametro}" Text="{Binding IndicadorDados}" VerticalTextAlignment="Center" />
                             <Grid.GestureRecognizers>
@@ -256,24 +278,22 @@
                             </Grid.GestureRecognizers>
                         </Grid>
                         <VerticalStackLayout Spacing="8" IsVisible="{Binding DadosAbertos}">
-                            <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraDadosAltoFalante}">
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Diâmetro (pol.)" />
-                                <Entry Style="{StaticResource entrada}" Text="{Binding Diametro}" Keyboard="Numeric" />
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Impedância (Ω)" />
-                                <Entry Style="{StaticResource entrada}" Text="{Binding Impedancia}" Keyboard="Numeric" />
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Sensibilidade (dB)" />
-                                <Entry Style="{StaticResource entrada}" Text="{Binding Sensibilidade}" Keyboard="Numeric" />
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Faixa de frequência (Hz): início e fim" />
-                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                    <Entry Style="{StaticResource entrada}" Text="{Binding FaixaMinima}" Keyboard="Numeric" />
-                                    <Entry Grid.Column="1" Style="{StaticResource entrada}" Text="{Binding FaixaMaxima}" Keyboard="Numeric" />
-                                </Grid>
-                            </VerticalStackLayout>
-                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Potência RMS (W)" />
-                            <Entry Style="{StaticResource entrada}" Text="{Binding PotenciaRms}" Keyboard="Numeric" />
-                            <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraGanho}">
-                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}" Text="Ganho do amplificador (×)" />
-                                <Entry Style="{StaticResource entrada}" Text="{Binding Ganho}" Keyboard="Numeric" />
+                            <!-- Os blocos que valem para o grupo, cada dado numa linha reutilizável com o selo de origem. -->
+                            <VerticalStackLayout Spacing="14" BindableLayout.ItemsSource="{Binding SecoesDados}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="telas:SecaoDadosViewModel">
+                                        <VerticalStackLayout Spacing="10">
+                                            <Label Style="{StaticResource tipo-rotulo}" Text="{Binding Titulo}" />
+                                            <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Dados}">
+                                                <BindableLayout.ItemTemplate>
+                                                    <DataTemplate x:DataType="telas:DadoViewModel">
+                                                        <c:DadoTecnicoView />
+                                                    </DataTemplate>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
                             <!-- Caixa ativa: as vias de dentro. -->
                             <VerticalStackLayout Spacing="8" IsVisible="{Binding MostraVias}">

@@ -121,9 +121,18 @@ public sealed record MarcaMudo(string? IdSetup, IReadOnlyList<string> MuteAnteri
 
 /// <summary>Como terminou uma operação de Setup ou de memória do celular. <see cref="Mensagem"/> é a frase para a tela.</summary>
 /// <param name="PedeFolhaSalvar">Criar memória com uma memória do aparelho (ou o som do aparelho) em uso: o caminho é a folha do Salvar.</param>
-public sealed record ResultadoSetup(bool Ok, string? Motivo, string? Mensagem = null, bool PedeFolhaSalvar = false)
+/// <param name="ErroNomeMemoria">Criar Setup novo: quem errou foi o nome da primeira memória, não o do Setup (a tela põe o erro embaixo do campo dela).</param>
+/// <param name="ErroNomeSetup">Criar Setup novo: quem errou foi o nome do Setup (inválido ou repetido).</param>
+public sealed record ResultadoSetup(bool Ok, string? Motivo, string? Mensagem = null, bool PedeFolhaSalvar = false, bool ErroNomeMemoria = false,
+    bool ErroNomeSetup = false)
 {
     public static ResultadoSetup Falha(string motivo) => new(false, motivo, motivo);
+
+    /// <summary>O nome do Setup novo é inválido ou repetido.</summary>
+    public static ResultadoSetup FalhaNomeSetup(string motivo) => new(false, motivo, motivo, ErroNomeSetup: true);
+
+    /// <summary>O nome da primeira memória do Setup novo é inválido ou repetido ("Nome da memória: …").</summary>
+    public static ResultadoSetup FalhaNomeMemoria(string motivo) => new(false, motivo, motivo, ErroNomeMemoria: true);
 
     public static ResultadoSetup Feito(string? mensagem) => new(true, null, mensagem);
 }

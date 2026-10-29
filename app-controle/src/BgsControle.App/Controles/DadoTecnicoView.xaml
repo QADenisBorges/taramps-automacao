@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    Uma linha da ficha na folha de equipamento (DESIGN, folha-de-equipamento e selo-de-origem; EXPERIENCE,
+    Equipamentos e saídas): o rótulo com a unidade, o campo e o selo de origem ("oficial ✓", "estimado").
+    Tocar no selo abre embaixo a escolha da origem (as 5, a que vale em branco) e o campo Fonte. Um campo
+    vazio não tem selo. Nada vai pelo BLE.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.DadoTecnicoView"
+             x:DataType="telas:DadoViewModel">
+    <ContentView.Resources>
+        <!-- Uma origem na escolha (a que vale em branco, com o texto preto). -->
+        <DataTemplate x:Key="origem" x:DataType="telas:EscolhaViewModel">
+            <Border Margin="0,0,6,6" Padding="12,0" MinimumHeightRequest="{StaticResource alvo-min}" StrokeShape="RoundRectangle 12"
+                    Stroke="{StaticResource sup-2}" StrokeThickness="1" BackgroundColor="Transparent"
+                    SemanticProperties.Description="{Binding Rotulo}" SemanticProperties.Hint="{x:Static telas:DadoViewModel.DicaOrigem}">
+                <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding Rotulo}" VerticalTextAlignment="Center">
+                    <Label.Triggers>
+                        <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                            <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                        </DataTrigger>
+                    </Label.Triggers>
+                </Label>
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding Escolhida}" Value="True">
+                        <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding Escolher}" />
+                </Border.GestureRecognizers>
+            </Border>
+        </DataTemplate>
+    </ContentView.Resources>
+
+    <VerticalStackLayout Spacing="6">
+        <Label Style="{StaticResource tipo-detalhe}" Text="{Binding RotuloTela}" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <Entry Style="{StaticResource entrada}" Text="{Binding Texto}" Keyboard="Numeric" IsReadOnly="{Binding SoLeitura}"
+                   SemanticProperties.Description="{Binding RotuloTela}">
+                <Entry.Triggers>
+                    <DataTrigger TargetType="Entry" Binding="{Binding Numerico}" Value="False">
+                        <Setter Property="Keyboard" Value="Default" />
+                        <Setter Property="MaxLength" Value="32" />
+                    </DataTrigger>
+                </Entry.Triggers>
+            </Entry>
+            <!-- O selo de origem: a forma do selo HERDADO (22 px, contornado), com a área de toque de 44. -->
+            <Grid Grid.Column="1" MinimumHeightRequest="{StaticResource alvo-min}" MinimumWidthRequest="{StaticResource alvo-min}"
+                  IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}"
+                  SemanticProperties.Description="{Binding DescricaoSelo}" SemanticProperties.Hint="{Binding DicaSeloTela}">
+                <Border Stroke="{StaticResource campo-borda}" StrokeThickness="1" StrokeShape="RoundRectangle 11"
+                        HeightRequest="22" Padding="8,0" VerticalOptions="Center">
+                    <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
+                           VerticalTextAlignment="Center" />
+                </Border>
+                <Grid.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding AlternarOrigem}" />
+                </Grid.GestureRecognizers>
+            </Grid>
+        </Grid>
+
+        <!-- A escolha da origem e a fonte (até 120 caracteres; para oficial, o endereço do manual ou da ficha). -->
+        <VerticalStackLayout Spacing="6" IsVisible="{Binding OrigemAberta}">
+            <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding Origens}" BindableLayout.ItemTemplate="{StaticResource origem}" />
+            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding TituloFonte}" />
+            <Entry Style="{StaticResource entrada}" Text="{Binding TextoFonte}" Placeholder="{Binding DicaFonte}" MaxLength="120"
+                   SemanticProperties.Description="{Binding TituloFonte}" />
+        </VerticalStackLayout>
+    </VerticalStackLayout>
+</ContentView>

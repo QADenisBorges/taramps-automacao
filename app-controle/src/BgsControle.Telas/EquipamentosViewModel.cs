@@ -217,9 +217,10 @@ public sealed class ViaViewModel : TelaBase
 /// Os equipamentos de um Setup (história 8e; a tela Setup é da história 10): a lista (nome, detalhe
 /// como "Alto-falante passivo · canal 2 do Módulo genérico · CH2", o modelo ou "genérico" e a função),
 /// as saídas do app que eles dão, e a folha de equipamento: grupo, categoria (com as sugestões do
-/// grupo e "Outra…"), nome, modelo, função (com a sugerida), dados técnicos, onde está ligado (só as
-/// opções que existem no Setup), ✓, Cancelar e Tirar com confirmação e os avisos. Nada vai pelo BLE
-/// e nada tem chave.
+/// grupo e "Outra…"), nome, modelo (que se completa pela base de modelos, história 10c), função (com a
+/// sugerida), a ficha por grupo com o selo de origem de cada dado (<see cref="DadoViewModel"/>), onde está
+/// ligado (só as opções que existem no Setup), ✓, Cancelar e Tirar com confirmação e os avisos. Nada vai
+/// pelo BLE e nada tem chave.
 /// </summary>
 public sealed class EquipamentosViewModel : TelaBase, IDisposable
 {
@@ -237,6 +238,90 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     public const int MaximoCanais = 16;
 
     public static string MsgNumero(string rotulo) => $"{rotulo}: escreva um número maior que zero.";
+
+    /// <summary>"Fs: a fonte vai até 120 caracteres, sem quebra de linha." (longa ou com um caractere de controle).</summary>
+    public static string MsgFonte(string rotulo) => $"{rotulo}: a fonte vai até {Ligacoes.TamanhoMaximoTextoLongo} caracteres, sem quebra de linha.";
+
+    /// <summary>Com 2 letras ou mais no Modelo, a base de modelos sugere até 5.</summary>
+    public const int MinimoSugestao = 2;
+    public const int MaximoSugestoes = 5;
+
+    public const string SecaoGerais = "GERAIS";
+    public const string SecaoAltoFalante = "ALTO-FALANTE";
+    public const string SecaoCaixa = "CAIXA";
+    public const string SecaoModulo = "MÓDULO";
+    public const string SecaoAlimentacao = "ALIMENTAÇÃO";
+    public const string TituloDados = "DADOS TÉCNICOS";
+    public const string LinhaDados = "Todos opcionais. Toque no selo para dizer de onde veio.";
+    public const string CampoTipoCaixa = "tipoCaixa";
+    public const string CampoCanais = "canais";
+
+    /// <summary>
+    /// As linhas da ficha, na ordem da folha: a chave do campo (a do <c>setups.json</c>), o rótulo das
+    /// mensagens e a unidade. O tipo da caixa é texto; os canais vêm do "Onde está ligado".
+    /// </summary>
+    private static readonly (string Nome, string Rotulo, string? Unidade)[] Linhas =
+    [
+        ("diametro", "Diâmetro", "pol."),
+        ("impedancia", "Impedância", "Ω"),
+        ("potenciaRms", "Potência RMS", "W"),
+        ("sensibilidade", "Sensibilidade", "dB"),
+        ("faixaMinima", "Faixa, início", "Hz"),
+        ("faixaMaxima", "Faixa, fim", "Hz"),
+        ("re", "Re", "Ω"),
+        ("fs", "Fs", "Hz"),
+        ("qes", "Qes", null),
+        ("qms", "Qms", null),
+        ("vas", "Vas", "L"),
+        ("bl", "Bl", "T·m"),
+        ("sd", "Sd", "cm²"),
+        ("xmax", "Xmax", "mm"),
+        ("le", "Le", "mH"),
+        (CampoTipoCaixa, "Tipo da caixa", null),
+        ("volumeCaixa", "Volume da caixa", "L"),
+        ("fb", "Fb", "Hz"),
+        ("areaDuto", "Área do duto", "cm²"),
+        (CampoCanais, "Canais", null),
+        ("ganho", "Ganho por canal", "×"),
+        ("ganhoPonte", "Ganho em ponte", "×"),
+        ("potenciaCanal", "Potência por canal", "W"),
+        ("tensaoCeifamentoCanal", "Ceifamento por canal", "V"),
+        ("potenciaPonte", "Potência em ponte", "W"),
+        ("tensaoCeifamentoPonte", "Ceifamento em ponte", "V"),
+        ("tensaoAlimentacao", "Tensão da alimentação", "V"),
+        ("correnteAlimentacao", "Corrente da alimentação", "A"),
+    ];
+
+    /// <summary>Os blocos da ficha que valem para quem toca (alto-falante passivo e grupo 1).</summary>
+    private static readonly (string Titulo, string[] Campos)[] SecoesQueTocam =
+    [
+        (SecaoGerais, ["diametro", "impedancia", "potenciaRms", "sensibilidade", "faixaMinima", "faixaMaxima"]),
+        (SecaoAltoFalante, ["re", "fs", "qes", "qms", "vas", "bl", "sd", "xmax", "le"]),
+        (SecaoCaixa, [CampoTipoCaixa, "volumeCaixa", "fb", "areaDuto"]),
+    ];
+
+    /// <summary>Os blocos da ficha do módulo (grupo 2).</summary>
+    private static readonly (string Titulo, string[] Campos)[] SecoesModulo =
+    [
+        (SecaoModulo, [CampoCanais, "ganho", "ganhoPonte", "potenciaCanal", "tensaoCeifamentoCanal", "potenciaPonte", "tensaoCeifamentoPonte"]),
+        (SecaoAlimentacao, ["tensaoAlimentacao", "correnteAlimentacao"]),
+    ];
+
+    /// <summary>Os grupos 3 e 4: os dados de antes da ficha de 29/10.</summary>
+    private static readonly (string Titulo, string[] Campos)[] SecoesRepasse =
+    [
+        (SecaoGerais, ["potenciaRms"]),
+    ];
+
+    private static (string Titulo, string[] Campos)[] SecoesDo(GrupoEquipamento grupo) => grupo switch
+    {
+        GrupoEquipamento.AltoFalante or GrupoEquipamento.AmplificaETocam => SecoesQueTocam,
+        GrupoEquipamento.Amplificador => SecoesModulo,
+        _ => SecoesRepasse,
+    };
+
+    /// <summary>As chaves dos campos que valem para o grupo.</summary>
+    public static IReadOnlyList<string> CamposDo(GrupoEquipamento grupo) => SecoesDo(grupo).SelectMany(s => s.Campos).ToArray();
 
     /// <summary>"Tirar JBL R do Casa 2.1?"</summary>
     public static string MsgConfirmarTirar(string nome, string setup) => $"Tirar {nome} do {setup}?";
@@ -269,13 +354,11 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     private string? _nomeSugerido;
     private string _modelo = "";
     private FuncaoAcustica? _funcao;
-    private string _diametro = "";
-    private string _impedancia = "";
-    private string _potencia = "";
-    private string _sensibilidade = "";
-    private string _faixaMinima = "";
-    private string _faixaMaxima = "";
-    private string _ganho = "";
+    private bool _modeloDigitado;
+    private IReadOnlyList<EscolhaViewModel> _sugestoes = [];
+    private readonly IReadOnlyList<DadoViewModel> _dados;
+    private readonly Dictionary<string, DadoViewModel> _porNome;
+    private IReadOnlyList<SecaoDadosViewModel> _secoes = [];
     private IReadOnlyList<ViaViewModel> _vias = [];
     private IReadOnlyList<EntradaViewModel> _entradas = [];
     private IReadOnlyList<BridgeViewModel> _bridges = [];
@@ -289,6 +372,12 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         : base(despachante, relogio)
     {
         _setups = setups;
+        _dados = Linhas
+            .Select(l => new DadoViewModel(l.Nome, l.Rotulo, l.Unidade, numerico: l.Nome != CampoTipoCaixa, soLeitura: l.Nome == CampoCanais,
+                this, despachante, relogio))
+            .ToArray();
+        _porNome = _dados.ToDictionary(d => d.Nome, StringComparer.Ordinal);
+        _secoes = Secoes();
         Adicionar = new Comando(AbrirAdicionar);
         Confirmar = new Comando(ConfirmarAsync);
         Cancelar = new Comando(FecharFolha);
@@ -401,10 +490,14 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             if (!_categoriaLivre && !Ligacoes.CategoriasSugeridas(value).Contains(_categoria))
                 _categoria = "";
             PrepararLigacoes(null);
+            SincronizarCanais();
+            _secoes = Secoes();
             Avisar();
             Avisar(nameof(Categorias));
             Avisar(nameof(Categoria));
             AvisarGrupo();
+            AvisarOrigens();
+            AvisarSugestoes();
             AoMudarLigacao();
         }
     }
@@ -448,11 +541,55 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     /// <summary>Abre e fecha os dados técnicos (vêm recolhidos).</summary>
     public Comando AlternarDados { get; }
 
-    /// <summary>"Ganho do amplificador", "Diâmetro"… só os que valem para o grupo: o ganho só no módulo.</summary>
-    public bool MostraGanho => _grupo == GrupoEquipamento.Amplificador;
+    /// <summary>"DADOS TÉCNICOS".</summary>
+    public string TituloDadosTela => TituloDados;
 
-    /// <summary>Os dados de alto-falante (diâmetro, impedância, sensibilidade) valem para quem toca.</summary>
-    public bool MostraDadosAltoFalante => _grupo is GrupoEquipamento.AltoFalante or GrupoEquipamento.AmplificaETocam;
+    /// <summary>"Todos opcionais. Toque no selo para dizer de onde veio."</summary>
+    public string LinhaDadosTela => LinhaDados;
+
+    /// <summary>
+    /// A ficha em blocos, só com os dados que valem para o grupo: quem toca (alto-falante passivo e grupo
+    /// 1) tem os gerais, os do alto-falante (Re, Fs, Qes…) e os da caixa; o módulo (grupo 2), os dele e os
+    /// da alimentação; os grupos 3 e 4, a potência RMS.
+    /// </summary>
+    public IReadOnlyList<SecaoDadosViewModel> SecoesDados => _secoes;
+
+    /// <summary>Todas as linhas da ficha, as que valem para o grupo e as outras.</summary>
+    public IReadOnlyList<DadoViewModel> Dados => _dados;
+
+    /// <summary>A linha de um campo pela chave ("fs", "tipoCaixa"), ou null.</summary>
+    public DadoViewModel? Dado(string nome) => _porNome.GetValueOrDefault(nome);
+
+    /// <summary>
+    /// A origem carregada do equipamento editado ainda vale: o mesmo grupo e o mesmo modelo. Com o
+    /// modelo ou o grupo trocados, os dados que ficam passam a digitados.
+    /// </summary>
+    internal bool OrigemDoEditadoVale =>
+        _editando is not null && _editando.Grupo == _grupo && BaseModelos.Chave(_editando.Modelo) == BaseModelos.Chave(_modelo);
+
+    /// <summary>Abre a escolha da origem de uma linha e fecha a que estava aberta (uma por vez).</summary>
+    internal void AbrirOrigem(DadoViewModel dado)
+    {
+        foreach (var d in _dados)
+        {
+            if (!ReferenceEquals(d, dado))
+                d.FecharOrigem();
+        }
+        dado.AbrirOrigemInterno();
+    }
+
+    private IReadOnlyList<SecaoDadosViewModel> Secoes() =>
+        SecoesDo(_grupo).Select(s => new SecaoDadosViewModel(s.Titulo, s.Campos.Select(c => _porNome[c]).ToArray())).ToArray();
+
+    private void AvisarOrigens()
+    {
+        foreach (var d in _dados)
+            d.AvisarOrigem();
+    }
+
+    /// <summary>A linha dos canais (só leitura) segue o número de canais do módulo.</summary>
+    private void SincronizarCanais() =>
+        _porNome[CampoCanais].DefinirTexto(_grupo == GrupoEquipamento.Amplificador ? _entradas.Count.ToString(CultureInfo.InvariantCulture) : "");
 
     /// <summary>Escolhe uma categoria da lista; "Outra…" abre o campo para escrever. O nome é sugerido pela categoria.</summary>
     public void EscolherCategoria(string categoria)
@@ -504,7 +641,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>O modelo; vazio = genérico.</summary>
+    /// <summary>O modelo; vazio = genérico. Escrever nele abre as sugestões da base de modelos.</summary>
     public string Modelo
     {
         get => _modelo;
@@ -513,12 +650,94 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             if (_modelo == value)
                 return;
             _modelo = value;
+            _modeloDigitado = true;
             Avisar();
+            AvisarSugestoes();
+            AvisarOrigens();
         }
     }
 
     /// <summary>A dica do campo do modelo vazio.</summary>
     public string DicaModelo => Ligacoes.TextoGenerico;
+
+    /// <summary>
+    /// Com 2 letras ou mais escritas no Modelo, até 5 modelos da base do mesmo grupo da folha que começam
+    /// com o texto (o nome e a categoria); tocar num deles preenche a ficha. Sem escrever (ao abrir a
+    /// folha), nenhum. Calculadas uma vez por mudança do Modelo (ou do grupo).
+    /// </summary>
+    public IReadOnlyList<EscolhaViewModel> SugestoesModelo => _sugestoes;
+
+    /// <summary>Há sugestões para mostrar embaixo do Modelo.</summary>
+    public bool TemSugestoes => _sugestoes.Count > 0;
+
+    /// <summary>Para o leitor de tela, numa sugestão: "Toque para preencher a ficha com este modelo."</summary>
+    public const string DicaSugestao = "Toque para preencher a ficha com este modelo.";
+
+    /// <summary>O Modelo da folha tem esta chave (a origem que veio da base vale só com o modelo dela).</summary>
+    internal bool ModeloE(string? chave) => chave is not null && BaseModelos.Chave(_modelo) == chave;
+
+    /// <summary>
+    /// Toque numa sugestão: o nome vai para o Modelo e os dados que a base tem preenchem a ficha, com as
+    /// origens dela; os que a base não tem ficam como estavam. A lista some. Um modelo de outro grupo não
+    /// preenche nada. Num módulo que já existe, a base não tira canais (só preenche quando tem mais).
+    /// </summary>
+    public void EscolherModelo(string modelo)
+    {
+        if (!_folhaAberta)
+            return;
+        var ficha = _setups.Modelos?.Ficha(modelo);
+        if (ficha is not null && ficha.Grupo != _grupo)
+            ficha = null;
+        _modelo = ficha?.Modelo ?? modelo;
+        _modeloDigitado = false;
+        if (ficha is not null)
+        {
+            var chave = BaseModelos.Chave(ficha.Modelo);
+            foreach (var c in DadosTecnicos.Campos)
+            {
+                if (c.Ler(ficha.Dados) is not { } v)
+                    continue;
+                if (c.Nome == CampoCanais)
+                {
+                    // Os canais do módulo são as entradas dele: a base muda o número de canais, sem tirar
+                    // canais (e as ligações deles) de um módulo que já existe.
+                    if (_grupo != GrupoEquipamento.Amplificador || decimal.Truncate(v.Valor) != v.Valor || v.Valor > MaximoCanais
+                        || (_editando is not null && v.Valor < _entradas.Count))
+                        continue;
+                    _porNome[CampoCanais].CarregarDaBase(v, chave);
+                    MudarEntradas((int)v.Valor);
+                    SincronizarCanais();
+                    continue;
+                }
+                _porNome[c.Nome].CarregarDaBase(v, chave);
+            }
+            if (ficha.Dados.TipoCaixa is { } tipo)
+                _porNome[CampoTipoCaixa].Carregar(tipo, doEditado: false, chave);
+        }
+        Avisar(nameof(Modelo));
+        AvisarSugestoes();
+        AvisarOrigens();
+    }
+
+    /// <summary>Refaz as sugestões (uma vez) e avisa.</summary>
+    private void AvisarSugestoes()
+    {
+        _sugestoes = Sugestoes();
+        Avisar(nameof(SugestoesModelo));
+        Avisar(nameof(TemSugestoes));
+    }
+
+    private IReadOnlyList<EscolhaViewModel> Sugestoes()
+    {
+        if (!_folhaAberta || !_modeloDigitado || _setups.Modelos is not { } base_ || _modelo.Trim().Length < MinimoSugestao)
+            return [];
+        return base_.Sugerir(_modelo)
+            .Select(m => base_.Ficha(m))
+            .Where(f => f is not null && f.Grupo == _grupo)
+            .Take(MaximoSugestoes)
+            .Select(f => new EscolhaViewModel(f!.Modelo, f.Categoria, false, () => EscolherModelo(f.Modelo)))
+            .ToArray();
+    }
 
     /// <summary>
     /// A função sugerida pela categoria e pelo corte da memória ativa do Setup no canal que alimenta o
@@ -559,23 +778,6 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     /// <summary>A função que vale ("sub"): a escolhida, ou a sugerida; null para quem não toca.</summary>
     public string? FuncaoQueVale => !MostraFuncao ? null : (_funcao ?? FuncaoSugerida) is { } f ? Ligacoes.RotuloFuncao(f) : null;
-
-    // Os dados técnicos, como texto (vírgula ou ponto), todos opcionais.
-
-    public string Diametro { get => _diametro; set => Mudar(ref _diametro, value); }
-
-    public string Impedancia { get => _impedancia; set => Mudar(ref _impedancia, value); }
-
-    public string PotenciaRms { get => _potencia; set => Mudar(ref _potencia, value); }
-
-    public string Sensibilidade { get => _sensibilidade; set => Mudar(ref _sensibilidade, value); }
-
-    public string FaixaMinima { get => _faixaMinima; set => Mudar(ref _faixaMinima, value); }
-
-    public string FaixaMaxima { get => _faixaMaxima; set => Mudar(ref _faixaMaxima, value); }
-
-    /// <summary>O ganho do amplificador, em ×.</summary>
-    public string Ganho { get => _ganho; set => Mudar(ref _ganho, value); }
 
     /// <summary>As vias de dentro (caixa ativa).</summary>
     public IReadOnlyList<ViaViewModel> Vias
@@ -709,10 +911,14 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         _nome = "";
         _nomeSugerido = null;
         _modelo = "";
+        _modeloDigitado = false;
         _funcao = null;
-        _diametro = _impedancia = _potencia = _sensibilidade = _faixaMinima = _faixaMaxima = _ganho = "";
+        foreach (var d in _dados)
+            d.Limpar();
         _vias = [];
         PrepararLigacoes(null);
+        SincronizarCanais();
+        _secoes = Secoes();
         AbrirFolha();
     }
 
@@ -731,16 +937,16 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         _nome = e.Nome;
         _nomeSugerido = null;
         _modelo = e.Modelo ?? "";
+        _modeloDigitado = false;
         _funcao = e.Funcao;
-        _diametro = Texto(e.Dados.Diametro?.Valor);
-        _impedancia = Texto(e.Dados.Impedancia?.Valor);
-        _potencia = Texto(e.Dados.PotenciaRms?.Valor);
-        _sensibilidade = Texto(e.Dados.Sensibilidade?.Valor);
-        _faixaMinima = Texto(e.Dados.FaixaMinima?.Valor);
-        _faixaMaxima = Texto(e.Dados.FaixaMaxima?.Valor);
-        _ganho = Texto(e.Dados.Ganho?.Valor);
-        _vias = e.Dados.Vias.Select(v => new ViaViewModel(v.Descricao, Texto(v.Diametro), Despachante, Relogio)).ToArray();
+        // Cada dado com o valor, a origem e a fonte que o núcleo guarda.
+        foreach (var c in DadosTecnicos.Campos)
+            _porNome[c.Nome].Carregar(c.Ler(e.Dados));
+        _porNome[CampoTipoCaixa].Carregar(e.Dados.TipoCaixa, doEditado: true, chave: null);
+        _vias = e.Dados.Vias.Select(v => new ViaViewModel(v.Descricao, v.Diametro is { } d ? DadoViewModel.TextoNumero(d) : "", Despachante, Relogio)).ToArray();
         PrepararLigacoes(e);
+        SincronizarCanais();
+        _secoes = Secoes();
         AbrirFolha();
     }
 
@@ -761,6 +967,8 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         _tirarAberto = false;
         _editando = null;
         _erro = null;
+        foreach (var d in _dados)
+            d.FecharOrigem();
         AvisarFolha();
     }
 
@@ -856,11 +1064,12 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// O equipamento da folha. Com <paramref name="exigir"/>, um dado técnico que não é número maior
-    /// que zero recusa com o motivo; sem, ele fica de fora (para a função sugerida). Cada dado digitado
-    /// vira um <see cref="DadoTecnico"/> com a origem "digitado"; um dado que não mudou fica com a origem
-    /// e a fonte que tinha, e os dados que a folha ainda não mostra (os da ficha de 29/10, história 10c)
-    /// ficam como estavam. Com o modelo ou o grupo trocados, a origem de antes não vale para o
-    /// equipamento novo: os dados que ficam passam a digitados.
+    /// que zero (ou com a fonte de mais de 120 caracteres) recusa com o motivo; sem, ele fica de fora
+    /// (para a função sugerida). Cada linha que vale para o grupo vira um <see cref="DadoTecnico"/> com a
+    /// origem e a fonte do selo (um dado que não mudou fica com a origem e a fonte que tinha); os dados
+    /// que não valem para o grupo ficam como estavam. Com o modelo ou o grupo trocados, a origem de antes
+    /// não vale para o equipamento novo: os dados que ficam passam a digitados (menos os que vieram da
+    /// base de modelos ou os de origem escolhida no selo).
     /// </summary>
     private (Equipamento? Equipamento, string? Erro) Montar(bool exigir)
     {
@@ -869,28 +1078,32 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         {
             if (string.IsNullOrWhiteSpace(texto))
                 return null;
-            if (decimal.TryParse(texto.Trim().Replace(',', '.'), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var v) && v > 0m)
+            if (DadoViewModel.Numero(texto) is { } v)
                 return v;
             erro ??= MsgNumero(rotulo);
             return null;
         }
 
-        static DadoTecnico? Dado(DadoTecnico? antes, decimal? digitado) =>
-            digitado is not { } v ? null : antes is { } a && a.Valor == v ? a : new DadoTecnico(v, OrigemDado.Digitado);
-
-        var mesmoModelo = _editando is not null && _editando.Grupo == _grupo
-                          && BaseModelos.Chave(_editando.Modelo) == BaseModelos.Chave(_modelo);
-        var antes = _editando is null ? DadosTecnicos.Nenhum : mesmoModelo ? _editando.Dados : _editando.Dados.ComoDigitados();
-        var dados = antes with
+        var antes = _editando is null ? DadosTecnicos.Nenhum : OrigemDoEditadoVale ? _editando.Dados : _editando.Dados.ComoDigitados();
+        var valem = CamposDo(_grupo).ToHashSet(StringComparer.Ordinal);
+        var dados = antes;
+        foreach (var c in DadosTecnicos.Campos)
         {
-            Diametro = Dado(antes.Diametro, Numero(_diametro, "Diâmetro")),
-            Impedancia = Dado(antes.Impedancia, Numero(_impedancia, "Impedância")),
-            PotenciaRms = Dado(antes.PotenciaRms, Numero(_potencia, "Potência RMS")),
-            Sensibilidade = Dado(antes.Sensibilidade, Numero(_sensibilidade, "Sensibilidade")),
-            FaixaMinima = Dado(antes.FaixaMinima, Numero(_faixaMinima, "Faixa, início")),
-            FaixaMaxima = Dado(antes.FaixaMaxima, Numero(_faixaMaxima, "Faixa, fim")),
-            Ganho = Dado(antes.Ganho, Numero(_ganho, "Ganho")),
-            Canais = _grupo == GrupoEquipamento.Amplificador ? Dado(antes.Canais, _entradas.Count) : null,
+            if (!valem.Contains(c.Nome))
+                continue;
+            var (dado, erroDado) = _porNome[c.Nome].MontarNumero();
+            erro ??= erroDado;
+            dados = c.Com(dados, dado);
+        }
+        if (valem.Contains(CampoTipoCaixa))
+        {
+            var (tipo, erroTipo) = _porNome[CampoTipoCaixa].MontarTexto();
+            erro ??= erroTipo;
+            dados = dados with { TipoCaixa = tipo };
+        }
+        // Os canais (e os outros dados) de um grupo que não os mostra ficam como estavam (vêm de antes).
+        dados = dados with
+        {
             Vias = MostraVias
                 ? _vias.Where(v => !string.IsNullOrWhiteSpace(v.Descricao)).Select(v => new Via(v.Descricao, Numero(v.Diametro, "Diâmetro da via"))).ToArray()
                 : [],
@@ -955,6 +1168,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             .ToArray();
         if (_grupo == GrupoEquipamento.Amplificador)
             _bridges = NovosBridges(_entradas.Count, _bridges.Where(b => b.Ligado).Select(b => b.Bridge).ToArray());
+        SincronizarCanais();
         Avisar(nameof(Entradas));
         Avisar(nameof(NumeroCanais));
         Avisar(nameof(Bridges));
@@ -1105,14 +1319,10 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(CategoriasTela));
         Avisar(nameof(Nome));
         Avisar(nameof(Modelo));
+        AvisarSugestoes();
         Avisar(nameof(Funcao));
-        Avisar(nameof(Diametro));
-        Avisar(nameof(Impedancia));
-        Avisar(nameof(PotenciaRms));
-        Avisar(nameof(Sensibilidade));
-        Avisar(nameof(FaixaMinima));
-        Avisar(nameof(FaixaMaxima));
-        Avisar(nameof(Ganho));
+        Avisar(nameof(SecoesDados));
+        AvisarOrigens();
         Avisar(nameof(Vias));
         AvisarGrupo();
         Avisar(nameof(Erro));
@@ -1127,8 +1337,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(GruposTela));
         Avisar(nameof(CategoriasTela));
         Avisar(nameof(LigadoTela));
-        Avisar(nameof(MostraGanho));
-        Avisar(nameof(MostraDadosAltoFalante));
+        Avisar(nameof(SecoesDados));
         Avisar(nameof(MostraFuncao));
         Avisar(nameof(MostraVias));
         Avisar(nameof(MostraEntradas));
@@ -1142,14 +1351,4 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(FraseSemModulo));
     }
 
-    private void Mudar(ref string campo, string valor, [System.Runtime.CompilerServices.CallerMemberName] string? nome = null)
-    {
-        if (campo == valor)
-            return;
-        campo = valor;
-        Avisar(nome);
-    }
-
-    /// <summary>Um número para o campo, com vírgula ("3,6"); vazio sem valor.</summary>
-    private static string Texto(decimal? v) => v is { } n ? n.ToString("0.###", CultureInfo.InvariantCulture).Replace('.', ',') : "";
 }

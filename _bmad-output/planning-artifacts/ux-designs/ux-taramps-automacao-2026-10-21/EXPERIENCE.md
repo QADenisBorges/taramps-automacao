@@ -221,8 +221,8 @@ Proposta aprovada pelo Denis em 23/10/2026 (`sprint-change-proposal-2026-10-23-e
   - **nome** (sugerido pela categoria e pela posição, por exemplo "JBL R");
   - **modelo** ("genérico" quando vazio);
   - **função acústica** (sugerida pela categoria e pelo corte do canal, por exemplo um passa-baixa em 150 Hz sugere grave ou sub; o Denis pode trocar);
-  - **ficha** (todos os dados opcionais; o que não se sabe fica em branco): diâmetro, impedância, potência RMS, sensibilidade, faixa de frequência; no alto-falante, Re medida, Fs, Qes, Qms, Vas, Bl, Sd, Xmax e Le; na caixa, tipo, volume, Fb e área do duto; no módulo, potência e tensão de ceifamento por canal e em ponte e o ganho medido; na fonte, tensão e corrente. Cada dado mostra um selo de **origem**: oficial (com o endereço do manual ou da ficha), outra fonte, medido ou digitado; um dado sem origem confirmada nunca aparece como verificado;
-  - **modelo que se completa:** ao digitar fabricante e modelo, a **base de modelos** do celular sugere os já guardados, e escolher um preenche a ficha com as origens dele;
+  - **ficha** (todos os dados opcionais; o que não se sabe fica em branco): diâmetro, impedância, potência RMS, sensibilidade, faixa de frequência; no alto-falante, Re medida, Fs, Qes, Qms, Vas, Bl, Sd, Xmax e Le; na caixa, tipo, volume, Fb e área do duto; no módulo, potência e tensão de ceifamento por canal e em ponte e o ganho medido; na fonte, tensão e corrente. Cada dado mostra um selo de **origem**: oficial (com o endereço do manual ou da ficha), outra fonte, medido, estimado ou digitado; só oficial e medido aparecem como verificados (✓), e um dado sem origem confirmada nunca aparece como verificado;
+  - **modelo que se completa:** ao digitar o modelo (com o fabricante), a **base de modelos** do celular sugere os já guardados do mesmo grupo, e escolher um preenche a ficha com as origens dele;
   - **onde está ligado**:
     - grupos 1, 3 e 4: os canais do processador ou o equipamento do grupo 3 que alimenta a entrada;
     - grupo 2: os canais dele e quais estão em bridge;

@@ -38,7 +38,7 @@ public sealed class ItemSetupViewModel
     /// <summary>É o último Setup usado (fica em branco na lista).</summary>
     public bool EmUso { get; }
 
-    /// <summary>Aplica a calibração e a memória ativa deste Setup, relê e desmuta.</summary>
+    /// <summary>Aplica a memória ativa deste Setup, relê e desmuta (sem memória, só desmuta).</summary>
     public Comando Escolher { get; }
 }
 
@@ -56,9 +56,28 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     public const string RotuloDiferencas = "O QUE NÃO BATE";
     public const string SubRotuloDiferencas = "lido agora no aparelho";
     public const string TextoEscolher = "Escolher o Setup";
-    public const string FraseEscolher = "Aplica a calibração e a memória ativa dele, relê e desmuta.";
+    public const string FraseEscolher = "Aplica a memória ativa dele, relê e desmuta. Sem memória, só desmuta.";
     public const string TextoCriar = "Criar Setup novo";
-    public const string FraseCriar = "Nasce com a calibração que está no aparelho.";
+    public const string FraseCriar = "O som do aparelho vira a primeira memória dele.";
+
+    /// <summary>A linha da folha do Criar Setup novo.</summary>
+    public const string LinhaFolhaCriar = "O som que está no aparelho vira a primeira memória do Setup novo. Os equipamentos você cadastra depois.";
+    public const string RotuloNomeSetup = "Nome do Setup";
+    public const string DicaNomeSetup = "Carro";
+    public const string RotuloNomeMemoria = "Nome da primeira memória";
+    public const string LinhaNomeMemoria = "Vazio, a memória fica com o nome do Setup.";
+    public const string TextoConfirmarCriar = "Criar Setup";
+    public const string TextoCancelar = "Cancelar";
+    public const string FraseSemReferencia = "O app não sabe em que Setup o aparelho está.";
+
+    /// <summary>"O Casa 2.1 ainda não tem memória." (sem memória para comparar, a lista some).</summary>
+    public static string FraseSemMemoria(string setup) => $"O {setup} ainda não tem memória.";
+
+    /// <summary>"O aparelho não está como o Casa 2.1 deixou da última vez." (com diferenças).</summary>
+    public static string FraseComDiferencas(string setup) => $"O aparelho não está como o {setup} deixou da última vez.";
+
+    /// <summary>"O aparelho está no Casa 2.1." (com memória e sem diferença, na troca).</summary>
+    public static string FraseNoSetup(string setup) => $"O aparelho está no {setup}.";
     public const string TextoSeguir = "Seguir sem Setup";
     public const string FraseSeguir = "Desmuta sem aplicar nada. As memórias do celular ficam travadas.";
     public const string SemSetup = "Sem Setup";
@@ -72,6 +91,8 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     private bool _criarAberto;
     private string _nomeNovo = "";
     private string? _erroNome;
+    private string _nomeMemoriaNova = "";
+    private string? _erroNomeMemoria;
     private bool _agindo;
 
     public SetupViewModel(GerenteSetups setups, Sessao sessao, IDespachante despachante, TimeProvider relogio)
@@ -94,8 +115,12 @@ public sealed class SetupViewModel : TelaBase, IDisposable
             ListaAberta = false;
             _criarAberto = true;
             NomeNovo = "";
+            NomeMemoriaNova = "";
             ErroNome = null;
+            ErroNomeMemoria = null;
+            Mensagem = null;
             Avisar(nameof(CriarAberto));
+            Avisar(nameof(DicaNomeMemoria));
         });
         ConfirmarCriar = new Comando(ConfirmarCriarAsync);
         CancelarCriar = new Comando(FecharCriar);
@@ -132,8 +157,9 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     };
 
     /// <summary>
-    /// "O aparelho não está como o Casa 2.1 deixou da última vez." (com diferenças), ou "O aparelho
-    /// está no Casa 2.1." (na troca, sem diferença).
+    /// "O Casa 2.1 ainda não tem memória." (o Setup sem memória para comparar), "O aparelho não está como
+    /// o Casa 2.1 deixou da última vez." (com diferenças), ou "O aparelho está no Casa 2.1." (com memória
+    /// e sem diferença).
     /// </summary>
     public string? Frase
     {
@@ -143,12 +169,18 @@ public sealed class SetupViewModel : TelaBase, IDisposable
                 return null;
             var nome = _setups.Referencia?.Nome;
             if (nome is null)
-                return _setups.Estado == EstadoConferencia.Duvida ? "O app não sabe em que Setup o aparelho está." : null;
-            return _setups.Diferencas.Count > 0
-                ? $"O aparelho não está como o {nome} deixou da última vez."
-                : $"O aparelho está no {nome}.";
+                return _setups.Estado == EstadoConferencia.Duvida ? FraseSemReferencia : null;
+            if (_setups.MemoriaDaReferencia is null)
+                return FraseSemMemoria(nome);
+            return _setups.Diferencas.Count > 0 ? FraseComDiferencas(nome) : FraseNoSetup(nome);
         }
     }
+
+    /// <summary>"O QUE NÃO BATE", em cima da lista.</summary>
+    public string TituloDiferencas => RotuloDiferencas;
+
+    /// <summary>"lido agora no aparelho", à direita do rótulo.</summary>
+    public string SubtituloDiferencas => SubRotuloDiferencas;
 
     /// <summary>"Som mutado até você escolher." enquanto o mudo da dúvida está no aparelho.</summary>
     public string? FaixaMudo => Aberta && _setups.Mutado ? TextoMudo : null;
@@ -252,10 +284,14 @@ public sealed class SetupViewModel : TelaBase, IDisposable
                 return;
             _nomeNovo = value;
             Avisar();
+            Avisar(nameof(DicaNomeMemoria));
         }
     }
 
-    /// <summary>"Use de 1 a 24 letras…", "Já existe um Setup com esse nome.", ou null.</summary>
+    /// <summary>A dica do campo da memória: o nome que ela ganha se ficar vazio (o do Setup, ou "Carro").</summary>
+    public string DicaNomeMemoria => string.IsNullOrWhiteSpace(_nomeNovo) ? DicaNomeSetup : _nomeNovo.Trim();
+
+    /// <summary>"Use de 1 a 24 letras…", "Já existe um Setup com esse nome.", ou null (embaixo do campo do Setup).</summary>
     public string? ErroNome
     {
         get => _erroNome;
@@ -268,9 +304,35 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         }
     }
 
+    /// <summary>O nome da primeira memória; vazio = o nome do Setup.</summary>
+    public string NomeMemoriaNova
+    {
+        get => _nomeMemoriaNova;
+        set
+        {
+            if (_nomeMemoriaNova == value)
+                return;
+            _nomeMemoriaNova = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>"Nome da memória: Use de 1 a 24 letras…", ou null (embaixo do campo da memória).</summary>
+    public string? ErroNomeMemoria
+    {
+        get => _erroNomeMemoria;
+        private set
+        {
+            if (_erroNomeMemoria == value)
+                return;
+            _erroNomeMemoria = value;
+            Avisar();
+        }
+    }
+
     public Comando AbrirCriar { get; }
 
-    /// <summary>O ✓ do nome: cria o Setup com o som do aparelho como a primeira memória dele (com o nome do Setup) e desmuta.</summary>
+    /// <summary>O ✓ dos nomes: cria o Setup com o som do aparelho como a primeira memória dele (vazio = com o nome do Setup) e desmuta.</summary>
     public Comando ConfirmarCriar { get; }
 
     public Comando CancelarCriar { get; }
@@ -282,14 +344,19 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         ResultadoSetup? resultado = null;
         await Agir(async () =>
         {
-            resultado = await _setups.CriarSetupAsync(NomeNovo);
+            resultado = await _setups.CriarSetupAsync(NomeNovo, NomeMemoriaNova);
             return resultado.Mensagem;
         }, depois: () =>
         {
             if (resultado is { Ok: true })
+            {
                 FecharCriar();
-            else
-                ErroNome = resultado?.Mensagem; // o campo fica, com o nome digitado
+                return;
+            }
+            // Os campos ficam, com os nomes digitados; o erro de um nome vai embaixo do campo que errou, o
+            // resto (ocupado, sem leitura, não guardou) fica na Mensagem.
+            ErroNome = resultado is { ErroNomeSetup: true } ? resultado.Mensagem : null;
+            ErroNomeMemoria = resultado is { ErroNomeMemoria: true } ? resultado.Mensagem : null;
         });
     }
 
@@ -298,9 +365,14 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         _criarAberto = false;
         _nomeNovo = "";
         _erroNome = null;
+        _nomeMemoriaNova = "";
+        _erroNomeMemoria = null;
         Avisar(nameof(CriarAberto));
         Avisar(nameof(NomeNovo));
         Avisar(nameof(ErroNome));
+        Avisar(nameof(NomeMemoriaNova));
+        Avisar(nameof(ErroNomeMemoria));
+        Avisar(nameof(DicaNomeMemoria));
     }
 
     // ------------------------------------------------------------------ seguir, trocar, desistir

@@ -119,10 +119,10 @@
                             <Ellipse WidthRequest="8" HeightRequest="8" Fill="{StaticResource apoio}" VerticalOptions="Center" />
                             <Label Grid.Column="1" Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}"
                                    Text="{Binding SomDiferente}" VerticalTextAlignment="Center" />
-                            <Button Grid.Column="2" Style="{StaticResource botao-pequeno}" Text="Reaplicar" Command="{Binding Reaplicar}" />
+                            <Button Grid.Column="2" Style="{StaticResource botao-pequeno}" Text="{x:Static telas:InicioViewModel.TextoReaplicar}" Command="{Binding Reaplicar}" />
                         </Grid>
 
-                        <Button Style="{StaticResource botao-medio}" Text="Criar memória do som atual"
+                        <Button Style="{StaticResource botao-medio}" Text="{x:Static telas:InicioViewModel.TextoCriarMemoria}"
                                 Command="{Binding CriarMemoria}" IsVisible="{Binding MostrarCriarMemoria}" />
 
                         <c:BotoesMemoriaView BindingContext="{Binding Memorias}" />

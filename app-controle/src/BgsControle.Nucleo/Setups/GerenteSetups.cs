@@ -111,6 +111,12 @@ public sealed class GerenteSetups
 
     public static string MsgNomeRepetidoMemoria(string setup) => $"Já existe uma memória com esse nome no {setup}.";
 
+    /// <summary>
+    /// "Nome da memória: Use de 1 a 24 letras…": no Criar Setup novo, a recusa diz que é o nome da primeira
+    /// memória, não o do Setup.
+    /// </summary>
+    public static string MsgNomeMemoria(string motivo) => $"Nome da memória: {motivo}";
+
     /// <summary>"Nome do preset: Já existe um preset com esse nome.": a recusa diz que é o nome do preset, não o da memória.</summary>
     public static string MsgNomePreset(string motivo) => $"Nome do preset: {motivo}";
 
@@ -943,7 +949,8 @@ public sealed class GerenteSetups
     /// a primeira memória dele, com o nome dado (nulo ou vazio = o nome do Setup); ela lembra o preset
     /// que tem as mesmas 15 bandas lidas, se há. O Setup e a memória ficam em uso, os links desligados
     /// (sem equipamentos não há bridge), e desmuta. Não manda nada ao aparelho além do desmutar. Um nome
-    /// inválido ou repetido recusa sem guardar nada.
+    /// inválido ou repetido recusa sem guardar nada; o da memória com a recusa própria (<see cref="MsgNomeMemoria"/>,
+    /// <see cref="ResultadoSetup.ErroNomeMemoria"/>).
     /// </summary>
     public async Task<ResultadoSetup> CriarSetupAsync(string? nomeSetup, string? nomeMemoria = null)
     {
@@ -955,17 +962,20 @@ public sealed class GerenteSetups
             if (!EmEscolha)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
             if (NomeValido(nomeSetup) is not { } nome)
-                return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
+                return Terminar(ResultadoSetup.FalhaNomeSetup(GerentePresets.MsgNomeInvalido));
             if (Dados.Setups.Any(s => MesmoNome(s.Nome, nome)))
-                return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoSetup));
+                return Terminar(ResultadoSetup.FalhaNomeSetup(MsgNomeRepetidoSetup));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
             var espelho = _estado.Copiar();
             var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow());
             var igual = _presets.ComAsBandas(espelho);
-            var (memoria, motivo) = NovaMemoria(setup, string.IsNullOrWhiteSpace(nomeMemoria) ? nome : nomeMemoria, espelho, igual?.Id);
+            var (memoria, motivo, doNome) = NovaMemoria(setup, string.IsNullOrWhiteSpace(nomeMemoria) ? nome : nomeMemoria, espelho, igual?.Id);
             if (memoria is null)
-                return Terminar(ResultadoSetup.Falha(motivo!));
+            {
+                // O nome da memória tem a recusa própria, embaixo do campo dela; a leitura incompleta, não.
+                return Terminar(doNome ? ResultadoSetup.FalhaNomeMemoria(MsgNomeMemoria(motivo!)) : ResultadoSetup.Falha(motivo!));
+            }
 
             var dados = Dados;
             var novos = dados with
@@ -1321,7 +1331,7 @@ public sealed class GerenteSetups
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
             // A memória nova lembra o preset em uso.
-            var (memoria, motivo) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), PresetEmUso?.Id);
+            var (memoria, motivo, _) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), PresetEmUso?.Id);
             if (memoria is null)
                 return Terminar(ResultadoSetup.Falha(motivo!));
 
@@ -1604,7 +1614,7 @@ public sealed class GerenteSetups
             MemoriaCelular? nova = null;
             if (folha.PedeNome)
             {
-                var (memoria, motivo) = NovaMemoria(setup, nomeMemoriaNova, espelho, idPreset: null);
+                var (memoria, motivo, _) = NovaMemoria(setup, nomeMemoriaNova, espelho, idPreset: null);
                 if (memoria is null)
                     return Terminar(ResultadoSetup.Falha(motivo!));
                 nova = memoria;
@@ -1792,18 +1802,21 @@ public sealed class GerenteSetups
                     Camadas.Exibir(v.Codigo, espelho.GetValueOrDefault(new Endereco(v.Codigo, v.Indice))?.NoFio))),
             SaidasEmUso);
 
-    /// <summary>Uma memória nova com a regulagem lida e o preset lembrado, ou o motivo de não poder.</summary>
-    private (MemoriaCelular? Memoria, string? Motivo) NovaMemoria(Setup setup, string? nomeDigitado,
+    /// <summary>
+    /// Uma memória nova com a regulagem lida e o preset lembrado, ou o motivo de não poder;
+    /// <c>DoNome</c> diz que o motivo é o nome (inválido ou repetido), não a leitura.
+    /// </summary>
+    private (MemoriaCelular? Memoria, string? Motivo, bool DoNome) NovaMemoria(Setup setup, string? nomeDigitado,
         IReadOnlyDictionary<Endereco, Valor> espelho, string? idPreset)
     {
         if (NomeValido(nomeDigitado) is not { } nome)
-            return (null, GerentePresets.MsgNomeInvalido);
+            return (null, GerentePresets.MsgNomeInvalido, true);
         if (Dados.Memorias.Any(m => m.IdSetup == setup.Id && MesmoNome(m.Nome, nome)))
-            return (null, MsgNomeRepetidoMemoria(setup.Nome));
+            return (null, MsgNomeRepetidoMemoria(setup.Nome), true);
         var (regulagem, faltam) = Camadas.Tirar(espelho, Camada.Regulagem);
         if (faltam > 0)
-            return (null, MsgIncompleta(faltam));
-        return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(), regulagem, idPreset), null);
+            return (null, MsgIncompleta(faltam), false);
+        return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(), regulagem, idPreset), null, false);
     }
 
     // ------------------------------------------------------------------ memória do aparelho

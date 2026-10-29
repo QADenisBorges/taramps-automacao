@@ -19,6 +19,9 @@ public partial class SetupEscolhaPage : ContentPage
         BindingContext = vm;
     }
 
+    /// <summary>Return no nome do Setup leva ao nome da primeira memória.</summary>
+    private void AoTerminarNomeSetup(object? sender, EventArgs e) => CampoMemoria.Focus();
+
     protected override bool OnBackButtonPressed()
     {
         if (_vm.ListaAberta)
