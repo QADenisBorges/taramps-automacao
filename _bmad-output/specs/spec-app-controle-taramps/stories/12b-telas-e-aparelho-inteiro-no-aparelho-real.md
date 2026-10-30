@@ -25,7 +25,7 @@ context:
 
 **Always:**
 - **Antes de instalar:** copiar por `run-as` os arquivos privados do app atual (`setups.json`, `presets.json`, `playlists.json`, `link-canais.json`, `modelos.json`, se existirem) para `estado/backups/app-celular-2026-10-29/`. A instalação nova apaga as memórias e os presets do celular (decisão D2 de 29/10); a cópia é só para consulta.
-- **Ordem:** instalar e conectar; dúvida da primeira conexão (o Casa 2.1 sem memória) e Escolher; ajustes pela tela (um ganho de cada saída, o Sub escrevendo no CH3 e no CH4 juntos); link automático do Casa 2.1 (Crossover só leitura); Setups e esquema do Casa 2.1 (pintura, sombra, giro, aproximar, toque abre a folha); folha de equipamento (selo de origem da JBL L, escolher uma origem, sugestão "JBL" do modelo); criar uma memória do som atual e conferir a conferência ao reconectar (sem mudança → entra; ganho mexido sem salvar → só avisa; corte mexido sem salvar → muta e mostra a linha); presets (criar, aplicar, PRESET-APLICA-TUDO); Player com uma música do celular pelo Bluetooth; gerador; voltímetro e clip; remote out; Bluetooth de áudio; nome do produto; chaves; resets e troca de senha só na recusa; Criar Setup com os dois nomes.
+- **Ordem:** instalar e conectar; dúvida da primeira conexão (o Casa 2.1 sem memória) e Escolher; ajustes pela tela (um ganho de cada saída, o Sub escrevendo no CH3 e no CH4 juntos); link automático do Casa 2.1 (Crossover só leitura); Setups e esquema do Casa 2.1 (pintura, sombra, giro, aproximar, toque abre a folha); folha de equipamento (selo de origem da JBL L, escolher uma origem, sugestão "JBL" do modelo); criar uma memória do som atual e conferir a conferência ao reconectar (sem mudança → entra; ganho mexido sem salvar → reaplica sozinho ("REAPLICANDO"; proposta de mudança de 30/10, aprovada pelo Denis); corte mexido sem salvar → muta e mostra a linha); presets (criar, aplicar, PRESET-APLICA-TUDO); Player com uma música do celular pelo Bluetooth; gerador; voltímetro e clip; remote out; Bluetooth de áudio; nome do produto; chaves; resets e troca de senha só na recusa; Criar Setup com os dois nomes.
 - **Gerador** só com o RCA dos módulos desconectado; inclui fechar o app com o tom tocando e conferir na reconexão que o 202 voltou a 0.
 - **Voltímetro** contra o VC830L em V⎓ 20 nos bornes da fonte do módulo, com a foto marcada do multímetro.
 - **Nome do produto:** escrever o mesmo nome que o aparelho já tem.
@@ -49,7 +49,7 @@ context:
 |----------|--------------|---------------------------|----------------|
 | Primeira conexão | App novo, Casa 2.1 sem memória | Mutado, "O Casa 2.1 ainda não tem memória."; Escolher desmuta sem escrever áudio | Não mutou: registrar o motivo e corrigir |
 | Sub | Mexer o ganho do Sub na Mesa | CH3 e CH4 relidos iguais | Divergência: corrigir e testar |
-| Conferência | Memória criada; reconectar sem mudança / com ganho / com corte mexido | Entra / só avisa / muta com a linha do corte | Idem |
+| Conferência | Memória criada; reconectar sem mudança / com ganho / com corte mexido | Entra / reaplica sozinho ("REAPLICANDO") / muta com a linha do corte | Idem |
 | Gerador | Tom tocando, fechar o app | Na reconexão, 202 = 0 relido antes de qualquer outra ação | "DESLIGUE O MÓDULO AGORA" se o 202 continuar 1 |
 | Voltímetro | Tela do voltímetro | Valor bate com o VC830L dentro da precisão do aparelho | Sem valor: medir o 005 espontâneo e registrar |
 | Recusas | Reset de fábrica, reset de áudio e troca de senha com a chave desligada | Recusados antes de qualquer envio | — |

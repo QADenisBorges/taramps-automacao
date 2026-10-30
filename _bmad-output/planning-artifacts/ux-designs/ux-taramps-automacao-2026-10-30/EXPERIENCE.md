@@ -177,7 +177,7 @@ Ao entrar no app, a última memória aplicada e o preset dela continuam em uso: 
 | Resultado | Tratamento |
 |---|---|
 | **Bate** com a última memória aplicada | Entra direto na aba Som, com essa memória tocando. |
-| **Diferença leve** (só ganho, limitador, EQ ou MASTER) | O app **reaplica memória e preset sozinho**, em tela toda ("REAPLICANDO" + memória), sem mutar *(Denis, 30/10)*. Isso muda a regra da spec (CAP-16, P29 D3: avisar e oferecer Reaplicar, sem mutar) e precisa de correct-course. Ver Questões em aberto, item 1. |
+| **Diferença leve** (só ganho, limitador, EQ ou MASTER) | O app **reaplica memória e preset sozinho**, em tela toda ("REAPLICANDO" + memória), sem mutar *(Denis, 30/10)*. A spec foi corrigida (CAP-16 e failure-modes, regra 5; proposta de mudança de 30/10). |
 | **Setup em dúvida** (corte, atraso, fase ou rota diferentes) ou **sem memória para comparar** | Os 4 canais ficam **mudos no aparelho** até a decisão, mesmo se o app fechar ou a conexão cair. A Roda e o "+ Nova memória" travam; a IA fica bloqueada por baixo. O chip mostra "Setup em dúvida" e o centro da Roda, "MUDO / até você escolher" em `{colors.warning}`. A folha lista o que não bate e pede uma escolha: **Escolher um Setup** (principal), **Criar um Setup novo** (o som do aparelho vira a 1ª memória dele) ou **Seguir sem Setup**. A legenda que falava da IA saiu. |
 | **Sem Setup** (escolheu seguir sem) | As memórias do celular ficam travadas até escolher um Setup. Os links ficam desligados e as saídas aparecem como CH1 a CH4. |
 | Processador perdeu o estado | O app reaplica a memória ativa só depois de o Setup ser confirmado (FM 5). |
@@ -434,9 +434,9 @@ Ainda sem fluxo próprio: "Montar um Setup" (só o passo 6 do Fluxo 4), "Ouvir u
 
 ## Questões em aberto
 
-**Precisa de bmad-correct-course na spec-app-controle-taramps antes de construir:**
+**Resolvido pela proposta de mudança de 30/10** (`../../sprint-change-proposal-2026-10-30.md`, aplicada na spec):
 
-1. **Mudanças de 30/10 contra a spec:**
+1. **Mudanças de 30/10 contra a spec** — *resolvido.* A chave da porta e o código de pareamento ficam em **Aparelho**, como "Controle pela rede" (D3). Fora da criação, a IA mexe pela porta e o Continuar a cada 3 ajustes é uma folha do app, sem falar em IA (D4). O toque sempre pausa a tarefa da porta. A criação entra no POC como CAP-18 (só o lado do app). Itens originais:
    - **Reaplicar sozinho ao entrar:** memória e preset em uso ao entrar; diferença leve em ganho, limitador, EQ ou MASTER reaplica sozinha, em tela toda. Troca a regra da CAP-16 / P29 D3 (avisar e oferecer Reaplicar, sem mutar). Se a spec mantiver a regra antiga, o aviso com Reaplicar precisa de desenho.
    - **Interface sem traço da IA:** saem a aba IA, o PARAR IA, o Pausar, o chip e a faixa da IA, e a tela Histórico; a porta e o pareamento continuam por baixo; o histórico fica fora do app. Afeta CAP-11, CAP-12 e CAP-13 (chave "IA pela rede", código de pareamento, faixa em até 1 s, PARAR IA que revoga o acesso, Continuar a cada 3 ajustes, Histórico com origem). Falta decidir onde ficam a chave da porta (que vem desligada por padrão) e o código de pareamento de 6 dígitos, como o aviso do risco da porta aparece e se o Continuar ainda existe. A A4 (Continuar × controles travados) passa para cá; o Pausar saiu.
    - **Uma pergunta por tela** (a forja de 29/10 dizia 3 ou 4 perguntas juntas).
@@ -466,7 +466,7 @@ Resolvidas acima: A1 (a interface não dá nome à IA; KARINA não aparece), A2 
 **[ASSUMPTION] da criação da memória (30/10, confirmar):**
 
 12. **Nome da memória:** quando é pedido (antes das perguntas, no Salvar ou sugerido) não foi desenhado; o mock usa "MUSICA ORIG" desde o início.
-13. **Folha de risco na criação:** o texto e quais ajustes contam como risco; o que Cancelar faz na folha de risco (voltar ao som de antes ou só pular esse ajuste) não foi desenhado.
+13. **Folha de risco na criação:** o texto e quais ajustes contam como risco. *Resolvido em 30/10 (D5):* Cancelar na folha de risco volta ao som de antes, como o ✕.
 14. **✕ no resumo e no Salvar:** a decisão põe o ✕ só nas perguntas e no "Como ficou?", e a spine segue isso. O mock ainda mostra o ✕ no resumo e no Salvar e precisa acompanhar.
 15. **Animação desligada:** a decisão diz "só o Aplicando pelo tempo real"; o mock ainda segura cada canal por no mínimo 0,7 s. Falta decidir se o esquema anda no tempo real ou no mínimo de 0,7 s.
 16. **Aplicando fora da criação:** se o esquema de ligação também aparece ao aplicar pela Roda e ao reaplicar, e o que aparece no alto quando não há dados para desenhar o esquema (memória do aparelho sem Setup, "Seguir sem Setup"). Também falta o lugar do nome do preset (antes, abaixo do nome da memória) e da nota "Mantenha o celular perto do processador" no layout novo; o mock da criação não tem nenhum dos dois. O fundo do Aplicando fora da criação continua sendo o degradê azul-escuro com desfoque.
@@ -475,7 +475,7 @@ Resolvidas acima: A1 (a interface não dá nome à IA; KARINA não aparece), A2 
 19. **Engrenagem:** como ela oferece Aparelho e Configurações do app (menu, folha ou tela).
 20. **TalkBack:** como escolher a memória sem o gesto de girar a Roda, e como o palco, os valores e o esquema do Aplicando são anunciados.
 21. **Voltar do Android:** nas perguntas, no palco, no Aplicando e nas folhas obrigatórias.
-22. **A IA fora da criação:** se ela ainda mexe no som fora do fluxo de criação e, se sim, o que a Roda mostra sem "a IA está ajustando" (antes, a Roda ficava travada com esse texto).
+22. **A IA fora da criação** — *resolvido em 30/10 (D4):* ela mexe no som pela porta; a Roda mostra só os valores, sem travar e sem texto da IA; a cada 3 ajustes seguidos, uma folha do app pede Continuar.
 23. **Criar uma memória à mão, sem perguntas:** desde 30/10, "+ Nova memória" abre a criação com perguntas (Fluxo 2). A entrada para criar uma memória a partir do som atual, sem perguntas, não foi decidida. O Fluxo 5 depende disso.
 
 **[ASSUMPTION] usados nesta spine (confirmar):**

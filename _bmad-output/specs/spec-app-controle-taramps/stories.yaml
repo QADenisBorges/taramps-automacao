@@ -268,6 +268,28 @@
   invoke_dev_with: >-
     EXPERIENCE.md atualizado em 29/10/2026 (nota "Mudança de 29/10/2026").
     Os mocks ainda mostram o modelo antigo nesses pontos; vale o documento.
+# Proposta de mudança de 30/10/2026 (planning-artifacts/sprint-change-proposal-2026-10-30.md):
+# a interface não mostra a IA (sem aba IA, PARAR IA, faixa nem Histórico; a porta
+# continua por baixo), a diferença leve ao conectar reaplica sozinha, e a criação
+# da memória por perguntas entra no POC (CAP-18, só o lado do app).
+# Ordem: 9c → 12b → 9d → 10d → 12c.
+- id: "9c"
+  title: Porta sem rosto e reaplicar sozinho
+  description: >-
+    Saem a página IA ativa, a página IA pela rede, o Histórico e a faixa da
+    IA; a confirmação da IA vira a folha de risco do app, sem a palavra
+    "IA"; a chave "Controle pela rede" com o código de pareamento vai para
+    Aparelho; o Continuar vira folha do app; sai o modo "travado até PARAR
+    IA" e o toque passa a sempre pausar; desligar a chave revoga as chaves
+    pareadas; o histórico continua no núcleo e na porta. A conferência ao
+    conectar reaplica sozinha a memória e o preset na diferença leve, em
+    tela toda ("REAPLICANDO") (CAP-11, CAP-12, CAP-13, CAP-16).
+  invoke_dev_with: >-
+    _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-30.md,
+    seções 4.2 a 4.4; porta-de-comandos.md, chaves-de-acesso.md e a regra 5
+    de failure-modes.md. Nada do núcleo da porta é desfeito. Um teste
+    garante que nenhum texto de tela contém "IA". Tudo contra o
+    ProcessadorSimulado. Vem antes de a 12b continuar.
 - id: "12b"
   title: Telas e aparelho inteiro no aparelho real
   description: >-
@@ -281,15 +303,50 @@
     tocando (deferred-work). Voltímetro contra o VC830L, com foto. Reset de
     fábrica, reset de áudio e troca de senha só na recusa. As pendências
     "no aparelho" das histórias 4 a 11 que são de tela. Conferir no aparelho
-    a conferência nova (muta com corte diferente, só avisa com ganho
-    diferente), o link que sai sozinho do bridge e o app começando sem
+    a conferência nova (muta com corte diferente, reaplica sozinho com
+    ganho diferente; proposta de 30/10), o link que sai sozinho do bridge e o app começando sem
     memórias; as 3 memórias do processador continuam como estavam.
+- id: "9d"
+  title: Porta nos dois sentidos para a criação da memória
+  description: >-
+    Rotas da criação na porta (abrir, pergunta, resposta, ajustes com frase,
+    valor de antes, valor novo e motivo, resumo, "Como ficou?", cancelar); a
+    cópia antes ao abrir; ajustes só depois da resposta à última pergunta;
+    Continuar só fora da criação; volta à cópia no ✕ e no Cancelar da folha
+    de risco; a regra 6 de failure-modes.md (CAP-12, CAP-18).
+  invoke_dev_with: >-
+    porta-de-comandos.md, seção "Criação da memória"; CAP-18 do SPEC. Reusa
+    /tarefa, /eventos e PedidosConfirmacao. Núcleo e ViewModels testados
+    contra o ProcessadorSimulado, sem telas. O cérebro do agente não entra
+    (perguntas adaptativas, escuta "1 ou 2", serviço que acorda): nos
+    testes, as perguntas vêm de um cliente de teste.
+- id: "10d"
+  title: Telas da criação da memória
+  description: >-
+    "+ Nova memória", uma pergunta por tela com "Outro…", o palco (frase com
+    o Foco e o valor numa linha, anel grande e apagado no chão), a passagem
+    Pião e cambalhota, o Aplicando com o esquema de ligação do Setup, o
+    resumo, o "Como ficou?", o Salvar, as folhas de cancelar e de risco e a
+    chave "Animação ao criar o som" nas Configurações do app (CAP-18).
+  invoke_dev_with: >-
+    EXPERIENCE.md e DESIGN.md de
+    planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-30 e
+    mockups/criacao-memoria-ia.html. As telas da criação seguem o visual do
+    BGS Sound, em tela toda e sem abas, e servem ao app de hoje e ao
+    redesenho. [ASSUMPTION] Até a Roda existir, "+ Nova memória" fica na
+    tela onde hoje se cria memória. Resolver ou deixar explícitas as
+    Questões em aberto 12 (nome), 14 (✕ no resumo e no Salvar), 15
+    (animação desligada), 18 (erro no meio; regra 6 de failure-modes), 20 e
+    21 (TalkBack e Voltar). Depende da 9d.
 - id: "12c"
   title: Porta da IA no Wi-Fi e testes 1, 2 e 4
   description: >-
     A porta 8787 no Wi-Fi real, com o Claude Code no notebook por curl
-    (parear, ler, ajustar, aplicar memória com confirmação na tela, recusas,
-    PARAR IA, Continuar a cada 3 ajustes seguidos, tela ao vivo em até 1 s);
+    (ligar "Controle pela rede" em Aparelho e parear, ler, ajustar, aplicar
+    memória com a folha de risco, recusas, desligar a chave revoga o acesso,
+    Continuar a cada 3 ajustes seguidos, tela ao vivo em até 1 s, nenhuma
+    tela com "IA"); uma criação de memória pela porta, com o Claude Code
+    mandando as perguntas à mão, até o Salvar do Denis;
     a MUSICA ORIG refeita pelo Denis só pelo celular; desligar e religar o
     processador (guarda o estado ou o app reaplica); o aparelho com corte,
     atraso, fase ou rota diferentes da última memória aplicada.
@@ -300,7 +357,8 @@
 # Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
 # playlist, teste a seco, teto por preset), a partir de
 # _bmad-output/forge/teste-de-playlist/forged-idea.md.
-# Depois do Rendimento: spec própria do Agente da memória (perguntas
-# adaptativas, escuta "1 ou 2", porta nos dois sentidos com modal, serviço que
-# acorda o agente, skills, aprendizado e ouvintes simulados), a partir de
+# Depois do Rendimento: spec própria do Agente da memória, só o cérebro
+# (perguntas adaptativas, escuta "1 ou 2", diagnóstico da queixa, serviço que
+# acorda o agente, skills, aprendizado e ouvintes simulados; a porta nos dois
+# sentidos e as telas entraram na 9d e na 10d em 30/10), a partir de
 # _bmad-output/forge/montagem-do-setup/forged-idea.md.
