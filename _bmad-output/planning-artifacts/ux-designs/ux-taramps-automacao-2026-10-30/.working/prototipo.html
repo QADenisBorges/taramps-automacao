@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Protótipo</title>
+<style>
+  /* Protótipo navegável do BGS Sound: abertura → busca → conexão → Som (Roda). Os spines (DESIGN.md, EXPERIENCE.md) vencem em caso de conflito.
+     Valores das telas escolhidas: ciano #3FD0FF, rosa #FF2BD6 (só abertura e spinner), aviso #FFB020. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --mg:#FF2BD6; --cy:#00F0FF; --warn:#FFB020; --s1:#111114; --s2:#1C1C20; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html, body { background:var(--pg); }
+  body { color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:20px 16px 48px; }
+  .layout { max-width:1000px; margin:0 auto; display:flex; gap:28px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+  .intro { width:100%; max-width:1000px; margin:0 auto 16px; }
+  .intro h1 { font-size:20px; } .intro p { color:var(--mut); font-size:13.5px; line-height:1.5; margin-top:4px; }
+
+  /* Celular */
+  .phone { position:relative; width:360px; max-width:100%; height:740px; border-radius:44px; border:9px solid #2A2A2E; background:#000; overflow:hidden; color:#fff; flex:none; user-select:none; }
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.on, .screen.leaving { display:flex; }
+  /* Transição do fim do carregamento: o spinner fecha (300 ms), a tela sai (300 ms) e a nova entra (380 ms), com os blocos em sequência (60 ms) */
+  .screen.leaving { z-index:2; animation:sai-tela .3s ease forwards; pointer-events:none; }
+  .screen.entering { animation:entra-tela .38s cubic-bezier(.2,.7,.2,1) both; }
+  .screen.entering .stg { animation:sobe-bloco .42s cubic-bezier(.2,.7,.2,1) both; }
+  .screen.entering .stg:nth-child(2) { animation-delay:.06s } .screen.entering .stg:nth-child(3) { animation-delay:.12s }
+  .screen.entering .stg:nth-child(4) { animation-delay:.18s } .screen.entering .stg:nth-child(5) { animation-delay:.24s }
+  .screen.entering .dialwrap { animation:roda-entra .5s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes sai-tela { to { opacity:0 } }
+  @keyframes entra-tela { from { opacity:0 } }
+  @keyframes sobe-bloco { from { opacity:0; transform:translateY(10px) } }
+  @keyframes roda-entra { from { opacity:0; transform:scale(.82) } }
+  .dual.done .a1, .dual.done .a2 { animation-play-state:paused; }
+  .dual .a1 { transition:stroke-dasharray .3s ease, filter .3s; }
+  .dual .a2 { transition:opacity .25s; }
+  .dual.done .a1 { stroke-dasharray:264 0; filter:drop-shadow(0 0 8px #3FD0FF); }
+  .dual.done .a2 { opacity:0; }
+  .full.leaving { display:flex; animation:sai-tela .35s ease forwards; }
+  .dialwrap.flash svg { animation:clarao .6s ease; }
+  @keyframes clarao { 30% { filter:drop-shadow(0 0 14px #3FD0FF88) } }
+  .sb { display:flex; justify-content:space-between; padding:10px 22px 2px; font-size:11.5px; color:#8a8a90; flex:none; }
+  .hdr { display:flex; align-items:center; gap:8px; padding:8px 18px 8px; flex:none; }
+  .hdr svg { width:24px; height:24px; }
+  .lg { display:flex; align-items:baseline; gap:.42em; line-height:1; }
+  .lg b { font-weight:900; font-size:16px; letter-spacing:-.02em; } .lg span { font-size:9.5px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .gear { background:none; border:0; color:#8a8a90; font-size:18px; cursor:pointer; width:32px; height:32px; }
+  .setup { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:6px 11px; border:0; font-family:inherit; }
+  .setup i { width:6px; height:6px; border-radius:50%; background:#34D399; }
+  .setup.warn { color:var(--warn); } .setup.warn i { background:var(--warn); }
+  .setup.off { color:#9a9aa2; } .setup.off i { background:#5a5a60; }
+  button { font-family:inherit; cursor:pointer; }
+  .btn { display:block; width:100%; text-align:center; padding:13px; border-radius:14px; font-size:13.5px; font-weight:700; background:#ffffff12; color:#fff; border:0; }
+  .btn.pri { background:var(--a); color:#00131a; }
+  .btn.stop { background:#D92D20; }
+  .btn.ghost { background:none; border:1px solid var(--line); color:var(--mut); font-weight:500; width:auto; padding:10px 24px; border-radius:999px; }
+
+  /* Abertura */
+  #abertura { align-items:center; justify-content:center; gap:22px; cursor:pointer; }
+  #abertura .box { position:relative; width:130px; height:130px; }
+  #abertura .box > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ab .ring { fill:none; stroke:#fff; stroke-opacity:.35; stroke-width:3; }
+  .ab .wave { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+  .ab .wm { display:flex; flex-direction:column; align-items:center; line-height:1; font-size:40px; }
+  .ab .wm b { font-weight:900; letter-spacing:-.02em; } .ab .wm span { font-weight:500; font-size:.37em; letter-spacing:.62em; margin:.4em -.62em 0 0; }
+  .ab.run * { animation-duration:5s; animation-iteration-count:1; animation-fill-mode:both; }
+  .ab.run .wm b, .ab.run .wm span { animation-name:nome; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+  .ab.run .wm span { animation-delay:.25s; }
+  @keyframes nome { 0%,36% { opacity:0; filter:blur(10px); transform:scale(1.15) } 52%,100% { opacity:1; filter:blur(0); transform:none } }
+  .ab.run .ring { animation-name:pisca-ring; animation-timing-function:steps(1,end); }
+  .ab.run .wave { animation-name:pisca-wave; animation-timing-function:steps(1,end); }
+  @keyframes pisca-ring { 0% { opacity:0 } 3% { opacity:1 } 4% { opacity:0 } 7% { opacity:1 } 8% { opacity:.2 } 9%,100% { opacity:1 } }
+  @keyframes pisca-wave { 0%,10% { opacity:0 } 12% { opacity:1 } 13% { opacity:0 } 16% { opacity:.8 } 17% { opacity:0 } 19% { opacity:1 } 21% { opacity:.3 } 22%,100% { opacity:1 } }
+  .ab.run .main { animation-name:brilho; animation-timing-function:ease; }
+  @keyframes brilho { 0%,22% { filter:drop-shadow(0 0 6px #3FD0FF) drop-shadow(0 0 16px #3FD0FF) } 36%,100% { filter:drop-shadow(0 0 0 #3FD0FF) } }
+  .ab .cy, .ab .mg { mix-blend-mode:screen; }
+  .ab .cy *, .ab .mg * { stroke:currentColor !important; }
+  .ab .cy .ring, .ab .mg .ring { stroke-opacity:1; stroke-width:4; } .ab .cy .wave, .ab .mg .wave { stroke-width:7; }
+  .ab.run .cy { animation-name:cyPos,cyCor; animation-timing-function:ease,ease-in-out; }
+  .ab.run .mg { animation-name:mgPos,mgCor; animation-timing-function:ease,ease-in-out; }
+  @keyframes cyPos { 0% { transform:translateX(-9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(-7px); filter:blur(1.2px); opacity:1 } 34%,48% { transform:translateX(-3.5px); filter:blur(1px); opacity:.9 } 70%,100% { transform:none; filter:blur(0); opacity:0 } }
+  @keyframes mgPos { 0% { transform:translateX(9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(7px); filter:blur(1.2px); opacity:1 } 34%,48% { transform:translateX(3.5px); filter:blur(1px); opacity:.9 } 70%,100% { transform:none; filter:blur(0); opacity:0 } }
+  @keyframes cyCor { 0%,38% { color:#00F0FF } 62%,100% { color:#3FD0FF } }
+  @keyframes mgCor { 0%,38% { color:#FF2BD6 } 62%,100% { color:#3FD0FF } }
+  #abertura .skip { position:absolute; bottom:34px; font-size:11px; color:#4a4a50; }
+
+  /* Busca */
+  .center-col { flex:1; display:flex; flex-direction:column; align-items:center; padding:20px 18px 22px; gap:16px; min-height:0; }
+  .title { font-size:19px; font-weight:700; text-align:center; }
+  .hint { font-size:12px; color:var(--mut); text-align:center; line-height:1.45; }
+  .rings { position:relative; width:250px; height:250px; flex:none; }
+  .rings .p { position:absolute; left:50%; top:50%; width:250px; height:250px; margin:-125px 0 0 -125px; border-radius:50%; border:2px solid var(--a); opacity:0; animation:sai 3.2s cubic-bezier(.25,.6,.35,1) infinite; }
+  .rings .p:nth-child(2) { animation-delay:-.8s } .rings .p:nth-child(3) { animation-delay:-1.6s } .rings .p:nth-child(4) { animation-delay:-2.4s }
+  @keyframes sai { 0% { transform:scale(.18); opacity:0 } 8% { opacity:.9 } 100% { transform:scale(1); opacity:0 } }
+  .rings .me { position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; }
+  .blip { position:absolute; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:var(--a); box-shadow:0 0 10px #3FD0FF; opacity:0; transform:scale(.3); transition:opacity .4s, transform .4s; }
+  .blip.show { opacity:1; transform:none; }
+  .blip.dim { background:#3a5a66; box-shadow:none; }
+  .blabel { position:absolute; font-size:10.5px; color:#cfeaf3; white-space:nowrap; transform:translate(calc(-100% - 12px),-50%); opacity:0; transition:opacity .4s; }
+  .blabel.show { opacity:1; }
+  .list { width:100%; display:flex; flex-direction:column; gap:8px; }
+  .dev { display:flex; align-items:center; gap:10px; background:#111418; border:1px solid #1E2A30; border-radius:14px; padding:12px; color:#fff; text-align:left; width:100%; animation:entra .35s ease both; }
+  @keyframes entra { from { opacity:0; transform:translateY(8px) } }
+  .dev.proc { border-color:var(--a); background:linear-gradient(160deg,#0c2430,#05090c); }
+  .dev.proc:hover { box-shadow:0 0 18px #3FD0FF33; }
+  .dev .ic { width:32px; height:32px; border-radius:9px; background:#0b1d26; display:grid; place-items:center; font-size:14px; color:var(--a); flex:none; }
+  .dev .t { flex:1; } .dev .t b { display:block; font-size:14px; } .dev .t small { font-size:11px; color:var(--mut); }
+  .dev .go { font-size:12.5px; color:var(--a); font-weight:600; }
+  .dev.other { opacity:.45; cursor:default; }
+
+  /* Anel duplo */
+  .dual { overflow:visible; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } } @keyframes giraV { to { transform:rotate(-360deg) } }
+  #conectando .dual { width:130px; height:130px; margin-top:90px; }
+  #conectando .name { font-size:22px; font-weight:800; letter-spacing:.02em; }
+
+  /* Som */
+  .tabarea { flex:1; position:relative; min-height:0; }
+  .tab { position:absolute; inset:0; display:none; flex-direction:column; padding:0 18px; gap:10px; overflow:auto; }
+  .tab.on { display:flex; }
+  .dialwrap { position:relative; width:290px; height:290px; margin:2px auto 0; flex:none; touch-action:none; }
+  .dialwrap svg { width:100%; height:100%; overflow:visible; }
+  .dialwrap.locked { opacity:.35; filter:saturate(.3); pointer-events:none; }
+  /* área de toque do preset (o desenho fica no SVG): 160 × 48 px, maior que a pílula */
+  .presetbtn { position:absolute; left:65px; top:151px; width:160px; height:48px; border:0; border-radius:24px; background:transparent; z-index:2; touch-action:manipulation; }
+  .presetbtn:active { background:#3FD0FF22; }
+  .presetbtn[hidden] { display:none; }
+  .tap { transition:opacity .25s; }
+  .tap.pulse { animation:pulsa 1.4s ease-in-out infinite; }
+  @keyframes pulsa { 0%,100% { stroke-opacity:.45 } 50% { stroke-opacity:1 } }
+  .dhint { text-align:center; font-size:11.5px; color:var(--mut); min-height:15px; }
+  .player { display:flex; align-items:center; gap:10px; background:var(--s2); border-radius:14px; padding:10px 12px; flex:none; }
+  .player .cv { width:38px; height:38px; border-radius:8px; background:linear-gradient(135deg,#1f3b4d,#0b1218); flex:none; }
+  .player .t { flex:1; min-width:0; }
+  .player .t b { display:block; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player .t small { font-size:11px; color:var(--mut); }
+  .player .pl { width:34px; height:34px; border-radius:50%; background:#fff; color:#000; display:grid; place-items:center; font-size:12px; flex:none; border:0; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; flex:none; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:7px 11px; border:0; }
+  .chip i { width:6px; height:6px; border-radius:50%; background:#8a8a90; display:inline-block; }
+  .chip.ia-on i { background:var(--a); box-shadow:0 0 6px #3FD0FF; }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid #1C1C20; padding:9px 4px 16px; background:#000; flex:none; }
+  .nav button { background:none; border:0; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10.5px; color:#77777d; min-width:64px; min-height:44px; justify-content:flex-end; }
+  .nav button::before { content:""; width:22px; height:3px; border-radius:2px; background:transparent; }
+  .nav button.on { color:var(--a); } .nav button.on::before { background:var(--a); }
+
+  .iabar { background:linear-gradient(180deg,#0b1d26,#05090c); border:1px solid #16394a; border-radius:16px; padding:11px 12px; display:flex; flex-direction:column; gap:8px; flex:none; }
+  .iabar .st { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--a); }
+  .iabar .st i { width:8px; height:8px; border-radius:50%; background:var(--a); box-shadow:0 0 8px #3FD0FF; }
+  .iabar .last { font-size:12px; color:#cfd8dc; display:flex; justify-content:space-between; }
+  .iabar .last small { color:var(--mut); }
+  .iabar .bt { display:flex; gap:8px; } .iabar .bt .btn { padding:10px; font-size:12.5px; }
+
+  /* Esboços das outras abas */
+  .sketch { font-size:11px; color:#6f6f76; border:1px dashed #2a2a30; border-radius:10px; padding:8px 10px; line-height:1.4; flex:none; }
+  .sec { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); margin-top:6px; }
+  .rowi { display:flex; align-items:center; gap:10px; background:var(--s1); border:1px solid #1E1E22; border-radius:14px; padding:12px; font-size:13px; flex:none; }
+  .rowi .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .rowi small { color:var(--mut); font-size:11px; display:block; }
+  .rowi .r { margin-left:auto; color:var(--mut); font-size:12px; }
+  .badge { font-size:9.5px; padding:2px 6px; border-radius:6px; background:#0b1d26; color:#7fd9f5; margin-left:6px; }
+  .code { font-size:34px; font-weight:800; letter-spacing:.2em; text-align:center; color:#fff; padding:10px 0; }
+
+  /* Camadas por cima */
+  .full { position:absolute; inset:0; z-index:20; background:radial-gradient(60% 40% at 50% 45%,#0b2230e6 0%,#000000f2 70%); backdrop-filter:blur(6px); display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  .full.on { display:flex; animation:fade .25s ease both; }
+  @keyframes fade { from { opacity:0 } }
+  .full .dual { width:140px; height:140px; }
+  .full small { font-size:12px; color:#9fb6c0; letter-spacing:.14em; text-transform:uppercase; }
+  .full b { font-size:27px; font-weight:900; letter-spacing:.04em; text-align:center; padding:0 20px; }
+  .full .note { position:absolute; bottom:40px; font-size:11px; color:#6f7f86; }
+  .scrim { position:absolute; inset:0; z-index:15; background:#0008; display:none; }
+  .scrim.on { display:block; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; z-index:16; background:#141418; border-top:1px solid #2a2a30; border-radius:24px 24px 0 0; padding:12px 18px 22px; display:none; flex-direction:column; gap:10px; box-shadow:0 -20px 40px #000; max-height:82%; overflow:auto; }
+  .sheet.on { display:flex; animation:sobe .25s ease both; }
+  @keyframes sobe { from { transform:translateY(40px); opacity:0 } }
+  .sheet .grab { width:38px; height:4px; border-radius:2px; background:#3a3a40; margin:0 auto 4px; flex:none; }
+  .sheet h3 { font-size:16px; }
+  .sheet p { font-size:12.5px; color:#cfcfd4; line-height:1.45; }
+  .sheet .mute { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; color:var(--warn); }
+  .sheet ul { list-style:none; font-size:12px; color:var(--mut); display:flex; flex-direction:column; gap:3px; }
+  .sheet ul.diff li::before { content:"≠ "; color:var(--warn); }
+  .sheet small { font-size:11px; color:var(--mut); text-align:center; }
+  .opt { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; background:var(--s1); border:1px solid #1E1E22; font-size:13.5px; color:#fff; text-align:left; width:100%; }
+  .opt.on { border-color:var(--a); }
+  .opt .tx { display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; }
+  .opt small { color:var(--mut); font-size:11px; display:block; }
+  .opt .r { margin-left:auto; color:var(--a); font-size:12px; }
+  .opt.locked { opacity:.6; }
+  .toast { position:absolute; left:16px; right:16px; top:58px; z-index:30; background:#1f2a2f; border:1px solid #2c4652; color:#e6f6fb; font-size:12.5px; padding:11px 14px; border-radius:12px; opacity:0; transform:translateY(-10px); transition:all .25s; pointer-events:none; }
+  .toast.on { opacity:1; transform:none; }
+
+  /* Painel de simulação (fora do celular) */
+  .panel { width:300px; max-width:100%; background:#1A1A1D; border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .panel h2 { font-size:14px; }
+  .panel p { color:var(--mut); font-size:12px; line-height:1.45; }
+  .panel label { display:flex; gap:8px; align-items:center; font-size:12.5px; color:#cfcfd4; }
+  .panel .pb { background:#26262b; color:#fff; border:1px solid #333339; border-radius:10px; padding:9px 12px; font-size:12.5px; text-align:left; }
+  .panel .pb:hover { border-color:#4a4a52; }
+  .panel hr { border:0; border-top:1px solid var(--line); }
+  .panel ol { color:var(--mut); font-size:12px; line-height:1.55; padding-left:18px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ab.run * { animation:none !important; }
+    #abertura .box, #abertura .wm { animation:fade .5s ease both; }
+    .ab .cy, .ab .mg { display:none; }
+    .rings .p { animation-duration:6s; }
+    .dual .a1 { animation-duration:2.2s; } .dual .a2 { animation-duration:3s; }
+    .tap.pulse { animation:none; stroke-opacity:1; }
+    .screen.leaving, .screen.entering, .screen.entering .stg, .screen.entering .dialwrap, .full.leaving { animation-duration:.2s !important; animation-name:fade !important; animation-delay:0s !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <filter id="brilho" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+</svg>
+
+<div class="intro">
+  <h1>BGS Sound · Protótipo navegável</h1>
+  <p>Toque no celular como se fosse o app. Ele começa pela abertura, procura os aparelhos, você escolhe o PRO 2.4BT e cai na Roda. Gire a roda com o dedo (ou o mouse), toque no centro para aplicar e segure o centro para ver as memórias. O painel ao lado simula o que depende do aparelho e da IA.</p>
+</div>
+
+<div class="layout">
+  <div class="phone" id="phone">
+
+    <!-- 1 Abertura -->
+    <section class="screen ab" id="abertura" aria-label="Abertura. Toque para pular">
+      <div class="box">
+        <svg class="cy" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+        <svg class="mg" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+        <svg class="main" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+      </div>
+      <div class="wm"><b>BGS</b><span>SOUND</span></div>
+      <span class="skip">Toque para pular</span>
+    </section>
+
+    <!-- 2 Busca -->
+    <section class="screen" id="busca">
+      <div class="sb"><span class="clock">21:14</span><span>▮▮▮ 78%</span></div>
+      <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div></div>
+      <div class="center-col">
+        <div class="title">Procurando aparelhos</div>
+        <div class="rings" id="rings">
+          <span class="p"></span><span class="p"></span><span class="p"></span><span class="p"></span>
+          <svg class="me"><use href="#onda"/></svg>
+          <span class="blip dim" id="blipOther" style="left:28%;top:72%"></span>
+          <span class="blip" id="blipPro" style="left:74%;top:30%"></span><span class="blabel" id="blabelPro" style="left:74%;top:30%">PRO 2.4BT</span>
+        </div>
+        <div class="hint" id="buscaHint">Deixe o processador ligado e o Bluetooth do celular ativo.</div>
+        <div class="list" id="devList"></div>
+      </div>
+    </section>
+
+    <!-- 3 Conectando -->
+    <section class="screen" id="conectando">
+      <div class="sb"><span class="clock">21:14</span><span>▮▮▮ 78%</span></div>
+      <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div></div>
+      <div class="center-col">
+        <svg class="dual" viewBox="0 0 100 100" role="status" aria-label="Conectando ao PRO 2.4BT"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>
+        <div class="hint">Conectando ao</div>
+        <div class="name">PRO 2.4BT</div>
+        <button class="btn ghost" id="cancelConn" style="margin-top:auto">Cancelar</button>
+      </div>
+    </section>
+
+    <!-- 4 App (abas) -->
+    <section class="screen" id="app">
+      <div class="sb"><span class="clock">21:14</span><span>▮▮▮ 78%</span></div>
+      <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div>
+        <div class="r"><button class="setup" id="setupPill"><i></i><span>Casa 2.1 ›</span></button><button class="gear" id="gearBtn" aria-label="Aparelho e histórico">⚙</button></div></div>
+      <div class="tabarea">
+        <!-- Som -->
+        <div class="tab on" id="tab-som">
+          <div class="dialwrap" id="dialwrap" role="slider" tabindex="0" aria-label="Roda de memórias. Use as setas para escolher e Enter para aplicar"><svg id="dial" viewBox="0 0 290 290"></svg><button class="presetbtn" id="presetBtn" aria-label="Trocar o preset"></button></div>
+          <div class="dhint stg" id="dhint">Gire para escolher · toque no centro para aplicar</div>
+          <div id="iaslot" class="stg"></div>
+          <div class="player stg" id="player"><div class="cv"></div><div class="t"><b id="trk"></b><small id="trkSub"></small></div><button class="pl" id="playBtn" aria-label="Tocar ou pausar">⏸</button></div>
+          <div class="chips stg"><button class="chip" id="iaChip"><i></i><span>IA pareada · parada</span></button><button class="chip" id="newMem">+ Nova memória</button></div>
+        </div>
+        <!-- IA -->
+        <div class="tab" id="tab-ia">
+          <div class="sketch">Esboço: esta aba ainda não passou pela escolha de opções.</div>
+          <div class="sec">IA pela rede</div>
+          <div class="rowi"><span class="dot" style="background:#34D399"></span><div>Ligada<small>Wi-Fi da casa · notebook pareado</small></div><span class="r">›</span></div>
+          <div class="sec">Parear outro notebook</div>
+          <div class="code">482 917</div>
+          <div class="hint">Digite este código na IA. Ele vale por 5 minutos.</div>
+          <div class="sec">Quando a IA estiver trabalhando</div>
+          <div class="rowi"><div>Controles travados até PARAR IA<small>Padrão. A outra opção: o toque pausa a IA</small></div><span class="r">›</span></div>
+          <button class="btn pri" id="startIA2" style="margin-top:6px">Simular: a IA começa a trabalhar</button>
+        </div>
+        <!-- Ajustes -->
+        <div class="tab" id="tab-ajustes">
+          <div class="sketch">Esboço: esta aba ainda não passou pela escolha de opções.</div>
+          <div class="sec">Saídas do Casa 2.1</div>
+          <div class="rowi"><span class="dot" style="background:#3FD0FF"></span><div>JBL L<small>CH1 · ganho −2,0 dB · corte 80 Hz</small></div><span class="r">›</span></div>
+          <div class="rowi"><span class="dot" style="background:#A78BFA"></span><div>JBL R<small>CH2 · ganho −2,0 dB · corte 80 Hz</small></div><span class="r">›</span></div>
+          <div class="rowi"><span class="dot" style="background:#F59E0B"></span><div>Sub<small>CH3 + CH4 (bridge) · corte 80 Hz</small></div><span class="r">›</span></div>
+          <div class="sec">Gerais</div>
+          <div class="rowi"><div>EQ de entrada · Rota · MASTER</div><span class="r">›</span></div>
+          <div class="rowi"><div>15 bandas do preset<small>Ação</small></div><span class="r">›</span></div>
+          <div class="sec">Medir</div>
+          <div class="rowi"><div>Monitoração ao vivo<small>Voltímetro e clip</small></div><span class="r">›</span></div>
+          <div class="rowi"><div>Gerador de sinal<small>Chave desligada</small></div><span class="r">🔒</span></div>
+          <button class="btn pri" id="saveBtn" style="margin-top:6px">Salvar</button>
+        </div>
+        <!-- Setup -->
+        <div class="tab" id="tab-setup">
+          <div class="sketch">Esboço: esta aba ainda não passou pela escolha de opções.</div>
+          <div class="sec">Setup em uso</div>
+          <div class="rowi"><div>Casa 2.1<small>4 equipamentos · esquema isométrico</small></div><span class="r">›</span></div>
+          <div class="sec">Equipamentos</div>
+          <div class="rowi"><div>Taramps PRO 2.4BT + AUDIO<span class="badge">oficial</span><small>Processador · 4 canais</small></div></div>
+          <div class="rowi"><div>Taramps SD800.4 EVO<span class="badge">oficial</span><small>Módulo · CH3+CH4 em bridge</small></div></div>
+          <div class="rowi"><div>JBL L e JBL R<span class="badge">digitado</span><small>Caixas · CH1 e CH2</small></div></div>
+          <div class="rowi"><div>Sub Protech Light 8"<small>Sem ficha confirmada</small></div></div>
+          <div class="sec">Outros Setups</div>
+          <div class="rowi"><div>+ Criar Setup</div></div>
+        </div>
+        <!-- Aparelho -->
+        <div class="tab" id="tab-aparelho">
+          <div class="sketch">Esboço: esta tela ainda não passou pela escolha de opções.</div>
+          <div class="sec">PRO 2.4BT</div>
+          <div class="rowi"><div>Firmware R003<small>Leitura e escrita liberadas</small></div></div>
+          <div class="rowi"><div>Módulo (remote out)<small>Ligado</small></div><span class="r">›</span></div>
+          <div class="rowi"><div>Bluetooth de áudio<small>Ligado</small></div><span class="r">›</span></div>
+          <div class="sec">Chaves de acesso</div>
+          <div class="rowi"><div>Gerador de sinal<small>Desligada · Um tom forte pode queimar o tweeter ou o sub</small></div><span class="r">○</span></div>
+          <div class="rowi"><div>IA pela rede<small>Ligada</small></div><span class="r" style="color:var(--a)">●</span></div>
+          <div class="rowi"><div>Reset de fábrica<small>Desligada · Apaga a senha e as 3 memórias</small></div><span class="r">○</span></div>
+          <div class="sec">Histórico</div>
+          <div class="rowi"><div>Todos os comandos<small>Origem (tela ou IA), hora e valor</small></div><span class="r">›</span></div>
+          <button class="btn" id="backFromGear">Voltar</button>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <button class="on" data-tab="som">Som</button><button data-tab="ia">IA</button><button data-tab="ajustes">Ajustes</button><button data-tab="setup">Setup</button>
+      </nav>
+    </section>
+
+    <!-- Camadas -->
+    <div class="full" id="applying" role="status"><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>
+      <small id="applyVerb">Aplicando</small><b id="applyName">MÚSICA HIGH</b><span id="applyPreset" style="font-size:13px;color:#7fd9f5"></span><span class="note">Mantenha o celular perto do processador</span></div>
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <aside class="panel">
+    <h2>Simular</h2>
+    <p>O que no app real vem do aparelho ou da IA.</p>
+    <label><input type="checkbox" id="simLeve"> Na próxima conexão, só ganho/EQ diferem (o app reaplica sozinho)</label>
+    <label><input type="checkbox" id="simDuvida"> Na próxima conexão, corte/atraso não batem (Setup em dúvida)</label>
+    <button class="pb" id="simIA">A IA começa a trabalhar</button>
+    <button class="pb" id="simDrop">Cai a conexão Bluetooth</button>
+    <button class="pb" id="simRestart">Reiniciar o app (abertura)</button>
+    <hr>
+    <h2>Roteiro sugerido</h2>
+    <ol>
+      <li>Deixe a abertura terminar (ou toque para pular).</li>
+      <li>Espere os aparelhos aparecerem e toque no PRO 2.4BT.</li>
+      <li>Na Roda, gire até a MÚSICA HIGH e solte. Espere 5 s sem tocar: ela volta.</li>
+      <li>Gire de novo e toque no centro: a tela toda aplica.</li>
+      <li>Segure o centro: abre a lista de memórias.</li>
+      <li>Toque no preset (o nome abaixo da memória, ex.: "Ação ›") e troque.</li>
+      <li>Simule a IA, depois a dúvida, depois a queda.</li>
+    </ol>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const MEMS = [
+    { nome: "FILME", preset: "Ação", trk: "Duna · cena do verme", sub: "Playlist da FILME · 2 de 8" },
+    { nome: "MÚSICA HIGH", preset: "Rock", trk: "Daft Punk · Giorgio by Moroder", sub: "Playlist da MÚSICA HIGH · 1 de 12" },
+    { nome: "MÚSICA ORIGINAL", preset: null, trk: "Norah Jones · Don't Know Why", sub: "Playlist da MÚSICA ORIGINAL · 1 de 9" },
+  ];
+  const PRESETS = ["Ação", "Diálogo", "Rock", "Sertanejo"];
+  const STEP = 76;                       // graus entre memórias na roda
+  const st = { playing: 0, pos: 0, preset: "Ação", playingAudio: true, mode: "ok", ia: false, iaCount: 0, iaPaused: false, timers: [] };
+  const later = (fn, ms) => { const t = setTimeout(fn, ms); st.timers.push(t); return t; };
+  const clearAll = () => { st.timers.forEach(clearTimeout); st.timers = []; };
+
+  // relógio
+  const tick = () => { const d = new Date(); document.querySelectorAll(".clock").forEach(c => c.textContent = d.toTimeString().slice(0, 5)); };
+  tick(); setInterval(tick, 20000);
+
+  function show(id, smooth = true) {
+    const cur = document.querySelector(".screen.on"), next = $(id);
+    if (cur === next) return;
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("on", "leaving", "entering"));
+    if (cur && smooth) { cur.classList.add("leaving"); setTimeout(() => cur.classList.remove("leaving"), 320); }
+    next.classList.add("on"); if (smooth) { next.classList.add("entering"); setTimeout(() => next.classList.remove("entering"), 700); }
+  }
+  // o spinner fecha num anel inteiro e só então a tela troca
+  function finish(svg, then) {
+    svg.classList.add("done");
+    setTimeout(() => { then(); setTimeout(() => svg.classList.remove("done"), 400); }, 320);
+  }
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 2600); }
+  function sheet(html, { lock = false } = {}) { $("sheet").innerHTML = '<div class="grab"></div>' + html; $("sheet").classList.add("on"); $("scrim").classList.add("on"); $("scrim").onclick = lock ? null : closeSheet; }
+  function closeSheet() { $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); }
+
+  // ---------- Abertura ----------
+  function abertura() {
+    clearAll(); closeSheet(); $("applying").classList.remove("on");
+    st.mode = "ok"; st.ia = false;
+    const ab = $("abertura"); ab.classList.remove("run"); void ab.offsetWidth; ab.classList.add("run");
+    show("abertura");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    later(busca, reduce ? 1200 : 3900);
+  }
+  $("abertura").addEventListener("click", () => { clearAll(); busca(); });
+
+  // ---------- Busca ----------
+  function busca() {
+    clearAll(); closeSheet(); show("busca");
+    $("devList").innerHTML = "";
+    ["blipOther", "blipPro", "blabelPro"].forEach(i => $(i).classList.remove("show"));
+    $("buscaHint").style.display = "";
+    later(() => {
+      $("blipOther").classList.add("show");
+      $("devList").insertAdjacentHTML("beforeend", `<div class="dev other"><span class="ic">♪</span><div class="t"><b>JBL Flip 5</b><small>Não é um processador</small></div></div>`);
+    }, 1300);
+    later(() => {
+      $("blipPro").classList.add("show"); $("blabelPro").classList.add("show"); $("buscaHint").style.display = "none";
+      $("devList").insertAdjacentHTML("afterbegin", `<button class="dev proc" id="devPro"><span class="ic">◉</span><div class="t"><b>PRO 2.4BT</b><small>Taramps · Casa 2.1 da última vez</small></div><span class="go">Conectar ›</span></button>`);
+      $("devList").insertAdjacentHTML("afterbegin", `<div class="hint" style="text-align:left">2 encontrados · toque para conectar</div>`);
+      $("devPro").onclick = conectar;
+    }, 2600);
+  }
+
+  // ---------- Conectando ----------
+  function conectar() {
+    clearAll(); show("conectando");
+    later(() => finish(document.querySelector("#conectando .dual"), () => {
+      goTab("som"); st.mode = $("simDuvida").checked ? "duvida" : "ok"; st.pos = st.playing; render(); show("app");
+      if (st.mode === "duvida") later(duvidaSheet, 450);
+      else if ($("simLeve").checked) later(() => aplicar(st.playing, "Reaplicando", `${MEMS[st.playing].nome} e o preset ${MEMS[st.playing].preset} de volta no aparelho.`), 450);
+      else later(() => toast(`Conectado. ${MEMS[st.playing].nome}${st.preset ? " e o preset " + st.preset : ""} em uso.`), 450);
+    }), 2600);
+  }
+  $("cancelConn").onclick = busca;
+
+  // ---------- Roda ----------
+  const C = 145, R = 128, RT = 110;
+  const P = (d, r = RT) => [C + r * Math.sin(d * Math.PI / 180), C - r * Math.cos(d * Math.PI / 180)];
+  const mod = (a, n) => ((a % n) + n) % n;
+  function arcPath(centerDeg, half, r) { const [x0, y0] = P(centerDeg - half, r), [x1, y1] = P(centerDeg + half, r); return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`; }
+  function selIdx() { return mod(Math.round(st.pos), MEMS.length); }
+
+  function render() {
+    const n = MEMS.length, sel = selIdx(), chosenDiff = sel !== st.playing && st.mode === "ok" && !st.ia;
+    const locked = st.mode !== "ok" || st.ia;
+    let ticks = "";
+    const rot = -st.pos * STEP;
+    for (let a = 0; a < 360; a += 10) {
+      const [x1, y1] = P(a, R + 6), [x2, y2] = P(a, R + (a % 30 ? 10 : 14));
+      ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ffffff${a % 30 ? "22" : "44"}" stroke-width="1.5"/>`;
+    }
+    let labels = "", defs = "";
+    MEMS.forEach((m, i) => {
+      let d = mod(i - st.pos + n / 2, n) - n / 2;      // distância em "passos", entre −n/2 e n/2
+      const ang = d * STEP;
+      if (Math.abs(ang) > 118) return;
+      const on = Math.abs(d) < .5;
+      defs += `<path id="lp${i}" d="${arcPath(ang, 70, RT)}"/>`;
+      const op = Math.max(0, 1 - Math.max(0, Math.abs(ang) - 80) / 38);
+      const col = !on ? "#7c7c84" : (st.mode === "duvida" ? "#FFB020" : chosenDiff ? "#ffffff" : "#3FD0FF");
+      labels += `<text font-size="${on ? 13 : 10}" font-weight="${on ? 800 : 600}" letter-spacing="1.5" fill="${col}" opacity="${op}" text-anchor="middle"><textPath href="#lp${i}" startOffset="50%">${m.nome}</textPath></text>`;
+    });
+    const arcCol = st.mode === "duvida" ? "#FFB020" : st.mode === "off" ? "#5a5a60" : chosenDiff ? "#ffffff" : "#3FD0FF";
+    let big = MEMS[sel].nome, small = "tocando", smallCol = "#3FD0FF";
+    if (st.mode === "duvida") { big = "MUDO"; small = "até você escolher"; smallCol = "#FFB020"; }
+    else if (st.mode === "off") { big = "—"; small = "sem conexão com o PRO 2.4BT"; smallCol = "#9a9aa2"; }
+    else if (st.ia) { big = MEMS[st.playing].nome; small = st.iaPaused ? "IA pausada" : "a IA está ajustando"; }
+    else if (chosenDiff) { small = "toque para aplicar"; }
+    const fs = big.length > 11 ? 19 : big.length > 8 ? 22 : 28;
+    // preset logo abaixo do nome: o em uso (toque abre a lista) ou o último da escolhida (aplica junto)
+    let presetTxt = "";
+    const pn = x => x || "Sem preset";
+    if (st.mode === "ok") presetTxt = chosenDiff ? pn(MEMS[sel].preset) : `${pn(st.preset)} ›`;
+    const pw = presetTxt.length * 6.6 + 22;
+    $("dial").innerHTML = `<defs>${defs}</defs>
+      <circle cx="${C}" cy="${C}" r="${R}" fill="#07090b" stroke="#ffffff1f" stroke-width="2"/>
+      <circle cx="${C}" cy="${C}" r="${R - 32}" fill="none" stroke="#ffffff0d"/>
+      <g transform="rotate(${rot} ${C} ${C})">${ticks}</g>
+      <path d="${arcPath(0, 22, R)}" fill="none" stroke="${arcCol}" stroke-width="4" stroke-linecap="round" filter="url(#brilho)"/>
+      ${labels}
+      <circle class="tap${chosenDiff ? " pulse" : ""}" cx="${C}" cy="${C}" r="80" fill="${chosenDiff ? "#3FD0FF10" : "transparent"}" stroke="#3FD0FF" stroke-width="2" opacity="${chosenDiff ? 1 : 0}"/>
+      <use href="#onda" x="${C - 27}" y="${C - 74}" width="54" height="54"/>
+      <text x="${C}" y="${C + 10}" text-anchor="middle" font-size="${fs}" font-weight="900" letter-spacing="1.5" fill="#fff">${big}</text>
+      ${presetTxt ? `<g opacity="${locked ? .5 : 1}"><rect x="${C - pw / 2}" y="${C + 20}" width="${pw}" height="22" rx="11" fill="#3FD0FF1a" stroke="#3FD0FF55"/>
+        <text x="${C}" y="${C + 35}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#3FD0FF">${presetTxt}</text></g>` : ""}
+      <text x="${C}" y="${C + 62}" text-anchor="middle" font-size="11.5" fill="${smallCol}">${small}</text>
+      ${locked ? `<text x="${C}" y="${C + 82}" text-anchor="middle" font-size="15">🔒</text>` : ""}`;
+    $("dialwrap").classList.toggle("locked", locked);
+    $("presetBtn").hidden = !(st.mode === "ok" && !st.ia && !chosenDiff);
+    $("dialwrap").setAttribute("aria-valuetext", `${MEMS[sel].nome}${chosenDiff ? ", toque para aplicar" : ", tocando"}`);
+    $("dhint").textContent = st.mode === "off" ? "O aparelho segue tocando o que já tinha"
+      : st.mode === "duvida" ? "" : st.ia ? "Os controles voltam com PARAR IA"
+      : chosenDiff ? `Tocando: ${MEMS[st.playing].nome}` : "Gire para escolher · toque no centro para aplicar";
+    const m = MEMS[st.playing];
+    $("trk").textContent = m.trk; $("trkSub").textContent = m.sub;
+    $("playBtn").textContent = st.playingAudio ? "⏸" : "▶";
+    const pill = $("setupPill");
+    pill.className = "setup" + (st.mode === "duvida" ? " warn" : st.mode === "off" ? " off" : "");
+    pill.querySelector("span").textContent = st.mode === "duvida" ? "Setup em dúvida" : st.mode === "off" ? "Sem conexão" : "Casa 2.1 ›";
+    $("iaChip").classList.toggle("ia-on", st.ia);
+    $("iaChip").querySelector("span").textContent = st.ia ? (st.iaPaused ? "IA pausada" : "IA trabalhando") : st.mode === "duvida" ? "IA bloqueada" : "IA pareada · parada";
+    renderIA();
+    if (st.mode === "off") $("iaslot").innerHTML = `<button class="btn pri" id="reBusca">Procurar aparelhos</button>`, $("reBusca").onclick = busca;
+  }
+
+  // arrastar a roda
+  let drag = null, revertT = null, pressT = null, moved = false;
+  const wrap = $("dialwrap");
+  const angleOf = e => { const r = wrap.getBoundingClientRect(), k = r.width / 290; const x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2; return { a: Math.atan2(x, -y) * 180 / Math.PI, d: Math.hypot(x, y) / k, ux: x / k, uy: y / k }; };
+  wrap.addEventListener("pointerdown", e => {
+    if (st.mode !== "ok" || st.ia) return;
+    const { a, d, ux, uy } = angleOf(e);
+    wrap.setPointerCapture(e.pointerId); moved = false;
+    drag = { last: a, center: d < 80, onPreset: Math.abs(ux) < 62 && uy > 18 && uy < 46, x: e.clientX, y: e.clientY };
+    clearTimeout(revertT);
+    if (drag.center) pressT = setTimeout(() => { drag = null; memorias(); }, 600);
+  });
+  wrap.addEventListener("pointermove", e => {
+    if (!drag) return;
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) { moved = true; clearTimeout(pressT); }
+    if (!moved) return;
+    const { a } = angleOf(e);
+    let delta = a - drag.last; if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
+    drag.last = a; st.pos -= delta / STEP; render();
+  });
+  const end = () => {
+    clearTimeout(pressT);
+    if (!drag) return;
+    const wasCenter = drag.center && !moved, onPreset = drag.onPreset; drag = null;
+    if (moved) snap();
+    else if (wasCenter && onPreset && selIdx() === st.playing) openPresets();
+    else if (wasCenter) tapCenter();
+  };
+  wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
+  wrap.addEventListener("keydown", e => {
+    if (st.mode !== "ok" || st.ia) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") { st.pos = Math.round(st.pos) + 1; snap(); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") { st.pos = Math.round(st.pos) - 1; snap(); }
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tapCenter(); }
+  });
+  function animateTo(target, ms = 260) {
+    const from = st.pos, t0 = performance.now();
+    const step = now => { const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3); st.pos = from + (target - from) * e; render(); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  function snap() {
+    animateTo(Math.round(st.pos));
+    clearTimeout(revertT);
+    revertT = setTimeout(() => {
+      if (selIdx() !== st.playing && st.mode === "ok" && !st.ia) {
+        let target = Math.round(st.pos), d = mod(st.playing - selIdx() + MEMS.length / 2, MEMS.length) - MEMS.length / 2;
+        animateTo(target + Math.round(d), 420);
+      }
+    }, 5260);
+  }
+  function tapCenter() {
+    const sel = selIdx();
+    if (sel === st.playing) { toast(`${MEMS[sel].nome} já está tocando.`); return; }
+    clearTimeout(revertT);
+    aplicar(sel);
+  }
+  function aplicar(i, verb = "Aplicando", after) {
+    $("applyVerb").textContent = verb; $("applyName").textContent = MEMS[i].nome;
+    $("applyPreset").textContent = MEMS[i].preset || "Sem preset";
+    $("applying").classList.add("on");
+    later(() => finish(document.querySelector("#applying .dual"), () => {
+      const f = $("applying"); f.classList.add("leaving"); f.classList.remove("on");
+      setTimeout(() => f.classList.remove("leaving"), 360);
+      $("dialwrap").classList.remove("flash"); void $("dialwrap").offsetWidth; $("dialwrap").classList.add("flash");
+      st.playing = i; st.pos = Math.round(st.pos); if (selIdx() !== i) st.pos = i;
+      st.preset = MEMS[i].preset; st.playingAudio = true; render();
+      toast(after || `${MEMS[i].nome} aplicada${MEMS[i].preset ? ", com o preset " + MEMS[i].preset : ""}.`);
+    }), 2300);
+  }
+
+  // memórias (segurar o centro)
+  function memorias() {
+    const cel = MEMS.map((m, i) => `<button class="opt${i === st.playing ? " on" : ""}" data-m="${i}"><span class="tx">${m.nome}<small>Casa 2.1${m.preset ? " · preset " + m.preset : ""}</small></span><span class="r">${i === st.playing ? "tocando" : "Aplicar"}</span></button>`).join("");
+    const apa = [["Memória 1 · SPL", "Nota herdada: para medição de pressão"], ["Memória 2 · MUSICA ORIG", "Nota herdada: a regulagem original de música"], ["Memória 3 · FILME", "Nota herdada: a regulagem original de filme"]]
+      .map(([n, s]) => `<button class="opt" data-a="${n}"><span class="tx">${n}<small>${s}</small></span><span class="r">Carregar</span></button>`).join("");
+    sheet(`<h3>Memórias</h3><div class="sec">No celular · Casa 2.1</div>${cel}
+      <div class="sec">No aparelho (app da Taramps)</div><p style="font-size:11.5px;color:var(--mut)">Só leitura. Carregar troca todo o som de uma vez.</p>${apa}
+      <button class="btn" id="closeMem">Fechar</button>`);
+    $("closeMem").onclick = closeSheet;
+    document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { const i = +b.dataset.m; closeSheet(); if (i !== st.playing) { st.pos = i; aplicar(i); } });
+    document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => {
+      sheet(`<h3>Carregar ${b.dataset.a}?</h3><p>O som do aparelho troca todo de uma vez. Ela não tem Setup nem playlist, e o app não muda nada dentro dela.</p>
+        <button class="btn pri" id="okLoad">Carregar</button><button class="btn" id="noLoad">Cancelar</button>`);
+      $("noLoad").onclick = closeSheet;
+      $("okLoad").onclick = () => { closeSheet(); toast("Fora deste protótipo: carregar memória do aparelho."); };
+    });
+  }
+
+  // preset, player, nova memória
+  ["pointerdown", "pointerup", "touchstart"].forEach(ev => $("presetBtn").addEventListener(ev, e => e.stopPropagation()));
+  $("presetBtn").addEventListener("click", e => { e.stopPropagation(); openPresets(); });
+  function openPresets() {
+    sheet(`<h3>Preset (15 bandas)</h3><p>Vai por cima da ${MEMS[st.playing].nome}. Troca na hora, sem confirmação.</p>` +
+      [...PRESETS, null].map(p => `<button class="opt${p === st.preset ? " on" : ""}" data-p="${p ?? ""}">${p ?? "Nenhum preset"}<span class="r">${p === st.preset ? "em uso" : ""}</span></button>`).join("") +
+      `<button class="btn" id="closeP">Fechar</button>`);
+    $("closeP").onclick = closeSheet;
+    document.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { st.preset = MEMS[st.playing].preset = b.dataset.p || null; closeSheet(); render(); toast(st.preset ? `Preset ${st.preset} aplicado.` : "Sem preset: só a memória."); });
+  }
+  $("playBtn").onclick = () => { st.playingAudio = !st.playingAudio; render(); };
+  $("newMem").onclick = () => toast("Fora deste protótipo: a memória nova nasce do som atual.");
+  $("saveBtn").onclick = () => toast("Fora deste protótipo: o Salvar reparte entre memória e preset.");
+  $("iaChip").onclick = () => goTab("ia");
+  $("gearBtn").onclick = () => goTab("aparelho");
+  $("backFromGear").onclick = () => goTab("som");
+  $("setupPill").onclick = () => { if (st.mode === "duvida") duvidaSheet(); else if (st.mode === "ok") goTab("setup"); };
+
+  // abas
+  function goTab(t) {
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x.id === "tab-" + t));
+    document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  }
+  document.querySelectorAll("#nav button").forEach(b => b.onclick = () => goTab(b.dataset.tab));
+
+  // ---------- Setup em dúvida ----------
+  function duvidaSheet() {
+    sheet(`<div class="mute">🔇 Som mudo até você escolher</div>
+      <p>O aparelho não bate com a FILME do Casa 2.1:</p><ul class="diff"><li>Corte do Sub: 80 Hz na FILME, 120 Hz no aparelho</li><li>Atraso da JBL L: 72 cm na FILME, 0 cm no aparelho</li></ul>
+      <button class="btn pri" id="dEsc">Escolher um Setup</button><button class="btn" id="dNovo">Criar um Setup novo</button><button class="btn" id="dSem">Seguir sem Setup</button>
+      <small>A IA fica bloqueada até você escolher. Mesmo se o app fechar, o aparelho continua mudo.</small>`, { lock: true });
+    $("dEsc").onclick = () => {
+      sheet(`<h3>Qual Setup é este?</h3><button class="opt" id="sCasa"><span class="tx">Casa 2.1<small>Reaplica a FILME, a última memória usada nele</small></span></button>
+        <button class="opt"><span class="tx">Carro<small>Ainda sem memórias</small></span></button><button class="btn" id="sVolta">Voltar</button>`, { lock: true });
+      $("sVolta").onclick = duvidaSheet;
+      $("sCasa").onclick = () => { closeSheet(); st.mode = "ok"; st.pos = 0; render(); aplicar(0, "Reaplicando", "Casa 2.1 confirmado. FILME reaplicada e som liberado."); };
+    };
+    $("dNovo").onclick = () => toast("Fora deste protótipo: o som do aparelho vira a 1ª memória do Setup novo.");
+    $("dSem").onclick = () => toast("Fora deste protótipo: sem Setup, as memórias do celular ficam travadas.");
+  }
+
+  // ---------- IA ----------
+  const IA_STEPS = ["JBL L · 63 Hz −1,5 dB", "JBL R · 63 Hz −1,5 dB", "Sub · ganho −0,5 dB", "JBL L · atraso 2,1 ms", "Sub · corte 78 Hz"];
+  function renderIA() {
+    if (!st.ia) { $("iaslot").innerHTML = ""; return; }
+    $("iaslot").innerHTML = `<div class="iabar"><div class="st"><i></i>${st.iaPaused ? "IA pausada" : "IA ajustando a " + MEMS[st.playing].nome}</div>
+      <div class="last"><span>${IA_STEPS[(st.iaCount + IA_STEPS.length - 1) % IA_STEPS.length]}</span><small>agora</small></div>
+      <div class="bt"><button class="btn" id="iaPause">${st.iaPaused ? "Retomar" : "Pausar"}</button><button class="btn stop" id="iaStop">PARAR IA</button></div></div>`;
+    $("iaPause").onclick = () => { st.iaPaused = !st.iaPaused; render(); if (!st.iaPaused) iaLoop(); };
+    $("iaStop").onclick = pararIA;
+  }
+  function startIA() {
+    if (st.mode !== "ok") { toast(st.mode === "duvida" ? "A IA está bloqueada até você escolher o Setup." : "Sem conexão: a IA não tem o que ajustar."); return; }
+    closeSheet(); goTab("som"); st.ia = true; st.iaPaused = false; st.iaCount = 1; st.pos = st.playing; render(); iaLoop();
+  }
+  function iaLoop() {
+    later(() => {
+      if (!st.ia || st.iaPaused) return;
+      st.iaCount++; render();
+      if (st.iaCount === 3) {
+        sheet(`<h3>A IA fez 3 ajustes seguidos</h3><p>Ouça antes de deixar seguir. Nada foi salvo.</p>
+          <button class="btn pri" id="iaCont">Continuar</button><button class="btn stop" id="iaStop2">PARAR IA</button>`, { lock: true });
+        $("iaCont").onclick = () => { closeSheet(); iaLoop(); };
+        $("iaStop2").onclick = () => { closeSheet(); pararIA(); };
+      } else if (st.iaCount < 6) iaLoop();
+    }, 1800);
+  }
+  function pararIA() { st.ia = false; render(); toast("IA parada. Nada foi salvo: ouça e toque em Salvar se gostar."); }
+  $("startIA2").onclick = startIA;
+
+  // ---------- Painel ----------
+  $("simIA").onclick = () => { if (!$("app").classList.contains("on")) { toast("Conecte ao aparelho primeiro."); return; } startIA(); };
+  $("simDrop").onclick = () => {
+    if (!$("app").classList.contains("on")) { toast("Conecte ao aparelho primeiro."); return; }
+    clearAll(); closeSheet(); st.ia = false; st.mode = "off"; goTab("som"); render(); toast("A conexão caiu. O aparelho segue tocando o que tinha.");
+  };
+  $("simRestart").onclick = abertura;
+
+  render();
+  abertura();
+})();
+</script>
+</body>
+</html>

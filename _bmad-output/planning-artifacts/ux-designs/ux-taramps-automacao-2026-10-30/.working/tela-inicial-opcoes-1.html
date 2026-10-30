@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Opções de tela inicial</title>
+<style>
+  /* Base: preto, ciano da logo #3FD0FF, branco e cinzas. Jornada: noite de filme, sofá, sala escura.
+     Cada celular mostra a mesma situação: Setup Casa 2.1, FILME aplicada agora pelo app, IA pareada. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --s1:#111114; --s2:#1C1C20; --s3:#2A2A30; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1700px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; max-width:900px; }
+  .grid { display:grid; gap:32px 24px; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); }
+  .opt h2 { font-size:15px; margin-bottom:4px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; margin-right:6px; }
+  .opt > p { color:var(--mut); font-size:12.5px; line-height:1.45; min-height:7.4em; margin-bottom:10px; }
+
+  .phone { position:relative; width:300px; height:620px; border-radius:40px; border:8px solid #2A2A2E; background:#000; overflow:hidden; margin:0 auto; display:flex; flex-direction:column; color:#fff; }
+  .sb { display:flex; justify-content:space-between; padding:8px 20px 2px; font-size:11px; color:#8a8a90; }
+  .hdr { display:flex; align-items:center; gap:7px; padding:8px 16px 10px; }
+  .hdr svg { width:22px; height:22px; }
+  .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .lg b { font-weight:900; font-size:15px; letter-spacing:-.02em; }
+  .lg span { font-size:9px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:10px; color:#8a8a90; font-size:16px; }
+  .conn { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mut); }
+  .conn i { width:7px; height:7px; border-radius:50%; background:#34D399; display:inline-block; }
+  .setup { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:5px 10px; }
+  .body { flex:1; padding:4px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+  .lbl { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid #1C1C20; padding:9px 4px 14px; font-size:10px; color:#77777d; }
+  .nav div { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .nav div::before { content:""; width:20px; height:3px; border-radius:2px; background:transparent; }
+  .nav .on { color:var(--a); }
+  .nav .on::before { background:var(--a); }
+  .player { display:flex; align-items:center; gap:10px; background:var(--s2); border-radius:14px; padding:10px 12px; }
+  .player .cv { width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#1f3b4d,#0b1218); flex:none; }
+  .player .t { flex:1; min-width:0; }
+  .player .t b { display:block; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player .t small { font-size:10.5px; color:var(--mut); }
+  .player .pl { width:32px; height:32px; border-radius:50%; background:#fff; color:#000; display:grid; place-items:center; font-size:12px; flex:none; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:6px 10px; }
+  .chip i { width:6px; height:6px; border-radius:50%; background:#8a8a90; display:inline-block; }
+
+  /* 1 Grade */
+  .o1 .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .o1 .tile { background:var(--s1); border:1px solid #1E1E22; border-radius:18px; height:118px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; }
+  .o1 .tile b { font-size:15px; font-weight:800; letter-spacing:.02em; }
+  .o1 .tile small { font-size:10.5px; color:var(--mut); }
+  .o1 .tile.on { border-color:var(--a); background:linear-gradient(160deg,#0c2430,#05090c); box-shadow:0 0 24px #3FD0FF33; }
+  .o1 .tile.on small { color:var(--a); }
+  .o1 .tile.new { border-style:dashed; color:var(--mut); align-items:center; justify-content:center; font-size:12px; }
+  .o1 .tile svg { width:28px; height:28px; }
+
+  /* 2 Roda */
+  .o2 .dial { position:relative; width:250px; height:250px; margin:6px auto 0; }
+  .o2 .dial .rg { position:absolute; inset:0; border-radius:50%; border:2px solid #ffffff22; }
+  .o2 .dial .arc { position:absolute; inset:0; border-radius:50%; border:3px solid transparent; border-top-color:var(--a); transform:rotate(-30deg); filter:drop-shadow(0 0 6px #3FD0FF); }
+  .o2 .dial .ctr { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+  .o2 .dial .ctr svg { width:64px; height:64px; }
+  .o2 .dial .ctr b { font-size:28px; font-weight:900; letter-spacing:.04em; }
+  .o2 .dial .ctr small { font-size:11px; color:var(--a); }
+  .o2 .dial .m { position:absolute; font-size:10.5px; color:#77777d; letter-spacing:.08em; }
+  .o2 .hint { text-align:center; font-size:11px; color:var(--mut); }
+  .o2 .ia { display:flex; justify-content:center; }
+
+  /* 3 Agora tocando */
+  .o3 .hero { border-radius:22px; padding:16px; background:radial-gradient(120% 90% at 20% 0%,#0f3647 0%,#071118 55%,#040608 100%); border:1px solid #13303c; }
+  .o3 .hero .lbl { color:#7fd9f5; }
+  .o3 .hero h3 { font-size:30px; font-weight:900; letter-spacing:.02em; margin:6px 0 2px; }
+  .o3 .hero .meta { font-size:11px; color:#9fb6c0; }
+  .o3 .hero svg.vu { width:100%; height:54px; margin:10px 0 8px; }
+  .o3 .hero .player { background:#00000055; }
+  .o3 .car { display:flex; gap:8px; overflow:hidden; }
+  .o3 .car div { flex:none; width:110px; background:var(--s1); border:1px solid #1E1E22; border-radius:14px; padding:10px; font-size:12.5px; font-weight:700; }
+  .o3 .car div small { display:block; font-weight:400; font-size:10px; color:var(--mut); margin-top:14px; }
+  .o3 .iacard { display:flex; align-items:center; gap:10px; background:var(--s1); border:1px solid #1E1E22; border-radius:14px; padding:10px 12px; font-size:12px; }
+  .o3 .iacard small { display:block; color:var(--mut); font-size:10.5px; }
+  .o3 .iacard .go { margin-left:auto; color:var(--a); font-size:12px; }
+
+  /* 4 Cinema */
+  .o4.phone { background:#000; }
+  .o4 .sb, .o4 .hdr .r { color:#3a3a3e; }
+  .o4 .hdr { opacity:.5; }
+  .o4 .body { justify-content:center; gap:4px; padding:0 22px; }
+  .o4 .row { display:flex; align-items:center; gap:12px; padding:22px 4px; border-bottom:1px solid #111; font-size:22px; font-weight:800; color:#4a4a50; letter-spacing:.04em; }
+  .o4 .row.on { color:#6fb9cf; }
+  .o4 .row.on::before { content:""; width:8px; height:8px; border-radius:50%; background:#3FD0FF; box-shadow:0 0 8px #3FD0FF; }
+  .o4 .row:not(.on)::before { content:""; width:8px; height:8px; }
+  .o4 .foot4 { display:flex; justify-content:space-between; padding:14px 22px 22px; font-size:11px; color:#3a3a3e; }
+
+  /* 5 Som + IA */
+  .o5 .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .o5 .chips span { font-size:12px; font-weight:700; padding:8px 12px; border-radius:999px; background:var(--s2); color:#9a9aa2; }
+  .o5 .chips span.on { background:var(--a); color:#00131a; }
+  .o5 .now { display:flex; justify-content:space-between; align-items:baseline; }
+  .o5 .now b { font-size:24px; font-weight:900; }
+  .o5 .now small { font-size:11px; color:var(--mut); }
+  .o5 .iap { flex:1; border-radius:20px; background:linear-gradient(180deg,#0b1d26,#05090c); border:1px solid #16394a; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .o5 .iap .st { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--a); }
+  .o5 .iap .st i { width:8px; height:8px; border-radius:50%; background:var(--a); box-shadow:0 0 8px #3FD0FF; }
+  .o5 .iap ul { list-style:none; display:flex; flex-direction:column; gap:6px; font-size:11.5px; color:#cfd8dc; }
+  .o5 .iap li { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #ffffff10; padding-bottom:6px; }
+  .o5 .iap li small { color:var(--mut); white-space:nowrap; }
+  .o5 .iap .bt { display:flex; gap:8px; margin-top:auto; }
+  .o5 .iap .bt span { flex:1; text-align:center; padding:10px; border-radius:12px; font-size:12px; font-weight:700; background:#ffffff14; }
+  .o5 .iap .bt span.stop { background:#FF4D4D; color:#fff; }
+  .o5 .lock { font-size:10.5px; color:var(--mut); text-align:center; }
+
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:28px; max-width:900px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>BGS Sound · 5 opções de tela inicial</h1>
+  <p class="sub">Todas mostram a mesma noite de filme: você no sofá, sala escura, Setup Casa 2.1, a FILME acabou de ser aplicada pelo app e a IA está pareada mas parada (na opção 5, a IA aparece trabalhando). O foco é trocar o som com poucos toques; regular com a IA vem em segundo. Só a organização e o jeito de mostrar mudam.</p>
+
+  <div class="grid">
+
+    <!-- 1 -->
+    <section class="opt">
+      <h2><b>1</b>Grade de memórias</h2>
+      <p>As memórias são cartões grandes, dois por linha. Um toque troca o som. A que está tocando brilha em ciano. O player fica embaixo e a barra de baixo leva para Som, IA, Ajustes e Setup.</p>
+      <div class="phone o1">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="conn"><i></i>PRO 2.4BT</span></div></div>
+        <div class="body">
+          <div><span class="setup">Setup Casa 2.1 ›</span></div>
+          <div class="lbl">Memórias</div>
+          <div class="tiles">
+            <div class="tile on"><svg><use href="#onda"/></svg><div><b>FILME</b><br><small>tocando · aplicada agora</small></div></div>
+            <div class="tile"><span></span><div><b>MÚSICA HIGH</b><br><small>12 músicas</small></div></div>
+            <div class="tile"><span></span><div><b>MÚSICA ORIGINAL</b><br><small>9 músicas</small></div></div>
+            <div class="tile new">+ Nova memória</div>
+          </div>
+          <div class="player"><div class="cv"></div><div class="t"><b>Duna · cena do verme</b><small>Playlist da FILME · 2 de 8</small></div><div class="pl">▶</div></div>
+          <div><span class="chip"><i></i>IA pareada · parada</span></div>
+        </div>
+        <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="opt">
+      <h2><b>2</b>Roda</h2>
+      <p>Uma roda grande no centro, com a logo no meio. Você gira com o dedo para escolher a memória e solta para aplicar. É a opção mais imersiva e mais "equipamento". Embaixo ficam o player e a IA.</p>
+      <div class="phone o2">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup">Casa 2.1 ›</span></div></div>
+        <div class="body">
+          <div class="dial">
+            <div class="rg"></div><div class="arc"></div>
+            <span class="m" style="left:6px;top:58px">MÚSICA HIGH</span>
+            <span class="m" style="right:-6px;top:58px">MÚSICA ORIG.</span>
+            <span class="m" style="left:50%;bottom:-2px;transform:translateX(-50%)">+ NOVA</span>
+            <div class="ctr"><svg><use href="#onda"/></svg><b>FILME</b><small>tocando · aplicada agora</small></div>
+          </div>
+          <div class="hint">Gire para trocar o som</div>
+          <div class="player"><div class="cv"></div><div class="t"><b>Duna · cena do verme</b><small>Playlist da FILME · 2 de 8</small></div><div class="pl">▶</div></div>
+          <div class="ia"><span class="chip"><i></i>IA pareada · parada</span></div>
+        </div>
+        <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="opt">
+      <h2><b>3</b>Agora tocando</h2>
+      <p>O destaque é o som que está tocando, num cartão grande com o medidor ao vivo e o player dentro. As outras memórias passam numa fileira que corre para o lado. A IA aparece num cartão abaixo.</p>
+      <div class="phone o3">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="conn"><i></i>Casa 2.1</span></div></div>
+        <div class="body">
+          <div class="hero">
+            <div class="lbl">Tocando agora</div>
+            <h3>FILME</h3>
+            <div class="meta">Aplicada agora · Setup Casa 2.1</div>
+            <svg class="vu" viewBox="0 0 260 54" preserveAspectRatio="none">
+              <g fill="#3FD0FF">
+                <rect x="0" y="30" width="8" height="24" rx="2"/><rect x="12" y="18" width="8" height="36" rx="2"/><rect x="24" y="8" width="8" height="46" rx="2"/><rect x="36" y="14" width="8" height="40" rx="2"/><rect x="48" y="24" width="8" height="30" rx="2"/><rect x="60" y="20" width="8" height="34" rx="2"/><rect x="72" y="28" width="8" height="26" rx="2"/><rect x="84" y="34" width="8" height="20" rx="2"/><rect x="96" y="26" width="8" height="28" rx="2"/><rect x="108" y="32" width="8" height="22" rx="2"/><rect x="120" y="36" width="8" height="18" rx="2"/><rect x="132" y="30" width="8" height="24" rx="2"/><rect x="144" y="38" width="8" height="16" rx="2"/><rect x="156" y="34" width="8" height="20" rx="2"/><rect x="168" y="40" width="8" height="14" rx="2"/><rect x="180" y="36" width="8" height="18" rx="2"/><rect x="192" y="42" width="8" height="12" rx="2"/><rect x="204" y="40" width="8" height="14" rx="2"/><rect x="216" y="44" width="8" height="10" rx="2"/><rect x="228" y="42" width="8" height="12" rx="2"/><rect x="240" y="46" width="8" height="8" rx="2"/><rect x="252" y="45" width="8" height="9" rx="2"/>
+              </g>
+            </svg>
+            <div class="player"><div class="cv"></div><div class="t"><b>Duna · cena do verme</b><small>Playlist da FILME · 2 de 8</small></div><div class="pl">▶</div></div>
+          </div>
+          <div class="lbl">Trocar para</div>
+          <div class="car"><div>MÚSICA HIGH<small>12 músicas</small></div><div>MÚSICA ORIGINAL<small>9 músicas</small></div><div style="color:var(--mut)">+ Nova<small>memória</small></div></div>
+          <div class="iacard"><span class="chip" style="padding:6px"><i></i></span><div>IA pareada<small>Parada · pronta para regular</small></div><span class="go">Abrir ›</span></div>
+        </div>
+        <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="opt">
+      <h2><b>4</b>Cinema</h2>
+      <p>Feita para a sala escura: quase tudo apagado, brilho mínimo e nomes enormes para tocar sem procurar. Sem barra de abas; as outras partes ficam num toque longo ou num gesto. Serve de tela inicial ou de "modo cinema" que se liga à noite.</p>
+      <div class="phone o4">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r">⋯</div></div>
+        <div class="body">
+          <div class="row on">FILME</div>
+          <div class="row">MÚSICA HIGH</div>
+          <div class="row">MÚSICA ORIGINAL</div>
+        </div>
+        <div class="foot4"><span>Casa 2.1 · IA parada</span><span>Segure para mais</span></div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="opt">
+      <h2><b>5</b>Som e IA juntos</h2>
+      <p>A tela se divide em duas partes. Em cima, a troca de som em botões. Embaixo, um painel da IA que mostra ao vivo o que ela está mudando, com Pausar e PARAR IA sempre à mão. Aqui a IA aparece trabalhando.</p>
+      <div class="phone o5">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup">Casa 2.1 ›</span></div></div>
+        <div class="body">
+          <div class="now"><b>FILME</b><small>tocando</small></div>
+          <div class="chips"><span class="on">FILME</span><span>MÚSICA HIGH</span><span>MÚSICA ORIGINAL</span><span>+</span></div>
+          <div class="iap">
+            <div class="st"><i></i>IA ajustando o EQ da FILME</div>
+            <ul>
+              <li><span>EQ da JBL L · 63 Hz −1,5 dB</span><small>21:13</small></li>
+              <li><span>EQ da JBL R · 63 Hz −1,5 dB</span><small>21:13</small></li>
+              <li><span>Sub · ganho −0,5 dB</span><small>21:12</small></li>
+              <li><span>Atraso da JBL L · 2,1 ms</span><small>21:11</small></li>
+            </ul>
+            <div class="bt"><span>Pausar</span><span class="stop">PARAR IA</span></div>
+          </div>
+          <div class="lock">Os controles ficam travados enquanto a IA trabalha</div>
+        </div>
+        <div class="nav"><div class="on">Início</div><div>Ajustes</div><div>Setup</div><div>Histórico</div></div>
+      </div>
+    </section>
+
+  </div>
+  <p class="foot">Escolha pelo número, misture (ex.: "a grade do 1 com o painel da IA do 5" ou "o 3 com o modo cinema do 4 à noite") ou peça outra rodada. Depois desenho os outros estados da tela escolhida: sem conexão, conferindo o Setup, som mudo na dúvida e IA trabalhando.</p>
+</div>
+</body>
+</html>

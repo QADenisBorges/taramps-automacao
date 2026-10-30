@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Mais telas iniciais</title>
+<style>
+  /* Mesma base da primeira rodada: preto, ciano #3FD0FF, branco e cinzas. Mesma situação: noite de filme, Casa 2.1, FILME aplicada agora. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --mg:#FF2BD6; --s1:#111114; --s2:#1C1C20; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; max-width:900px; }
+  .grid { display:grid; gap:32px 24px; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); }
+  .opt h2 { font-size:15px; margin-bottom:4px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; margin-right:6px; }
+  .opt > p { color:var(--mut); font-size:12.5px; line-height:1.45; min-height:7.4em; margin-bottom:10px; }
+
+  .phone { position:relative; width:300px; height:620px; border-radius:40px; border:8px solid #2A2A2E; background:#000; overflow:hidden; margin:0 auto; display:flex; flex-direction:column; color:#fff; }
+  .sb { display:flex; justify-content:space-between; padding:8px 20px 2px; font-size:11px; color:#8a8a90; position:relative; z-index:2; }
+  .hdr { display:flex; align-items:center; gap:7px; padding:8px 16px 10px; position:relative; z-index:2; }
+  .hdr svg { width:22px; height:22px; }
+  .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .lg b { font-weight:900; font-size:15px; letter-spacing:-.02em; }
+  .lg span { font-size:9px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:10px; color:#8a8a90; font-size:16px; }
+  .setup { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:5px 10px; }
+  .body { flex:1; padding:4px 16px 0; display:flex; flex-direction:column; gap:12px; overflow:hidden; position:relative; z-index:2; }
+  .lbl { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid #1C1C20; padding:9px 4px 14px; font-size:10px; color:#77777d; position:relative; z-index:2; background:#000; }
+  .nav div { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .nav div::before { content:""; width:20px; height:3px; border-radius:2px; background:transparent; }
+  .nav .on { color:var(--a); } .nav .on::before { background:var(--a); }
+  .player { display:flex; align-items:center; gap:10px; background:var(--s2); border-radius:14px; padding:10px 12px; }
+  .player .cv { width:36px; height:36px; border-radius:8px; background:linear-gradient(135deg,#1f3b4d,#0b1218); flex:none; }
+  .player .t { flex:1; min-width:0; }
+  .player .t b { display:block; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player .t small { font-size:10.5px; color:var(--mut); }
+  .player .pl { width:32px; height:32px; border-radius:50%; background:#fff; color:#000; display:grid; place-items:center; font-size:12px; flex:none; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#cfcfd4; background:var(--s2); border-radius:999px; padding:6px 10px; }
+  .chip i { width:6px; height:6px; border-radius:50%; background:#8a8a90; display:inline-block; }
+  .chip i.ok { background:#34D399; }
+
+  /* 6 Tela cheia */
+  .o6 .glow { position:absolute; inset:0; background:radial-gradient(70% 45% at 50% 42%,#0f4258 0%,#06161e 45%,#000 75%); z-index:1; }
+  .o6 .glow::after { content:""; position:absolute; left:50%; top:42%; width:300px; height:300px; margin:-150px 0 0 -150px; border-radius:50%; border:1px solid #3FD0FF22; box-shadow:0 0 0 40px #3FD0FF08, 0 0 0 80px #3FD0FF05; }
+  .o6 .body { justify-content:center; align-items:center; text-align:center; gap:10px; }
+  .o6 .big { font-size:46px; font-weight:900; letter-spacing:.03em; text-shadow:0 0 30px #3FD0FF55; }
+  .o6 .st { font-size:12px; color:var(--a); }
+  .o6 svg.wv { width:150px; height:46px; margin:8px 0 2px; }
+  .o6 .dots { display:flex; gap:7px; margin-top:16px; } .o6 .dots i { width:7px; height:7px; border-radius:50%; background:#ffffff33; } .o6 .dots i.on { background:#fff; width:20px; border-radius:4px; }
+  .o6 .swipe { font-size:11px; color:var(--mut); }
+  .o6 .bottom { position:relative; z-index:2; padding:0 16px 18px; display:flex; flex-direction:column; gap:10px; }
+  .o6 .bottom .player { background:#ffffff10; backdrop-filter:blur(6px); }
+  .o6 .row { display:flex; justify-content:space-between; }
+
+  /* 7 Controle remoto */
+  .o7 .now { text-align:center; margin-top:4px; }
+  .o7 .now small { font-size:11px; color:var(--mut); letter-spacing:.12em; text-transform:uppercase; }
+  .o7 .now b { display:block; font-size:30px; font-weight:900; letter-spacing:.04em; margin-top:2px; }
+  .o7 .now span { font-size:11px; color:var(--a); }
+  .o7 .pad { position:relative; width:230px; height:230px; margin:6px auto 0; border-radius:50%; background:radial-gradient(circle,#15171b 0%,#0b0c0e 70%); border:1px solid #23252a; box-shadow:inset 0 2px 0 #ffffff0d, 0 10px 30px #000; }
+  .o7 .pad .k { position:absolute; font-size:10.5px; color:#b9bcc2; text-align:center; line-height:1.2; }
+  .o7 .pad .k b { display:block; font-size:16px; color:#fff; }
+  .o7 .pad .up { left:50%; top:16px; transform:translateX(-50%); }
+  .o7 .pad .dn { left:50%; bottom:16px; transform:translateX(-50%); }
+  .o7 .pad .lf { left:18px; top:50%; transform:translateY(-50%); }
+  .o7 .pad .rt { right:18px; top:50%; transform:translateY(-50%); }
+  .o7 .pad .ctr { position:absolute; left:50%; top:50%; width:96px; height:96px; margin:-48px 0 0 -48px; border-radius:50%; background:radial-gradient(circle at 50% 35%,#123a4a,#071820); border:2px solid var(--a); box-shadow:0 0 22px #3FD0FF55; display:grid; place-items:center; font-size:26px; }
+  .o7 .keys { display:flex; justify-content:center; gap:14px; }
+  .o7 .keys div { width:60px; display:flex; flex-direction:column; align-items:center; gap:5px; font-size:10.5px; color:#b9bcc2; }
+  .o7 .keys div span { width:48px; height:48px; border-radius:50%; background:#15171b; border:1px solid #23252a; display:grid; place-items:center; font-size:16px; color:#fff; }
+  .o7 .keys div.ia span { border-color:#3FD0FF66; color:var(--a); }
+  .o7 .track { text-align:center; font-size:11.5px; color:var(--mut); }
+
+  /* 8 Painel */
+  .o8 .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .o8 .meters { background:var(--s1); border:1px solid #1E1E22; border-radius:18px; padding:12px 14px; }
+  .o8 .meters .lbl { display:flex; justify-content:space-between; }
+  .o8 .mrow { display:flex; justify-content:space-around; align-items:flex-end; height:150px; margin-top:10px; }
+  .o8 .m { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:10.5px; color:#b9bcc2; }
+  .o8 .bar { position:relative; width:22px; height:110px; border-radius:6px; background:#1C1C20; overflow:hidden; }
+  .o8 .bar i { position:absolute; left:0; right:0; bottom:0; background:linear-gradient(0deg,#1d8fb3,#3FD0FF 70%,#ffd166 88%,#ff4d4d) bottom/100% 110px no-repeat; }
+  .o8 .bar.clip::before { content:""; position:absolute; left:0; right:0; top:0; height:6px; background:#ff4d4d; z-index:1; }
+  .o8 .m b { font-size:12px; color:#fff; font-variant-numeric:tabular-nums; }
+  .o8 .seg { display:flex; background:var(--s2); border-radius:12px; padding:3px; }
+  .o8 .seg span { flex:1; text-align:center; font-size:11.5px; font-weight:700; padding:9px 4px; border-radius:9px; color:#9a9aa2; }
+  .o8 .seg span.on { background:var(--a); color:#00131a; }
+
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:28px; max-width:900px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>BGS Sound · Mais 3 opções de tela inicial (6 a 8)</h1>
+  <p class="sub">A mesma noite de filme da primeira rodada: Setup Casa 2.1, a FILME acabou de ser aplicada e a IA está pareada. As opções 1 a 5 continuam valendo.</p>
+
+  <div class="grid">
+
+    <!-- 6 -->
+    <section class="opt">
+      <h2><b>6</b>Tela cheia</h2>
+      <p>Cada memória ocupa a tela inteira, com o nome enorme e uma luz de fundo. Você desliza para o lado para passar de uma memória para outra e toca para aplicar. Sem barra de abas: o resto do app fica no menu do canto.</p>
+      <div class="phone o6">
+        <div class="glow"></div>
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup">Casa 2.1</span><span>☰</span></div></div>
+        <div class="body">
+          <svg class="wv" viewBox="0 0 100 30"><path d="M2 15 Q8 0 14 15 Q20 30 26 15 Q32 3 38 15 Q44 26 50 15 Q56 6 62 15 Q68 23 74 15 Q80 9 86 15 Q92 20 98 15" fill="none" stroke="#3FD0FF" stroke-width="2.5" stroke-linecap="round"/></svg>
+          <div class="big">FILME</div>
+          <div class="st">tocando · aplicada agora</div>
+          <div class="dots"><i class="on"></i><i></i><i></i></div>
+          <div class="swipe">Deslize para MÚSICA HIGH ›</div>
+        </div>
+        <div class="bottom">
+          <div class="player"><div class="cv"></div><div class="t"><b>Duna · cena do verme</b><small>Playlist da FILME · 2 de 8</small></div><div class="pl">▶</div></div>
+          <div class="row"><span class="chip"><i></i>IA pareada · parada</span><span class="chip">+ Nova memória</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="opt">
+      <h2><b>7</b>Controle remoto</h2>
+      <p>Pensada para o sofá: um controle redondo grande, como o de uma TV. Para cima e para baixo troca a memória; para os lados troca a faixa; o centro toca e pausa. Embaixo ficam o Mudo, a IA, os Ajustes e o Setup.</p>
+      <div class="phone o7">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup">Casa 2.1 ›</span></div></div>
+        <div class="body">
+          <div class="now"><small>Memória</small><b>FILME</b><span>tocando · aplicada agora</span></div>
+          <div class="pad">
+            <div class="k up"><b>▲</b>MÚSICA ORIGINAL</div>
+            <div class="k dn">MÚSICA HIGH<b>▼</b></div>
+            <div class="k lf"><b>⏮</b>faixa</div>
+            <div class="k rt"><b>⏭</b>faixa</div>
+            <div class="ctr">⏸</div>
+          </div>
+          <div class="track">Duna · cena do verme · 2 de 8</div>
+          <div class="keys"><div><span>🔇</span>Mudo</div><div class="ia"><span>◎</span>IA</div><div><span>≡</span>Ajustes</div><div><span>⌂</span>Setup</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="opt">
+      <h2><b>8</b>Painel ao vivo</h2>
+      <p>Tela de equipamento: o estado da conexão, do Setup e da IA no topo, os medidores ao vivo de cada saída (com o aviso de clip) no meio e a troca de memória num seletor logo abaixo. É a mais técnica das oito.</p>
+      <div class="phone o8">
+        <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+        <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r">⋯</div></div>
+        <div class="body">
+          <div class="chips"><span class="chip"><i class="ok"></i>PRO 2.4BT</span><span class="chip">Casa 2.1 ›</span><span class="chip"><i></i>IA parada</span></div>
+          <div class="meters">
+            <div class="lbl"><span>Saídas ao vivo</span><span>V</span></div>
+            <div class="mrow">
+              <div class="m"><div class="bar"><i style="height:54%"></i></div><b>3,1</b>JBL L</div>
+              <div class="m"><div class="bar"><i style="height:50%"></i></div><b>2,9</b>JBL R</div>
+              <div class="m"><div class="bar clip"><i style="height:91%"></i></div><b>7,8</b>Sub</div>
+            </div>
+          </div>
+          <div class="lbl">Memória</div>
+          <div class="seg"><span class="on">FILME</span><span>M. HIGH</span><span>M. ORIGINAL</span></div>
+          <div class="player"><div class="cv"></div><div class="t"><b>Duna · cena do verme</b><small>Playlist da FILME · 2 de 8</small></div><div class="pl">▶</div></div>
+        </div>
+        <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+      </div>
+    </section>
+
+  </div>
+  <p class="foot">Responda com o número (de 1 a 8) ou com uma mistura, por exemplo "o 6, com os medidores do 8 numa aba".</p>
+</div>
+</body>
+</html>

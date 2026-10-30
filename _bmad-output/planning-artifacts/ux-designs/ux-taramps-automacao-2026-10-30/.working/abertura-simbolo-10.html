@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Animações do símbolo</title>
+<style>
+  /* Logo: Onda (ciano #3FD0FF, círculo branco a 35%) + nome Empilhado.
+     Nome: animação da opção 6 (sai do desfoque) em todas. Ciclo de 5 s: símbolo até ~1,8 s, nome até ~2,6 s, parada, some. */
+  @property --ang { syntax:'<angle>'; inherits:false; initial-value:0deg; }
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --T:5s; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1240px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; max-width:860px; }
+  .grid { display:grid; gap:28px 20px; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); }
+  .opt h2 { font-size:15px; margin-bottom:4px; }
+  .opt h2 b { display:inline-grid; place-items:center; min-width:24px; height:24px; padding:0 4px; border-radius:12px; background:var(--tx); color:var(--pg); font-size:13px; margin-right:6px; }
+  .opt p { color:var(--mut); font-size:12.5px; line-height:1.45; min-height:4.4em; margin-bottom:10px; }
+  .phone { position:relative; width:220px; height:440px; border-radius:32px; border:7px solid #2A2A2E; background:#000; overflow:hidden; margin:0 auto; }
+  .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; animation:out var(--T) infinite both; }
+  @keyframes out { 0%,93% { opacity:1 } 100% { opacity:0 } }
+  .box { position:relative; width:96px; height:96px; }
+  .box > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring { fill:none; stroke:#fff; stroke-opacity:.35; stroke-width:3; }
+  .wave { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+  .nss { vector-effect:non-scaling-stroke; stroke-width:6.5; }
+  svg * { transform-box:view-box; transform-origin:50px 50px; }
+  .wm { display:flex; flex-direction:column; align-items:center; line-height:1; color:#fff; font-size:30px; }
+  .wm b { font-weight:900; letter-spacing:-.02em; }
+  .wm span { font-weight:500; font-size:.37em; letter-spacing:.62em; margin:.4em -.62em 0 0; }
+  button { display:block; margin:10px auto 0; background:none; border:1px solid var(--line); color:var(--tx); border-radius:999px; padding:6px 14px; font:inherit; font-size:12px; cursor:pointer; }
+  button:hover { border-color:var(--mut); }
+  .stage * { animation-duration:var(--T); animation-iteration-count:infinite; animation-fill-mode:both; }
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:28px; max-width:860px; }
+
+  /* Nome (opção 6): igual em todas */
+  .wm b, .wm span { animation-name:nome; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+  .wm span { animation-delay:.25s; }
+  @keyframes nome { 0%,36% { opacity:0; filter:blur(10px); transform:scale(1.15) } 52%,100% { opacity:1; filter:blur(0); transform:none } }
+
+  /* 1 Espiral */
+  .s1 .all { animation-name:s1; animation-timing-function:cubic-bezier(.2,.75,.25,1); }
+  @keyframes s1 { 0% { opacity:0; transform:rotate(-540deg) scale(0) } 8% { opacity:1 } 30% { transform:rotate(8deg) scale(1.06) } 36%,100% { opacity:1; transform:none } }
+
+  /* 2 Poeira */
+  .s2 .dot { fill:var(--a); animation-name:s2dot; animation-timing-function:cubic-bezier(.3,.6,.2,1); }
+  .s2 .wave { animation-name:s2wave; }
+  .s2 .ring { animation-name:s2ring; }
+  @keyframes s2dot { 0% { opacity:0; transform:translate(var(--dx),var(--dy)) } 6% { opacity:1 } 28% { opacity:1; transform:none } 34%,100% { opacity:0; transform:none } }
+  @keyframes s2wave { 0%,26% { opacity:0 } 33%,100% { opacity:1 } }
+  @keyframes s2ring { 0%,22% { opacity:0; transform:scale(1.2) } 34%,100% { opacity:1; transform:none } }
+
+  /* 3 Corda */
+  .s3 .ring { animation-name:fadeIn6; }
+  .s3 .wave { animation-name:s3; animation-timing-function:ease-in-out; }
+  @keyframes fadeIn6 { 0% { opacity:0 } 6%,100% { opacity:1 } }
+  @keyframes s3 { 0% { opacity:0; transform:scaleY(.01) } 5%,7% { opacity:1; transform:scaleY(.01) } 11% { transform:scaleY(2.1) } 15% { transform:scaleY(-.5) } 19% { transform:scaleY(1.8) } 23% { transform:scaleY(.4) } 27% { transform:scaleY(1.35) } 31% { transform:scaleY(.85) } 35%,100% { opacity:1; transform:scaleY(1) } }
+
+  /* 4 Radar */
+  .s4 .reveal { -webkit-mask-image:conic-gradient(#000 var(--ang), transparent 0); mask-image:conic-gradient(#000 var(--ang), transparent 0); animation-name:s4ang; animation-timing-function:cubic-bezier(.4,0,.3,1); }
+  .s4 .trail { position:absolute; inset:6px; border-radius:50%; background:conic-gradient(from calc(var(--ang) - 70deg), transparent 0deg, rgba(63,208,255,.45) 70deg, transparent 70deg); animation-name:s4ang,s4fade; animation-timing-function:cubic-bezier(.4,0,.3,1),ease; }
+  .s4 .beam { stroke:var(--a); stroke-width:2; stroke-linecap:round; animation-name:s4beam,s4fadeL; animation-timing-function:cubic-bezier(.4,0,.3,1),ease; }
+  @keyframes s4ang { 0% { --ang:0deg } 32%,100% { --ang:360deg } }
+  @keyframes s4beam { 0% { transform:rotate(0) } 32%,100% { transform:rotate(360deg) } }
+  @keyframes s4fade { 0% { opacity:0 } 3%,28% { opacity:1 } 38%,100% { opacity:0 } }
+  @keyframes s4fadeL { 0% { opacity:0 } 3%,30% { opacity:1 } 36%,100% { opacity:0 } }
+
+  /* 5 Gota */
+  .s5 .drop { fill:var(--a); animation-name:s5drop; animation-timing-function:cubic-bezier(.55,0,1,.45); }
+  .s5 .splash { fill:none; stroke:var(--a); stroke-width:2.5; animation-name:s5splash; animation-timing-function:ease-out; }
+  .s5 .ring { animation-name:s5ring; animation-timing-function:cubic-bezier(.2,.8,.3,1); }
+  .s5 .wave { animation-name:s5wave; }
+  @keyframes s5drop { 0% { opacity:1; transform:translateY(-240px) scale(1,1.8) } 16% { opacity:1; transform:translateY(0) scale(1,1.4) } 17%,100% { opacity:0; transform:scale(.2) } }
+  @keyframes s5splash { 0%,16% { opacity:0; transform:scale(.05) } 17% { opacity:.9 } 38%,100% { opacity:0; transform:scale(1.7) } }
+  @keyframes s5ring { 0%,16% { opacity:0; transform:scale(.05) } 17% { opacity:1 } 30%,100% { opacity:1; transform:none } }
+  @keyframes s5wave { 0%,18% { opacity:0; transform:scaleY(.01) } 19% { opacity:1 } 25% { transform:scaleY(1.4) } 30% { transform:scaleY(.85) } 35%,100% { opacity:1; transform:scaleY(1) } }
+
+  /* 6 Glitch */
+  .s6 .main { animation-name:s6main; animation-timing-function:steps(1,end); }
+  .s6 .cy, .s6 .mg { mix-blend-mode:screen; animation-timing-function:steps(1,end); }
+  .s6 .cy { animation-name:s6cy; } .s6 .mg { animation-name:s6mg; }
+  .s6 .cy * { stroke:#00F0FF !important; stroke-opacity:1; } .s6 .mg * { stroke:#FF2BD6 !important; stroke-opacity:1; }
+  @keyframes s6main { 0% { opacity:0 } 4% { opacity:1; clip-path:inset(30% 0 45% 0) } 7% { clip-path:inset(0 0 60% 0); transform:translateX(5px) } 10% { opacity:0 } 12% { opacity:1; clip-path:inset(55% 0 0 0); transform:translateX(-4px) } 16% { clip-path:inset(10% 0 20% 0); transform:none } 20% { clip-path:inset(0 0 0 0); transform:translateX(3px) } 24% { transform:translateX(-2px) } 28%,100% { opacity:1; clip-path:inset(0 0 0 0); transform:none } }
+  @keyframes s6cy { 0% { opacity:0 } 4% { opacity:.9; transform:translate(-7px,0) } 8% { transform:translate(-3px,2px) } 12% { transform:translate(-9px,-1px) } 16% { transform:translate(-4px,0) } 22% { transform:translate(-2px,0) } 28% { opacity:.6; transform:translate(-1px,0) } 32%,100% { opacity:0; transform:none } }
+  @keyframes s6mg { 0% { opacity:0 } 4% { opacity:.9; transform:translate(7px,0) } 8% { transform:translate(3px,-2px) } 12% { transform:translate(9px,1px) } 16% { transform:translate(4px,0) } 22% { transform:translate(2px,0) } 28% { opacity:.6; transform:translate(1px,0) } 32%,100% { opacity:0; transform:none } }
+
+  /* 7 Moeda 3D */
+  .s7 .box { perspective:500px; }
+  .s7 .coin { animation-name:s7; animation-timing-function:cubic-bezier(.15,.7,.25,1); }
+  @keyframes s7 { 0% { opacity:0; transform:rotateY(1080deg) scale(.3) } 6% { opacity:1 } 34%,100% { opacity:1; transform:rotateY(0) scale(1) } }
+
+  /* 8 Batimento do grave */
+  .s8 .beat { animation-name:s8; animation-timing-function:ease-out; }
+  @keyframes s8 { 0% { opacity:0; transform:scale(.55); filter:drop-shadow(0 0 0 #3FD0FF) } 8% { opacity:1; transform:scale(.85) } 12% { transform:scale(1.18); filter:drop-shadow(0 0 14px #3FD0FF) } 17% { transform:scale(.95); filter:drop-shadow(0 0 4px #3FD0FF) } 22% { transform:scale(1.12); filter:drop-shadow(0 0 12px #3FD0FF) } 27% { transform:scale(.98) } 32% { transform:scale(1.04); filter:drop-shadow(0 0 6px #3FD0FF) } 36%,100% { opacity:1; transform:none; filter:drop-shadow(0 0 0 #3FD0FF) } }
+
+  /* 9 Laser */
+  .s9 .laser { position:absolute; left:50%; top:50%; width:260px; height:2px; margin-left:-130px; margin-top:-1px; background:linear-gradient(90deg,transparent,#3FD0FF 20%,#E8FBFF 50%,#3FD0FF 80%,transparent); box-shadow:0 0 12px #3FD0FF; animation-name:s9laser; animation-timing-function:cubic-bezier(.3,0,.3,1); }
+  .s9 .half { animation-name:s9half; stroke-dasharray:1; }
+  .s9 .wave { animation-name:s9wave; animation-timing-function:cubic-bezier(.2,.8,.3,1); }
+  @keyframes s9laser { 0% { opacity:0; transform:scaleX(0) } 2% { opacity:1 } 11% { transform:scaleX(1) } 19% { opacity:1; transform:scaleX(.03) } 21%,100% { opacity:0; transform:scaleX(0) } }
+  @keyframes s9half { 0%,19% { stroke-dashoffset:1 } 33%,100% { stroke-dashoffset:0 } }
+  @keyframes s9wave { 0%,18% { opacity:0; transform:scale(0,.01) } 19% { opacity:1 } 25% { transform:scale(1,.01) } 31% { transform:scale(1,1.2) } 35%,100% { opacity:1; transform:none } }
+
+  /* 10 Neon */
+  .s10 .ring { animation-name:s10ring; animation-timing-function:steps(1,end); }
+  .s10 .wave { animation-name:s10wave; animation-timing-function:steps(1,end); }
+  .s10 .glow { animation-name:s10glow; }
+  @keyframes s10ring { 0% { opacity:0 } 3% { opacity:1 } 4% { opacity:0 } 7% { opacity:1 } 8% { opacity:.2 } 9%,100% { opacity:1 } }
+  @keyframes s10wave { 0%,10% { opacity:0 } 12% { opacity:1 } 13% { opacity:0 } 16% { opacity:.8 } 17% { opacity:0 } 19% { opacity:1 } 21% { opacity:.3 } 22%,100% { opacity:1 } }
+  @keyframes s10glow { 0%,22% { filter:drop-shadow(0 0 6px #3FD0FF) drop-shadow(0 0 16px #3FD0FF) } 36%,100% { filter:drop-shadow(0 0 0 #3FD0FF) } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · 10 animações do símbolo</h1>
+  <p class="sub">Só o símbolo muda. O nome entra igual em todas, com a animação da opção 6 (sai do desfoque). Cada celular repete sozinho; o botão "Repetir" volta para o começo. Escolha pelo número, misture ou peça outra rodada. O Mergulho (6 da página anterior) continua valendo.</p>
+  <div class="grid" id="grid"></div>
+  <p class="foot">Depois de escolher, decidimos se a abertura toca sempre ou só na primeira vez, se tem som (sai pelo home theater quando o celular está ligado ao processador) e se a duração está boa.</p>
+</div>
+
+<noscript><p class="foot">Esta página precisa de JavaScript ligado para montar as animações.</p></noscript>
+<script>
+  const WAVE = "M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50";
+  const RING = '<circle class="ring" cx="50" cy="50" r="42"/>';
+  const W = (c = "") => `<path class="wave ${c}" d="${WAVE}"/>`;
+  const svg = (inner, c = "") => `<svg class="${c}" viewBox="0 0 100 100">${inner}</svg>`;
+
+  // pontos da onda para a Poeira (sorteio fixo, para ficar igual toda vez)
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const ns = "http://www.w3.org/2000/svg", tmp = document.createElementNS(ns, "path");
+  tmp.setAttribute("d", WAVE);
+  const tmpSvg = document.createElementNS(ns, "svg"); tmpSvg.style.position = "absolute"; tmpSvg.appendChild(tmp); document.body.appendChild(tmpSvg);
+  const L = tmp.getTotalLength(); let dots = "";
+  for (let i = 0; i <= 30; i++) {
+    const p = tmp.getPointAtLength(L * i / 30), ang = rnd() * Math.PI * 2, d = 70 + rnd() * 90;
+    dots += `<circle class="dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.6" style="--dx:${(Math.cos(ang) * d).toFixed(0)}px;--dy:${(Math.sin(ang) * d).toFixed(0)}px"/>`;
+  }
+  tmpSvg.remove();
+
+  const sym = {
+    1: svg(`<g class="all">${RING}${W()}</g>`),
+    2: svg(RING + W() + dots),
+    3: svg(RING + W("nss")),
+    4: '<div class="trail"></div>' + svg(RING + W(), "reveal") + svg('<line class="beam" x1="50" y1="50" x2="50" y2="6"/>'),
+    5: svg('<circle class="splash" cx="50" cy="50" r="42"/>' + RING + W("nss") + '<ellipse class="drop" cx="50" cy="50" rx="3.5" ry="3.5"/>'),
+    6: svg(RING + W(), "cy") + svg(RING + W(), "mg") + svg(RING + W(), "main"),
+    7: svg(RING + W(), "coin"),
+    8: svg(RING + W(), "beat"),
+    9: '<div class="laser"></div>' + svg('<path class="ring half" pathLength="1" d="M50 8 A42 42 0 0 0 50 92"/><path class="ring half" pathLength="1" d="M50 8 A42 42 0 0 1 50 92"/>' + W("nss")),
+    10: svg(RING + W(), "glow"),
+  };
+  const opcoes = [
+    [1, "Espiral", "O símbolo entra girando em espiral, do nada até o tamanho final, passa um pouquinho e assenta."],
+    [2, "Poeira", "Pontos ciano espalhados pela tela voam e se juntam no desenho da onda. O círculo aparece em volta."],
+    [3, "Corda", "A onda começa reta, como uma corda esticada. É puxada e solta: vibra para cima e para baixo até assentar."],
+    [4, "Radar", "Um feixe gira dentro do círculo como um radar e vai revelando o símbolo por onde passa."],
+    [5, "Gota", "Uma gota cai do alto no centro. O impacto abre o círculo, espirra uma onda para fora e a superfície ondula."],
+    [6, "Glitch", "O símbolo aparece em pedaços, tremendo, com as cores separadas como sinal digital, e se estabiliza."],
+    [7, "Moeda 3D", "O símbolo gira como uma moeda lançada, de longe para perto, e para de frente."],
+    [8, "Batimento do grave", "O símbolo pulsa duas vezes como o grave batendo, com um brilho a cada batida, e descansa."],
+    [9, "Laser", "Um laser corta a tela de lado a lado, se recolhe no centro, a onda se abre dele e o círculo se fecha pelos dois lados."],
+    [10, "Neon", "O símbolo acende como um letreiro de neon: o círculo pisca e firma, depois a onda pisca e acende."],
+  ];
+  const grid = document.getElementById("grid");
+  for (const [n, nome, ideia] of opcoes) {
+    const el = document.createElement("section");
+    el.className = "opt";
+    el.innerHTML = `<h2><b>${n}</b>${nome}</h2><p>${ideia}</p>
+      <div class="phone"><div class="stage s${n}"><div class="box">${sym[n]}</div>
+      <div class="wm"><b>BGS</b><span>SOUND</span></div></div></div><button type="button">Repetir</button>`;
+    el.querySelector("button").addEventListener("click", () => {
+      const st = el.querySelector(".stage"); st.replaceWith(st.cloneNode(true));
+    });
+    grid.appendChild(el);
+  }
+</script>
+</body>
+</html>

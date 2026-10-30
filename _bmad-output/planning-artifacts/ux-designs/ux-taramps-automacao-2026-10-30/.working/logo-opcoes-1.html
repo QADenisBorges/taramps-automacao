@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Opções de logo</title>
+<style>
+  /* Página neutra para não puxar nenhuma opção. Cores de cada opção ficam no card (--a = destaque). */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  header.top { max-width:1100px; margin:0 auto 24px; }
+  header.top h1 { font-size:22px; font-weight:700; }
+  header.top p { color:var(--mut); font-size:14px; margin-top:6px; line-height:1.5; }
+  .grid { max-width:1100px; margin:0 auto; display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(min(100%,500px),1fr)); }
+  .card { border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#1A1A1D; }
+  .card h2 { font-size:16px; padding:14px 16px 2px; }
+  .card h2 b { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:14px; margin-right:8px; }
+  .card .idea { color:var(--mut); font-size:13px; padding:0 16px 12px 50px; }
+  .panels { display:grid; grid-template-columns:1fr 1fr; }
+  .panel { padding:28px 12px; display:flex; align-items:center; justify-content:center; min-height:130px; }
+  .panel.dark { background:#000; color:#fff; }
+  .panel.light { background:#fff; color:#111; }
+  .lock { display:flex; align-items:center; gap:10px; }
+  .lock svg { width:52px; height:52px; flex:none; }
+  .icons { display:flex; align-items:flex-end; gap:16px; padding:16px; border-top:1px solid var(--line); flex-wrap:wrap; }
+  .icons figure { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .icons figcaption { font-size:11px; color:var(--mut); }
+  .tile { display:grid; place-items:center; background:var(--tile); color:var(--on); border-radius:23%; }
+  .tile.round { border-radius:50%; }
+  .tile svg { width:72%; height:72%; }
+  .appbar { display:flex; align-items:center; gap:8px; padding:12px 16px; background:#000; color:#fff; border-top:1px solid var(--line); }
+  .appbar svg { width:24px; height:24px; }
+  .appbar .wm { font-size:15px; }
+  .appbar .gear { margin-left:auto; color:#666; font-size:18px; }
+  .appbar .lbl { font-size:11px; color:var(--mut); margin-right:4px; }
+
+  /* 1 Monograma: monocromático */
+  .o1 { --a:currentColor; --tile:#000; --on:#fff; }
+  .o1 .wm { font-weight:900; letter-spacing:-.02em; font-size:26px; }
+  .o1 .wm i { font-style:normal; font-weight:300; letter-spacing:.32em; font-size:.62em; margin-left:.5em; }
+  /* 2 Onda: ciano #3FD0FF */
+  .o2 { --a:#3FD0FF; --tile:#06141A; --on:#fff; }
+  .o2 .wm { font-weight:500; font-size:26px; letter-spacing:-.01em; text-transform:lowercase; }
+  /* 3 Cone: laranja #FF7A1A */
+  .o3 { --a:#FF7A1A; --tile:#111; --on:#fff; }
+  .o3 .wm { font-size:26px; font-weight:400; }
+  .o3 .wm b { font-weight:800; }
+  /* 4 Fader: verde #4ADE80, tipo técnico */
+  .o4 { --a:#4ADE80; --tile:#0B0F0C; --on:#E8E8E8; }
+  .o4 .wm { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-weight:700; font-size:21px; letter-spacing:.06em; }
+  /* 5 Pulso do grave: vermelho #FF3B3B */
+  .o5 { --a:#FF3B3B; --tile:#000; --on:#fff; }
+  .o5 .wm { font-weight:900; font-style:italic; font-size:27px; letter-spacing:-.03em; }
+  .o5 .wm i { font-weight:700; font-size:.7em; letter-spacing:.08em; margin-left:.25em; }
+  /* 6 Espectro: degradê #8B5CF6 → #38BDF8 */
+  .o6 { --a:url(#grad6); --tile:#0C0A1A; --on:#fff; }
+  .o6 .wm { font-weight:300; font-size:27px; letter-spacing:.02em; background:linear-gradient(90deg,#A78BFA,#38BDF8); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  /* 7 Clássico: dourado #D4AF37, serifa */
+  .o7 { --a:#D4AF37; --tile:#000; --on:#D4AF37; }
+  .o7 .wm { font-family:Georgia,"Times New Roman",serif; font-size:28px; }
+  .o7 .wm i { color:var(--a); }
+  /* 8 Caixa acústica: amarelo #FFC94A, com assinatura */
+  .o8 { --a:#FFC94A; --tile:#151515; --on:#F5F5F5; }
+  .o8 .wm { font-size:26px; line-height:1; }
+  .o8 .wm b { font-weight:700; }
+  .o8 .wm span { font-weight:300; }
+  .o8 .wm small { display:block; font-size:10px; letter-spacing:.28em; text-transform:uppercase; opacity:.6; margin-top:6px; font-weight:400; }
+
+  .foot { max-width:1100px; margin:28px auto 0; color:var(--mut); font-size:14px; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="grad6" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <!-- 1 Monograma -->
+    <symbol id="g1" viewBox="0 0 100 100">
+      <text x="50" y="61" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="38" letter-spacing="-1.5" fill="currentColor">BGS</text>
+      <rect x="30" y="70" width="40" height="3" rx="1.5" fill="currentColor" opacity=".5"/>
+    </symbol>
+    <!-- 2 Onda -->
+    <symbol id="g2" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="var(--a)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <!-- 3 Cone -->
+    <symbol id="g3" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="50" r="27" fill="none" stroke="currentColor" stroke-width="3" opacity=".55"/>
+      <circle cx="50" cy="50" r="14" fill="var(--a)"/>
+    </symbol>
+    <!-- 4 Fader -->
+    <symbol id="g4" viewBox="0 0 100 100">
+      <g stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".45">
+        <line x1="28" y1="18" x2="28" y2="82"/><line x1="50" y1="18" x2="50" y2="82"/><line x1="72" y1="18" x2="72" y2="82"/>
+      </g>
+      <rect x="19" y="56" width="18" height="11" rx="3" fill="var(--a)"/>
+      <rect x="41" y="28" width="18" height="11" rx="3" fill="var(--a)"/>
+      <rect x="63" y="44" width="18" height="11" rx="3" fill="var(--a)"/>
+    </symbol>
+    <!-- 5 Pulso do grave -->
+    <symbol id="g5" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="15" fill="var(--a)"/>
+      <circle cx="50" cy="50" r="27" fill="none" stroke="var(--a)" stroke-width="5" opacity=".6"/>
+      <circle cx="50" cy="50" r="39" fill="none" stroke="var(--a)" stroke-width="4" opacity=".28"/>
+    </symbol>
+    <!-- 6 Espectro -->
+    <symbol id="g6" viewBox="0 0 100 100">
+      <g fill="var(--a)">
+        <rect x="13" y="42" width="7" height="16" rx="3.5"/>
+        <rect x="24" y="33" width="7" height="34" rx="3.5"/>
+        <rect x="35" y="22" width="7" height="56" rx="3.5"/>
+        <rect x="46" y="15" width="7" height="70" rx="3.5"/>
+        <rect x="57" y="26" width="7" height="48" rx="3.5"/>
+        <rect x="68" y="35" width="7" height="30" rx="3.5"/>
+        <rect x="79" y="43" width="7" height="14" rx="3.5"/>
+      </g>
+    </symbol>
+    <!-- 7 Clássico -->
+    <symbol id="g7" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--a)" stroke-width="2"/>
+      <text x="50" y="68" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="52" fill="var(--a)">B</text>
+    </symbol>
+    <!-- 8 Caixa acústica -->
+    <symbol id="g8" viewBox="0 0 100 100">
+      <rect x="27" y="12" width="46" height="76" rx="9" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="31" r="6.5" fill="none" stroke="currentColor" stroke-width="3.5"/>
+      <circle cx="50" cy="61" r="16" fill="none" stroke="currentColor" stroke-width="4"/>
+      <circle cx="50" cy="61" r="6" fill="var(--a)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <h1>BGS Sound · 8 opções de logo</h1>
+  <p>Cada cartão mostra a logo no fundo preto e no fundo branco, o ícone do app no tamanho do celular (grande, normal e mínimo, quadrado e redondo) e como fica no topo do app. Escolha pelo número. Pode misturar, por exemplo o símbolo do 3 com o nome do 7, ou a cor de um com a forma de outro.</p>
+</header>
+
+<main class="grid" id="grid"></main>
+
+<p class="foot">Pode responder com o número, com "nenhuma" ou com o que gostou e o que não gostou em cada uma. Na próxima rodada eu refino só as que você escolher.</p>
+
+<template id="tpl">
+  <article class="card">
+    <h2><b></b><span class="nm"></span></h2>
+    <p class="idea"></p>
+    <div class="panels">
+      <div class="panel dark"><div class="lock"><svg><use/></svg><span class="wm"></span></div></div>
+      <div class="panel light"><div class="lock"><svg><use/></svg><span class="wm"></span></div></div>
+    </div>
+    <div class="icons">
+      <figure><div class="tile" style="width:96px;height:96px"><svg><use/></svg></div><figcaption>grande</figcaption></figure>
+      <figure><div class="tile" style="width:48px;height:48px"><svg><use/></svg></div><figcaption>ícone</figcaption></figure>
+      <figure><div class="tile round" style="width:48px;height:48px"><svg><use/></svg></div><figcaption>redondo</figcaption></figure>
+      <figure><div class="tile" style="width:24px;height:24px"><svg><use/></svg></div><figcaption>mínimo</figcaption></figure>
+    </div>
+    <div class="appbar"><svg><use/></svg><span class="wm"></span><span class="gear">⚙</span></div>
+  </article>
+</template>
+
+<noscript><p class="foot">Esta página precisa de JavaScript ligado para montar os cartões.</p></noscript>
+<script>
+  const opcoes = [
+    [1, "Monograma", "As três letras BGS como o próprio símbolo. Só preto e branco, sem cor.", "BGS<i>SOUND</i>"],
+    [2, "Onda", "Uma onda sonora que perde força, dentro de um círculo. Ciano, nome em minúsculas.", "bgs sound"],
+    [3, "Cone", "O alto-falante visto de frente: borda, cone e centro em destaque. Laranja.", "<b>BGS</b> Sound"],
+    [4, "Fader", "Três faders de mesa em alturas diferentes: o controle fino. Verde, letra de equipamento.", "BGS SOUND"],
+    [5, "Pulso do grave", "O grave se espalhando em anéis: a pressão do sub. Vermelho, letra inclinada e pesada.", "BGS<i>SOUND</i>"],
+    [6, "Espectro", "Barras de espectro em degradê roxo e azul. Nome fino e leve.", "BGS Sound"],
+    [7, "Clássico", "Um B com serifa dentro de um aro. Dourado, no estilo hi-fi de luxo.", "BGS <i>Sound</i>"],
+    [8, "Caixa acústica", "Uma caixa de duas vias (tweeter e woofer) e a assinatura do dono. Amarelo.", "<b>BGS</b> <span>Sound</span><small>by Denis Borges</small>"],
+  ];
+  const tpl = document.getElementById("tpl"), grid = document.getElementById("grid");
+  for (const [n, nome, ideia, wm] of opcoes) {
+    const c = tpl.content.firstElementChild.cloneNode(true);
+    c.classList.add("o" + n);
+    c.querySelector("h2 b").textContent = n;
+    c.querySelector(".nm").textContent = nome;
+    c.querySelector(".idea").textContent = ideia;
+    c.querySelectorAll("use").forEach(u => u.setAttribute("href", "#g" + n));
+    c.querySelectorAll(".wm").forEach(w => w.innerHTML = wm);
+    c.querySelector(".appbar .wm").querySelectorAll("small").forEach(s => s.remove());
+    grid.appendChild(c);
+  }
+</script>
+</body>
+</html>

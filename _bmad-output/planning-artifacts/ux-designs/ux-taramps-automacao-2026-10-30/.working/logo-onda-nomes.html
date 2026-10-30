@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Onda com 10 nomes</title>
+<style>
+  /* Página neutra. Destaque fixo da opção 2 (Onda): ciano #3FD0FF. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  header.top { max-width:1100px; margin:0 auto 24px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  header.top .txt { flex:1 1 320px; }
+  header.top h1 { font-size:22px; font-weight:700; }
+  header.top p { color:var(--mut); font-size:14px; margin-top:6px; line-height:1.5; }
+  .tile { position:relative; background:#111; color:#fff; border-radius:23%; width:72px; height:72px; flex:none; }
+  .tile svg { position:absolute; left:14%; top:14%; width:72%; height:72%; }
+  .grid { max-width:1100px; margin:0 auto; display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(min(100%,500px),1fr)); }
+  .card { border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#1A1A1D; }
+  .card h2 { font-size:16px; padding:14px 16px 2px; }
+  .card h2 b { display:inline-grid; place-items:center; min-width:26px; height:26px; padding:0 4px; border-radius:13px; background:var(--tx); color:var(--pg); font-size:14px; margin-right:8px; }
+  .card .idea { color:var(--mut); font-size:13px; padding:0 16px 12px 50px; }
+  .panels { display:grid; grid-template-columns:1fr 1fr; }
+  .panel { padding:28px 10px; display:flex; align-items:center; justify-content:center; min-height:140px; }
+  .panel.dark { background:#000; color:#fff; --o:#fff; }
+  .panel.light { background:#fff; color:#111; --o:#111; }
+  .lock { display:flex; align-items:center; gap:10px; }
+  .lock > svg { width:48px; height:48px; flex:none; }
+  .appbar { display:flex; align-items:center; gap:8px; padding:12px 16px; background:#000; color:#fff; border-top:1px solid var(--line); --o:#fff; min-height:52px; }
+  .appbar > svg { width:24px; height:24px; flex:none; }
+  .appbar .gear { margin-left:auto; color:#666; font-size:18px; }
+  .wm { font-size:26px; line-height:1; white-space:nowrap; }
+  .appbar .wm { font-size:15px; }
+
+  /* 1 Empilhado */
+  .n1 .wm { display:flex; flex-direction:column; }
+  .n1 .wm b { font-weight:900; font-size:1.15em; letter-spacing:-.02em; }
+  .n1 .wm span { font-weight:500; font-size:.42em; letter-spacing:.62em; margin-top:.35em; }
+  .n1 .appbar .wm { flex-direction:row; align-items:baseline; gap:.4em; }
+  .n1 .appbar .wm span { font-size:.72em; letter-spacing:.3em; margin:0; }
+  /* 2 Leve espaçado */
+  .n2 .wm { font-weight:200; letter-spacing:.26em; font-size:19px; }
+  .n2 .appbar .wm { font-size:14px; }
+  /* 3 Minúsculas arredondadas */
+  .n3 .wm { font-weight:700; letter-spacing:-.03em; font-size:28px; }
+  .n3 .wm span { color:var(--a); }
+  .n3 .appbar .wm { font-size:17px; }
+  /* 4 BGS cheio + SOUND em contorno */
+  .n4 .wm { font-weight:900; letter-spacing:.04em; }
+  .n4 .wm span { color:transparent; -webkit-text-stroke:1.2px var(--o); margin-left:.25em; }
+  /* 5 Técnico monoespaçado */
+  .n5 .wm { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-weight:600; font-size:21px; letter-spacing:.02em; }
+  .n5 .wm i { font-style:normal; color:var(--a); margin:0 .15em; }
+  .n5 .appbar .wm { font-size:14px; }
+  /* 6 Itálico condensado */
+  .n6 .wm { display:inline-block; font-weight:900; font-style:italic; font-size:32px; letter-spacing:-.01em; transform:scaleX(.8); transform-origin:left center; margin-right:-1.2em; }
+  .n6 .wm span { color:var(--a); }
+  .n6 .appbar .wm { font-size:18px; margin-right:-.6em; }
+  /* 7 BGS ciano | Sound fino */
+  .n7 .wm { display:flex; align-items:center; gap:.4em; }
+  .n7 .wm b { color:var(--a); font-weight:800; }
+  .n7 .wm hr { border:0; width:1.5px; height:1em; background:currentColor; opacity:.35; }
+  .n7 .wm span { font-weight:300; }
+  /* 8 Vertical, onda em cima */
+  .n8 .lock { flex-direction:column; gap:12px; }
+  .n8 .lock > svg { width:56px; height:56px; }
+  .n8 .wm { display:flex; flex-direction:column; align-items:center; }
+  .n8 .wm b { display:inline-block; font-weight:900; font-size:1.05em; letter-spacing:.24em; transform:scaleX(1.15); margin-right:-.24em; }
+  .n8 .wm span { color:var(--a); font-weight:600; font-size:.42em; letter-spacing:.7em; margin:.5em -.7em 0 0; }
+  .n8 .appbar .wm { flex-direction:row; align-items:baseline; gap:.6em; }
+  .n8 .appbar .wm b { transform:none; letter-spacing:.14em; margin:0; }
+  .n8 .appbar .wm span { font-size:.62em; letter-spacing:.3em; margin:0; }
+  .n8 .panel { min-height:170px; }
+  /* 9 Ponto ciano separando */
+  .n9 .wm { font-weight:700; letter-spacing:.14em; font-size:24px; }
+  .n9 .wm i { display:inline-block; width:.3em; height:.3em; border-radius:50%; background:var(--a); margin:0 .35em .14em; vertical-align:middle; }
+  .n9 .appbar .wm { font-size:15px; }
+  /* 10 O de Sound vira a onda */
+  .n10 .wm { font-weight:800; letter-spacing:.06em; font-size:27px; display:inline-flex; align-items:center; }
+  .n10 .wm .bgs { margin-right:.35em; }
+  .n10 .wm .s { font-weight:300; }
+  .n10 .wm svg { width:.78em; height:.78em; margin:0 .04em; color:var(--o); }
+  .n10 .appbar .wm { font-size:16px; }
+
+  .foot { max-width:1100px; margin:28px auto 0; color:var(--mut); font-size:14px; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Opção 2, Onda: igual à primeira rodada -->
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <!-- versão mais grossa para caber no lugar da letra O -->
+    <symbol id="onda-letra" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="11"/>
+      <path d="M24 50 Q30 30 36 50 Q42 68 48 50 Q54 36 60 50 Q66 60 72 50 Q75 46 77 50" fill="none" stroke="#3FD0FF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="tile"><svg><use href="#onda"/></svg></div>
+  <div class="txt">
+    <h1>BGS Sound · Onda com 10 formatos de nome</h1>
+    <p>O símbolo e o ícone ficam iguais (opção 2, Onda). Só o jeito de escrever "BGS Sound" muda. Cada cartão mostra o nome no fundo preto, no fundo branco e no topo do app.</p>
+  </div>
+</header>
+
+<main class="grid" id="grid"></main>
+
+<p class="foot">Pode responder com o número, misturar (ex.: "o 4 com o ponto ciano do 9"), ou pedir ajustes num deles (mais fino, mais grosso, ciano em outra parte).</p>
+
+<template id="tpl">
+  <article class="card">
+    <h2><b></b><span class="nm"></span></h2>
+    <p class="idea"></p>
+    <div class="panels">
+      <div class="panel dark"><div class="lock"><svg><use href="#onda"/></svg><span class="wm"></span></div></div>
+      <div class="panel light"><div class="lock"><svg><use href="#onda"/></svg><span class="wm"></span></div></div>
+    </div>
+    <div class="appbar"><svg><use href="#onda"/></svg><span class="wm"></span><span class="gear">⚙</span></div>
+  </article>
+</template>
+
+<noscript><p class="foot">Esta página precisa de JavaScript ligado para montar os cartões.</p></noscript>
+<script>
+  const ondaO = '<svg aria-hidden="true"><use href="#onda-letra"/></svg>';
+  const nomes = [
+    [1, "Empilhado", "BGS grande e pesado em cima, SOUND pequeno e bem espaçado embaixo.", "<b>BGS</b><span>SOUND</span>"],
+    [2, "Leve espaçado", "Tudo em maiúsculas, traço fino e letras afastadas. Silencioso e premium.", "BGS SOUND"],
+    [3, "Minúsculas", "Tudo em minúsculas, compacto e grosso, com o sound em ciano.", "bgs <span>sound</span>"],
+    [4, "Cheio e contorno", "BGS preenchido e SOUND só no contorno, como letreiro de equipamento.", "BGS<span>SOUND</span>"],
+    [5, "Técnico", "Letra de código, com uma barra ciano entre as palavras.", "BGS<i>/</i>SOUND"],
+    [6, "Itálico condensado", "Estreito, pesado e inclinado para a frente: velocidade. SOUND em ciano.", "BGS <span>SOUND</span>"],
+    [7, "Dividido", "BGS em ciano, um traço fino separando, Sound fino em branco.", "<b>BGS</b><hr><span>Sound</span>"],
+    [8, "Vertical", "Onda em cima, BGS largo no meio, SOUND ciano bem espaçado embaixo. No topo do app vira uma linha.", "<b>BGS</b><span>SOUND</span>"],
+    [9, "Ponto ciano", "Maiúsculas firmes com um ponto ciano entre as palavras, na cor da onda.", "BGS<i></i>SOUND"],
+    [10, "Onda no O", "O O de SOUND vira o círculo com a onda. O símbolo aparece dentro do nome.", `<span class="bgs">BGS</span><span class="s">S</span>${ondaO}<span class="s">UND</span>`],
+  ];
+  const tpl = document.getElementById("tpl"), grid = document.getElementById("grid");
+  for (const [n, nome, ideia, wm] of nomes) {
+    const c = tpl.content.firstElementChild.cloneNode(true);
+    c.classList.add("n" + n);
+    c.querySelector("h2 b").textContent = n;
+    c.querySelector(".nm").textContent = nome;
+    c.querySelector(".idea").textContent = ideia;
+    c.querySelectorAll(".wm").forEach(w => w.innerHTML = wm);
+    grid.appendChild(c);
+  }
+</script>
+</body>
+</html>
