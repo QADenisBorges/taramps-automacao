@@ -25,9 +25,10 @@ public enum PontoStatus
 /// que troca de destino sem perder o estado de cada um; a pílula de status ("Conectado · R003",
 /// "Conectando · senha", "Desconectado", "Só leitura · firmware R004"); a engrenagem; e as telas que
 /// sobem sozinhas por cima de tudo: a escolha do Setup quando o <c>GerenteSetups</c> entra em dúvida ou
-/// troca, e a folha "Aplicado pela metade" ao reconectar com a marca. Acima delas (história 11), as camadas
-/// que sobem sozinhas: a IA ativa quando a IA começa uma tarefa, a folha de confirmação de um pedido de risco
-/// da IA e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador.
+/// troca, e a folha "Aplicado pela metade" ao reconectar com a marca. Acima delas, as camadas que sobem
+/// sozinhas: a folha de risco do app (um pedido de risco pela porta, ou o Continuar), a tela toda
+/// "REAPLICANDO" da conferência ao conectar e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador.
+/// Nenhuma tela mostra a IA (decisão do Denis, 30/10/2026).
 /// </summary>
 public sealed class CascaViewModel : TelaBase, IDisposable
 {
@@ -39,10 +40,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private (bool Setup, bool Metade)? _porCima;
     private readonly SalvarViewModel _salvar;
     private readonly FabricaControles _fabrica;
-    private readonly IaAtivaViewModel? _iaAtiva;
-    private readonly ConfirmacaoIaViewModel? _confirmacao;
+    private readonly FolhaRiscoViewModel? _folhaRisco;
     private readonly GeradorViewModel? _gerador;
-    private (bool Ia, bool Confirmacao, bool Alarme)? _camadas;
+    private (bool FolhaRisco, bool Reaplicando, bool Alarme)? _camadas;
 
     public CascaViewModel(
         Sessao sessao,
@@ -58,15 +58,15 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         IDespachante despachante,
         TimeProvider relogio,
         PlayerViewModel? player = null,
-        IaAtivaViewModel? iaAtiva = null,
-        ConfirmacaoIaViewModel? confirmacaoIa = null,
-        GeradorViewModel? gerador = null)
+        FolhaRiscoViewModel? folhaRisco = null,
+        GeradorViewModel? gerador = null,
+        ReaplicandoViewModel? reaplicando = null)
         : base(despachante, relogio)
     {
         Player = player;
-        _iaAtiva = iaAtiva;
-        _confirmacao = confirmacaoIa;
+        _folhaRisco = folhaRisco;
         _gerador = gerador;
+        Reaplicando = reaplicando;
         Inicio = inicio;
         Mesa = mesa;
         Audio = audio;
@@ -86,10 +86,10 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         _sessao.Mudou += AoMudarSessao;
         _setup.PropertyChanged += AoMudarTelas;
         _memorias.PropertyChanged += AoMudarTelas;
-        if (_iaAtiva is not null)
-            _iaAtiva.PropertyChanged += AoMudarCamadas;
-        if (_confirmacao is not null)
-            _confirmacao.PropertyChanged += AoMudarCamadas;
+        if (_folhaRisco is not null)
+            _folhaRisco.PropertyChanged += AoMudarCamadas;
+        if (Reaplicando is not null)
+            Reaplicando.PropertyChanged += AoMudarCamadas;
         if (_gerador is not null)
             _gerador.PropertyChanged += AoMudarCamadas;
     }
@@ -103,6 +103,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
 
     /// <summary>A aba Player (a playlist da memória do celular em uso), ou null.</summary>
     public PlayerViewModel? Player { get; }
+
+    /// <summary>A tela toda "REAPLICANDO" (os textos dela), ou null.</summary>
+    public ReaplicandoViewModel? Reaplicando { get; }
 
     /// <summary>Os botões de memória e a lista "…" (a folha sobe por cima da casca).</summary>
     public BotoesMemoriaViewModel Memorias => Inicio.Memorias;
@@ -202,35 +205,35 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         Avisar(nameof(PelaMetadePorCima));
     }
 
-    /// <summary>A IA ativa está por cima (abre sozinha quando a IA começa e fecha ao parar).</summary>
-    public bool IaAtivaPorCima => _camadas?.Ia == true;
+    /// <summary>A folha de risco do app está por cima (um pedido de risco pela porta, ou o Continuar).</summary>
+    public bool FolhaRiscoPorCima => _camadas?.FolhaRisco == true;
 
-    /// <summary>A folha de confirmação de um pedido da IA está por cima.</summary>
-    public bool ConfirmacaoIaPorCima => _camadas?.Confirmacao == true;
+    /// <summary>A tela toda "REAPLICANDO" está por cima (a conferência reaplica a memória ativa).</summary>
+    public bool ReaplicandoPorCima => _camadas?.Reaplicando == true;
 
     /// <summary>A faixa "DESLIGUE O MÓDULO AGORA" está por cima de tudo.</summary>
     public bool AlarmePorCima => _camadas?.Alarme == true;
 
     /// <summary>
-    /// Confere as camadas da história 11 e pede à navegação quando mudam (ou sempre, com
-    /// <paramref name="forcar"/>). A ordem, de baixo para cima: a IA ativa, a confirmação da IA e o alarme
-    /// do gerador; as duas últimas ficam acima de tudo, até da escolha do Setup.
+    /// Confere as camadas e pede à navegação quando mudam (ou sempre, com <paramref name="forcar"/>). A
+    /// ordem, de baixo para cima: a folha de risco, o "REAPLICANDO" e o alarme do gerador; todas ficam
+    /// acima da escolha do Setup e da folha pela metade.
     /// </summary>
     public void SincronizarCamadas(bool forcar = false)
     {
-        var agora = (_iaAtiva?.Ativa == true, _confirmacao?.FolhaAberta == true, _gerador?.Alarme == true);
+        var agora = (_folhaRisco?.FolhaAberta == true, Reaplicando?.Ativa == true, _gerador?.Alarme == true);
         if (_camadas == agora && !forcar)
             return;
         _camadas = agora;
         _nav.MostrarCamadas(agora.Item1, agora.Item2, agora.Item3);
-        Avisar(nameof(IaAtivaPorCima));
-        Avisar(nameof(ConfirmacaoIaPorCima));
+        Avisar(nameof(FolhaRiscoPorCima));
+        Avisar(nameof(ReaplicandoPorCima));
         Avisar(nameof(AlarmePorCima));
     }
 
     private void AoMudarCamadas(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(IaAtivaViewModel.Ativa) or nameof(ConfirmacaoIaViewModel.FolhaAberta) or nameof(GeradorViewModel.Alarme))
+        if (e.PropertyName is nameof(FolhaRiscoViewModel.FolhaAberta) or nameof(ReaplicandoViewModel.Ativa) or nameof(GeradorViewModel.Alarme))
             SincronizarCamadas();
     }
 
@@ -254,10 +257,10 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudarSessao;
         _setup.PropertyChanged -= AoMudarTelas;
         _memorias.PropertyChanged -= AoMudarTelas;
-        if (_iaAtiva is not null)
-            _iaAtiva.PropertyChanged -= AoMudarCamadas;
-        if (_confirmacao is not null)
-            _confirmacao.PropertyChanged -= AoMudarCamadas;
+        if (_folhaRisco is not null)
+            _folhaRisco.PropertyChanged -= AoMudarCamadas;
+        if (Reaplicando is not null)
+            Reaplicando.PropertyChanged -= AoMudarCamadas;
         if (_gerador is not null)
             _gerador.PropertyChanged -= AoMudarCamadas;
     }

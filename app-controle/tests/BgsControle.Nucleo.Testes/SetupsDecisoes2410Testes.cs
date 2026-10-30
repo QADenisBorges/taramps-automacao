@@ -263,7 +263,7 @@ public sealed partial class SetupsTestes
         // Cai; o caráter muda por fora; a reconexão confere "som diferente" (nenhuma memória do celular em uso).
         await Cair(player);
         _simulador.Definir("081", 0, "-3.0");
-        await Conectar();
+        await ConectarSemReaplicar(); // com a chave desligada, sem o reaplicar sozinho da 9c
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
 
         Assert.Equal(Filme, player.Memoria);

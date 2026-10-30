@@ -67,11 +67,11 @@ public sealed class LinkViewModelTestes : IDisposable
     public async Task Ligado_com_as_saidas_diferentes_depois_da_leitura_so_avisa()
     {
         _b.Simulador.Definir("081", 3, "-7.0"); // o CH4 diferente do CH3, mudado fora do app
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar(); // sem o reaplicar sozinho da 9c, que desfaria a diferença
         await Apoio.Esperar(() => Setups.Conferido && _b.Link.Ligado(ParCanais.Saidas34));
         // A próxima leitura completa, com o link ligado, acha o par diferente.
         await _b.Sessao.DesconectarAsync();
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await Apoio.Esperar(() => _b.Link.Diferentes(ParCanais.Saidas34));
         await _b.Tela.EsvaziarAsync();
 

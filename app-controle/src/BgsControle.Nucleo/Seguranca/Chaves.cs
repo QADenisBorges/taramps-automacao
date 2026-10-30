@@ -7,7 +7,7 @@ namespace BgsControle.Nucleo.Seguranca;
 public enum Chave
 {
     ResetFabrica,
-    IaPelaRede,
+    ControlePelaRede,
     ResetAudio,
     TrocaSenha,
     Gerador,
@@ -36,12 +36,13 @@ public enum ConfirmacaoIa
     Sempre,
     Nunca,
 
-    /// <summary>A chave da própria IA: não há pedido da IA para confirmar.</summary>
+    /// <summary>A chave da própria porta ("Controle pela rede"): não há pedido da porta para confirmar.</summary>
     NaoSeAplica,
 }
 
 /// <summary>Uma linha da tabela de <c>chaves-de-acesso.md</c>.</summary>
-/// <param name="Id">Nome estável no JSON guardado.</param>
+/// <param name="Id">Nome estável no JSON guardado. O da "Controle pela rede" continua
+/// <c>ia-pela-rede</c>: trocá-lo desligaria em silêncio uma chave ligada no celular.</param>
 /// <param name="Risco">O aviso mostrado ao ligar, sem mudar o texto; null = liga sem aviso.</param>
 public sealed record DefinicaoChave(
     Chave Chave,
@@ -88,8 +89,8 @@ public static class ChavesPadrao
     [
         new(Chave.ResetFabrica, "reset-fabrica", "Reset de fábrica", "*004*", false, ConfirmacaoIa.Sempre,
             "Apaga a senha e as 3 memórias."),
-        new(Chave.IaPelaRede, "ia-pela-rede", "IA pela rede", "—", false, ConfirmacaoIa.NaoSeAplica,
-            "Deixa a IA comandar o som pela rede."),
+        new(Chave.ControlePelaRede, "ia-pela-rede", "Controle pela rede", "—", false, ConfirmacaoIa.NaoSeAplica,
+            "Deixa um computador da casa comandar o som pela rede."),
         new(Chave.ResetAudio, "reset-audio", "Reset de áudio", "*242*", false, ConfirmacaoIa.Sempre,
             "O estado resultante é imprevisível."),
         new(Chave.TrocaSenha, "troca-senha", "Troca de senha", "*001*antiga*nova*", false, ConfirmacaoIa.Sempre,

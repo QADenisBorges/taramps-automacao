@@ -18,23 +18,23 @@ public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, 
 /// A porta de comandos da IA (CAP-12, <c>porta-de-comandos.md</c>): as cinco travas num lugar só.
 /// <list type="number">
 /// <item><b>Desligada por padrão:</b> escuta (todas as interfaces, na porta do construtor, 8787 no
-/// app) só com a chave "IA pela rede" ligada. Ao desligar a chave, a porta fecha, a IA para e o
-/// cliente é apagado.</item>
+/// app) só com a chave "Controle pela rede" ligada (grupo APARELHO das Configurações). Ao desligar
+/// a chave, a porta fecha, a IA para e o cliente é apagado (revogar).</item>
 /// <item><b>Pareamento único</b> (<see cref="Porta.Pareamento"/>): todo caminho, menos
 /// <c>/parear</c> e <c>/ajuda</c>, exige a chave do cliente (401).</item>
 /// <item><b>Só a rede local</b> (<see cref="IRedeLocal"/>): fora dela, 403, sem ler o corpo e
 /// sem histórico (só o <see cref="LogBle"/>).</item>
-/// <item><b>Tudo visível:</b> cada comando roda em <c>Origem.Como(OrigemComando.Ia)</c> e passa
-/// pela <see cref="Sessao"/>, que registra no histórico. As recusas da própria porta a um cliente
-/// pareado (folha recusada ou sem resposta, firmware, pedido esperando) também entram. O PARAR IA
-/// revoga o cliente na hora.</item>
+/// <item><b>Tudo registrado:</b> cada comando roda em <c>Origem.Como(OrigemComando.Ia)</c> e passa
+/// pela <see cref="Sessao"/>, que registra no histórico (lido pela porta, fora do app). As recusas
+/// da própria porta a um cliente pareado (folha recusada ou sem resposta, firmware, pedido
+/// esperando) também entram. Desligar a chave revoga o cliente na hora.</item>
 /// <item><b>Risco pede confirmação</b> (<see cref="PedidosConfirmacao"/>): as operações com
-/// <see cref="ConfirmacaoIa.Sempre"/>. Antes da folha, o <see cref="Sessao.Conferir"/> do primeiro
-/// quadro recusa na hora.</item>
+/// <see cref="ConfirmacaoIa.Sempre"/>, na folha de risco do app, que não menciona a IA. Antes da
+/// folha, o <see cref="Sessao.Conferir"/> do primeiro quadro recusa na hora.</item>
 /// </list>
-/// <b>Sequência da IA pede o toque</b> (<c>chaves-de-acesso.md</c>, decisão D4 do Denis de 29/10/2026): a
+/// <b>Sequência pela porta pede o toque</b> (<c>chaves-de-acesso.md</c>, decisão D4 do Denis de 29/10/2026): a
 /// cada <see cref="AjustesSemToque"/> <c>/ajuste</c> da IA sem um toque do usuário no meio (uma escrita
-/// da tela, uma confirmação na tela ou o PARAR IA), o próximo espera "Continuar" na folha; confirmar
+/// da tela, uma confirmação na folha ou o revogar), o próximo espera "Continuar" na folha; confirmar
 /// zera a conta e executa; recusar ou deixar vencer o prazo recusa só aquele pedido. A conta zera
 /// também ao desconectar e ao revogar o cliente.
 /// Com firmware diferente de R003, só os GET respondem. Com o Setup em dúvida (ou trocando, ou
@@ -49,21 +49,21 @@ public sealed class PortaComandos : IDisposable
     public const int MaximoHistorico = 200;
 
     public const string MsgForaDaRede = "Só a rede local da casa.";
-    public const string MsgNaoPareado = "Cliente não pareado. Peça o código na tela IA pela rede do celular.";
+    public const string MsgNaoPareado = "Cliente não pareado. Peça o código no celular: Configurações, chave Controle pela rede.";
     public const string MsgFirmware = "Firmware diferente do R003: a porta só responde às leituras.";
     public const string MsgPerdeuConexao = "A IA perdeu a conexão.";
     public const string MsgCaminho = "Caminho desconhecido. Veja GET /ajuda.";
-    public const string MsgChaveDesligada = "A chave IA pela rede está desligada.";
+    public const string MsgChaveDesligada = "A chave Controle pela rede está desligada.";
     public const string MsgErroInesperado = "Erro inesperado no app.";
 
     /// <summary>Quantos <c>/ajuste</c> seguidos da IA passam sem o toque; o próximo espera Continuar (o 3 é provisório, do Denis).</summary>
     public const int AjustesSemToque = 3;
 
-    public const string TituloContinuar = "A IA quer seguir mexendo";
-    public const string BotaoContinuar = "Continuar";
+    /// <summary>O título da folha do Continuar (a folha de risco do app, sem mencionar a IA).</summary>
+    public const string TituloContinuar = "Seguir mexendo no som?";
 
     /// <summary>O risco da folha do Continuar.</summary>
-    public static string RiscoContinuar => $"A IA já fez {AjustesSemToque} ajustes seguidos sem um toque seu. Ajuste por ajuste, ela pode trocar o som inteiro.";
+    public static string RiscoContinuar => $"Já foram {AjustesSemToque} ajustes seguidos pela rede sem um toque seu. Ajuste por ajuste, o som inteiro pode mudar.";
 
     public static string MsgNaoAbriu(int porta) => $"Não consegui abrir a porta {porta}.";
 
@@ -203,7 +203,10 @@ public sealed class PortaComandos : IDisposable
 
     // ------------------------------------------------------------------ abrir e fechar (trava 1)
 
-    /// <summary>Abre ou fecha conforme a chave "IA pela rede". Ao desligar: fecha, PARAR IA e revoga.</summary>
+    /// <summary>
+    /// Abre ou fecha conforme a chave "Controle pela rede". Desligar a chave (só o usuário, na tela) é o que
+    /// revoga: a porta fecha, o pedido esperando é recusado, a IA para (a parada interna) e o cliente sai.
+    /// </summary>
     public async Task AtualizarAsync()
     {
         await _chaves.Carregada;
@@ -213,7 +216,7 @@ public sealed class PortaComandos : IDisposable
         {
             if (_descartada)
                 return;
-            if (_chaves.Ligada(Chave.IaPelaRede))
+            if (_chaves.Ligada(Chave.ControlePelaRede))
             {
                 lock (_trava)
                     _ligadaVista = true;
@@ -260,7 +263,10 @@ public sealed class PortaComandos : IDisposable
         }
     }
 
-    /// <summary>O Revogar da tela IA pela rede: PARAR IA e o cliente apagado (nasce um código novo).</summary>
+    /// <summary>
+    /// Revogar: a parada interna da IA e o cliente apagado (nasce um código novo). Não há botão na tela: o
+    /// usuário revoga desligando a chave "Controle pela rede" (<see cref="AtualizarAsync"/>).
+    /// </summary>
     public Task RevogarAsync()
     {
         Confirmacoes.Cancelar();
@@ -282,12 +288,12 @@ public sealed class PortaComandos : IDisposable
 
     private void AoMudarChave(Chave chave)
     {
-        if (chave != Chave.IaPelaRede)
+        if (chave != Chave.ControlePelaRede)
             return;
         _ = ServidorHttp.SemFluxo(AtualizarSeguroAsync);
     }
 
-    // ------------------------------------------------------------------ PARAR IA, eventos e o cliente sumido
+    // ------------------------------------------------------------------ parada interna, eventos e o cliente sumido
 
     private void AoMudarUso()
     {
@@ -300,7 +306,7 @@ public sealed class PortaComandos : IDisposable
         }
         if (novaParada)
         {
-            // PARAR IA (na tela IA ativa, ou daqui): o pedido esperando é recusado e o cliente sai.
+            // A parada interna (o efeito do revogar): o pedido esperando é recusado e o cliente sai.
             ZerarSequencia();
             Registrar("parada", null);
             Confirmacoes.Cancelar();
@@ -474,7 +480,7 @@ public sealed class PortaComandos : IDisposable
             AoChegar?.Invoke(pedido);
             if (Triagem(pedido.Remoto) is { } fora)
                 return fora;
-            if (!_chaves.Ligada(Chave.IaPelaRede))
+            if (!_chaves.Ligada(Chave.ControlePelaRede))
                 return Recusa(409, MsgChaveDesligada);
             await Pareamento.Carregado;
 
@@ -576,7 +582,7 @@ public sealed class PortaComandos : IDisposable
                 // A sequência da IA pede o toque: o Continuar, antes do ajuste (chaves-de-acesso.md).
                 if (op.Quadro is { } quadroSequencia && _sessao.Conferir(quadroSequencia) is { } motivoSequencia)
                     return RecusaDaPorta(op, motivoSequencia);
-                var continuar = await Confirmacoes.PedirAsync(new PedidoConfirmacao(TituloContinuar, RiscoContinuar, BotaoContinuar));
+                var continuar = await Confirmacoes.PedirAsync(new PedidoConfirmacao(TituloContinuar, RiscoContinuar));
                 if (Recusada(continuar) is { } recusaSequencia)
                     return RecusaDaPorta(op, recusaSequencia);
                 ZerarSequencia();
@@ -652,8 +658,9 @@ public sealed class PortaComandos : IDisposable
 
     private static bool Confirma(Chave chave) => ChavesPadrao.De(chave).ConfirmacaoIa == ConfirmacaoIa.Sempre;
 
-    private static PedidoConfirmacao? Folha(Chave chave, string titulo, string botao) =>
-        Confirma(chave) ? new PedidoConfirmacao(titulo, ChavesPadrao.De(chave).Risco, botao) : null;
+    /// <summary>A folha de risco do app: o título diz o que muda, sem mencionar a IA.</summary>
+    private static PedidoConfirmacao? Folha(Chave chave, string titulo) =>
+        Confirma(chave) ? new PedidoConfirmacao(titulo, ChavesPadrao.De(chave).Risco) : null;
 
     private static string Codificar(Func<string> codificar)
     {
@@ -732,7 +739,7 @@ public sealed class PortaComandos : IDisposable
                       ?? doSetup.FirstOrDefault(m => string.Equals(m.Nome, pedido, StringComparison.OrdinalIgnoreCase))
                       ?? throw new PedidoInvalidoException($"Não há memória do celular \"{pedido}\" no {setup.Nome} (veja GET /estado).");
         return new Operacao(ComandoNaPorta.AplicarMemoria(memoria.Nome), quadro,
-            Folha(Chave.AplicarMemoriaCelular, $"A IA pede para aplicar a memória {memoria.Nome}", $"Aplicar a {memoria.Nome}"),
+            Folha(Chave.AplicarMemoriaCelular, $"Aplicar a memória {memoria.Nome}?"),
             async () =>
             {
                 var r = await _setups.AplicarAsync(memoria.Id);
@@ -751,7 +758,7 @@ public sealed class PortaComandos : IDisposable
         Codificar(() => Catalogo.ParametroDe(Catalogo.CodigoGeradorFrequencia)!.CodificarEscrita(null, hz));
         Codificar(() => Catalogo.ParametroDe(Catalogo.CodigoGeradorGanho)!.CodificarEscrita(null, db));
         return new Operacao(ComandoNaPorta.Ler(Catalogo.LigarGerador), primeiro,
-            Folha(Chave.Gerador, $"A IA pede para tocar um tom de {hz.ToString(Fio)} Hz a {Db(db)} dB", "Tocar o tom"),
+            Folha(Chave.Gerador, $"Tocar um tom de {hz.ToString(Fio)} Hz a {Db(db)} dB?"),
             async () => Gerador(await _gerador.TocarTomAsync(hz, db)));
     }
 
@@ -767,7 +774,7 @@ public sealed class PortaComandos : IDisposable
         Codificar(() => Catalogo.ParametroDe(Catalogo.CodigoSweepFim)!.CodificarEscrita(null, fim));
         Codificar(() => Catalogo.ParametroDe(Catalogo.CodigoSweepGanho)!.CodificarEscrita(null, db));
         return new Operacao(ComandoNaPorta.Ler(Catalogo.LigarGerador), primeiro,
-            Folha(Chave.Gerador, $"A IA pede para tocar um sweep de {inicio.ToString(Fio)} a {fim.ToString(Fio)} Hz a {Db(db)} dB", "Tocar o sweep"),
+            Folha(Chave.Gerador, $"Tocar um sweep de {inicio.ToString(Fio)} a {fim.ToString(Fio)} Hz a {Db(db)} dB?"),
             async () => Gerador(await _gerador.TocarSweepAsync(inicio, fim, db, velocidade)));
     }
 
@@ -786,9 +793,8 @@ public sealed class PortaComandos : IDisposable
     {
         var ligar = corpo.Booleano("ligado");
         var quadro = Catalogo.RemoteOut(ligar);
-        var acao = ligar ? "ligar o remote out" : "desligar o remote out";
         return new Operacao(ComandoNaPorta.Ler(quadro), quadro,
-            Folha(Chave.RemoteOut, $"A IA pede para {acao}", ligar ? "Ligar o remote out" : "Desligar o remote out"),
+            Folha(Chave.RemoteOut, ligar ? "Ligar o remote out?" : "Desligar o remote out?"),
             async () => Aparelho(await _aparelho.DefinirRemoteOutAsync(ligar)));
     }
 
@@ -797,8 +803,7 @@ public sealed class PortaComandos : IDisposable
         var ligar = corpo.Booleano("ligado");
         var quadro = Catalogo.BluetoothAudio(ligar);
         return new Operacao(ComandoNaPorta.Ler(quadro), quadro,
-            Folha(Chave.BluetoothAudio, $"A IA pede para {(ligar ? "ligar" : "desligar")} o Bluetooth de áudio",
-                ligar ? "Ligar o Bluetooth de áudio" : "Desligar o Bluetooth de áudio"),
+            Folha(Chave.BluetoothAudio, ligar ? "Ligar o Bluetooth de áudio?" : "Desligar o Bluetooth de áudio?"),
             async () => Aparelho(await _aparelho.DefinirBluetoothAudioAsync(ligar)));
     }
 
@@ -808,18 +813,18 @@ public sealed class PortaComandos : IDisposable
                    ?? throw new PedidoInvalidoException(ComandosAparelho.MsgNomeInvalido);
         var quadro = Catalogo.NomearProduto(nome);
         return new Operacao(ComandoNaPorta.Ler(quadro), quadro,
-            Folha(Chave.NomeProduto, $"A IA pede para dar ao aparelho o nome {nome}", $"Chamar de {nome}"),
+            Folha(Chave.NomeProduto, $"Dar ao aparelho o nome {nome}?"),
             async () => Aparelho(await _aparelho.NomearProdutoAsync(nome)));
     }
 
     private Operacao ResetAudio(CorpoPedido _) =>
         new(ComandoNaPorta.Ler(Catalogo.ResetAudio), Catalogo.ResetAudio,
-            Folha(Chave.ResetAudio, "A IA pede para fazer o reset de áudio", "Fazer o reset de áudio"),
+            Folha(Chave.ResetAudio, "Fazer o reset de áudio?"),
             async () => Aparelho(await _aparelho.ResetAudioAsync()));
 
     private Operacao ResetFabrica(CorpoPedido _) =>
         new(ComandoNaPorta.Ler(Catalogo.ResetFabrica), Catalogo.ResetFabrica,
-            Folha(Chave.ResetFabrica, "A IA pede para fazer o reset de fábrica", "Fazer o reset de fábrica"),
+            Folha(Chave.ResetFabrica, "Fazer o reset de fábrica?"),
             async () => Aparelho(await _aparelho.ResetFabricaAsync()));
 
     private Operacao IniciarTarefa(CorpoPedido corpo)
@@ -901,7 +906,6 @@ public sealed class PortaComandos : IDisposable
             _ => "inativa",
         });
         w.WriteString("tarefa", _uso.Tarefa);
-        w.WriteString("modoToque", _uso.Modo == ModoToque.PausarIa ? "pausar-ia" : "travar-ate-parar-ia");
         w.WriteBoolean("parada", _uso.Parada);
         w.WriteEndObject();
 
@@ -1089,32 +1093,33 @@ public sealed class PortaComandos : IDisposable
         Porta de comandos da IA (BGS Controle). JSON UTF-8; as respostas trazem {"ok":true,...} ou {"ok":false,"motivo":"..."}.
         Só a rede local da casa. Todo caminho, menos /parear e /ajuda, exige o cabeçalho Authorization: Bearer <chave>.
 
-        POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos está na tela IA pela rede do celular. Um cliente por vez.
+        POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos aparece no celular, embaixo da chave Controle pela rede (Configurações, grupo APARELHO). Um cliente por vez.
         GET  /ajuda: este texto.
         GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada e cada comando da tela enviado). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
-        POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na tela. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
-        POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na tela. O gerador desliga sozinho em 30 s.
-        POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque.
+        POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
+        POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.
+        POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque do usuário na folha de risco.
         POST /gerador/parar: desliga o gerador. Não pede o toque nem a chave do gerador, e a pausa da IA não o trava; com firmware diferente do R003, recusa como todo POST.
-        POST /aparelho/remote-out {"ligado":true}: pede o toque do usuário na tela.
+        POST /aparelho/remote-out {"ligado":true}: pede o toque do usuário na folha de risco.
         POST /aparelho/bluetooth {"ligado":true}
         POST /aparelho/nome {"nome":"SALA"}
-        POST /aparelho/reset-audio: pede o toque do usuário na tela.
-        POST /aparelho/reset-fabrica: pede o toque do usuário na tela.
-        POST /tarefa {"frase":"IA ajustando o EQ da FILME"}: a faixa da tela mostra a frase; a IA fica ativa.
-        DELETE /tarefa: a IA terminou; os controles da tela destravam.
+        POST /aparelho/reset-audio: pede o toque do usuário na folha de risco.
+        POST /aparelho/reset-fabrica: pede o toque do usuário na folha de risco.
+        POST /tarefa {"frase":"ajustando o EQ da FILME"}: a IA fica ativa com esta tarefa (a frase volta no /estado; a tela não a mostra).
+        DELETE /tarefa: a IA terminou.
 
         A IA não salva nem renomeia memórias: a porta não tem esse comando. As 3 memórias do aparelho não aparecem: a porta não as carrega nem lê os nomes (isso fica no app da Taramps).
         Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
-        A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela, uma confirmação na tela ou o PARAR IA), o próximo espera o Continuar na tela; recusado ou sem resposta, só ele é recusado (409).
+        O toque do usuário na tela nunca é recusado: ele pausa a IA, que retoma depois de 10 s sem toques. Um ajuste que o usuário acabou de mexer é recusado pela porta por 10 s ("o usuário está mexendo nisso.").
+        A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
         Com firmware diferente do R003, só os GET respondem.
-        Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e do PARAR IA.
+        Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).
         Códigos: 400 corpo ou campo inválido; 401 sem chave ou chave errada; 403 fora da rede local; 404 caminho desconhecido; 409 recusa do app (com o motivo); 413 corpo acima de 64 KB; 431 cabeçalho grande demais; 500 erro inesperado no app.
         """;
 

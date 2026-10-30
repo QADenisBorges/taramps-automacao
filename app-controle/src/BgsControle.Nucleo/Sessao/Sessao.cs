@@ -365,8 +365,8 @@ public sealed class Sessao
     /// <c>#004#</c>, qualquer texto desconhecido) é recusado antes do BLE, com o motivo no log.
     /// <para>
     /// Depois das chaves vem o uso compartilhado (<see cref="UsoCompartilhado"/>), pela origem
-    /// ambiente do comando (<see cref="Origem"/>): enquanto a IA trabalha, a tela pode ficar
-    /// travada e a IA pode ser recusada. O <c>*202*0*</c> fica isento. Cada escrita que chega aqui
+    /// ambiente do comando (<see cref="Origem"/>): enquanto a IA trabalha, o toque da tela a pausa
+    /// e a IA pode ser recusada. O <c>*202*0*</c> fica isento. Cada escrita que chega aqui
     /// (enviada ou recusada, com o motivo) entra no <see cref="Historico"/>; as leituras e o quadro
     /// da senha nunca entram.
     /// </para>

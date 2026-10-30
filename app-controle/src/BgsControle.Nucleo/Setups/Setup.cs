@@ -87,7 +87,11 @@ public enum EstadoConferencia
     /// <summary>A regulagem bate com a memória ativa (ou o Setup foi escolhido ou criado).</summary>
     Confere,
 
-    /// <summary>Só o ganho, o limitador, o EQ ou o MASTER diferem da memória ativa: sem mutar, com Reaplicar.</summary>
+    /// <summary>
+    /// Só o ganho, o limitador, o EQ ou o MASTER diferem da memória ativa, e o app não reaplicou
+    /// sozinho (chave "Aplicar memória do celular" desligada, "aplicado pela metade" pendente, ou a
+    /// reaplicação falhou): sem mutar, com Reaplicar. Também enquanto a conferência reaplica.
+    /// </summary>
     SomDiferente,
 
     /// <summary>A rota, o atraso, a fase ou um corte diferem (ou o Setup não tem memória ativa): os 4 canais mutados até a escolha; a IA bloqueada.</summary>
@@ -193,3 +197,9 @@ public sealed record FolhaSalvar(
     /// <summary>As 15 bandas vão, sem pergunta, para um preset novo: pede o nome dele.</summary>
     public bool PedeNomePreset { get; init; }
 }
+
+/// <summary>
+/// A reaplicação sozinha da conferência ao conectar (regra 5, diferença leve): o nome da memória
+/// ativa e o do preset que ela lembra (null sem preset), para a tela toda "REAPLICANDO".
+/// </summary>
+public sealed record Reaplicacao(string Memoria, string? Preset);

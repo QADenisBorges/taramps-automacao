@@ -1,4 +1,8 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using BgsControle.Nucleo.Porta;
+using BgsControle.Nucleo.Seguranca;
 
 namespace BgsControle.Telas.Testes;
 
@@ -123,6 +127,93 @@ public sealed class ArquiteturaTestes
             foreach (var texto in new[] { "Carregar", "LinhasAparelho", "DoAparelho", "CartaoMemoriaAparelho", "LembreteAparelho" })
                 Assert.DoesNotContain(atributos, a => a.Contains(texto, StringComparison.Ordinal));
         }
+    }
+
+    /// <summary>A palavra "IA", em maiúsculas e inteira (decisão do Denis, 30/10/2026: nenhuma tela mostra a IA).</summary>
+    private static readonly Regex PalavraIa = new(@"\bIA\b", RegexOptions.CultureInvariant);
+
+    private static void SemIa(string? texto, string onde)
+    {
+        if (texto is not null)
+            Assert.False(PalavraIa.IsMatch(texto), $"{onde} mostra a IA: \"{texto}\"");
+    }
+
+    /// <summary>
+    /// História 9c: nenhum texto de tela contém a palavra "IA". Os valores de atributo de todo XAML do App
+    /// (os comentários podem citar a IA), as constantes e propriedades estáticas <c>string</c> públicas de
+    /// <c>BgsControle.Telas</c>, as propriedades <c>string</c> dos ViewModels montados como no app, o nome e
+    /// o risco de cada chave, os títulos das folhas montadas pela porta e o Continuar.
+    /// </summary>
+    [Fact]
+    public void Nenhum_texto_de_tela_contem_a_palavra_IA()
+    {
+        // Os atributos de todo XAML do App.
+        var xamls = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj"))
+            .ToArray();
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "ConfiguracoesPage.xaml");
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "FolhaRiscoPage.xaml");
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "ReaplicandoPage.xaml");
+        Assert.DoesNotContain(xamls, f => Path.GetFileName(f) is "IaAtivaPage.xaml" or "IaPelaRedePage.xaml" or "HistoricoPage.xaml"
+            or "ConfirmacaoIaPage.xaml");
+        foreach (var f in xamls)
+        {
+            foreach (var a in XDocument.Load(f).Descendants().SelectMany(e => e.Attributes()))
+                SemIa(a.Value, $"{Path.GetFileName(f)} ({a.Name.LocalName})");
+        }
+
+        // As constantes e as propriedades estáticas string públicas das telas.
+        var tipos = typeof(ConexaoViewModel).Assembly.GetExportedTypes();
+        Assert.DoesNotContain(tipos, t => t.Name is "IaAtivaViewModel" or "IaPelaRedeViewModel" or "HistoricoViewModel" or "ConfirmacaoIaViewModel");
+        foreach (var t in tipos)
+        {
+            foreach (var c in t.GetFields(BindingFlags.Public | BindingFlags.Static).Where(c => c.FieldType == typeof(string)))
+                SemIa(c.GetValue(null) as string, $"{t.Name}.{c.Name}");
+            foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Static)
+                         .Where(p => p.PropertyType == typeof(string) && p.GetIndexParameters().Length == 0 && !t.ContainsGenericParameters))
+                SemIa(p.GetValue(null) as string, $"{t.Name}.{p.Name}");
+        }
+
+        // As propriedades string dos ViewModels montados como no app (os singletons da história 11).
+        var b = new Bancada(usoCompartilhado: true, setups: true);
+        using var telas = new Telas11(b);
+        var pareamento = new Pareamento(new RepositorioTextoArquivos(b.ArquivosUso, RepositorioTextoArquivos.ArquivoPortaIa), b.Relogio, b.Log);
+        using var porta = new PortaComandos(b.Sessao, b.Chaves, b.Uso!, b.Historico!, pareamento, telas.Pedidos, new RedeFalsa(), b.Estado,
+            b.Escritor, b.Setups!, b.Gerador, b.Comandos, b.Monitor, b.Log, b.Relogio, 0);
+        using var controle = new ControlePelaRedeViewModel(porta, telas.Chaves, b.Tela, b.Relogio);
+        var configuracoes = new ConfiguracoesViewModel(telas.Nav, b.Tela, b.Relogio, telas.Aparelho, controle);
+        var modelos = typeof(Telas11).GetProperties().Select(p => p.GetValue(telas)).OfType<TelaBase>()
+            .Concat([controle, configuracoes, controle.Linha])
+            .Concat(telas.Chaves.Itens)
+            .ToArray();
+        Assert.Contains(modelos, m => m is FolhaRiscoViewModel);
+        Assert.Contains(modelos, m => m is ReaplicandoViewModel);
+        foreach (var vm in modelos)
+        {
+            foreach (var p in vm.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                         .Where(p => p.PropertyType == typeof(string) && p.GetIndexParameters().Length == 0))
+                SemIa(p.GetValue(vm) as string, $"{vm.GetType().Name}.{p.Name}");
+        }
+
+        // O nome e o risco de cada chave.
+        foreach (var d in ChavesPadrao.Todas)
+        {
+            SemIa(d.Nome, $"chave {d.Id}");
+            SemIa(d.Risco, $"risco da chave {d.Id}");
+        }
+        Assert.Equal("Controle pela rede", ChavesPadrao.De(Chave.ControlePelaRede).Nome);
+
+        // Os títulos das folhas montadas pela porta (no código, Folha(Chave.X, "título")) e o Continuar.
+        var codigoPorta = File.ReadAllText(Path.Combine(Raiz().FullName, "src", "BgsControle.Nucleo", "Porta", "PortaComandos.cs"));
+        var folhas = Regex.Matches(codigoPorta, @"Folha\(Chave\.\w+,\s*(?<titulo>[^\n]+)\)").Select(m => m.Groups["titulo"].Value).ToArray();
+        Assert.True(folhas.Length >= 8, $"só achei {folhas.Length} folhas na porta");
+        foreach (var titulo in folhas)
+        {
+            SemIa(titulo, "título de folha da porta");
+            Assert.DoesNotContain("pede para", titulo, StringComparison.Ordinal);
+        }
+        SemIa(PortaComandos.TituloContinuar, "título do Continuar");
+        SemIa(PortaComandos.RiscoContinuar, "risco do Continuar");
     }
 
     [Fact]

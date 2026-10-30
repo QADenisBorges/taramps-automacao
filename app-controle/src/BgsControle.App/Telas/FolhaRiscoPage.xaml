@@ -1,22 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
-    A confirmação da IA (EXPERIENCE, State Patterns › IA pede operação de risco; porta-de-comandos.md, trava 5):
-    a folha "A IA pede para aplicar a memória FILME" sobe por cima de tudo, com o risco da chave sem mudar o texto,
-    o botão branco que diz o que faz e "Não deixar". O prazo da porta (60 s) aparece contando; sem resposta, a
-    folha some e a IA recebe a recusa. Tocar no véu ou em Voltar recusa.
+    A folha de risco do app (porta-de-comandos.md, trava 5; chaves-de-acesso.md, "A confirmação é do app";
+    decisão do Denis, 30/10/2026): sobe por cima de tudo quando a porta de comandos pede uma operação de risco
+    ou o Continuar. O título diz o que muda ("Aplicar a memória FILME?"), o risco vem da chave sem mudar o
+    texto, e os botões são Confirmar e Cancelar. O prazo (60 s) aparece contando; sem resposta, a folha some
+    e o pedido é recusado. Tocar no véu ou em Voltar cancela. Nada aqui menciona quem pediu.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
              xmlns:shapes="clr-namespace:Microsoft.Maui.Controls.Shapes;assembly=Microsoft.Maui.Controls"
-             x:Class="BgsControle.App.Telas.ConfirmacaoIaPage"
-             x:DataType="telas:ConfirmacaoIaViewModel"
+             x:Class="BgsControle.App.Telas.FolhaRiscoPage"
+             x:DataType="telas:FolhaRiscoViewModel"
              NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource veu}">
     <Grid>
         <BoxView Color="Transparent">
             <BoxView.GestureRecognizers>
-                <TapGestureRecognizer Command="{Binding Recusar}" />
+                <TapGestureRecognizer Command="{Binding Cancelar}" />
             </BoxView.GestureRecognizers>
         </BoxView>
         <Border VerticalOptions="End" BackgroundColor="{StaticResource sup-1}" StrokeThickness="0" Padding="16,10,16,24">
@@ -25,7 +26,6 @@
             </Border.StrokeShape>
             <VerticalStackLayout Spacing="12">
                 <BoxView WidthRequest="40" HeightRequest="4" CornerRadius="2" Color="{StaticResource sup-2}" HorizontalOptions="Center" />
-                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource ia}" Text="PEDIDO DA IA" />
                 <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding Titulo}" />
                 <!-- O aviso de risco: o texto de chaves-de-acesso.md. -->
                 <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
@@ -38,7 +38,7 @@
                 <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoPrazo}"
                        IsVisible="{Binding TextoPrazo, Converter={StaticResource TemTexto}}" />
                 <Button Style="{StaticResource botao-principal}" Text="{Binding TextoConfirmar}" Command="{Binding Confirmar}" />
-                <Button Style="{StaticResource botao-secundario}" Text="{Binding TextoRecusar}" Command="{Binding Recusar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{Binding TextoCancelar}" Command="{Binding Cancelar}" />
             </VerticalStackLayout>
         </Border>
     </Grid>

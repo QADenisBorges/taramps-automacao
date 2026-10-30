@@ -31,8 +31,8 @@ internal sealed class Bancada
     private static readonly Regex Senha = new(@"^\*000\*[0-9A-Z]{4}\*$");
 
     /// <param name="usoCompartilhado">
-    /// História 9a: o histórico e o uso compartilhado na porta, guardados em <see cref="ArquivosUso"/>
-    /// (à parte, para não mexer nas contagens de gravação dos outros testes).
+    /// História 9a: o histórico e o uso compartilhado na porta; o histórico é guardado em
+    /// <see cref="ArquivosUso"/> (à parte, para não mexer nas contagens de gravação dos outros testes).
     /// </param>
     /// <param name="setups">
     /// História 8c: os Setups e as memórias do celular (a conferência roda em cada conexão), guardados
@@ -59,7 +59,7 @@ internal sealed class Bancada
         if (usoCompartilhado)
         {
             Historico = new Historico(new RepositorioTextoArquivos(ArquivosUso, RepositorioTextoArquivos.ArquivoHistorico), Relogio, Log);
-            Uso = new UsoCompartilhado(new RepositorioTextoArquivos(ArquivosUso, RepositorioTextoArquivos.ArquivoUsoIa), Relogio, Log);
+            Uso = new UsoCompartilhado(Relogio, Log);
         }
         Sessao = new Sessao(Simulador, Cofre, Log, Tempos, Chaves, Historico, Uso);
         Leitor = new LeitorCompleto(Sessao, Log, LeituraRapida);
@@ -94,15 +94,12 @@ internal sealed class Bancada
 
     public CofreMemoria Cofre { get; } = new() { Senha = "AB12" };
 
-    /// <summary>Os arquivos do histórico e do modo do toque (só com o uso compartilhado).</summary>
+    /// <summary>Os arquivos do histórico (só com o uso compartilhado).</summary>
     public ArquivosFalso ArquivosUso { get; } = new();
 
     public Historico? Historico { get; }
     public UsoCompartilhado? Uso { get; }
 
-    public HistoricoViewModel CriarHistoricoViewModel() => new(Historico!, Tela, Relogio);
-
-    public IaAtivaViewModel CriarIaAtivaViewModel() => new(Uso!, Historico!, Tela, Relogio);
     public MonitorAparelho Monitor { get; }
     public ComandosAparelho Comandos { get; }
 
@@ -162,17 +159,34 @@ internal sealed class Bancada
             await Setups.Carregada;
         await Sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, Sessao.Estado);
-        await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento);
-        if (Setups is not null)
+        if (Setups is null)
         {
-            // A conferência pode mutar (os ecos andam no relógio falso).
-            for (var i = 0; i < 3000 && !Setups.Conferido; i++)
+            await Apoio.Esperar(() => Estado.Pronto && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento);
+        }
+        else
+        {
+            // A conferência pode mutar ou reaplicar a memória ativa (os ecos andam no relógio falso).
+            await Apoio.Esperar(() => Estado.Pronto);
+            for (var i = 0; i < 3000 && !(Setups.Conferido && !Estado.Lendo && !Leitura.Lendo && !Copia.EmAndamento); i++)
             {
                 Relogio.Avancar(TimeSpan.FromMilliseconds(10));
                 await Task.Delay(1);
             }
             Assert.True(Setups.Conferido, "a conferência do Setup não terminou");
         }
+        await Tela.EsvaziarAsync();
+    }
+
+    /// <summary>
+    /// Conecta com a chave "Aplicar memória do celular" desligada e liga de novo depois da conferência:
+    /// numa diferença leve, o app não reaplica sozinho e fica o som do aparelho, com o Reaplicar (história 9c).
+    /// </summary>
+    public async Task ConectarSemReaplicar()
+    {
+        await Chaves.Carregada;
+        Assert.True((await Chaves.DefinirAsync(Chave.AplicarMemoriaCelular, false, OrigemComando.Tela)).Ok);
+        await Conectar();
+        Assert.True((await Chaves.DefinirAsync(Chave.AplicarMemoriaCelular, true, OrigemComando.Tela)).Ok);
         await Tela.EsvaziarAsync();
     }
 

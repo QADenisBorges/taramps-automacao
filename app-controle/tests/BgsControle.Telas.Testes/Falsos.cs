@@ -145,16 +145,14 @@ internal sealed class NavegacaoFalsa : INavegacao
     public void AbrirSenha() => Pedidos.Add("senha");
     public void AbrirMonitoracao() => Pedidos.Add("monitoracao");
     public void AbrirChaves() => Pedidos.Add("chaves");
-    public void AbrirIaPelaRede() => Pedidos.Add("ia-pela-rede");
-    public void AbrirHistorico() => Pedidos.Add("historico");
 
-    /// <summary>O último pedido das camadas da história 11: (IA ativa, confirmação da IA, alarme do gerador).</summary>
-    public (bool IaAtiva, bool Confirmacao, bool Alarme)? Camadas { get; private set; }
+    /// <summary>O último pedido das camadas: (folha de risco, "REAPLICANDO", alarme do gerador).</summary>
+    public (bool FolhaRisco, bool Reaplicando, bool Alarme)? Camadas { get; private set; }
 
-    public void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador)
+    public void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador)
     {
-        Camadas = (iaAtiva, confirmacaoIa, alarmeGerador);
-        Pedidos.Add($"camadas:{iaAtiva}:{confirmacaoIa}:{alarmeGerador}");
+        Camadas = (folhaRisco, reaplicando, alarmeGerador);
+        Pedidos.Add($"camadas:{folhaRisco}:{reaplicando}:{alarmeGerador}");
     }
 
     public void MostrarPorCima(bool escolhaSetup, bool pelaMetade)

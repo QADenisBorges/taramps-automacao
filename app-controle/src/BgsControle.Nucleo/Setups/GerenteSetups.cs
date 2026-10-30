@@ -211,6 +211,7 @@ public sealed class GerenteSetups
     private bool _aberta;
     private bool _conferiu;
     private bool _conferindo;
+    private Reaplicacao? _reaplicando;
 
     public GerenteSetups(
         Sessao sessao,
@@ -349,6 +350,20 @@ public sealed class GerenteSetups
         {
             lock (_trava)
                 return _emUso;
+        }
+    }
+
+    /// <summary>
+    /// A conferência ao conectar está reaplicando sozinha a memória ativa e o preset dela (regra 5,
+    /// diferença leve; decisão do Denis, 30/10/2026), ou null. A casca mostra a tela toda
+    /// "REAPLICANDO" enquanto não é null; o aviso <see cref="Mudou"/> chega ao começar e ao terminar.
+    /// </summary>
+    public Reaplicacao? Reaplicando
+    {
+        get
+        {
+            lock (_trava)
+                return _reaplicando;
         }
     }
 
@@ -689,6 +704,12 @@ public sealed class GerenteSetups
             if (ativa is not null && !diferentes.Any(v => Camadas.MutaNaConferencia(v.Codigo)))
             {
                 var bate = diferentes.Count == 0;
+                // Diferença leve: reaplica sozinho a memória ativa e o preset dela, sem mutar. Com a
+                // chave desligada ou um "aplicado pela metade" pendente, fica como antes (aviso e Reaplicar).
+                if (!bate && await ReaplicarNaConferenciaAsync(referencia, ativa, diferentes.Count))
+                    return true;
+                if (!SessaoAberta)
+                    return true; // caiu no meio da reaplicação: a conexão nova confere de novo
                 var situacao = bate ? EstadoConferencia.Confere : EstadoConferencia.SomDiferente;
                 lock (_trava)
                 {
@@ -736,6 +757,60 @@ public sealed class GerenteSetups
         {
             _operacao.Release();
         }
+    }
+
+    /// <summary>
+    /// A regra 5 na diferença leve (só ganho, limitador, EQ ou MASTER): aplica a memória ativa do
+    /// Setup com o preset que ela lembra, na mesma operação da conferência (já com a trava) e com
+    /// origem App, sem mutar. Pula, sem escrever nada, com a chave "Aplicar memória do celular"
+    /// desligada ou com uma operação pela metade (ou a marca dela) pendente. Enquanto escreve,
+    /// <see cref="Reaplicando"/> diz a memória e o preset. True = reaplicou e ficou
+    /// <see cref="EstadoConferencia.Confere"/>; false = pulou ou falhou (uma falha no meio segue a
+    /// regra 3, pela metade). Chamar com a operação.
+    /// </summary>
+    private async Task<bool> ReaplicarNaConferenciaAsync(Setup referencia, MemoriaCelular ativa, int diferentes)
+    {
+        await _copia.Carregada;
+        if (!_chaves.Ligada(Chave.AplicarMemoriaCelular))
+        {
+            _log.Evento($"setup: não reaplica a {ativa.Nome} sozinho (chave Aplicar memória do celular desligada)");
+            return false;
+        }
+        if (_copia.MotivoBloqueio() is { } bloqueio)
+        {
+            _log.Evento($"setup: não reaplica a {ativa.Nome} sozinho ({bloqueio})");
+            return false;
+        }
+
+        // O Setup em uso já é o da referência: o aplicar confere a memória contra ele.
+        lock (_trava)
+        {
+            _situacao = EstadoConferencia.SomDiferente;
+            _setupEmUso = referencia.Id;
+            _emUso = SomEmUso.SomDoAparelho;
+            _diferencas = [];
+            _referencia = null;
+            _motivoMudo = null;
+            _reaplicando = new Reaplicacao(ativa.Nome, PresetDe(ativa)?.Nome);
+        }
+        _log.Evento($"setup: {referencia.Nome}; {diferentes} ajustes de ganho, limitador, EQ ou MASTER diferem da {ativa.Nome}; reaplicando sozinho");
+        Notificar();
+
+        ResultadoSetup r;
+        try
+        {
+            // Como o app: sem o escopo, a origem seria a tela e contaria como toque.
+            using (Origem.Como(OrigemComando.App))
+                r = await AplicarMemoriaAsync(ativa.Id, TipoAplicarMemoria, refazendo: false);
+        }
+        finally
+        {
+            lock (_trava)
+                _reaplicando = null;
+            Notificar();
+        }
+        Terminar(r);
+        return r.Ok;
     }
 
     /// <summary>

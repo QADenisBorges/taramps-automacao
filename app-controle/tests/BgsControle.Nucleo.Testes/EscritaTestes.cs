@@ -570,13 +570,16 @@ public sealed class EscritaTestes : IDisposable
 
         Assert.Equal(10, _chaves.Definicoes.Count);
         Assert.Equal(Enum.GetValues<Chave>(), _chaves.Definicoes.Select(d => d.Chave));
-        foreach (var c in new[] { Chave.ResetFabrica, Chave.IaPelaRede, Chave.ResetAudio, Chave.TrocaSenha, Chave.Gerador })
+        foreach (var c in new[] { Chave.ResetFabrica, Chave.ControlePelaRede, Chave.ResetAudio, Chave.TrocaSenha, Chave.Gerador })
             Assert.False(_chaves.Ligada(c), c.ToString());
         foreach (var c in new[] { Chave.AplicarMemoriaCelular, Chave.RemoteOut, Chave.BluetoothAudio, Chave.NomeProduto, Chave.AjustesAudio })
             Assert.True(_chaves.Ligada(c), c.ToString());
         Assert.Equal("Um tom forte pode queimar o tweeter ou o sub.", ChavesPadrao.De(Chave.Gerador).Risco);
         Assert.Equal("Apaga a senha e as 3 memórias.", ChavesPadrao.De(Chave.ResetFabrica).Risco);
-        Assert.Equal("Deixa a IA comandar o som pela rede.", ChavesPadrao.De(Chave.IaPelaRede).Risco);
+        // História 9c: "IA pela rede" virou "Controle pela rede"; o id guardado continua o de antes.
+        Assert.Equal("Controle pela rede", ChavesPadrao.De(Chave.ControlePelaRede).Nome);
+        Assert.Equal("Deixa um computador da casa comandar o som pela rede.", ChavesPadrao.De(Chave.ControlePelaRede).Risco);
+        Assert.Equal("ia-pela-rede", ChavesPadrao.De(Chave.ControlePelaRede).Id);
         Assert.Null(ChavesPadrao.De(Chave.AjustesAudio).Risco);
         Assert.Equal("Aplicar memória do celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Nome);
         Assert.Equal("aplicar-memoria-celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Id);
@@ -590,7 +593,7 @@ public sealed class EscritaTestes : IDisposable
     [Theory]
     [InlineData(Chave.Gerador, true)]
     [InlineData(Chave.AjustesAudio, false)]
-    [InlineData(Chave.IaPelaRede, true)]
+    [InlineData(Chave.ControlePelaRede, true)]
     public async Task A_IA_nunca_liga_nem_desliga_uma_chave(Chave chave, bool ligar)
     {
         await _chaves.Carregada;

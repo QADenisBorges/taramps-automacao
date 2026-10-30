@@ -28,12 +28,13 @@ public sealed class ChavesViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Lista_as_10_chaves_com_o_estado_padrao()
+    public async Task Lista_as_9_chaves_sem_a_Controle_pela_rede_com_o_estado_padrao()
     {
         await Pronto();
 
-        Assert.Equal(10, _vm.Itens.Count);
-        Assert.Equal(ChavesPadrao.Todas.Select(d => d.Nome), _vm.Itens.Select(i => i.Nome));
+        // História 9c: a "Controle pela rede" fica no grupo APARELHO das Configurações, não nesta lista.
+        Assert.Equal(9, _vm.Itens.Count);
+        Assert.Equal(ChavesPadrao.Todas.Where(d => d.Chave != Chave.ControlePelaRede).Select(d => d.Nome), _vm.Itens.Select(i => i.Nome));
         // História 8c: o "Salvar memória" saiu; em 29/10/2026, o "Carregar memória do aparelho" (as memórias
         // do processador não aparecem no app). Fica o "Aplicar memória do celular".
         Assert.DoesNotContain("Carregar memória do aparelho", _vm.Itens.Select(i => i.Nome));
@@ -48,15 +49,15 @@ public sealed class ChavesViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task A_chave_IA_pela_rede_aparece_desligada_com_a_nota()
+    public async Task A_chave_Controle_pela_rede_vem_desligada_com_o_risco_novo_e_fora_da_lista()
     {
         await Pronto();
-        var ia = _vm.Item(Chave.IaPelaRede);
+        var rede = _vm.Item(Chave.ControlePelaRede);
 
-        Assert.Equal("IA pela rede", ia.Nome);
-        Assert.False(ia.Ligada);
-        Assert.Equal("Pareia por código de 6 dígitos.", ia.Observacao);
-        Assert.Null(_vm.Item(Chave.Gerador).Observacao);
+        Assert.Equal("Controle pela rede", rede.Nome);
+        Assert.Equal("Deixa um computador da casa comandar o som pela rede.", rede.Risco);
+        Assert.False(rede.Ligada);
+        Assert.DoesNotContain(rede, _vm.Itens);
     }
 
     [Fact]

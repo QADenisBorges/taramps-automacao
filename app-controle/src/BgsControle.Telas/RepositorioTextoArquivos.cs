@@ -29,10 +29,7 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>O histórico dos comandos (as últimas 1000 entradas, sem senhas).</summary>
     public const string ArquivoHistorico = "historico.json";
 
-    /// <summary>O modo do toque durante a IA ("Controles travados até PARAR IA" ou "O toque pausa a IA").</summary>
-    public const string ArquivoUsoIa = "uso-ia.json";
-
-    /// <summary>O cliente pareado da porta da IA: o nome, a data e só o SHA-256 da chave.</summary>
+    /// <summary>O cliente pareado da porta de comandos: o nome, a data e só o SHA-256 da chave.</summary>
     public const string ArquivoPortaIa = "porta-ia.json";
 
     public string Arquivo { get; } = arquivo;

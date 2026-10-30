@@ -3,24 +3,25 @@ using BgsControle.Nucleo.Registro;
 namespace BgsControle.Nucleo.Porta;
 
 /// <summary>
-/// A folha "A IA pede para …": o título, o risco de <c>chaves-de-acesso.md</c> (sem mudar o texto)
-/// e o texto do botão branco, que diz o que ele faz.
+/// A folha de risco do app (decisão do Denis, 30/10/2026): o título diz o que muda ("Aplicar a
+/// memória FILME?") e o risco vem de <c>chaves-de-acesso.md</c> sem mudar o texto. Os botões são
+/// sempre "Confirmar" e "Cancelar". Nada aqui menciona a IA.
 /// </summary>
-public sealed record PedidoConfirmacao(string Titulo, string? Risco, string TextoBotao);
+public sealed record PedidoConfirmacao(string Titulo, string? Risco);
 
 /// <summary>Como terminou um pedido de confirmação.</summary>
 public enum DecisaoConfirmacao
 {
-    /// <summary>O usuário tocou no botão branco: a operação segue.</summary>
+    /// <summary>O usuário tocou em "Confirmar": a operação segue.</summary>
     Confirmou,
 
-    /// <summary>"Não deixar".</summary>
+    /// <summary>"Cancelar".</summary>
     Recusou,
 
     /// <summary>60 s sem resposta.</summary>
     SemResposta,
 
-    /// <summary>O PARAR IA (ou a porta fechou) durante a espera.</summary>
+    /// <summary>O revogar (a chave desligada, a porta fechou) durante a espera.</summary>
     Parada,
 
     /// <summary>Já havia um pedido esperando: este nem abriu a folha.</summary>
@@ -28,8 +29,8 @@ public enum DecisaoConfirmacao
 }
 
 /// <summary>
-/// A trava 5 (<c>porta-de-comandos.md</c>): uma operação de risco pedida pela IA só roda depois do
-/// toque do usuário na tela. Um pedido por vez; o prazo é <see cref="Prazo"/> (60 s) pelo
+/// A trava 5 (<c>porta-de-comandos.md</c>): uma operação de risco pedida pela porta só roda depois
+/// do toque do usuário na folha de risco do app. Um pedido por vez; o prazo é <see cref="Prazo"/> (60 s) pelo
 /// <see cref="TimeProvider"/>.
 /// </summary>
 public sealed class PedidosConfirmacao
@@ -97,15 +98,15 @@ public sealed class PedidosConfirmacao
     }
 
     /// <summary>
-    /// O botão branco. Com <paramref name="pedido"/>, só vale se ele ainda é o que espera (a folha
+    /// "Confirmar". Com <paramref name="pedido"/>, só vale se ele ainda é o que espera (a folha
     /// que o usuário viu, e não um pedido novo que chegou no lugar).
     /// </summary>
     public void Confirmar(PedidoConfirmacao? pedido = null) => DecidirAtual(DecisaoConfirmacao.Confirmou, pedido);
 
-    /// <summary>"Não deixar".</summary>
+    /// <summary>"Cancelar".</summary>
     public void Recusar(PedidoConfirmacao? pedido = null) => DecidirAtual(DecisaoConfirmacao.Recusou, pedido);
 
-    /// <summary>O PARAR IA ou a porta fechando: a folha fecha e o pedido é recusado.</summary>
+    /// <summary>O revogar ou a porta fechando: a folha fecha e o pedido é recusado.</summary>
     public void Cancelar() => DecidirAtual(DecisaoConfirmacao.Parada, null);
 
     private void DecidirAtual(DecisaoConfirmacao decisao, PedidoConfirmacao? pedido)

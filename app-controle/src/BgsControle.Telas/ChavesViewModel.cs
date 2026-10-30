@@ -2,7 +2,7 @@ using BgsControle.Nucleo.Seguranca;
 
 namespace BgsControle.Telas;
 
-/// <summary>Uma linha da tela Chaves de acesso.</summary>
+/// <summary>Uma linha da tela Chaves de acesso (ou a linha "Controle pela rede" no grupo APARELHO).</summary>
 public sealed class ItemChaveViewModel : TelaBase
 {
     private bool _ligada;
@@ -24,9 +24,6 @@ public sealed class ItemChaveViewModel : TelaBase
 
     /// <summary>A chave vem desligada por padrão: o risco escrito na linha fica em erro-texto (DESIGN, linha-de-chave).</summary>
     public bool PadraoDesligada => !Definicao.Padrao;
-
-    /// <summary>Uma nota fixa da linha (a chave da IA: pareia por código de 6 dígitos).</summary>
-    public string? Observacao => Chave == Chave.IaPelaRede ? ChavesViewModel.NotaIa : null;
 
     public bool Ligada
     {
@@ -51,17 +48,18 @@ public sealed class ItemChaveViewModel : TelaBase
 }
 
 /// <summary>
-/// A tela Chaves de acesso (CAP-11): as 11 chaves com o estado de cada uma. Ligar uma chave com
+/// A tela Chaves de acesso (CAP-11): as chaves com o estado de cada uma. Ligar uma chave com
 /// risco abre a folha com o aviso (confirmar ou desistir); desligar age direto. Só a tela muda
-/// uma chave; a IA nunca.
+/// uma chave; a porta nunca. A "Controle pela rede" não aparece nesta lista: a linha dela fica no
+/// grupo APARELHO das Configurações (<see cref="Item"/> a devolve, com a mesma folha).
 /// </summary>
 public sealed class ChavesViewModel : TelaBase, IDisposable
 {
     public const string TextoConfirmar = "Ligar a chave";
     public const string TextoDesistir = "Deixar desligada";
-    public const string NotaIa = "Pareia por código de 6 dígitos.";
 
     private readonly IChaves _chaves;
+    private readonly IReadOnlyList<ItemChaveViewModel> _todos;
     private DefinicaoChave? _folha;
     private string? _mensagem;
 
@@ -69,7 +67,8 @@ public sealed class ChavesViewModel : TelaBase, IDisposable
         : base(despachante, relogio)
     {
         _chaves = chaves;
-        Itens = chaves.Definicoes.Select(d => new ItemChaveViewModel(d, this, despachante, relogio)).ToList();
+        _todos = chaves.Definicoes.Select(d => new ItemChaveViewModel(d, this, despachante, relogio)).ToList();
+        Itens = _todos.Where(i => i.Chave != Chave.ControlePelaRede).ToList();
         ConfirmarFolha = new Comando(ConfirmarAsync);
         DesistirFolha = new Comando(Desistir);
         _chaves.Mudou += AoMudar;
@@ -77,9 +76,11 @@ public sealed class ChavesViewModel : TelaBase, IDisposable
         _ = chaves.Carregada.ContinueWith(_ => NaTela(AtualizarItens), TaskScheduler.Default);
     }
 
+    /// <summary>As linhas da tela Chaves de acesso (sem a "Controle pela rede").</summary>
     public IReadOnlyList<ItemChaveViewModel> Itens { get; }
 
-    public ItemChaveViewModel Item(Chave chave) => Itens.First(i => i.Chave == chave);
+    /// <summary>A linha de qualquer chave, inclusive a "Controle pela rede".</summary>
+    public ItemChaveViewModel Item(Chave chave) => _todos.First(i => i.Chave == chave);
 
     /// <summary>Uma linha de aviso (falha ao guardar), ou null.</summary>
     public string? Mensagem
@@ -163,7 +164,7 @@ public sealed class ChavesViewModel : TelaBase, IDisposable
 
     private void AtualizarItens()
     {
-        foreach (var i in Itens)
+        foreach (var i in _todos)
             i.Ligada = _chaves.Ligada(i.Chave);
     }
 

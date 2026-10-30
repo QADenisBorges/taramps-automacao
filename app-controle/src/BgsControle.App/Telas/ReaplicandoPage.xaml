@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A tela toda "REAPLICANDO" (failure-modes.md, regra 5; decisão do Denis, 30/10/2026), no modelo da faixa
+    "DESLIGUE O MÓDULO AGORA": ao conectar, com só ganho, limitador, EQ ou MASTER diferentes da memória ativa,
+    o app reaplica sozinho a memória e o preset dela, sem mutar. Enquanto escreve, esta tela fica por cima de
+    tudo com o nome da memória, o do preset (se houver) e o pedido de manter o celular perto; ela fecha
+    sozinha ao terminar, com sucesso ou não. Os textos vêm do ReaplicandoViewModel.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Telas.ReaplicandoPage"
+             x:DataType="telas:ReaplicandoViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource palco}">
+    <VerticalStackLayout VerticalOptions="Center" Padding="16,20" Spacing="14">
+        <ActivityIndicator IsRunning="{Binding Ativa}" Color="{StaticResource texto}" HorizontalOptions="Center" />
+        <Label Style="{StaticResource tipo-estado-hero}" Text="{Binding Titulo}" HorizontalTextAlignment="Center"
+               SemanticProperties.HeadingLevel="Level1" />
+        <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Memoria}" HorizontalTextAlignment="Center"
+               IsVisible="{Binding Memoria, Converter={StaticResource TemTexto}}" />
+        <Label Style="{StaticResource tipo-corpo}" Text="{Binding Preset}" HorizontalTextAlignment="Center"
+               IsVisible="{Binding Preset, Converter={StaticResource TemTexto}}" />
+        <Label Style="{StaticResource tipo-apoio}" Text="{Binding Instrucao}" HorizontalTextAlignment="Center" />
+    </VerticalStackLayout>
+</ContentPage>

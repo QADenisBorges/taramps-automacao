@@ -16,10 +16,10 @@ namespace BgsControle.App;
 /// precisam estar ao alcance também ali).
 /// </para>
 /// <para>
-/// História 11: as telas cheias novas (Gerador, Presets, Senha, Voltímetro e clip, Chaves de acesso, IA pela
-/// rede, Histórico) e as camadas que sobem sozinhas, também modais, na ordem de baixo para cima: a escolha
-/// do Setup, a folha pela metade, a IA ativa, a folha de confirmação da IA e a faixa "DESLIGUE O MÓDULO
-/// AGORA". A confirmação da IA e o alarme do gerador ficam acima de tudo.
+/// História 11: as telas cheias novas (Gerador, Presets, Senha, Voltímetro e clip, Chaves de acesso) e as
+/// camadas que sobem sozinhas, também modais, na ordem de baixo para cima: a escolha do Setup, a folha pela
+/// metade, a folha de risco do app, a tela toda "REAPLICANDO" e a faixa "DESLIGUE O MÓDULO AGORA". As três
+/// últimas ficam acima de tudo. A IA não aparece em nenhuma tela (decisão do Denis, 30/10/2026).
 /// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
@@ -28,7 +28,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private readonly Dictionary<FuncaoAudio, FuncaoPage> _funcoes = [];
     private readonly SemaphoreSlim _porCima = new(1, 1);
     private (bool Setup, bool Metade) _pedido;
-    private (bool Ia, bool Confirmacao, bool Alarme) _camadas;
+    private (bool FolhaRisco, bool Reaplicando, bool Alarme) _camadas;
     private (string Nome, Func<Page> Criar)? _esperando;
 
     private static INavigation? Navegacao => Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation;
@@ -76,10 +76,6 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
 
     public void AbrirChaves() => Empurrar("Chaves de acesso", servicos.GetRequiredService<ChavesPage>);
 
-    public void AbrirIaPelaRede() => Empurrar("IA pela rede", servicos.GetRequiredService<IaPelaRedePage>);
-
-    public void AbrirHistorico() => Empurrar("Histórico", servicos.GetRequiredService<HistoricoPage>);
-
     public void AbrirConexao() => MainThread.BeginInvokeOnMainThread(async () =>
     {
         if (Navegacao is not { } nav)
@@ -113,10 +109,10 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
         Reconciliar();
     }
 
-    /// <summary>As camadas da história 11, acima das outras: a IA ativa, a confirmação da IA e o alarme do gerador.</summary>
-    public void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador)
+    /// <summary>As camadas acima das outras: a folha de risco, o "REAPLICANDO" e o alarme do gerador.</summary>
+    public void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador)
     {
-        _camadas = (iaAtiva, confirmacaoIa, alarmeGerador);
+        _camadas = (folhaRisco, reaplicando, alarmeGerador);
         Reconciliar();
     }
 
@@ -131,16 +127,16 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                 if (Navegacao is not { } nav)
                     return;
                 var (setup, metade) = _pedido;
-                var (ia, confirmacao, alarme) = _camadas;
+                var (folhaRisco, reaplicando, alarme) = _camadas;
                 var queremos = new List<Page>();
                 if (setup)
                     queremos.Add(servicos.GetRequiredService<SetupEscolhaPage>());
                 if (metade)
                     queremos.Add(servicos.GetRequiredService<PelaMetadePage>());
-                if (ia)
-                    queremos.Add(servicos.GetRequiredService<IaAtivaPage>());
-                if (confirmacao)
-                    queremos.Add(servicos.GetRequiredService<ConfirmacaoIaPage>());
+                if (folhaRisco)
+                    queremos.Add(servicos.GetRequiredService<FolhaRiscoPage>());
+                if (reaplicando)
+                    queremos.Add(servicos.GetRequiredService<ReaplicandoPage>());
                 if (alarme)
                     queremos.Add(servicos.GetRequiredService<AlarmeGeradorPage>());
                 // A tela de conexão aberta por cima da escolha não conta; se algo muda, ela sai junto.

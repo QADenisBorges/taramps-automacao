@@ -39,14 +39,14 @@ public static class MauiProgram
         builder.Services.AddSingleton<IChaves, Chaves>();
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IArquivosApp, ArquivosMaui>();
-        // História 11 (as peças das histórias 9a e 9b): o histórico de cada comando e o uso ao mesmo tempo com a
-        // IA, que a sessão consulta em cada escrita. Em historico.json e uso-ia.json, nos arquivos privados.
+        // História 11 (as peças das histórias 9a e 9b): o histórico de cada comando (em historico.json, nos
+        // arquivos privados; lido só pela porta) e o uso ao mesmo tempo com a porta, que a sessão consulta em
+        // cada escrita. O toque da tela sempre pausa a porta; não há modo guardado (história 9c).
         builder.Services.AddSingleton(sp => new Historico(
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoHistorico),
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new UsoCompartilhado(
-            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoUsoIa),
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new Sessao(
@@ -234,8 +234,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<MemoriasPage>();
         builder.Services.AddSingleton<ConexaoPage>();
 
-        // História 11: a porta de comandos da IA (CAP-12; escuta na 8787 só com a chave "IA pela rede"), o
-        // pareamento em porta-ia.json e a folha de confirmação dos pedidos de risco.
+        // História 11: a porta de comandos (CAP-12; escuta na 8787 só com a chave "Controle pela rede"), o
+        // pareamento em porta-ia.json e a folha de risco dos pedidos de risco.
         builder.Services.AddSingleton(sp => new Pareamento(
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPortaIa),
             sp.GetRequiredService<TimeProvider>(),
@@ -258,29 +258,30 @@ public static class MauiProgram
             sp.GetRequiredService<LogBle>(),
             sp.GetRequiredService<TimeProvider>()));
 
-        // História 11: os ViewModels que só faltavam ligar (Player, IA pela rede, confirmação da IA, IA ativa,
-        // histórico) e as páginas novas. Singletons, como os da história 10.
+        // História 11: os ViewModels que só faltavam ligar e as páginas novas. Singletons, como os da história 10.
+        // História 9c: a chave "Controle pela rede" (no grupo APARELHO das Configurações), a folha de risco do
+        // app e a tela toda "REAPLICANDO"; a IA ativa, a tela IA pela rede e o Histórico saíram.
         builder.Services.AddSingleton<PlayerViewModel>();
-        builder.Services.AddSingleton(sp => new IaPelaRedeViewModel(
+        builder.Services.AddSingleton(sp => new ControlePelaRedeViewModel(
             sp.GetRequiredService<PortaComandos>(),
-            sp.GetRequiredService<UsoCompartilhado>(),
+            sp.GetRequiredService<ChavesViewModel>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        builder.Services.AddSingleton(sp => new ConfirmacaoIaViewModel(
+        builder.Services.AddSingleton(sp => new FolhaRiscoViewModel(
             sp.GetRequiredService<PedidosConfirmacao>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        builder.Services.AddSingleton<IaAtivaViewModel>();
-        builder.Services.AddSingleton<HistoricoViewModel>();
+        builder.Services.AddSingleton(sp => new ReaplicandoViewModel(
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton<GeradorPage>();
         builder.Services.AddSingleton<PresetsPage>();
         builder.Services.AddSingleton<AparelhoPage>();
         builder.Services.AddSingleton<MonitoracaoPage>();
         builder.Services.AddSingleton<ChavesPage>();
-        builder.Services.AddSingleton<IaPelaRedePage>();
-        builder.Services.AddSingleton<HistoricoPage>();
-        builder.Services.AddSingleton<IaAtivaPage>();
-        builder.Services.AddSingleton<ConfirmacaoIaPage>();
+        builder.Services.AddSingleton<FolhaRiscoPage>();
+        builder.Services.AddSingleton<ReaplicandoPage>();
         builder.Services.AddSingleton<AlarmeGeradorPage>();
 
         var app = builder.Build();
@@ -331,8 +332,8 @@ public static class MauiProgram
         app.Services.GetRequiredService<GeradorSinal>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.
         app.Services.GetRequiredService<MonitorAparelho>();
-        // História 11: o Player cedo (acompanha a memória em uso desde a primeira conferência) e a porta da IA
-        // (abre sozinha se a chave "IA pela rede" já estiver ligada).
+        // História 11: o Player cedo (acompanha a memória em uso desde a primeira conferência) e a porta de
+        // comandos (abre sozinha se a chave "Controle pela rede" já estiver ligada).
         app.Services.GetRequiredService<Player>();
         app.Services.GetRequiredService<PortaComandos>();
         return app;

@@ -317,7 +317,7 @@ public sealed class PresetsTestes : IDisposable
     public async Task Criar_sem_precisar_de_chave_e_com_o_nome_do_jeito_que_foi_digitado()
     {
         await Conectar();
-        foreach (var chave in Enum.GetValues<Chave>().Where(c => c != Chave.IaPelaRede))
+        foreach (var chave in Enum.GetValues<Chave>().Where(c => c != Chave.ControlePelaRede))
             await _chaves.DefinirAsync(chave, false, OrigemComando.Tela);
 
         var r = await _presets.CriarAsync("  Música_1-b  ");

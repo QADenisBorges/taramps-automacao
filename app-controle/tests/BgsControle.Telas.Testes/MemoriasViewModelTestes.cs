@@ -180,10 +180,10 @@ public sealed class MemoriasViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Som_diferente_da_FILME_aparece_e_Reaplicar_volta_a_FILME()
+    public async Task Som_diferente_da_FILME_aparece_com_a_chave_desligada_e_Reaplicar_volta_a_FILME()
     {
         _b.Simulador.Definir("081", 0, "+4.0");
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("Som diferente da FILME", _vm.AvisoSomDiferente);
         Assert.False(_vm.Cartao("FILME")!.EmUso);
@@ -199,7 +199,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
     public async Task Criar_com_o_som_do_aparelho_em_uso_abre_a_folha_do_Salvar()
     {
         _b.Simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: o som do aparelho
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
         Assert.Equal(SomEmUso.SomDoAparelho, Setups.EmUso);
 

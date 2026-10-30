@@ -44,7 +44,6 @@ public sealed class UsoTestes : IDisposable
     private readonly TransporteSegurado _transporte;
     private readonly RepositorioMemoria _repositorioChaves = new();
     private readonly TextoMemoria _arquivoHistorico;
-    private readonly TextoMemoria _arquivoUso;
     private readonly Chaves _chaves;
     private readonly LogBle _log = new();
     private readonly Historico _historico;
@@ -58,18 +57,17 @@ public sealed class UsoTestes : IDisposable
     private int _pausou;
     private int _retomou;
 
-    public UsoTestes() : this(null, null)
+    public UsoTestes() : this(null)
     {
     }
 
-    private UsoTestes(string? historicoGuardado, string? usoGuardado)
+    private UsoTestes(string? historicoGuardado)
     {
         _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         _arquivoHistorico = new TextoMemoria(historicoGuardado);
-        _arquivoUso = new TextoMemoria(usoGuardado);
         _chaves = new Chaves(_repositorioChaves);
         _historico = new Historico(_arquivoHistorico, _relogio, _log);
-        _uso = new UsoCompartilhado(_arquivoUso, _relogio, _log);
+        _uso = new UsoCompartilhado(_relogio, _log);
         _uso.Pausou += () => Interlocked.Increment(ref _pausou);
         _uso.Retomou += () => Interlocked.Increment(ref _retomou);
         _transporte = new TransporteSegurado(_simulador);
@@ -98,7 +96,6 @@ public sealed class UsoTestes : IDisposable
         await _chaves.Carregada;
         await _copia.Carregada;
         await _historico.Carregado;
-        await _uso.Carregado;
         await _sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
         await AndarAte(() => _estado.Pronto && !_estado.Lendo && !_leitura.Lendo && !_copia.EmAndamento
@@ -159,11 +156,10 @@ public sealed class UsoTestes : IDisposable
     private static ComandoNaPorta Comando(int canal, string valor) =>
         new(TipoComando.AjusteAudio, new Endereco("081", canal), valor);
 
-    /// <summary>Entra no modo "O toque pausa a IA" e deixa a IA ativa com uma tarefa.</summary>
-    private async Task IaAtivaPausando()
+    /// <summary>Deixa a IA ativa com uma tarefa (o toque sempre pausa: não há outro modo desde a 9c).</summary>
+    private void IaAtiva()
     {
-        Assert.True((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok);
-        Assert.True(_uso.IniciarTarefa("IA ajustando o ganho").Ok);
+        Assert.True(_uso.IniciarTarefa("ajustando o ganho").Ok);
         Assert.Equal(EstadoIa.Ativa, _uso.Estado);
     }
 
@@ -354,31 +350,28 @@ public sealed class UsoTestes : IDisposable
     // ----------------------------------------------------------------- matriz: uso compartilhado
 
     [Fact]
-    public async Task Travado_IA_ativa_no_modo_padrao_o_comando_da_tela_nao_sai()
+    public async Task Com_a_IA_ativa_o_toque_da_tela_nunca_e_recusado_sai_e_pausa()
     {
         await Conectar();
-        Assert.Equal(ModoToque.TravarAtePararIa, _uso.Modo);
-        Assert.True(_uso.IniciarTarefa("IA ajustando o EQ da FILME").Ok);
-        Assert.True(_uso.Travado);
+        Assert.True(_uso.IniciarTarefa("ajustando o EQ da FILME").Ok);
+        Assert.Null(_sessao.Conferir(Ganho.CodificarEscrita(2, 2.0m)));
 
         var r = await Rodar(Escrever(2, 2.0m));
 
-        Assert.False(r.Ok);
-        Assert.Equal(UsoCompartilhado.MsgTravado, r.Motivo);
-        Assert.Equal(0, EscritasDe("*081*2*2.0*"));
-        Assert.Equal((OrigemComando.Tela, false, UsoCompartilhado.MsgTravado), (Ultima().Origem, Ultima().Enviado, Ultima().Motivo));
-        Assert.Equal(UsoCompartilhado.MsgTravado, _sessao.Conferir(Ganho.CodificarEscrita(2, 2.0m)));
+        Assert.True(r.Ok, r.Motivo);
+        Assert.Equal(1, EscritasDe("*081*2*2.0*"));
+        Assert.Equal((OrigemComando.Tela, true, null), (Ultima().Origem, Ultima().Enviado, Ultima().Motivo));
+        Assert.Equal(EstadoIa.Pausada, _uso.Estado);
     }
 
     [Fact]
-    public async Task Gerador_no_travado_o_prazo_acaba_e_o_desligar_sai_como_App()
+    public async Task Gerador_com_a_IA_ativa_o_prazo_acaba_e_o_desligar_sai_como_App()
     {
         await Conectar();
         Assert.True((await _chaves.DefinirAsync(Chave.Gerador, true, OrigemComando.Tela)).Ok);
         var tocar = await Rodar(_gerador.TocarTomAsync(1000, -20.0m));
         Assert.True(tocar.Ok, tocar.Mensagem);
-        Assert.True(_uso.IniciarTarefa("IA ajustando o EQ da FILME").Ok);
-        Assert.True(_uso.Travado);
+        Assert.True(_uso.IniciarTarefa("ajustando o EQ da FILME").Ok);
 
         _relogio.Avancar(_gerador.Restante!.Value - TimeSpan.FromMilliseconds(200));
         await AndarAte(() => _gerador.Estado == EstadoGerador.Desligado && !_gerador.TalvezLigado);
@@ -396,17 +389,17 @@ public sealed class UsoTestes : IDisposable
         await Conectar();
         Assert.True(_uso.IniciarTarefa("IA trabalhando").Ok);
 
-        Assert.True((await _sessao.EnviarAsync(Catalogo.DesligarGerador)).Enviado); // da tela, no travado
+        Assert.True((await _sessao.EnviarAsync(Catalogo.DesligarGerador)).Enviado); // da tela, com a IA ativa
         _uso.PararIa();
         using (Origem.Como(OrigemComando.Ia))
             Assert.True((await _sessao.EnviarAsync(Catalogo.DesligarGerador)).Enviado);
     }
 
     [Fact]
-    public async Task Pausa_IA_ativa_no_modo_opcao_o_comando_da_tela_sai_e_pausa_a_IA()
+    public async Task Pausa_IA_ativa_o_comando_da_tela_sai_e_pausa_a_IA()
     {
         await Conectar();
-        await IaAtivaPausando();
+        IaAtiva();
 
         var r = await Rodar(Escrever(2, 2.0m));
 
@@ -414,14 +407,13 @@ public sealed class UsoTestes : IDisposable
         Assert.Equal(1, EscritasDe("*081*2*2.0*"));
         Assert.Equal(EstadoIa.Pausada, _uso.Estado);
         Assert.Equal(1, Volatile.Read(ref _pausou));
-        Assert.False(_uso.Travado);
     }
 
     [Fact]
     public async Task IA_na_pausa_o_ajuste_da_IA_nao_sai()
     {
         await Conectar();
-        await IaAtivaPausando();
+        IaAtiva();
         await Rodar(Escrever(2, 2.0m));
 
         var r = await Rodar(Escrever(0, -1.0m, OrigemComando.Ia)); // outro endereço
@@ -436,7 +428,7 @@ public sealed class UsoTestes : IDisposable
     public async Task Retomar_com_10_s_sem_comandos_da_tela_a_IA_volta_a_ativa()
     {
         await Conectar();
-        await IaAtivaPausando();
+        IaAtiva();
         await Rodar(Escrever(2, 2.0m));
         Assert.Equal(EstadoIa.Pausada, _uso.Estado);
 
@@ -455,7 +447,7 @@ public sealed class UsoTestes : IDisposable
     public async Task Cada_novo_comando_da_tela_reinicia_os_10_s()
     {
         await Conectar();
-        await IaAtivaPausando();
+        IaAtiva();
         await Rodar(Escrever(2, 2.0m));
 
         await Andar(TimeSpan.FromSeconds(7));
@@ -533,66 +525,21 @@ public sealed class UsoTestes : IDisposable
         Assert.Equal((OrigemComando.Ia, true), (Ultima().Origem, Ultima().Enviado));
     }
 
-    // ----------------------------------------------------------------- a IA não muda o modo nem as chaves
+    // ----------------------------------------------------------------- a IA não muda as chaves
 
     [Fact]
-    public async Task A_IA_nunca_muda_o_modo_do_toque_nem_uma_chave()
+    public async Task A_IA_nunca_muda_uma_chave()
     {
-        await _uso.Carregado;
         await _chaves.Carregada;
 
-        Assert.False((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Ia)).Ok);
         using (Origem.Como(OrigemComando.Ia))
-        {
-            Assert.Equal(UsoCompartilhado.MsgSoATela, (await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Motivo);
             Assert.Equal(Chaves.MsgIaNaoMuda, (await _chaves.DefinirAsync(Chave.Gerador, true, OrigemComando.Tela)).Motivo);
-        }
         Assert.Equal(Chaves.MsgIaNaoMuda, (await _chaves.DefinirAsync(Chave.Gerador, true, OrigemComando.App)).Motivo);
 
-        Assert.Equal(ModoToque.TravarAtePararIa, _uso.Modo);
         Assert.False(_chaves.Ligada(Chave.Gerador));
-        Assert.Null(_arquivoUso.Texto);
     }
 
     // ----------------------------------------------------------------- guardado
-
-    [Fact]
-    public async Task O_modo_do_toque_fica_guardado_e_volta_ao_reabrir()
-    {
-        await _uso.Carregado;
-        Assert.True((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok);
-        Assert.Contains("\"formato\": 1", _arquivoUso.Texto);
-
-        var reaberto = new UsoCompartilhado(new TextoMemoria(_arquivoUso.Texto), _relogio);
-        await reaberto.Carregado;
-
-        Assert.Equal(ModoToque.PausarIa, reaberto.Modo);
-    }
-
-    [Theory]
-    [InlineData("{ isto não é json")]
-    [InlineData("{\"formato\": 2, \"modoToque\": \"pausar-ia\"}")]
-    [InlineData("{\"formato\": 1, \"modoToque\": \"outro\"}")]
-    public async Task Modo_guardado_estragado_vale_o_padrao(string json)
-    {
-        var uso = new UsoCompartilhado(new TextoMemoria(json), _relogio);
-        await uso.Carregado;
-
-        Assert.Equal(ModoToque.TravarAtePararIa, uso.Modo);
-    }
-
-    [Fact]
-    public async Task Modo_que_nao_foi_guardado_volta_ao_de_antes()
-    {
-        await _uso.Carregado;
-        _arquivoUso.FalharAoGravar = true;
-
-        var r = await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela);
-
-        Assert.False(r.Ok);
-        Assert.Equal(UsoCompartilhado.MsgNaoGuardou, r.Motivo);
-        Assert.Equal(ModoToque.TravarAtePararIa, _uso.Modo);
-    }
 
     [Fact]
     public async Task As_gravacoes_do_historico_se_juntam_a_cada_2_s()
@@ -705,16 +652,14 @@ public sealed class UsoTestes : IDisposable
     }
 
     [Fact]
-    public async Task TerminarTarefa_deixa_a_IA_inativa_e_destrava_a_tela()
+    public async Task TerminarTarefa_deixa_a_IA_inativa()
     {
         await Conectar();
-        Assert.True(_uso.IniciarTarefa("IA ajustando o EQ da FILME").Ok);
-        Assert.True(_uso.Travado);
+        Assert.True(_uso.IniciarTarefa("ajustando o EQ da FILME").Ok);
 
         _uso.TerminarTarefa();
 
         Assert.Equal(EstadoIa.Inativa, _uso.Estado);
-        Assert.False(_uso.Travado);
         Assert.Null(_uso.Tarefa);
         Assert.True((await Rodar(Escrever(2, 2.0m))).Ok);
     }
@@ -723,7 +668,7 @@ public sealed class UsoTestes : IDisposable
     public async Task Conferir_no_modo_pausa_nao_pausa_nem_marca_o_endereco()
     {
         await Conectar();
-        await IaAtivaPausando();
+        IaAtiva();
 
         Assert.Null(_sessao.Conferir(Ganho.CodificarEscrita(2, 2.0m)));
 
@@ -859,7 +804,7 @@ public sealed class UsoTestes : IDisposable
     {
         var guardado = Historico.ParaJson([new EntradaHistorico(_relogio.GetLocalNow(), OrigemComando.Ia, TipoComando.AjusteAudio,
             new Endereco("081", 0), "1.0", true, null)]);
-        using var t = new UsoTestes(guardado, null);
+        using var t = new UsoTestes(guardado);
         await t._historico.Carregado;
 
         t._historico.Registrar(Comando(1, "2.0"), OrigemComando.Tela, true, null);

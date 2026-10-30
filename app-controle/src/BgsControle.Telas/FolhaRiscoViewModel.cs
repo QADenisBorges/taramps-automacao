@@ -3,47 +3,49 @@ using BgsControle.Nucleo.Porta;
 namespace BgsControle.Telas;
 
 /// <summary>
-/// A folha "A IA pede para …" (CAP-12, trava 5): abre sobre qualquer tela quando a IA pede uma
-/// operação de risco. Mostra o risco de <c>chaves-de-acesso.md</c> sem mudar o texto, o botão
-/// branco que diz o que faz e "Não deixar". Sem toque em 60 s, a IA recebe a recusa; a folha mostra
-/// quanto falta ("Sem resposta em 42 s, a IA recebe a recusa."). Fica por cima de tudo (história 11).
+/// A folha de risco do app (CAP-12, trava 5; decisão do Denis, 30/10/2026): abre sobre qualquer tela
+/// quando a porta de comandos pede uma operação de risco ou o Continuar. O título diz o que muda
+/// ("Aplicar a memória FILME?"), o risco vem de <c>chaves-de-acesso.md</c> sem mudar o texto, e os
+/// botões são "Confirmar" e "Cancelar". Sem toque em 60 s, o pedido é recusado; a folha mostra quanto
+/// falta ("Sem resposta em 42 s, o pedido é recusado."). Nada nela menciona a IA. Fica por cima de tudo.
 /// </summary>
-public sealed class ConfirmacaoIaViewModel : TelaBase, IDisposable
+public sealed class FolhaRiscoViewModel : TelaBase, IDisposable
 {
-    public const string TextoNaoDeixar = "Não deixar";
+    public const string TextoConfirmarBotao = "Confirmar";
+    public const string TextoCancelarBotao = "Cancelar";
 
-    /// <summary>"Sem resposta em 42 s, a IA recebe a recusa."</summary>
-    public static string MsgPrazo(int segundos) => $"Sem resposta em {segundos} s, a IA recebe a recusa.";
+    /// <summary>"Sem resposta em 42 s, o pedido é recusado."</summary>
+    public static string MsgPrazo(int segundos) => $"Sem resposta em {segundos} s, o pedido é recusado.";
 
     private readonly PedidosConfirmacao _pedidos;
     private PedidoConfirmacao? _atual;
     private ITimer? _contagem;
     private bool _descartado;
 
-    public ConfirmacaoIaViewModel(PedidosConfirmacao pedidos, IDespachante despachante, TimeProvider relogio)
+    public FolhaRiscoViewModel(PedidosConfirmacao pedidos, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         _pedidos = pedidos;
         // Só a folha que o usuário vê: um pedido novo no lugar não é decidido por um toque antigo.
         Confirmar = new Comando(() => Decidir(_pedidos.Confirmar));
-        Recusar = new Comando(() => Decidir(_pedidos.Recusar));
+        Cancelar = new Comando(() => Decidir(_pedidos.Recusar));
         _pedidos.Mudou += AoMudar;
         Atualizar();
     }
 
     public bool FolhaAberta => _atual is not null;
 
-    /// <summary>"A IA pede para carregar a FILME".</summary>
+    /// <summary>O que muda, como pergunta ("Aplicar a memória FILME?").</summary>
     public string? Titulo => _atual?.Titulo;
 
     /// <summary>O risco, sem mudar o texto de <c>chaves-de-acesso.md</c>.</summary>
     public string? Risco => _atual?.Risco;
 
-    /// <summary>O botão branco, que diz o que faz ("Carregar a FILME").</summary>
-    public string? TextoConfirmar => _atual?.TextoBotao;
+    /// <summary>"Confirmar".</summary>
+    public string TextoConfirmar => TextoConfirmarBotao;
 
-    /// <summary>"Não deixar".</summary>
-    public string TextoRecusar => TextoNaoDeixar;
+    /// <summary>"Cancelar".</summary>
+    public string TextoCancelar => TextoCancelarBotao;
 
     /// <summary>Os segundos que faltam para a recusa sem resposta, ou null sem folha.</summary>
     public int? SegundosRestantes
@@ -57,14 +59,14 @@ public sealed class ConfirmacaoIaViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>"Sem resposta em 42 s, a IA recebe a recusa.", ou null sem folha.</summary>
+    /// <summary>"Sem resposta em 42 s, o pedido é recusado.", ou null sem folha.</summary>
     public string? TextoPrazo => SegundosRestantes is { } s ? MsgPrazo(s) : null;
 
-    /// <summary>O botão branco: a operação segue.</summary>
+    /// <summary>"Confirmar": a operação segue.</summary>
     public Comando Confirmar { get; }
 
-    /// <summary>"Não deixar": a IA recebe "O usuário recusou na tela.".</summary>
-    public Comando Recusar { get; }
+    /// <summary>"Cancelar" (também o véu e o Voltar): a porta recebe "O usuário recusou na tela.".</summary>
+    public Comando Cancelar { get; }
 
     private void Decidir(Action<PedidoConfirmacao?> decidir)
     {
@@ -95,7 +97,6 @@ public sealed class ConfirmacaoIaViewModel : TelaBase, IDisposable
         Avisar(nameof(FolhaAberta));
         Avisar(nameof(Titulo));
         Avisar(nameof(Risco));
-        Avisar(nameof(TextoConfirmar));
         AvisarPrazo();
     }
 

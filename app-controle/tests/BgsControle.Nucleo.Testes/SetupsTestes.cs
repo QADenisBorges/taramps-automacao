@@ -116,6 +116,19 @@ public sealed partial class SetupsTestes : IDisposable
         await AndarAte(() => _estado.Pronto && !_estado.Lendo && !_leitura.Lendo && !_copia.EmAndamento && _setups.Conferido);
     }
 
+    /// <summary>
+    /// Conecta com a chave "Aplicar memória do celular" desligada e liga de novo depois da conferência:
+    /// numa diferença leve, o app não reaplica sozinho e fica o som do aparelho (<see cref="EstadoConferencia.SomDiferente"/>),
+    /// como antes da história 9c.
+    /// </summary>
+    private async Task ConectarSemReaplicar()
+    {
+        await _chaves.Carregada;
+        Assert.True((await _chaves.DefinirAsync(Chave.AplicarMemoriaCelular, false, OrigemComando.Tela)).Ok);
+        await Conectar();
+        Assert.True((await _chaves.DefinirAsync(Chave.AplicarMemoriaCelular, true, OrigemComando.Tela)).Ok);
+    }
+
     private async Task Reconectar()
     {
         await _sessao.DesconectarAsync();
@@ -319,29 +332,140 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("081", 0, "+4.0")] // o ganho
-    [InlineData("071", 2, "-3.0")] // o limitador
-    [InlineData("091", 0, "+0.0")] // o EQ de saída
-    [InlineData("080", null, "-5.0")] // o MASTER
-    [InlineData("030", null, "+3.0")] // o EQ de entrada
-    public async Task So_ganho_limitador_EQ_ou_MASTER_diferem_som_diferente_sem_mutar(string codigo, int? indice, string valor)
+    [InlineData("081", 0, "+4.0", "*081*0*10.0*")] // o ganho
+    [InlineData("071", 2, "-3.0", null)] // o limitador
+    [InlineData("091", 0, "+0.0", null)] // o EQ de saída
+    [InlineData("080", null, "-5.0", null)] // o MASTER
+    [InlineData("030", null, "+3.0", null)] // o EQ de entrada
+    public async Task So_ganho_limitador_EQ_ou_MASTER_diferem_reaplica_sozinho_sem_mutar(string codigo, int? indice, string valor, string? quadro)
     {
+        await _setups.Carregada;
+        var filme = _setups.Memoria(Filme)!.Regulagem.Single(v => v.Codigo == codigo && v.Indice == indice).NoFio;
         _simulador.Definir(codigo, indice, valor);
+
+        await Conectar();
+
+        // História 9c (failure-modes, regra 5): a FILME e o Cinema voltam sozinhos, sem mutar.
+        Assert.Equal(EstadoConferencia.Confere, _setups.Estado);
+        Assert.Equal(SomEmUso.DoCelular(Filme), _setups.EmUso);
+        Assert.Equal(Casa, _setups.SetupEmUso!.Id);
+        Assert.Equal(Cinema, _setups.IdPresetEmUso);
+        Assert.Null(_setups.Reaplicando);
+        Assert.False(_setups.Mutado);
+        Assert.True(Mutados(false));
+        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*100*", StringComparison.Ordinal));
+        Assert.Null(_setups.MotivoBloqueioIa);
+        Assert.True(Camadas.Iguais(new ValorCopiado(codigo, indice, filme), _estado.Copiar()));
+        var audio = _simulador.Escritas.Where(e => Catalogo.EscritaDeAudio(e) is not null).ToList();
+        Assert.Single(audio); // só o que difere
+        if (quadro is not null)
+            Assert.Equal(quadro, audio[0]);
+        Assert.Null(CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao); // terminou: sem marca de pela metade
+        Assert.Null(_copia.PelaMetade);
+    }
+
+    [Fact]
+    public async Task Diferenca_leve_avisa_reaplicando_com_a_memoria_e_o_preset_e_some_ao_terminar()
+    {
+        _simulador.Definir("081", 0, "+4.0");
+        var vistos = new List<Reaplicacao>();
+        _setups.Mudou += () =>
+        {
+            if (_setups.Reaplicando is { } r)
+            {
+                lock (vistos)
+                    vistos.Add(r);
+            }
+        };
+
+        await Conectar();
+
+        lock (vistos)
+            Assert.Contains(new Reaplicacao("FILME", "Cinema"), vistos);
+        Assert.Null(_setups.Reaplicando);
+        Assert.Equal(EstadoConferencia.Confere, _setups.Estado);
+        Assert.Equal("+10.0", _simulador.Valor("081", 0));
+    }
+
+    [Fact]
+    public async Task Diferenca_leve_com_a_chave_Aplicar_memoria_desligada_nada_escrito_e_fica_o_som_diferente_com_Reaplicar_recusado()
+    {
+        await _chaves.Carregada;
+        Assert.True((await _chaves.DefinirAsync(Chave.AplicarMemoriaCelular, false, OrigemComando.Tela)).Ok);
+        _simulador.Definir("081", 0, "+4.0");
+
         await Conectar();
 
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
         Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
         Assert.Equal(Casa, _setups.SetupEmUso!.Id);
-        Assert.False(_setups.Mutado);
+        Assert.Null(_setups.Reaplicando);
         Assert.True(Mutados(false));
-        Assert.Null(_setups.MotivoBloqueioIa);
+        Assert.DoesNotContain(_simulador.Escritas, e => Catalogo.EscritaDeAudio(e) is not null);
+        Assert.Equal("+4.0", _simulador.Valor("081", 0));
+
+        var r = await _setups.ReaplicarAsync();
+        Assert.False(r.Ok);
+        Assert.Equal(Sessao.MotivoChaveDesligada, r.Motivo);
+        Assert.DoesNotContain(_simulador.Escritas, e => Catalogo.EscritaDeAudio(e) is not null);
     }
 
     [Fact]
-    public async Task So_o_ganho_difere_Reaplicar_escreve_so_o_que_difere()
+    public async Task Diferenca_leve_com_uma_operacao_pela_metade_pendente_nada_escrito_e_a_folha_da_metade_manda()
+    {
+        await Conectar();
+        // Uma operação de vários parâmetros guardou a marca e parou (a conexão caiu no meio dela).
+        Assert.True((await _copia.IniciarAsync(new OperacaoPendente("teste", "x", "Operação de teste"))).Ok);
+        _copia.Interromper();
+        await _sessao.DesconectarAsync();
+        _simulador.Definir("081", 0, "+4.0");
+        var inicio = _simulador.Escritas.Count;
+
+        await Conectar();
+        await AndarAte(() => _copia.PelaMetade is not null);
+
+        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
+        Assert.Null(_setups.Reaplicando);
+        Assert.Empty(AudioDesde(inicio));
+        Assert.Equal("+4.0", _simulador.Valor("081", 0));
+        Assert.True(Mutados(false));
+    }
+
+    [Fact]
+    public async Task Diferenca_leve_com_a_conexao_caindo_no_meio_da_reaplicacao_fica_aplicado_pela_metade_na_volta()
+    {
+        // Quantas escritas (a senha e as leituras) uma conexão sem diferenças faz.
+        var antes = _simulador.Escritas.Count;
+        await Conectar();
+        var porConexao = _simulador.Escritas.Count - antes;
+        await _sessao.DesconectarAsync();
+        _simulador.Definir("081", 0, "+4.0");
+        _simulador.Definir("081", 1, "+0.0"); // duas diferenças: a queda vem depois da primeira escrita
+        _simulador.CairDepoisDaEscrita = _simulador.Escritas.Count + porConexao + 1;
+
+        await _sessao.ConectarAsync();
+        await AndarAte(() => _sessao.Estado == EstadoSessao.Desconectado && _setups.Reaplicando is null && !_setups.Ocupado);
+
+        Assert.Null(_setups.Reaplicando); // a tela REAPLICANDO fecha
+        Assert.Equal(GerenteSetups.TipoAplicarMemoria, CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao!.Tipo);
+
+        _simulador.CairDepoisDaEscrita = null;
+        var inicio = _simulador.Escritas.Count;
+        await Conectar();
+        await AndarAte(() => _copia.PelaMetade is not null);
+
+        Assert.Equal(GerenteSetups.TipoAplicarMemoria, _copia.PelaMetade!.Tipo);
+        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado); // pela metade: não reaplica de novo
+        Assert.Empty(AudioDesde(inicio));
+        Assert.True(Mutados(false));
+    }
+
+    [Fact]
+    public async Task So_o_ganho_difere_com_a_chave_desligada_Reaplicar_depois_de_ligar_escreve_so_o_que_difere()
     {
         _simulador.Definir("081", 0, "+4.0");
-        await Conectar();
+        await ConectarSemReaplicar();
+        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
         Assert.Equal("Som diferente da FILME", GerenteSetups.MsgSomDiferente(_setups.Ativa(Casa)!.Nome));
         var inicio = _simulador.Escritas.Count;
 
@@ -831,7 +955,7 @@ public sealed partial class SetupsTestes : IDisposable
     public async Task Criar_memoria_com_o_som_do_aparelho_em_uso_pede_a_folha_do_Salvar()
     {
         _simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: som diferente, o som do aparelho
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
 
         var r = await _setups.CriarMemoriaAsync("NOVA");
@@ -846,7 +970,7 @@ public sealed partial class SetupsTestes : IDisposable
     {
         _simulador.Definir("081", 1, "+0.0");
         _simulador.Definir("071", 1, "-3.0");
-        await Conectar();
+        await ConectarSemReaplicar();
         var inicio = _simulador.Escritas.Count;
 
         var r = await Rodar(_setups.AplicarAsync(Filme));
@@ -1062,7 +1186,7 @@ public sealed partial class SetupsTestes : IDisposable
     public async Task Salvar_com_o_som_do_aparelho_pede_o_nome_e_guarda_a_regulagem_lida_numa_memoria_nova()
     {
         _simulador.Definir("081", 0, "-5.0"); // só o ganho difere da FILME: o som do aparelho
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
         var inicio = _simulador.Escritas.Count;
 
@@ -1090,7 +1214,7 @@ public sealed partial class SetupsTestes : IDisposable
     public async Task Salvar_no_som_diferente_vai_para_uma_memoria_nova()
     {
         _simulador.Definir("081", 0, "+4.0");
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
 
         var folha = _setups.PrepararSalvar();
@@ -1599,7 +1723,7 @@ public sealed partial class SetupsTestes : IDisposable
         foreach (var b in GerentePresets.BandasPlanas)
             _simulador.Definir("020", b.Indice, b.NoFio);
         _simulador.Definir("081", 0, "+1.0");
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado); // as bandas não entram na conferência
         var inicio = _simulador.Escritas.Count;
 
@@ -1721,7 +1845,7 @@ public sealed partial class SetupsTestes : IDisposable
     {
         _simulador.Definir("020", 0, "+6.0");
         _simulador.Definir("081", 0, "+4.0"); // o ganho também difere da FILME: o som do aparelho
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
 
         var folha = _setups.PrepararSalvar();
@@ -1864,7 +1988,7 @@ public sealed partial class SetupsTestes : IDisposable
     {
         using var t = ComFilme(PlaylistsAntigas);
         t._simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: o som do aparelho vai para uma memória nova
-        await t.Conectar();
+        await t.ConectarSemReaplicar();
         Assert.Equal(SomEmUso.SomDoAparelho, t._setups.EmUso);
 
         var r = await t._setups.SalvarAsync("MUSICA ORIG");

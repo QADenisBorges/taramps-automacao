@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
-    Configurações › Chaves de acesso (EXPERIENCE, Linha de chave; telas-chave 5a, 5b; chaves-de-acesso.md): as 11
-    chaves, cada uma com o par Desl. · Lig. (o escolhido em branco) e o risco escrito (em erro-texto nas que vêm
+    Configurações › Chaves de acesso (EXPERIENCE, Linha de chave; telas-chave 5a, 5b; chaves-de-acesso.md): as
+    chaves (menos a "Controle pela rede", que fica no grupo APARELHO das Configurações), cada uma com o par Desl. · Lig. (o escolhido em branco) e o risco escrito (em erro-texto nas que vêm
     desligadas). Ligar uma chave com risco abre a folha com o aviso ("Ligar a chave" ou "Deixar desligada");
-    desligar age direto. A IA nunca muda uma chave.
+    desligar age direto. A porta de comandos nunca muda uma chave.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -25,7 +25,7 @@
                 <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
                     <Label Style="{StaticResource tipo-titulo-tela}" Text="Chaves de acesso" />
-                    <Label Style="{StaticResource tipo-detalhe}" Text="Só você liga e desliga. A IA passa pelas mesmas chaves." />
+                    <Label Style="{StaticResource tipo-detalhe}" Text="Só você liga e desliga. A porta de comandos passa pelas mesmas chaves." />
                 </VerticalStackLayout>
             </Grid>
             <ScrollView Grid.Row="1">
@@ -47,8 +47,6 @@
                                                     </DataTrigger>
                                                 </Label.Triggers>
                                             </Label>
-                                            <Label Style="{StaticResource tipo-risco-chave}" Text="{Binding Observacao}"
-                                                   IsVisible="{Binding Observacao, Converter={StaticResource TemTexto}}" />
                                         </VerticalStackLayout>
                                         <HorizontalStackLayout Grid.Column="1" Spacing="0" VerticalOptions="Center"
                                                                SemanticProperties.Description="{Binding TextoEstado}">
@@ -77,7 +75,7 @@
                         </VerticalStackLayout>
                     </Border>
                     <Label Style="{StaticResource tipo-detalhe}"
-                           Text="Com a chave desligada, a operação é recusada antes de qualquer envio, pela tela e pela IA." />
+                           Text="Com a chave desligada, a operação é recusada antes de qualquer envio, pela tela e pela porta de comandos." />
                 </VerticalStackLayout>
             </ScrollView>
         </Grid>

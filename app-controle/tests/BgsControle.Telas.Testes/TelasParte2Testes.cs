@@ -37,10 +37,10 @@ internal sealed class Telas11 : IDisposable
         PlayerTela = new PlayerViewModel(Player, b.Playlists, setups, Seletor, b.Tela, b.Relogio, Aparelho, Som);
         Chaves = new ChavesViewModel(b.Chaves, b.Tela, b.Relogio);
         Pedidos = new PedidosConfirmacao(b.Relogio, b.Log);
-        Confirmacao = new ConfirmacaoIaViewModel(Pedidos, b.Tela, b.Relogio);
-        IaAtiva = b.CriarIaAtivaViewModel();
+        FolhaRisco = new FolhaRiscoViewModel(Pedidos, b.Tela, b.Relogio);
+        Reaplicando = new ReaplicandoViewModel(setups, b.Tela, b.Relogio);
         Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, b.Fabrica, Nav, b.Tela, b.Relogio,
-            PlayerTela, IaAtiva, Confirmacao, Gerador);
+            PlayerTela, FolhaRisco, Gerador, Reaplicando);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio, Aparelho);
     }
 
@@ -67,16 +67,16 @@ internal sealed class Telas11 : IDisposable
     public PlayerViewModel PlayerTela { get; }
     public ChavesViewModel Chaves { get; }
     public PedidosConfirmacao Pedidos { get; }
-    public ConfirmacaoIaViewModel Confirmacao { get; }
-    public IaAtivaViewModel IaAtiva { get; }
+    public FolhaRiscoViewModel FolhaRisco { get; }
+    public ReaplicandoViewModel Reaplicando { get; }
     public CascaViewModel Casca { get; }
     public ConfiguracoesViewModel Configuracoes { get; }
 
     public void Dispose()
     {
         Casca.Dispose();
-        IaAtiva.Dispose();
-        Confirmacao.Dispose();
+        Reaplicando.Dispose();
+        FolhaRisco.Dispose();
         Chaves.Dispose();
         PlayerTela.Dispose();
         Player.Dispose();
@@ -97,8 +97,8 @@ internal sealed class Telas11 : IDisposable
 
 /// <summary>
 /// História 11, a matriz da spec contra o simulador: a aba Player com os avisos do topo, a folha de presets do
-/// chip, o bloco e a tela do Gerador, a faixa de monitoração por saída do Setup, a confirmação e a IA ativa
-/// por cima de tudo, as linhas de Configurações e os links sem Setup nas telas.
+/// chip, o bloco e a tela do Gerador, a faixa de monitoração por saída do Setup, a folha de risco por cima de
+/// tudo, as linhas de Configurações (sem a IA, desde a 9c) e os links sem Setup nas telas.
 /// </summary>
 public sealed class TelasParte2Testes : IDisposable
 {
@@ -491,64 +491,81 @@ public sealed class TelasParte2Testes : IDisposable
         Assert.Equal("monitoracao", _t.Nav.Pedidos[^1]);
     }
 
-    // ----------------------------------------------------------------- IA por cima de tudo
+    // ----------------------------------------------------------------- REAPLICANDO (história 9c)
+
+    /// <summary>A thread da tela na hora: cada mudança do REAPLICANDO chega à casca sem a fila.</summary>
+    private sealed class TelaNaHora : IDespachante
+    {
+        public void Executar(Action acao) => acao();
+    }
 
     [Fact]
-    public async Task IA_pede_aplicar_a_FILME_a_folha_sobe_por_cima_com_o_prazo_e_sem_resposta_a_IA_recebe_a_recusa()
+    public async Task Diferenca_leve_ao_conectar_sobe_a_tela_toda_REAPLICANDO_com_FILME_e_Cinema_e_ela_fecha_ao_terminar()
+    {
+        using var reaplicando = new ReaplicandoViewModel(_b.Setups!, new TelaNaHora(), _b.Relogio);
+        using var casca = new CascaViewModel(_b.Sessao, _t.Conexao, _t.Setup, _t.Memorias, _t.Inicio, _t.Mesa, _t.Audio, _t.Salvar,
+            _b.Fabrica, _t.Nav, _b.Tela, _b.Relogio, _t.PlayerTela, _t.FolhaRisco, _t.Gerador, reaplicando);
+        casca.SincronizarCamadas(forcar: true);
+        var vistos = new List<(string? Titulo, string? Memoria, string? Preset, string Instrucao)>();
+        reaplicando.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ReaplicandoViewModel.Preset) && reaplicando.Ativa)
+                vistos.Add((reaplicando.Titulo, reaplicando.Memoria, reaplicando.Preset, reaplicando.Instrucao));
+        };
+        _b.Simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME
+
+        await Conectar();
+
+        Assert.Contains(("REAPLICANDO", "FILME", "Cinema", "Mantenha o celular perto do processador."), vistos);
+        Assert.Contains("camadas:False:True:False", _t.Nav.Pedidos);
+        Assert.False(reaplicando.Ativa);
+        Assert.Equal((false, false, false), _t.Nav.Camadas); // a tela fechou
+        Assert.False(casca.ReaplicandoPorCima);
+        Assert.Equal("+10.0", _b.Simulador.Valor("081", 0));
+        Assert.Equal("FILME", _t.Inicio.NomeMemoria);
+        Assert.Null(_t.Inicio.SomDiferente);
+    }
+
+    // ----------------------------------------------------------------- folha de risco por cima de tudo
+
+    [Fact]
+    public async Task Pedido_de_aplicar_a_FILME_a_folha_de_risco_sobe_por_cima_com_o_prazo_e_sem_resposta_e_recusado()
     {
         await Conectar();
         _t.Casca.SincronizarCamadas(forcar: true);
 
         var decisao = _t.Pedidos.PedirAsync(new PedidoConfirmacao(
-            "A IA pede para aplicar a memória FILME", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Risco, "Aplicar a FILME"));
+            "Aplicar a memória FILME?", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Risco));
         await _b.Tela.EsvaziarAsync();
 
-        Assert.True(_t.Confirmacao.FolhaAberta);
-        Assert.Equal("A IA pede para aplicar a memória FILME", _t.Confirmacao.Titulo);
-        Assert.Equal("Troca todo o som de uma vez.", _t.Confirmacao.Risco);
-        Assert.Equal("Sem resposta em 60 s, a IA recebe a recusa.", _t.Confirmacao.TextoPrazo);
-        Assert.Equal((false, true, false), _t.Nav.Camadas);
-        Assert.True(_t.Casca.ConfirmacaoIaPorCima);
+        Assert.True(_t.FolhaRisco.FolhaAberta);
+        Assert.Equal("Aplicar a memória FILME?", _t.FolhaRisco.Titulo);
+        Assert.Equal("Troca todo o som de uma vez.", _t.FolhaRisco.Risco);
+        Assert.Equal(("Confirmar", "Cancelar"), (_t.FolhaRisco.TextoConfirmar, _t.FolhaRisco.TextoCancelar));
+        Assert.Equal("Sem resposta em 60 s, o pedido é recusado.", _t.FolhaRisco.TextoPrazo);
+        Assert.Equal((true, false, false), _t.Nav.Camadas);
+        Assert.True(_t.Casca.FolhaRiscoPorCima);
 
         await _b.Andar(TimeSpan.FromSeconds(15), passoMs: 100);
-        Assert.InRange(_t.Confirmacao.SegundosRestantes!.Value, 44, 46);
+        Assert.InRange(_t.FolhaRisco.SegundosRestantes!.Value, 44, 46);
 
         await _b.Andar(TimeSpan.FromSeconds(46), passoMs: 100);
         Assert.True(decisao.IsCompleted);
         Assert.Equal(DecisaoConfirmacao.SemResposta, await decisao);
         await _b.Tela.EsvaziarAsync();
-        Assert.False(_t.Confirmacao.FolhaAberta);
-        Assert.Null(_t.Confirmacao.TextoPrazo);
+        Assert.False(_t.FolhaRisco.FolhaAberta);
+        Assert.Null(_t.FolhaRisco.TextoPrazo);
         Assert.Equal((false, false, false), _t.Nav.Camadas);
     }
 
     [Fact]
-    public async Task IA_ativa_abre_sozinha_e_PARAR_IA_fecha_e_volta()
+    public async Task Com_a_tarefa_ativa_nenhuma_camada_sobe_e_um_toque_na_Mesa_escreve_e_pausa()
     {
         await Conectar();
         _t.Casca.SincronizarCamadas(forcar: true);
-
-        Assert.True(_b.Uso!.IniciarTarefa("IA ajustando o EQ da FILME").Ok);
+        Assert.True(_b.Uso!.IniciarTarefa("ajustando o EQ da FILME").Ok);
         await _b.Tela.EsvaziarAsync();
-
-        Assert.Equal((true, false, false), _t.Nav.Camadas);
-        Assert.Equal("IA ajustando o EQ da FILME", _t.IaAtiva.Faixa);
-        Assert.Equal(IaAtivaViewModel.MsgControlesTravados, _t.IaAtiva.AvisoControles);
-
-        await _t.IaAtiva.PararIa.ExecutarAsync();
-        await _b.Tela.EsvaziarAsync();
-
-        Assert.Equal((false, false, false), _t.Nav.Camadas);
-        Assert.False(_t.Casca.IaAtivaPorCima);
-    }
-
-    [Fact]
-    public async Task IA_ativa_no_modo_pausar_ao_toque_um_toque_na_Mesa_pausa_e_mostra_a_faixa_da_pausa()
-    {
-        await Conectar();
-        Assert.True((await _b.Uso!.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok);
-        Assert.True(_b.Uso.IniciarTarefa("IA ajustando o EQ da FILME").Ok);
-        await _b.Tela.EsvaziarAsync();
+        Assert.Equal((false, false, false), _t.Nav.Camadas); // sem faixa nem tela da IA
 
         var ganho = _t.Mesa.Canal(Sub)!.Ganho;
         ganho.AbrirCampo();
@@ -557,9 +574,10 @@ public sealed class TelasParte2Testes : IDisposable
         await _b.Rodar(ganho.UltimaEscrita);
         await _b.Tela.EsvaziarAsync();
 
-        Assert.True(_t.IaAtiva.Pausada);
-        Assert.Equal("IA pausada · retoma após 10 s sem toques", _t.IaAtiva.Faixa);
+        Assert.Null(ganho.Aviso);
+        Assert.Equal(EstadoIa.Pausada, _b.Uso.Estado);
         Assert.Equal("+5.0", _b.Simulador.Valor("081", 2));
+        Assert.Equal((false, false, false), _t.Nav.Camadas);
     }
 
     // ----------------------------------------------------------------- Configurações
@@ -570,10 +588,10 @@ public sealed class TelasParte2Testes : IDisposable
         await Conectar();
         var c = _t.Configuracoes;
 
-        foreach (var cmd in new[] { c.AbrirSetups, c.AbrirMemorias, c.AbrirPresets, c.AbrirSenha, c.AbrirMonitoracao, c.AbrirChaves, c.AbrirIaPelaRede, c.AbrirHistorico })
+        foreach (var cmd in new[] { c.AbrirSetups, c.AbrirMemorias, c.AbrirPresets, c.AbrirSenha, c.AbrirMonitoracao, c.AbrirChaves })
             await cmd.ExecutarAsync();
 
-        Assert.Equal(["setups", "memorias", "presets", "senha", "monitoracao", "chaves", "ia-pela-rede", "historico"], _t.Nav.Pedidos.TakeLast(8));
+        Assert.Equal(["setups", "memorias", "presets", "senha", "monitoracao", "chaves"], _t.Nav.Pedidos.TakeLast(6));
         Assert.False(c.AvancadoAberto);
         await c.AlternarAvancado.ExecutarAsync();
         Assert.True(c.AvancadoAberto);

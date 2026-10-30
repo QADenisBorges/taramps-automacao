@@ -83,7 +83,7 @@ public sealed class SalvarViewModelTestes : IDisposable
     public async Task Com_o_som_do_aparelho_o_confirmar_trava_ate_dar_o_nome_e_a_regulagem_vai_para_uma_memoria_nova()
     {
         _b.Simulador.Definir("081", 0, "-5.0"); // só o ganho difere da FILME: o som do aparelho
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
         Assert.True(_vm.PodeSalvar); // com o som do aparelho, nunca trava por "nada mudou"
 
@@ -113,7 +113,7 @@ public sealed class SalvarViewModelTestes : IDisposable
     public async Task Nome_repetido_a_folha_fica_aberta_com_o_erro()
     {
         _b.Simulador.Definir("081", 0, "+4.0"); // o som do aparelho: a regulagem vai para uma memória nova
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
         await _vm.Abrir.ExecutarAsync();
         _vm.NomeMemoria = "filme";
@@ -245,7 +245,7 @@ public sealed class SalvarViewModelTestes : IDisposable
     {
         _b.Simulador.Definir("020", 0, "+6.0");
         _b.Simulador.Definir("081", 0, "+4.0"); // o ganho também difere da FILME: o som do aparelho
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
 
         await _vm.Abrir.ExecutarAsync();

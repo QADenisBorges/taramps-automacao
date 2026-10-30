@@ -29,11 +29,11 @@ public sealed class Pareamento
     public const int TentativasPorCodigo = 5;
     public const int TamanhoMaximoNome = 60;
 
-    public const string MsgJaPareado = "Já existe um cliente pareado. Revogue no celular para parear outro.";
-    public const string MsgCodigoErrado = "Código errado. Confira o código na tela IA pela rede do celular.";
+    public const string MsgJaPareado = "Já existe um cliente pareado. Desligue e ligue a chave Controle pela rede no celular para parear outro.";
+    public const string MsgCodigoErrado = "Código errado. Confira o código no celular, embaixo da chave Controle pela rede.";
     public const string MsgCodigoNovo = "Código errado 5 vezes. A tela mostra um código novo.";
     public const string MsgNaoGuardou = "Não consegui guardar o pareamento no celular. Tente de novo.";
-    public const string MsgRevogadoNoMeio = "O pareamento foi revogado no celular. Peça o código novo na tela IA pela rede.";
+    public const string MsgRevogadoNoMeio = "O pareamento foi revogado no celular. Peça o código novo, embaixo da chave Controle pela rede.";
 
     /// <summary>Quanto um código errado espera antes do 401 (as tentativas vão uma por vez).</summary>
     public static TimeSpan EsperaCodigoErrado { get; } = TimeSpan.FromSeconds(1);
@@ -205,7 +205,7 @@ public sealed class Pareamento
             }
             if (revogado)
             {
-                // Revogado durante a gravação (PARAR IA, a chave desligada): o cliente não fica.
+                // Revogado durante a gravação (a chave desligada): o cliente não fica.
                 _log?.Evento("porta: pareamento revogado no meio");
                 await GravarAsync(ParaJson(null, null, null));
                 return new ResultadoPareamento(false, 409, null, MsgRevogadoNoMeio);

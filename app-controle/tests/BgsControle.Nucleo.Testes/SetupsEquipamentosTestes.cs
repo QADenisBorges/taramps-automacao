@@ -70,7 +70,7 @@ public sealed partial class SetupsTestes
         _simulador.Definir("081", 2, "+1.0");
         _simulador.Definir("081", 3, "+1.0");
         _simulador.Definir("071", 1, "-3.0");
-        await Conectar();
+        await ConectarSemReaplicar();
         Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
 
         var r = await Rodar(_setups.AplicarAsync(Filme));

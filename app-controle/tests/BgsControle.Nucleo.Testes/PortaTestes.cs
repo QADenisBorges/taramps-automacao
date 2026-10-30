@@ -115,7 +115,7 @@ public sealed class PortaTestes : IDisposable
         _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         _chaves = new Chaves(_repositorioChaves);
         _historico = new Historico(new TextoMemoria(), _relogio, _log);
-        _uso = new UsoCompartilhado(new TextoMemoria(), _relogio, _log);
+        _uso = new UsoCompartilhado(_relogio, _log);
         _sessao = new Sessao(_simulador, _cofre, _log, Tempos, _chaves, _historico, _uso);
         var leitor = new LeitorCompleto(_sessao, _log, LeituraRapida);
         _leitura = new LeituraAutomatica(_sessao, leitor);
@@ -159,7 +159,6 @@ public sealed class PortaTestes : IDisposable
         await _chaves.Carregada;
         await _copia.Carregada;
         await _historico.Carregado;
-        await _uso.Carregado;
         await _pareamento.Carregado;
         await _sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
@@ -169,9 +168,20 @@ public sealed class PortaTestes : IDisposable
 
     private async Task LigarPorta(PortaComandos? porta = null)
     {
-        Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, true, OrigemComando.Tela)).Ok);
+        Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
         await (porta ?? _porta).AtualizarAsync();
         Assert.True((porta ?? _porta).Aberta);
+    }
+
+    /// <summary>
+    /// O ganho da saída 1 vai a +1,0 dB depois da conferência: a regulagem fica diferente da FILME, e um
+    /// aplicar terá o que escrever. (Desde a 9c, um ganho mexido antes de conectar é reaplicado sozinho
+    /// na conferência.) Vai como App: um toque da tela deixaria o endereço com a tela por 10 s.
+    /// </summary>
+    private async Task GanhoDiferentePeloApp()
+    {
+        using (Origem.Como(OrigemComando.App))
+            Assert.True((await Rodar(_escritor.EscreverAsync(Catalogo.ParametroDe("081")!, 0, 1.0m))).Ok);
     }
 
     /// <summary>Conecta, abre a porta e pareia: devolve a chave do cliente.</summary>
@@ -237,7 +247,7 @@ public sealed class PortaTestes : IDisposable
         await _porta.Inicio;
         await _porta.AtualizarAsync();
 
-        Assert.False(_chaves.Ligada(Chave.IaPelaRede));
+        Assert.False(_chaves.Ligada(Chave.ControlePelaRede));
         Assert.False(_porta.Aberta);
         Assert.Null(_porta.Erro);
         var r = await Pedir("GET", "/estado");
@@ -372,7 +382,7 @@ public sealed class PortaTestes : IDisposable
         using var porta = NovaPorta(p);
         await porta.Inicio;
 
-        Assert.False(_chaves.Ligada(Chave.IaPelaRede));
+        Assert.False(_chaves.Ligada(Chave.ControlePelaRede));
         Assert.False(p.Pareado);
         Assert.False(p.Confere("k"));
         await EsperarSemAndar(() => !(guardado.Texto ?? "").Contains("sha256"));
@@ -386,7 +396,7 @@ public sealed class PortaTestes : IDisposable
         var r = await Pedir("POST", "/parear", """{"codigo":"123456","nome":"outro"}""");
 
         Assert.Equal(409, r.Status);
-        Assert.Equal("Já existe um cliente pareado. Revogue no celular para parear outro.", Motivo(r));
+        Assert.Equal("Já existe um cliente pareado. Desligue e ligue a chave Controle pela rede no celular para parear outro.", Motivo(r));
     }
 
     [Fact]
@@ -398,7 +408,7 @@ public sealed class PortaTestes : IDisposable
         var errada = await Pedir("GET", "/estado", chave: chave[..^2] + "AA");
 
         Assert.Equal(401, sem.Status);
-        Assert.Equal("Cliente não pareado. Peça o código na tela IA pela rede do celular.", Motivo(sem));
+        Assert.Equal("Cliente não pareado. Peça o código no celular: Configurações, chave Controle pela rede.", Motivo(sem));
         Assert.Equal(401, errada.Status);
         Assert.Equal(200, (await Pedir("GET", "/estado", chave: chave)).Status);
         // /ajuda não pede a chave.
@@ -530,7 +540,7 @@ public sealed class PortaTestes : IDisposable
 
         var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA pede para desligar o remote out", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Desligar o remote out?", _confirmacoes.Atual!.Titulo);
         _confirmacoes.Recusar();
         var r = await pedido;
 
@@ -629,7 +639,7 @@ public sealed class PortaTestes : IDisposable
         var e = Ultima();
         Assert.Equal(TipoComando.RemoteOut, e.Tipo);
         Assert.Equal("Já há um pedido esperando confirmação na tela.", e.Motivo);
-        Assert.Equal("A IA pede para aplicar a memória FILME", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Aplicar a memória FILME?", _confirmacoes.Atual!.Titulo);
 
         _confirmacoes.Recusar();
         Assert.Equal(409, (await primeiro).Status);
@@ -698,7 +708,6 @@ public sealed class PortaTestes : IDisposable
     public async Task Na_pausa_os_eventos_trazem_pausou_e_o_comando_da_tela()
     {
         var chave = await Pronto();
-        Assert.True((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok);
         Assert.Equal(200, (await Pedir("POST", "/tarefa", """{"frase":"IA ajustando o ganho"}""", chave)).Status);
         Assert.Equal(EstadoIa.Ativa, _uso.Estado);
         Assert.Equal("IA ajustando o ganho", _uso.Tarefa);
@@ -734,19 +743,19 @@ public sealed class PortaTestes : IDisposable
         await Conectar();
         await _porta.Inicio;
 
-        Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, true, OrigemComando.Tela)).Ok);
+        Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
         await EsperarSemAndar(() => _porta.Aberta);
         await Parear();
 
-        Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, false, OrigemComando.Tela)).Ok);
+        Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, false, OrigemComando.Tela)).Ok);
         await EsperarSemAndar(() => !_porta.Aberta && !_pareamento.Pareado && _uso.Parada);
         await EsperarSemAndar(() => !(_arquivoPorta.Texto ?? "").Contains("sha256"));
     }
 
     [Theory]
-    [InlineData("/aparelho/reset-fabrica", Chave.ResetFabrica, "A IA pede para fazer o reset de fábrica", "Apaga a senha e as 3 memórias.", "Fazer o reset de fábrica", "*004*")]
-    [InlineData("/aparelho/reset-audio", Chave.ResetAudio, "A IA pede para fazer o reset de áudio", "O estado resultante é imprevisível.", "Fazer o reset de áudio", "*242*")]
-    public async Task Resets_pedem_o_toque_e_Nao_deixar_nao_envia_nada(string caminho, Chave chaveDoReset, string titulo, string risco, string botao, string quadro)
+    [InlineData("/aparelho/reset-fabrica", Chave.ResetFabrica, "Fazer o reset de fábrica?", "Apaga a senha e as 3 memórias.", "*004*")]
+    [InlineData("/aparelho/reset-audio", Chave.ResetAudio, "Fazer o reset de áudio?", "O estado resultante é imprevisível.", "*242*")]
+    public async Task Resets_pedem_o_toque_e_Cancelar_nao_envia_nada(string caminho, Chave chaveDoReset, string titulo, string risco, string quadro)
     {
         var chave = await Pronto();
         Assert.True((await _chaves.DefinirAsync(chaveDoReset, true, OrigemComando.Tela)).Ok);
@@ -755,7 +764,6 @@ public sealed class PortaTestes : IDisposable
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
         Assert.Equal(titulo, _confirmacoes.Atual!.Titulo);
         Assert.Equal(risco, _confirmacoes.Atual.Risco);
-        Assert.Equal(botao, _confirmacoes.Atual.TextoBotao);
         _confirmacoes.Recusar();
         var r = await pedido;
 
@@ -799,7 +807,7 @@ public sealed class PortaTestes : IDisposable
     {
         var chave = await Pronto();
 
-        Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, false, OrigemComando.Tela)).Ok);
+        Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, false, OrigemComando.Tela)).Ok);
         await _porta.AtualizarAsync();
 
         Assert.False(_porta.Aberta);
@@ -850,7 +858,7 @@ public sealed class PortaTestes : IDisposable
         {
             var numero = ((IPEndPoint)ocupante.LocalEndpoint).Port;
             using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), numero);
-            Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, true, OrigemComando.Tela)).Ok);
+            Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
             await porta.AtualizarAsync();
 
             Assert.False(porta.Aberta);
@@ -989,9 +997,8 @@ public sealed class PortaTestes : IDisposable
 
         var pedido = Pedir("POST", "/gerador/tom", """{"hz":1000,"db":-30.0}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA pede para tocar um tom de 1000 Hz a -30,0 dB", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Tocar um tom de 1000 Hz a -30,0 dB?", _confirmacoes.Atual!.Titulo);
         Assert.Equal("Um tom forte pode queimar o tweeter ou o sub.", _confirmacoes.Atual.Risco);
-        Assert.Equal("Tocar o tom", _confirmacoes.Atual.TextoBotao);
         _confirmacoes.Confirmar();
         var tocar = await Rodar(pedido);
         Assert.Equal(200, tocar.Status);
@@ -1015,9 +1022,8 @@ public sealed class PortaTestes : IDisposable
 
         var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA pede para desligar o remote out", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Desligar o remote out?", _confirmacoes.Atual!.Titulo);
         Assert.Equal("Liga ou corta o som de repente.", _confirmacoes.Atual.Risco);
-        Assert.Equal("Desligar o remote out", _confirmacoes.Atual.TextoBotao);
         _confirmacoes.Recusar();
         Assert.Equal(409, (await pedido).Status);
         Assert.DoesNotContain("*252*0*", _simulador.Escritas);
@@ -1055,7 +1061,7 @@ public sealed class PortaTestes : IDisposable
     {
         await Conectar();
         _rede.Aceitar = _ => true; // o loopback, só neste teste
-        Assert.True((await _chaves.DefinirAsync(Chave.IaPelaRede, true, OrigemComando.Tela)).Ok);
+        Assert.True((await _chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
         await _porta.AtualizarAsync();
         _porta.Dispose(); // a do fixture não serve: esta abre dentro de um escopo App
 
@@ -1213,15 +1219,13 @@ public sealed class PortaTestes : IDisposable
     [Fact]
     public async Task A_IA_aplica_a_FILME_pelo_nome_depois_do_toque_e_o_estado_mostra_ela_em_uso()
     {
-        _simulador.Definir("081", 0, "+1.0"); // o caráter diferente da FILME: haverá o que escrever
         var chave = await Pronto();
-        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado);
+        await GanhoDiferentePeloApp(); // o caráter diferente da FILME: haverá o que escrever
 
         var pedido = Pedir("POST", "/memoria/aplicar", """{"memoria":"filme"}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA pede para aplicar a memória FILME", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Aplicar a memória FILME?", _confirmacoes.Atual!.Titulo);
         Assert.Equal("Troca todo o som de uma vez.", _confirmacoes.Atual.Risco);
-        Assert.Equal("Aplicar a FILME", _confirmacoes.Atual.TextoBotao);
         Assert.DoesNotContain("*081*0*10.0*", _simulador.Escritas); // nada antes do toque
         _confirmacoes.Confirmar();
         var r = await Rodar(pedido);
@@ -1245,8 +1249,8 @@ public sealed class PortaTestes : IDisposable
     [Fact]
     public async Task A_IA_aplica_pelo_id_e_a_folha_recusada_nao_escreve_nada()
     {
-        _simulador.Definir("081", 0, "+1.0");
         var chave = await Pronto();
+        await GanhoDiferentePeloApp();
         var antes = _simulador.Escritas.Count;
 
         var pedido = Pedir("POST", "/memoria/aplicar", $$"""{"memoria":"{{CenarioFilme.IdMemoria}}"}""", chave);
@@ -1370,9 +1374,9 @@ public sealed class PortaTestes : IDisposable
         var quarto = Ajuste(chave, 7.0m);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
 
-        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
-        Assert.Equal("Continuar", _confirmacoes.Atual.TextoBotao);
-        Assert.NotNull(_confirmacoes.Atual.Risco);
+        Assert.Equal("Seguir mexendo no som?", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("Já foram 3 ajustes seguidos pela rede sem um toque seu. Ajuste por ajuste, o som inteiro pode mudar.",
+            _confirmacoes.Atual.Risco);
         Assert.DoesNotContain("*081*2*7.0*", _simulador.Escritas); // nada antes do toque
         _confirmacoes.Confirmar();
         var r = await Rodar(quarto);
@@ -1396,7 +1400,7 @@ public sealed class PortaTestes : IDisposable
             .ToArray();
 
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
+        Assert.Equal(PortaComandos.TituloContinuar, _confirmacoes.Atual!.Titulo);
         _confirmacoes.Recusar();
         var respostas = await Rodar(Task.WhenAll(pedidos));
 
@@ -1438,7 +1442,7 @@ public sealed class PortaTestes : IDisposable
 
         var outro = Ajuste(chave, 7.0m);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA quer seguir mexendo", _confirmacoes.Atual!.Titulo);
+        Assert.Equal(PortaComandos.TituloContinuar, _confirmacoes.Atual!.Titulo);
         _confirmacoes.Recusar();
         Assert.Equal(409, (await outro).Status);
     }
@@ -1463,9 +1467,7 @@ public sealed class PortaTestes : IDisposable
     [Fact]
     public async Task Uma_escrita_da_tela_no_meio_zera_a_conta_e_nenhuma_folha_abre()
     {
-        await _uso.Carregado;
-        Assert.True((await _uso.DefinirModoAsync(ModoToque.PausarIa, OrigemComando.Tela)).Ok); // o toque pausa a IA
-        var chave = await Pronto();
+        var chave = await Pronto(); // o toque sempre pausa a IA
         Assert.Equal(200, (await Rodar(Ajuste(chave, 1.0m))).Status);
         Assert.Equal(200, (await Rodar(Ajuste(chave, 2.0m))).Status);
 
@@ -1482,8 +1484,8 @@ public sealed class PortaTestes : IDisposable
     [Fact]
     public async Task Uma_confirmacao_na_tela_de_outra_operacao_zera_a_conta()
     {
-        _simulador.Definir("081", 0, "+1.0"); // a FILME terá o que escrever
         var chave = await Pronto();
+        await GanhoDiferentePeloApp(); // a FILME terá o que escrever
         await TresAjustes(chave);
 
         var aplicar = Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);

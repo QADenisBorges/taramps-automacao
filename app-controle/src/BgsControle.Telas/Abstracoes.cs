@@ -92,12 +92,6 @@ public interface INavegacao
     /// <summary>Configurações › Chaves de acesso (também ao tocar num bloco travado pela chave).</summary>
     void AbrirChaves();
 
-    /// <summary>Configurações › IA pela rede.</summary>
-    void AbrirIaPelaRede();
-
-    /// <summary>Configurações › Histórico.</summary>
-    void AbrirHistorico();
-
     /// <summary>
     /// As telas que sobem por cima de tudo, sem barra: a escolha do Setup (Setup em dúvida ou Trocar de
     /// Setup) e a folha "Aplicado pela metade". Mostra as que valem e tira as outras.
@@ -105,11 +99,11 @@ public interface INavegacao
     void MostrarPorCima(bool escolhaSetup, bool pelaMetade);
 
     /// <summary>
-    /// As camadas da história 11, também por cima de tudo, acima da escolha do Setup e da folha pela
-    /// metade: a IA ativa (abre sozinha quando a IA começa e fecha ao parar), a folha de confirmação da IA e,
-    /// no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador. Mostra as que valem e tira as outras.
+    /// As camadas que sobem sozinhas, também por cima de tudo, acima da escolha do Setup e da folha pela
+    /// metade: a folha de risco do app, a tela toda "REAPLICANDO" e, no topo, a faixa "DESLIGUE O MÓDULO
+    /// AGORA" do gerador. Mostra as que valem e tira as outras.
     /// </summary>
-    void MostrarCamadas(bool iaAtiva, bool confirmacaoIa, bool alarmeGerador);
+    void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador);
 
     /// <summary>‹ numa tela cheia.</summary>
     void Voltar();

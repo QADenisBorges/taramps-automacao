@@ -216,10 +216,10 @@ public sealed class TelasParte1Testes : IDisposable
     }
 
     [Fact]
-    public async Task So_o_carater_diferente_mostra_som_do_aparelho_com_Reaplicar_que_volta_a_FILME()
+    public async Task Com_a_chave_desligada_o_carater_diferente_mostra_som_do_aparelho_com_Reaplicar_que_volta_a_FILME()
     {
         _b.Simulador.Definir("081", 0, "+3.0");
-        await _b.Conectar();
+        await _b.ConectarSemReaplicar();
         await _b.Tela.EsvaziarAsync();
 
         Assert.Equal("Som do aparelho", _t.Inicio.NomeMemoria);
