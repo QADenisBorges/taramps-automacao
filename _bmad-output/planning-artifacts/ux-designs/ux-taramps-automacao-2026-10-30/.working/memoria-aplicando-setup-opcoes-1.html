@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Setup no Aplicando</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --s1:#111114; --s2:#1C1C20; --bs:#2A2A30; --tb:#16394A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1000px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; }
+  .way { margin-bottom:40px; }
+  .way h2 { font-size:17px; display:flex; align-items:center; gap:8px; }
+  .way h2 b { display:inline-grid; place-items:center; width:28px; height:28px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; flex:none; }
+  .way > p { color:var(--mut); font-size:13px; line-height:1.5; margin:6px 0 14px; max-width:860px; }
+  .row { display:flex; gap:20px; flex-wrap:wrap; }
+  .cell { display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .cell small { font-size:12px; color:var(--chip); font-weight:700; }
+
+  .stage { position:relative; width:270px; height:560px; border-radius:36px; border:8px solid #2A2A2E; overflow:hidden;
+           background:radial-gradient(ellipse 90% 45% at 50% 30%, rgba(11,34,48,.55) 0%, transparent 70%), #000; }
+  .sb { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:8px 18px; font-size:10px; color:#3a3a40; }
+  .topo { position:absolute; left:0; right:0; top:9%; height:48%; display:flex; align-items:center; justify-content:center; }
+  .topo svg { width:240px; height:230px; overflow:visible; }
+  .bloco { position:absolute; left:0; right:0; bottom:10%; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .apS { font-size:17px; font-weight:800; letter-spacing:.18em; color:var(--tx); text-transform:uppercase; text-shadow:0 0 12px rgba(63,208,255,.45); }
+  .apN { font-size:20px; font-weight:800; letter-spacing:.04em; color:var(--chip); }
+  .ring { width:76px; height:76px; position:relative; }
+  .ring svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring circle { transform-box:view-box; transform-origin:50px 50px; fill:none; stroke-width:6; }
+  .ring .bg circle { stroke:#ffffff14; }
+  .ring .l1 circle { stroke:var(--a); stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .ring .l2 circle { stroke:var(--mg); stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; }
+  .ring .l2 { mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  /* Desenhos */
+  svg text { font-family:system-ui, sans-serif; font-size:8.5px; fill:var(--mut); }
+  .chao { fill:#06141A; stroke:var(--tb); stroke-width:1; }
+  .eq { transition:filter .35s; }
+  .eq .f { fill:#111114; stroke:#2A2A30; } .eq .t { fill:#1C1C20; stroke:#2A2A30; } .eq .s { fill:#0b0b0e; stroke:#2A2A30; }
+  .eq .lt { fill:var(--a); opacity:0; transition:opacity .35s; }
+  .eq.on { filter:drop-shadow(0 0 6px rgba(63,208,255,.9)); }
+  .eq.on .lt { opacity:.9; }
+  .eq.done .lt { opacity:.35; }
+  /* 2: ligação */
+  .proc { fill:#111114; stroke:#2A2A30; }
+  .port { fill:#1C1C20; stroke:#2A2A30; }
+  .port.on { fill:var(--a); stroke:var(--a); filter:drop-shadow(0 0 4px rgba(63,208,255,.9)); }
+  .fio { fill:none; stroke:#2A2A30; stroke-width:1.4; transition:stroke .35s; }
+  .fio.on { stroke:var(--a); filter:drop-shadow(0 0 3px rgba(63,208,255,.8)); }
+  .fio.done { stroke:var(--tb); }
+  .box { fill:#111114; stroke:#2A2A30; transition:stroke .35s; }
+  .eq.on .box { stroke:var(--a); }
+  .lbl { fill:var(--chip); font-size:9px; }
+  /* 3: planta */
+  .parede { fill:#05090C; stroke:var(--tb); stroke-width:1.2; }
+  .movel { fill:#111114; stroke:#2A2A30; }
+  .cx2 { fill:#1C1C20; stroke:#2A2A30; transition:fill .35s; }
+  .eq.on .cx2 { fill:var(--a); }
+  .eq.done .cx2 { fill:var(--tb); }
+  .voce { fill:none; stroke:var(--ol); stroke-width:1.2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · O Setup no alto do Aplicando: 3 caminhos</h1>
+  <p class="sub">Cada caminho aparece com três Setups de exemplo: o Casa 2.1, um carro e uma casa com 5.1 (todos com o mesmo PRO 2.4BT de 4 canais; no 5.1, as traseiras dividem canal com as frontais por Y). Os canais acendem um por um, como se cada um estivesse sendo gravado e relido; o que já foi fica com uma luz fraca. Embaixo, o Aplicando escolhido.</p>
+  <div id="ways"></div>
+</div>
+<script>
+/* Setups de exemplo: nome, ambiente e equipamentos com a função acústica e os canais */
+const SETUPS = [
+  { nome: "Casa 2.1", amb: "sala", eq: [{ n: "JBL L", f: "FL", ch: [1] }, { n: "JBL R", f: "FR", ch: [2] }, { n: "Sub", f: "SUB", ch: [3, 4] }] },
+  { nome: "Carro", amb: "carro", eq: [{ n: "Porta E", f: "FL", ch: [1] }, { n: "Tweeter E", f: "TL", ch: [1] }, { n: "Porta D", f: "FR", ch: [2] }, { n: "Tweeter D", f: "TR", ch: [2] }, { n: "Sub", f: "SUB", ch: [3, 4] }] },
+  { nome: "Casa 5.1", amb: "sala", eq: [{ n: "Frontal E", f: "FL", ch: [1] }, { n: "Frontal D", f: "FR", ch: [2] }, { n: "Central", f: "C", ch: [3] }, { n: "Traseira E", f: "RL", ch: [1] }, { n: "Traseira D", f: "RR", ch: [2] }, { n: "Sub ativo", f: "SUB", ch: [4] }] },
+];
+const chs = e => e.ch.join(" ");
+
+/* ---- 1 Arranjo pela função acústica: espaço isométrico neutro, cada caixa no lugar da sua função ---- */
+const caixa = (e, x, y, w, h, lx = x + w / 2, ly = y + 13) => {
+  const d = w * .5;
+  return `<g class="eq" data-ch="${chs(e)}">
+    <polygon class="s" points="${x + w},${y} ${x + w + d},${y - d * .5} ${x + w + d},${y - d * .5 - h} ${x + w},${y - h}"/>
+    <polygon class="f" points="${x},${y} ${x + w},${y} ${x + w},${y - h} ${x},${y - h}"/>
+    <polygon class="t" points="${x},${y - h} ${x + w},${y - h} ${x + w + d},${y - h - d * .5} ${x + d},${y - h - d * .5}"/>
+    <circle class="lt" cx="${x + w / 2}" cy="${y - h * .6}" r="${Math.min(w, h) * .22}"/>
+    <text x="${lx}" y="${ly}" text-anchor="middle">${e.n}</text></g>`;
+};
+function funcao(s) {
+  const temC = s.eq.some(e => e.f === "C");
+  const P = { FL: [26, 110, 26, 44], FR: [176, 110, 26, 44], C: [100, 86, 30, 18], TL: [30, 58, 14, 11], TR: [180, 58, 14, 11], RL: [46, 158, 20, 30], RR: [158, 158, 20, 30], SUB: temC ? [100, 142, 30, 24] : [100, 88, 30, 26] };
+  const ordem = ["C", "SUB", "FL", "FR", "TL", "TR", "RL", "RR"]; // de trás para a frente; os tweeters por cima das portas
+  const eqs = [...s.eq].sort((a, b) => ordem.indexOf(a.f) - ordem.indexOf(b.f));
+  return `<svg viewBox="0 0 230 215"><polygon class="chao" points="115,50 225,110 115,170 5,110"/>
+    ${eqs.map(e => { const [x, y, w, h] = P[e.f]; return e.f[0] === "T" ? caixa(e, x, y, w, h, x + w / 2, y - h - 12) : caixa(e, x, y, w, h); }).join("")}</svg>`;
+}
+
+/* ---- 2 O esquema de ligação: processador com 4 canais, fios e equipamentos ---- */
+function ligacao(s) {
+  const py = k => 34 + (k - 1) * 46, n = s.eq.length, ey = i => 14 + i * (190 / n) + 190 / n / 2 - 10;
+  let fios = "";
+  s.eq.forEach((e, i) => e.ch.forEach(k => { fios += `<path class="fio" data-ch="${k}" d="M70 ${py(k)} C 105 ${py(k)}, 110 ${ey(i) + 10}, 138 ${ey(i) + 10}"/>`; }));
+  return `<svg viewBox="0 0 230 215">
+    <rect class="proc" x="10" y="12" width="60" height="186" rx="8"/><text x="40" y="208" text-anchor="middle">PRO 2.4BT</text>
+    ${[1, 2, 3, 4].map(k => `<rect class="port" data-ch="${k}" x="58" y="${py(k) - 6}" width="14" height="12" rx="3"/><text x="34" y="${py(k) + 3}" text-anchor="middle" class="lbl">CH${k}</text>`).join("")}
+    ${fios}
+    ${s.eq.map((e, i) => `<g class="eq" data-ch="${chs(e)}"><rect class="box" x="138" y="${ey(i)}" width="84" height="20" rx="6"/><text class="lbl" x="180" y="${ey(i) + 13.5}" text-anchor="middle">${e.n}</text></g>`).join("")}
+  </svg>`;
+}
+
+/* ---- 3 Ambiente de verdade: planta da sala ou do carro, com o lugar de cada caixa e de quem ouve ---- */
+const ponto = (e, x, y, r = 7, lx = x, ly = y + r + 10) => `<g class="eq" data-ch="${chs(e)}"><rect class="cx2" x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="3"/><text x="${lx}" y="${ly}" text-anchor="middle">${e.n}</text></g>`;
+function ambiente(s) {
+  if (s.amb === "carro") {
+    const P = { FL: [52, 92], FR: [178, 92], TL: [66, 58], TR: [164, 58], SUB: [115, 190] };
+    return `<svg viewBox="0 0 230 215">
+      <path class="parede" d="M80 8 Q115 0 150 8 L168 40 Q176 60 176 90 L176 180 Q176 208 150 210 L80 210 Q54 208 54 180 L54 90 Q54 60 62 40 Z"/>
+      <path class="movel" d="M70 46 Q115 34 160 46 L156 58 Q115 48 74 58 Z"/>
+      <rect class="movel" x="72" y="74" width="34" height="38" rx="6"/><rect class="movel" x="124" y="74" width="34" height="38" rx="6"/>
+      <rect class="movel" x="72" y="126" width="86" height="34" rx="6"/>
+      <circle class="voce" cx="89" cy="93" r="8"/><text x="89" y="124" text-anchor="middle">você</text>
+      ${s.eq.map(e => { const [x, y] = P[e.f]; const lado = x < 115 ? -1 : 1; return e.f === "SUB" ? ponto(e, x, y, 9, x, y - 14) : ponto(e, x, y, e.f[0] === "T" ? 5 : 7, x + lado * 26, y + 3); }).join("")}
+    </svg>`;
+  }
+  const P = { FL: [40, 40], FR: [190, 40], C: [115, 46], SUB: s.eq.some(e => e.f === "C") ? [160, 64] : [150, 52], RL: [24, 150], RR: [206, 150] };
+  return `<svg viewBox="0 0 230 215">
+    <rect class="parede" x="10" y="16" width="210" height="190" rx="6"/>
+    <rect class="movel" x="72" y="20" width="86" height="12" rx="2"/><text x="115" y="29" text-anchor="middle" style="fill:#4a4a52;font-size:7.5px">tela</text>
+    <rect class="movel" x="68" y="160" width="94" height="26" rx="8"/>
+    <circle class="voce" cx="115" cy="168" r="8"/><text x="115" y="198" text-anchor="middle">você</text>
+    ${s.eq.map(e => { const [x, y] = P[e.f]; return ponto(e, x, y, e.f === "SUB" ? 8 : 7); }).join("")}
+  </svg>`;
+}
+
+const WAYS = [
+  { t: "Arranjo pela função acústica", d: "Espaço isométrico neutro. Cada caixa vai para o lugar da sua função (esquerda, direita, central, sub, tweeters em cima, traseiras na frente do desenho). Usa só o que o Setup já tem; funciona para qualquer Setup. Sem o \"você\", porque o app não sabe onde você senta.", f: funcao },
+  { t: "O esquema de ligação", d: "Miniatura do esquema da aba Setup: o processador com os 4 canais, os fios e os equipamentos. Cada canal acende com os fios e o que está ligado nele. O mais fiel ao que o app sabe, e o mais técnico.", f: ligacao },
+  { t: "Ambiente de verdade", d: "A planta do lugar: a sala com a tela e o sofá, ou o carro com os bancos, cada caixa onde ela fica e você no seu lugar. Precisa de dado novo no Setup (tipo de lugar e posição de cada caixa e de quem ouve), com correção da spec.", f: ambiente },
+];
+const BLOCO = `<div class="bloco"><div class="apS">Aplicando</div><div class="ring"><svg class="bg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l2" viewBox="0 0 100 100"><circle cx="50" cy="50" r="34"/></svg></div><div class="apN">MUSICA ORIG</div></div>`;
+document.getElementById("ways").innerHTML = WAYS.map((w, i) => `<section class="way"><h2><b>${i + 1}</b>${w.t}</h2><p>${w.d}</p><div class="row">
+  ${SETUPS.map(s => `<div class="cell"><small>${s.nome}</small><div class="stage"><div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div><div class="topo">${w.f(s)}</div>${BLOCO}</div></div>`).join("")}</div></section>`).join("");
+
+/* Os 4 canais acendem um por um (gravando e relendo); o que já foi fica com luz fraca; depois recomeça */
+let k = 0;
+setInterval(() => {
+  k = k % 5 + 1; // 1 a 4 acendendo, 5 = pausa com tudo gravado
+  document.querySelectorAll("[data-ch]").forEach(el => {
+    const c = el.dataset.ch.split(" ").map(Number);
+    el.classList.toggle("on", k <= 4 && c.includes(k));
+    el.classList.toggle("done", (k === 5 || c.some(x => x < k)) && !c.includes(k));
+    if (k === 1 && !c.includes(1)) el.classList.remove("done");
+  });
+}, 900);
+</script>
+</body>
+</html>

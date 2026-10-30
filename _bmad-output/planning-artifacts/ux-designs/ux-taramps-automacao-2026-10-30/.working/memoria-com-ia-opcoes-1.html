@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Memória com a IA</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --nb:#7C7C84; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --ok:#34D399; --stop:#D92D20; --s1:#111114; --s2:#1C1C20; --sh:#141418; --bs:#2A2A30;
+          --tf:#0B1D26; --tt:#05090C; --tb:#16394A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1340px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 26px; line-height:1.5; max-width:980px; }
+  .grid { display:grid; gap:40px 32px; grid-template-columns:repeat(auto-fill,minmax(640px,1fr)); }
+  @media (max-width:700px) { .grid { grid-template-columns:1fr; } }
+  .opt h2 { font-size:16px; margin-bottom:6px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; margin-right:7px; }
+  .opt > p { color:var(--mut); font-size:13px; line-height:1.5; min-height:4.5em; margin-bottom:12px; max-width:640px; }
+  .frames { display:flex; gap:16px; flex-wrap:wrap; }
+  .fr { display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .fr > small { font-size:11.5px; color:var(--mut); }
+
+  .phone { position:relative; width:300px; height:760px; border-radius:40px; border:8px solid #2A2A2E; background:#000; overflow:hidden; display:flex; flex-direction:column; color:#fff; }
+  .sb { display:flex; justify-content:space-between; padding:8px 20px 2px; font-size:11px; color:var(--st); flex:none; }
+  .hdr { display:flex; align-items:center; gap:7px; padding:8px 16px 6px; flex:none; }
+  .hdr svg { width:22px; height:22px; }
+  .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .lg b { font-weight:900; font-size:15px; letter-spacing:-.02em; }
+  .lg span { font-size:9px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .setup { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--chip); background:var(--s2); border-radius:999px; padding:5px 10px; }
+  .setup i { width:6px; height:6px; border-radius:50%; background:var(--ok); }
+  .gear { color:var(--st); font-size:17px; width:28px; text-align:center; }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid var(--s2); padding:9px 4px 14px; font-size:10px; color:var(--nav); background:#000; flex:none; }
+  .nav div { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .nav div::before { content:""; width:20px; height:3px; border-radius:2px; background:transparent; }
+  .nav .on { color:var(--a); } .nav .on::before { background:var(--a); }
+
+  .body { flex:1; min-height:0; overflow:hidden; padding:0 16px 10px; display:flex; flex-direction:column; gap:8px; position:relative; }
+  .lbl { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); }
+  .ia { font-size:12.5px; line-height:1.45; color:var(--chip); }
+  .ia b { color:var(--tx); }
+
+  /* Pergunta com opções e Outro */
+  .q { display:flex; flex-direction:column; gap:6px; }
+  .q h4 { font-size:12.5px; font-weight:700; line-height:1.3; }
+  .ops { display:flex; flex-wrap:wrap; gap:6px; }
+  .ops span { min-height:40px; padding:0 12px; border-radius:999px; background:var(--s2); color:var(--chip); font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; }
+  .ops span.on { background:rgba(63,208,255,.12); box-shadow:inset 0 0 0 1px var(--a); color:var(--a); }
+  .ops span.ou { background:transparent; box-shadow:inset 0 0 0 1px var(--bs); color:var(--mut); }
+  .card { background:var(--s1); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:10px; }
+
+  /* Botões */
+  .btnp { min-height:48px; padding:0 20px; border-radius:12px; background:var(--a); color:var(--on); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px; }
+  .btns { min-height:48px; padding:0 16px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .btnoff { opacity:.4; }
+  .stopb { min-height:40px; padding:0 12px; border-radius:10px; background:var(--stop); color:#fff; font-size:11.5px; font-weight:800; display:inline-flex; align-items:center; letter-spacing:.04em; }
+  .pause { min-height:40px; padding:0 12px; border-radius:10px; background:var(--s2); color:var(--chip); font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; }
+  .foot2 { display:flex; gap:8px; padding:8px 16px; background:var(--sh); border-top:1px solid var(--bs); flex:none; }
+  .foot2 > * { flex:1; }
+
+  /* Faixa da IA (estado da sessão) */
+  .iabar { display:flex; align-items:center; gap:8px; padding:6px 16px 8px; flex:none; }
+  .iabar .t { flex:1; font-size:11px; color:var(--mut); line-height:1.3; }
+  .iabar .t b { display:block; color:var(--tx); font-size:12.5px; }
+  .live { width:7px; height:7px; border-radius:50%; background:var(--a); box-shadow:0 0 0 3px rgba(63,208,255,.18); flex:none; }
+
+  /* Resumo: o que muda e por quê */
+  .chg { background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .chg .it { padding:8px 12px; display:flex; flex-direction:column; gap:2px; }
+  .chg .it + .it { border-top:1px solid var(--s2); }
+  .chg .top { display:flex; justify-content:space-between; gap:8px; font-size:12.5px; font-weight:700; }
+  .chg .top span:last-child { font-variant-numeric:tabular-nums; color:var(--a); white-space:nowrap; }
+  .chg .why { font-size:11px; color:var(--mut); line-height:1.35; }
+  .fence { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--chip); background:var(--s1); border-radius:10px; padding:8px 10px; }
+  .fence::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; }
+  .hint { font-size:10.5px; color:var(--mut); line-height:1.4; }
+
+  /* 1 Folha por cima da Roda */
+  .dimbg { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:120px; opacity:.28; }
+  .wheel { width:220px; height:220px; border-radius:50%; border:14px solid var(--s2); display:grid; place-items:center; font-weight:900; font-size:22px; letter-spacing:1.5px; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--sh); border-top:1px solid var(--bs); border-radius:22px 22px 0 0; padding:10px 16px 14px; display:flex; flex-direction:column; gap:10px; box-shadow:0 -20px 40px #000; }
+  .grab { width:36px; height:4px; border-radius:2px; background:#3A3A40; margin:0 auto 2px; }
+  .sheet h3 { font-size:14px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .sheet h3 .stopb { margin-left:auto; }
+
+  /* 2 Passo a passo */
+  .back { display:flex; align-items:center; gap:6px; padding:0 16px 4px; flex:none; }
+  .back .bk { width:40px; height:48px; margin-left:-12px; display:grid; place-items:center; font-size:22px; color:var(--chip); }
+  .back .tt { font-size:16px; font-weight:800; flex:1; line-height:1.15; }
+  .back .tt small { display:block; font-size:10.5px; font-weight:400; color:var(--mut); }
+  .track { display:flex; gap:4px; padding:2px 16px 4px; flex:none; }
+  .track span { flex:1; display:flex; flex-direction:column; gap:4px; font-size:9.5px; color:var(--nav); text-align:center; }
+  .track span::before { content:""; height:4px; border-radius:2px; background:var(--s2); }
+  .track span.done::before { background:var(--ol); } .track span.done { color:var(--mut); }
+  .track span.now::before { background:var(--a); } .track span.now { color:var(--a); font-weight:700; }
+
+  /* 3 Balões */
+  .chat { display:flex; flex-direction:column; gap:8px; }
+  .bub { max-width:88%; padding:8px 11px; border-radius:16px; font-size:12px; line-height:1.4; }
+  .bub.ai { background:var(--s1); color:var(--chip); border-bottom-left-radius:4px; align-self:flex-start; }
+  .bub.me { background:rgba(63,208,255,.12); color:var(--a); border-bottom-right-radius:4px; align-self:flex-end; font-weight:600; }
+  .who { font-size:10px; color:var(--mut); letter-spacing:.1em; text-transform:uppercase; }
+  .input { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--sh); border-top:1px solid var(--bs); flex:none; }
+  .input .f { flex:1; min-height:44px; border-radius:22px; background:var(--s2); color:var(--nav); font-size:12px; display:flex; align-items:center; padding:0 14px; }
+  .input .s { width:44px; height:44px; border-radius:50%; background:var(--a); color:var(--on); display:grid; place-items:center; font-weight:900; }
+
+  /* 4 Ficha visível */
+  .vars { background:var(--s1); border-radius:14px; padding:8px 12px; display:flex; flex-direction:column; gap:6px; flex:none; }
+  .var { display:grid; grid-template-columns:76px 1fr 54px; align-items:center; gap:8px; font-size:11px; }
+  .var .n { color:var(--mut); }
+  .var .v { font-weight:700; color:var(--tx); text-align:right; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar { height:6px; border-radius:3px; background:var(--s2); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--ol); border-radius:3px; }
+  .var.ask .n, .var.ask .v { color:var(--a); }
+  .var.ask .bar i { background:var(--a); }
+  .tag { display:inline-block; font-size:10px; color:var(--a); background:rgba(63,208,255,.10); border-radius:6px; padding:2px 6px; margin-top:2px; align-self:flex-start; }
+
+  /* 5 Aba IA */
+  .sess { background:linear-gradient(180deg,var(--tf),var(--tt)); box-shadow:inset 0 0 0 1px var(--tb); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; flex:none; }
+  .sess .l1 { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; }
+  .sess .l2 { font-size:11px; color:var(--mut); }
+  .sess .acts { display:flex; gap:8px; }
+  .sess .acts > * { flex:1; justify-content:center; }
+  .stack { display:flex; flex-direction:column; gap:6px; }
+  .done { background:var(--s1); border-radius:12px; padding:8px 12px; font-size:11px; color:var(--mut); display:flex; justify-content:space-between; gap:8px; }
+  .done b { color:var(--chip); font-weight:600; }
+
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:36px; max-width:980px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>BGS Sound · Criar a memória com a IA (opções 1 a 5)</h1>
+  <p class="sub">O Denis tocou em "+ Nova memória" para refazer a MUSICA ORIG no Setup Casa 2.1. A IA roda no notebook e fala com o app pela porta: ela manda as perguntas, o app mostra e a resposta volta. Cada opção tem 2 telas: as perguntas de perfil (3 ou 4 por vez, com Outro) e o resumo do que muda e por quê, com Ouvir. Os valores do resumo são de exemplo, só para mostrar a forma; quem decide os valores é a IA dentro da cerca. As 5 opções mudam onde e como a conversa aparece. A escuta "1 ou 2", a queixa, a avaliação depois de ouvir e a ajuda para medir vêm na próxima rodada, na forma escolhida.</p>
+
+  <div class="grid">
+
+    <!-- ===================== 1 ===================== -->
+    <section class="opt">
+      <h2><b>1</b>Folha por cima da Roda</h2>
+      <p>O "modal" da forja. A conversa sobe como folha sobre a aba Som, com a Roda apagada atrás. Cada pedido da IA é uma folha nova. É o mesmo padrão dos pedidos de risco e do Continuar, com PARAR IA no topo da folha. Ganha: nada de tela nova para aprender. Perde: as respostas anteriores somem a cada folha.</p>
+      <div class="frames">
+        <div class="fr"><small>Perguntas de perfil</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="body">
+            <div class="dimbg"><div class="wheel">FILME</div></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <h3>Nova memória · com a IA <span class="stopb">PARAR IA</span></h3>
+              <p class="ia">Para começar, <b>3 perguntas</b> sobre como você ouve. Nenhuma depende da outra.</p>
+              <div class="q"><h4>Para que é esta memória?</h4><div class="ops"><span class="on">Música</span><span>Filme</span><span>Os dois</span><span class="ou">Outro…</span></div></div>
+              <div class="q"><h4>Em que volume você costuma ouvir?</h4><div class="ops"><span>Baixo, à noite</span><span class="on">Moderado</span><span>Alto</span><span class="ou">Outro…</span></div></div>
+              <div class="q"><h4>Onde você senta?</h4><div class="ops"><span>No meio do sofá</span><span>Fora do meio</span><span>Varia</span><span class="ou">Outro…</span></div></div>
+              <div class="btnp btnoff">Responder (2 de 3)</div>
+            </div>
+          </div>
+          <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Resumo e Ouvir</small>
+        <div class="phone">
+          <div class="sb"><span>21:19</span><span>▮▮▮ 77%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="body">
+            <div class="dimbg"><div class="wheel">FILME</div></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <h3>A IA propõe · MUSICA ORIG <span class="stopb">PARAR IA</span></h3>
+              <div class="chg">
+                <div class="it"><div class="top"><span>Corte JBL L e R</span><span>HPF 80 Hz</span></div><div class="why">O Sub fica com o grave abaixo de 80 Hz; as JBL param de sofrer no grave pesado.</div></div>
+                <div class="it"><div class="top"><span>Corte do Sub</span><span>LPF 80 Hz</span></div><div class="why">Encontra as JBL no mesmo ponto.</div></div>
+                <div class="it"><div class="top"><span>Atraso</span><span>0 em todas</span></div><div class="why">Memória de música: L igual a R, sem compensar distância.</div></div>
+                <div class="it"><div class="top"><span>Ganho do Sub</span><span>+4 dB</span></div><div class="why">Você pediu grave presente em volume moderado.</div></div>
+              </div>
+              <div class="fence">Dentro da cerca: nenhum canal passa do teto.</div>
+              <div class="btnp">Ouvir</div>
+              <p class="hint">Ouvir aplica no aparelho. Nada fica salvo até você aprovar.</p>
+            </div>
+          </div>
+          <div class="nav"><div class="on">Som</div><div>IA</div><div>Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 2 ===================== -->
+    <section class="opt">
+      <h2><b>2</b>Tela própria, passo a passo</h2>
+      <p>A criação vira uma tela inteira, com a ordem da física no topo (Perfil, Cerca, Corte, Tempo, Tom, Dinâmica). A IA pula as etapas sem dúvida e a barra mostra onde está. Ganha: dá para voltar e revisar uma resposta (a proposta pede isso). Perde: a ordem fixa parece questionário, e a IA pode não passar por todas.</p>
+      <div class="frames">
+        <div class="fr"><small>Perguntas de perfil</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">Nova memória<small>com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="track"><span class="now">Perfil</span><span>Cerca</span><span>Corte</span><span>Tempo</span><span>Tom</span><span>Dinâmica</span></div>
+          <div class="body">
+            <p class="ia" style="margin-top:6px">Para começar, <b>3 perguntas</b> sobre como você ouve.</p>
+            <div class="card">
+              <div class="q"><h4>Para que é esta memória?</h4><div class="ops"><span class="on">Música</span><span>Filme</span><span>Os dois</span><span class="ou">Outro…</span></div></div>
+            </div>
+            <div class="card">
+              <div class="q"><h4>Em que volume você costuma ouvir?</h4><div class="ops"><span>Baixo, à noite</span><span class="on">Moderado</span><span>Alto</span><span class="ou">Outro…</span></div></div>
+            </div>
+            <div class="card">
+              <div class="q"><h4>Onde você senta?</h4><div class="ops"><span>No meio do sofá</span><span>Fora do meio</span><span>Varia</span><span class="ou">Outro…</span></div></div>
+            </div>
+          </div>
+          <div class="foot2"><div class="btns" style="flex:0 0 auto">Voltar</div><div class="btnp btnoff">Responder (2 de 3)</div></div>
+        </div></div>
+
+        <div class="fr"><small>Resumo e Ouvir</small>
+        <div class="phone">
+          <div class="sb"><span>21:19</span><span>▮▮▮ 77%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">MUSICA ORIG<small>com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="track"><span class="done">Perfil</span><span class="done">Cerca</span><span class="done">Corte</span><span class="done">Tempo</span><span class="now">Tom</span><span>Dinâmica</span></div>
+          <div class="body">
+            <div class="lbl" style="margin-top:6px">A IA propõe</div>
+            <div class="chg">
+              <div class="it"><div class="top"><span>Corte JBL L e R</span><span>HPF 80 Hz</span></div><div class="why">O Sub fica com o grave abaixo de 80 Hz; as JBL param de sofrer no grave pesado.</div></div>
+              <div class="it"><div class="top"><span>Corte do Sub</span><span>LPF 80 Hz</span></div><div class="why">Encontra as JBL no mesmo ponto.</div></div>
+              <div class="it"><div class="top"><span>Atraso</span><span>0 em todas</span></div><div class="why">Memória de música: L igual a R, sem compensar distância.</div></div>
+              <div class="it"><div class="top"><span>Ganho do Sub</span><span>+4 dB</span></div><div class="why">Você pediu grave presente em volume moderado.</div></div>
+            </div>
+            <div class="fence">Dentro da cerca: nenhum canal passa do teto.</div>
+            <p class="hint">Ouvir aplica no aparelho. Nada fica salvo até você aprovar.</p>
+          </div>
+          <div class="foot2"><div class="btns" style="flex:0 0 auto">Mudar algo</div><div class="btnp">Ouvir</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 3 ===================== -->
+    <section class="opt">
+      <h2><b>3</b>Conversa em balões</h2>
+      <p>Um chat: a IA fala em balões e as opções vêm dentro do balão; a resposta escolhida vira um balão seu. O resumo chega como um cartão na conversa, com Ouvir. Há um campo para escrever (o "Outro" livre e as queixas). Ganha: tudo fica no histórico e dá para rolar e reler. Perde: mais texto na tela, e a sala escura pede pouca leitura.</p>
+      <div class="frames">
+        <div class="fr"><small>Perguntas de perfil</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">Nova memória<small>conversa com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="body">
+            <div class="chat">
+              <div class="who">IA</div>
+              <div class="bub ai">Vou criar a memória com você. Primeiro, para que ela é?
+                <div class="ops" style="margin-top:8px"><span class="on">Música</span><span>Filme</span><span>Os dois</span><span class="ou">Outro…</span></div></div>
+              <div class="bub me">Música</div>
+              <div class="bub ai">E em que volume você costuma ouvir?
+                <div class="ops" style="margin-top:8px"><span>Baixo, à noite</span><span class="on">Moderado</span><span>Alto</span><span class="ou">Outro…</span></div></div>
+              <div class="bub me">Moderado</div>
+              <div class="bub ai">Onde você senta?
+                <div class="ops" style="margin-top:8px"><span>No meio do sofá</span><span>Fora do meio</span><span>Varia</span><span class="ou">Outro…</span></div></div>
+            </div>
+          </div>
+          <div class="input"><div class="f">Escrever para a IA…</div><div class="s">↑</div></div>
+        </div></div>
+
+        <div class="fr"><small>Resumo e Ouvir</small>
+        <div class="phone">
+          <div class="sb"><span>21:19</span><span>▮▮▮ 77%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">MUSICA ORIG<small>conversa com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="body">
+            <div class="chat">
+              <div class="bub me">No meio do sofá</div>
+              <div class="who">IA</div>
+              <div class="bub ai" style="max-width:100%">Tenho o suficiente para a primeira versão. Isto é o que muda e por quê:</div>
+            </div>
+            <div class="chg">
+              <div class="it"><div class="top"><span>Corte JBL L e R</span><span>HPF 80 Hz</span></div><div class="why">O Sub fica com o grave abaixo de 80 Hz.</div></div>
+              <div class="it"><div class="top"><span>Corte do Sub</span><span>LPF 80 Hz</span></div><div class="why">Encontra as JBL no mesmo ponto.</div></div>
+              <div class="it"><div class="top"><span>Atraso</span><span>0 em todas</span></div><div class="why">Música: L igual a R.</div></div>
+              <div class="it"><div class="top"><span>Ganho do Sub</span><span>+4 dB</span></div><div class="why">Grave presente em volume moderado.</div></div>
+            </div>
+            <div class="fence">Dentro da cerca: nenhum canal passa do teto.</div>
+            <div class="btnp">Ouvir</div>
+          </div>
+          <div class="input"><div class="f">Escrever para a IA…</div><div class="s">↑</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 4 ===================== -->
+    <section class="opt">
+      <h2><b>4</b>O que a IA já sabe, à vista</h2>
+      <p>No topo, a ficha de variáveis da estratégia da mesa (uso, volume, onde senta, tom, voz, dinâmica, cansaço), cada uma com uma barra de certeza. Embaixo, só as perguntas da vez, que atacam as variáveis com mais dúvida (em ciano). No resumo, cada mudança diz qual resposta a causou. Ganha: mostra por que a IA pergunta e quando vai parar. Perde: é a tela mais técnica.</p>
+      <div class="frames">
+        <div class="fr"><small>Perguntas de perfil</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">Nova memória<small>com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="body">
+            <div class="lbl">O que a IA já sabe</div>
+            <div class="vars">
+              <div class="var"><span class="n">Uso</span><span class="bar"><i style="width:100%"></i></span><span class="v">Música</span></div>
+              <div class="var"><span class="n">Volume</span><span class="bar"><i style="width:100%"></i></span><span class="v">Moderado</span></div>
+              <div class="var ask"><span class="n">Onde senta</span><span class="bar"><i style="width:20%"></i></span><span class="v">?</span></div>
+              <div class="var ask"><span class="n">Grave</span><span class="bar"><i style="width:25%"></i></span><span class="v">?</span></div>
+              <div class="var"><span class="n">Voz</span><span class="bar"><i style="width:60%"></i></span><span class="v">natural</span></div>
+              <div class="var"><span class="n">Dinâmica</span><span class="bar"><i style="width:55%"></i></span><span class="v">padrão</span></div>
+              <div class="var"><span class="n">Cansaço</span><span class="bar"><i style="width:70%"></i></span><span class="v">padrão</span></div>
+            </div>
+            <div class="card">
+              <div class="q"><h4>Onde você senta?</h4><div class="ops"><span class="on">No meio do sofá</span><span>Fora do meio</span><span>Varia</span><span class="ou">Outro…</span></div></div>
+              <div class="q"><h4>Como você prefere o grave?</h4><div class="ops"><span>Presente, sem encobrir</span><span>Forte, com pressão</span><span>Rápido</span><span class="ou">Outro…</span></div></div>
+            </div>
+          </div>
+          <div class="foot2"><div class="btnp btnoff">Responder (1 de 2)</div></div>
+        </div></div>
+
+        <div class="fr"><small>Resumo e Ouvir</small>
+        <div class="phone">
+          <div class="sb"><span>21:19</span><span>▮▮▮ 77%</span></div>
+          <div class="back"><span class="bk">‹</span><span class="tt">MUSICA ORIG<small>com a IA · Casa 2.1</small></span><span class="stopb">PARAR IA</span></div>
+          <div class="body">
+            <p class="ia">Nenhuma resposta nova muda mais de 1 dB. <b>Hora de ouvir.</b></p>
+            <div class="chg">
+              <div class="it"><div class="top"><span>Corte JBL L e R</span><span>HPF 80 Hz</span></div><div class="why">O Sub fica com o grave abaixo de 80 Hz.</div><span class="tag">do Setup</span></div>
+              <div class="it"><div class="top"><span>Atraso</span><span>0 em todas</span></div><div class="why">Música: L igual a R.</div><span class="tag">Uso: Música</span></div>
+              <div class="it"><div class="top"><span>Ganho do Sub</span><span>+4 dB</span></div><div class="why">Grave presente sem encobrir as vozes.</div><span class="tag">Grave: presente</span></div>
+              <div class="it"><div class="top"><span>Limitador</span><span>−12 dB</span></div><div class="why">Abaixo do teto de cada canal.</div><span class="tag">Volume: moderado</span></div>
+            </div>
+            <div class="fence">Dentro da cerca: nenhum canal passa do teto.</div>
+          </div>
+          <div class="foot2"><div class="btns" style="flex:0 0 auto">Mudar algo</div><div class="btnp">Ouvir</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 5 ===================== -->
+    <section class="opt">
+      <h2><b>5</b>Dentro da aba IA</h2>
+      <p>A criação mora na aba IA, junto da sessão ao vivo que já existe (notebook ligado, Pausar, PARAR IA). As perguntas são um cartão; as respostas já dadas ficam numa pilha curta logo abaixo. Dá para ir à aba Som e voltar sem perder nada. Ganha: um lugar só para tudo da IA. Perde: a criação fica um toque mais longe do "+ Nova memória" da Roda.</p>
+      <div class="frames">
+        <div class="fr"><small>Perguntas de perfil</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="body">
+            <div class="sess">
+              <div class="l1"><span class="live"></span>Criando uma memória</div>
+              <div class="l2">IA no notebook · pela rede da casa</div>
+              <div class="acts"><span class="pause">Pausar</span><span class="stopb">PARAR IA</span></div>
+            </div>
+            <div class="card">
+              <p class="ia">Para começar, <b>3 perguntas</b> sobre como você ouve.</p>
+              <div class="q"><h4>Para que é esta memória?</h4><div class="ops"><span class="on">Música</span><span>Filme</span><span>Os dois</span><span class="ou">Outro…</span></div></div>
+              <div class="q"><h4>Em que volume você costuma ouvir?</h4><div class="ops"><span>Baixo, à noite</span><span class="on">Moderado</span><span>Alto</span><span class="ou">Outro…</span></div></div>
+              <div class="q"><h4>Onde você senta?</h4><div class="ops"><span>No meio do sofá</span><span>Fora do meio</span><span>Varia</span><span class="ou">Outro…</span></div></div>
+              <div class="btnp btnoff">Responder (2 de 3)</div>
+            </div>
+          </div>
+          <div class="nav"><div>Som</div><div class="on">IA</div><div>Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Resumo e Ouvir</small>
+        <div class="phone">
+          <div class="sb"><span>21:19</span><span>▮▮▮ 77%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="body">
+            <div class="sess">
+              <div class="l1"><span class="live"></span>Criando a MUSICA ORIG</div>
+              <div class="acts"><span class="pause">Pausar</span><span class="stopb">PARAR IA</span></div>
+            </div>
+            <div class="card" style="gap:8px">
+              <div class="lbl">A IA propõe</div>
+              <div class="chg" style="background:#000">
+                <div class="it"><div class="top"><span>Corte JBL L e R</span><span>HPF 80 Hz</span></div><div class="why">O Sub fica com o grave abaixo de 80 Hz.</div></div>
+                <div class="it"><div class="top"><span>Atraso</span><span>0 em todas</span></div><div class="why">Música: L igual a R.</div></div>
+                <div class="it"><div class="top"><span>Ganho do Sub</span><span>+4 dB</span></div><div class="why">Grave presente em volume moderado.</div></div>
+              </div>
+              <div class="fence" style="background:#000">Dentro da cerca: nenhum canal passa do teto.</div>
+              <div class="btnp">Ouvir</div>
+            </div>
+            <div class="stack">
+              <div class="done"><span>Para que é</span><b>Música</b></div>
+              <div class="done"><span>Volume</span><b>Moderado</b></div>
+              <div class="done"><span>Onde senta</span><b>No meio do sofá</b></div>
+            </div>
+          </div>
+          <div class="nav"><div>Som</div><div class="on">IA</div><div>Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="foot">Em todas: PARAR IA sempre visível; Ouvir aplica no aparelho e não salva; a faixa verde só aparece quando a cerca em código confirmou os valores. As opções podem ser misturadas (por exemplo, a folha da 1 com a ficha da 4).</p>
+</div>
+</body>
+</html>

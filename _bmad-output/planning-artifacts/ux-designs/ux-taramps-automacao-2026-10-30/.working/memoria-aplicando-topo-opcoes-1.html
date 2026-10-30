@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Topo do Aplicando</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --ok:#34D399; --s1:#111114; --s2:#1C1C20; --bs:#2A2A30; --tb:#16394A; --glow:#0B2230; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1500px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; max-width:1000px; }
+  .grid { display:grid; gap:28px 22px; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); }
+  .opt { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .opt h2 { font-size:15px; display:flex; align-items:center; gap:8px; align-self:flex-start; }
+  .opt h2 b { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:12px; flex:none; }
+  .opt p { color:var(--mut); font-size:12px; line-height:1.45; min-height:4.4em; align-self:flex-start; }
+
+  /* A tela do Aplicando: camada escura, o alto (a ideia de cada opção) e o bloco embaixo */
+  .stage { position:relative; width:270px; height:560px; border-radius:36px; border:8px solid #2A2A2E; overflow:hidden;
+           background:radial-gradient(ellipse 90% 45% at 50% 30%, rgba(11,34,48,.55) 0%, transparent 70%), #000; }
+  .sb { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:8px 18px; font-size:10px; color:#3a3a40; }
+  .topo { position:absolute; left:0; right:0; top:11%; height:46%; display:flex; align-items:center; justify-content:center; }
+  .bloco { position:absolute; left:0; right:0; bottom:10%; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .apS { font-size:17px; font-weight:800; letter-spacing:.18em; color:var(--tx); text-transform:uppercase; text-shadow:0 0 12px rgba(63,208,255,.45); }
+  .apN { font-size:20px; font-weight:800; letter-spacing:.04em; color:var(--chip); }
+  .ring { width:76px; height:76px; position:relative; }
+  .ring svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring circle { transform-box:view-box; transform-origin:50px 50px; fill:none; stroke-width:6; }
+  .ring .bg circle { stroke:#ffffff14; }
+  .ring .l1 circle { stroke:var(--a); stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .ring .l2 circle { stroke:var(--mg); stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; }
+  .ring .l2 { mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  /* 1 A sala acendendo (isométrico do Setup) */
+  .sala { width:230px; height:200px; overflow:visible; }
+  .sala .chao { fill:#06141A; stroke:var(--tb); stroke-width:1; }
+  .sala .cx .f { fill:#111114; stroke:#2A2A30; stroke-width:1; }
+  .sala .cx .t { fill:#1C1C20; stroke:#2A2A30; stroke-width:1; }
+  .sala .cx .s { fill:#0b0b0e; stroke:#2A2A30; stroke-width:1; }
+  .sala .cx { animation:acende 6s infinite; }
+  .sala .cx.b { animation-delay:1.2s; } .sala .cx.c { animation-delay:2.4s; }
+  @keyframes acende { 0%, 8% { filter:none } 14%, 60% { filter:drop-shadow(0 0 6px rgba(63,208,255,.9)) } 70%, 100% { filter:none } }
+  .sala .cx .lt { fill:var(--a); opacity:0; animation:luz 6s infinite; }
+  .sala .cx.b .lt { animation-delay:1.2s; } .sala .cx.c .lt { animation-delay:2.4s; }
+  @keyframes luz { 0%, 8% { opacity:0 } 14%, 60% { opacity:.9 } 70%, 100% { opacity:0 } }
+  .sala text { font-size:9px; fill:var(--mut); font-family:system-ui, sans-serif; }
+  .sala .ouvinte { fill:none; stroke:var(--ol); stroke-width:1.2; }
+
+  /* 2 O jeito da memória em palavras */
+  .jeito { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .jeito small { font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--mut); }
+  .jeito span { font-size:22px; font-weight:800; opacity:0; animation:sobe 6s infinite; }
+  .jeito span:nth-of-type(2) { animation-delay:.4s; color:var(--ol); }
+  .jeito span:nth-of-type(3) { animation-delay:.8s; color:var(--a); }
+  @keyframes sobe { 0% { opacity:0; transform:translateY(8px) } 10%, 85% { opacity:1; transform:none } 100% { opacity:0 } }
+
+  /* 3 A curva do som se desenhando */
+  .curva { width:236px; height:160px; overflow:visible; }
+  .curva .grade line { stroke:#1C1C20; stroke-width:1; }
+  .curva text { font-size:8.5px; fill:var(--nav); font-family:system-ui, sans-serif; }
+  .curva .c1 { fill:none; stroke:var(--a); stroke-width:2.2; stroke-linecap:round; filter:drop-shadow(0 0 4px rgba(63,208,255,.7)); stroke-dasharray:420; stroke-dashoffset:420; animation:desenha 4s ease-in-out infinite; }
+  .curva .c2 { fill:none; stroke:var(--mg); stroke-width:2.2; stroke-linecap:round; filter:drop-shadow(0 0 4px rgba(255,43,214,.7)); stroke-dasharray:200; stroke-dashoffset:200; animation:desenha2 4s ease-in-out infinite; }
+  @keyframes desenha { 0% { stroke-dashoffset:420 } 55%, 90% { stroke-dashoffset:0 } 100% { stroke-dashoffset:0; opacity:0 } }
+  @keyframes desenha2 { 0% { stroke-dashoffset:200 } 40%, 90% { stroke-dashoffset:0 } 100% { stroke-dashoffset:0; opacity:0 } }
+
+  /* 4 Medidores das saídas */
+  .med { display:flex; gap:26px; align-items:flex-end; height:170px; }
+  .med div { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .med i { display:block; width:22px; height:130px; border-radius:6px; background:var(--s2); position:relative; overflow:hidden; }
+  .med i::after { content:""; position:absolute; left:0; right:0; bottom:0; height:0; border-radius:6px; background:linear-gradient(0deg, var(--tb), var(--a)); box-shadow:0 0 10px rgba(63,208,255,.6); animation:enche 4s cubic-bezier(.3,0,.2,1) infinite; }
+  .med div:nth-child(2) i::after { animation-delay:.25s; }
+  .med div:nth-child(3) i::after { background:linear-gradient(0deg, #3a0f33, var(--mg)); box-shadow:0 0 10px rgba(255,43,214,.6); animation-delay:.5s; --h:82%; }
+  .med div:nth-child(1) i::after, .med div:nth-child(2) i::after { --h:58%; }
+  @keyframes enche { 0% { height:0 } 45%, 90% { height:var(--h) } 100% { height:var(--h); opacity:.3 } }
+  .med small { font-size:10px; color:var(--mut); }
+  .med b { font-size:11px; color:var(--chip); font-variant-numeric:tabular-nums; }
+
+  /* 5 Contexto do aparelho */
+  .ctx { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .ctx .row { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:800; }
+  .ctx .dot { width:9px; height:9px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:pulsa 1.6s infinite; }
+  @keyframes pulsa { to { box-shadow:0 0 0 10px rgba(52,211,153,0) } }
+  .ctx small { font-size:12px; color:var(--mut); }
+
+  /* 6 A marca */
+  .marca { display:flex; flex-direction:column; align-items:center; gap:14px; opacity:.9; }
+  .marca svg { width:64px; height:64px; filter:drop-shadow(0 0 10px rgba(63,208,255,.35)); }
+  .marca .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .marca .lg b { font-weight:900; font-size:30px; letter-spacing:-.02em; }
+  .marca .lg span { font-size:11px; font-weight:500; letter-spacing:.42em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · O que vai na parte de cima do Aplicando (ideias 1 a 7)</h1>
+  <p class="sub">A tela final do Aplicando com o que já foi escolhido: o bloco embaixo ("APLICANDO" em evidência, o anel girando e o nome da memória). Cada opção mostra uma ideia para a parte de cima. A ordem é a recomendação do facilitador. Os valores e a sala são de exemplo.</p>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+const BLOCO = `<div class="bloco"><div class="apS">Aplicando</div><div class="ring"><svg class="bg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l2" viewBox="0 0 100 100"><circle cx="50" cy="50" r="34"/></svg></div><div class="apN">MUSICA ORIG</div></div>`;
+// caixa isométrica: frente, lado e topo, a partir do canto (x, y), largura w, profundidade d, altura h
+const caixa = (cls, x, y, w, h, nome) => {
+  const d = w * .5;
+  return `<g class="cx ${cls}">
+    <polygon class="s" points="${x + w},${y} ${x + w + d},${y - d * .5} ${x + w + d},${y - d * .5 - h} ${x + w},${y - h}"/>
+    <polygon class="f" points="${x},${y} ${x + w},${y} ${x + w},${y - h} ${x},${y - h}"/>
+    <polygon class="t" points="${x},${y - h} ${x + w},${y - h} ${x + w + d},${y - h - d * .5} ${x + d},${y - h - d * .5}"/>
+    <circle class="lt" cx="${x + w / 2}" cy="${y - h * .62}" r="${w * .22}"/>
+    <text x="${x + w / 2}" y="${y + 14}" text-anchor="middle">${nome}</text></g>`;
+};
+const IDEIAS = [
+  { n: "A sala acendendo", d: "O Setup Casa 2.1 em miniatura, no estilo isométrico da aba Setup. Cada caixa acende quando o canal dela é gravado e relido no aparelho.",
+    h: `<svg class="sala" viewBox="0 0 230 200"><polygon class="chao" points="115,60 215,110 115,160 15,110"/>
+      ${caixa("c", 100, 82, 30, 26, "Sub")}${caixa("a", 34, 104, 26, 44, "JBL L")}${caixa("b", 168, 104, 26, 44, "JBL R")}
+      <ellipse class="ouvinte" cx="115" cy="134" rx="9" ry="4.5"/><text x="115" y="152" text-anchor="middle">você</text></svg>` },
+  { n: "O jeito da memória", d: "Uma frase curta tirada das suas respostas, entrando palavra por palavra: o que esta memória é.",
+    h: `<div class="jeito"><small>Esta memória é</small><span>Música</span><span>volume moderado</span><span>grave forte</span></div>` },
+  { n: "A curva do som", d: "A resposta do som novo se desenha da esquerda para a direita: o Sub em rosa até 80 Hz e as JBL em azul a partir dali.",
+    h: `<svg class="curva" viewBox="0 0 236 160"><g class="grade"><line x1="10" y1="20" x2="226" y2="20"/><line x1="10" y1="70" x2="226" y2="70"/><line x1="10" y1="120" x2="226" y2="120"/><line x1="78" y1="10" x2="78" y2="130"/></g>
+      <path class="c2" d="M12 128 C 30 60, 50 52, 70 56 S 92 96, 110 128"/>
+      <path class="c1" d="M50 128 C 66 90, 78 62, 96 58 S 150 60, 180 62 S 214 66, 226 92"/>
+      <text x="10" y="146">20 Hz</text><text x="70" y="146">80 Hz</text><text x="150" y="146">1 kHz</text><text x="200" y="146">10 kHz</text></svg>` },
+  { n: "Medidores das saídas", d: "Três barras, uma por saída, sobem até o nível novo de cada uma enquanto grava.",
+    h: `<div class="med"><div><b>+0 dB</b><i></i><small>JBL L</small></div><div><b>+0 dB</b><i></i><small>JBL R</small></div><div><b>+6 dB</b><i></i><small>Sub</small></div></div>` },
+  { n: "Contexto do aparelho", d: "Onde está sendo gravado: o Setup e o aparelho, com o ponto verde de conexão pulsando.",
+    h: `<div class="ctx"><div class="row"><span class="dot"></span>PRO 2.4BT</div><small>Setup Casa 2.1 · preset Sem preset</small></div>` },
+  { n: "A marca", d: "O símbolo e o BGS SOUND no alto, discretos, como assinatura do momento.",
+    h: `<div class="marca"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/><path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div></div>` },
+  { n: "Nada", d: "O alto fica vazio, só com o brilho do fundo. O anel embaixo é o único foco.", h: `` },
+];
+document.getElementById("grid").innerHTML = IDEIAS.map((x, i) => `<div class="opt"><h2><b>${i + 1}</b>${x.n}</h2><p>${x.d}</p>
+  <div class="stage"><div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div><div class="topo">${x.h}</div>${BLOCO}</div></div>`).join("");
+</script>
+</body>
+</html>

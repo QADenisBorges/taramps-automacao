@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Regular a memória</title>
+<style>
+  /* Hex usados (todos do DESIGN.md, exceto o fundo da página fora do celular, #141416, igual aos mocks anteriores):
+     bg #000000 · surface-1 #111114 · surface-2 #1C1C20 · surface-sheet #141418 · border-sheet #2A2A30 · divider #1C1C20
+     text-primary #F2F2F4 · text-chip #CFCFD4 · text-secondary #9A9AA2 · text-status #8A8A90 · text-nav-inactive #77777D
+     text-dial-neighbor #7C7C84 · text-overlay-label #9FB6C0 · brand #3FD0FF · on-brand #00131A · accent-pink #FF2BD6 (só no spinner)
+     connected #34D399 (ponto do chip do Setup) · brand-tint-from #0B1D26 · brand-tint-to #05090C · brand-tint-border #16394A
+     Cores de canal: JBL L = text-primary #F2F2F4 · JBL R = text-overlay-label #9FB6C0 · Sub = text-dial-neighbor #7C7C84
+     Selecionado = brand #3FD0FF · mudança não salva = ponto #F2F2F4 (o mesmo branco de "escolhida e ainda não aplicada" na Roda) */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --nb:#7C7C84; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --ok:#34D399; --s1:#111114; --s2:#1C1C20; --sh:#141418; --bs:#2A2A30;
+          --tf:#0B1D26; --tt:#05090C; --tb:#16394A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1340px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 26px; line-height:1.5; max-width:980px; }
+  .grid { display:grid; gap:40px 32px; grid-template-columns:repeat(auto-fill,minmax(640px,1fr)); }
+  .opt h2 { font-size:16px; margin-bottom:6px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; margin-right:7px; }
+  .opt > p { color:var(--mut); font-size:13px; line-height:1.5; min-height:4.5em; margin-bottom:12px; max-width:640px; }
+  .frames { display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-start; }
+  .fr { display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .fr > small { font-size:11.5px; color:var(--mut); }
+
+  /* Quadro do celular: 300 px com borda de 8 = 284 px de tela */
+  .phone { position:relative; width:300px; height:760px; border-radius:40px; border:8px solid #2A2A2E; background:#000; overflow:hidden; display:flex; flex-direction:column; color:#fff; }
+  .sb { display:flex; justify-content:space-between; padding:8px 20px 2px; font-size:11px; color:var(--st); flex:none; }
+  .hdr { display:flex; align-items:center; gap:7px; padding:8px 16px 6px; flex:none; }
+  .hdr svg { width:22px; height:22px; }
+  .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .lg b { font-weight:900; font-size:15px; letter-spacing:-.02em; }
+  .lg span { font-size:9px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .setup { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--chip); background:var(--s2); border-radius:999px; padding:5px 10px; }
+  .setup i { width:6px; height:6px; border-radius:50%; background:var(--ok); }
+  .gear { color:var(--st); font-size:17px; width:28px; text-align:center; }
+
+  /* Qual memória está sendo regulada */
+  .ctx { display:flex; align-items:center; gap:8px; padding:4px 16px 8px; flex:none; }
+  .ctx .k { font-size:10px; letter-spacing:.14em; color:var(--mut); text-transform:uppercase; }
+  .ctx .mem { font-size:18px; font-weight:900; letter-spacing:.04em; }
+  .pill { display:inline-flex; align-items:center; height:22px; border-radius:11px; padding:0 9px; background:rgba(63,208,255,.10); border:1px solid rgba(63,208,255,.33); color:var(--a); font-size:11.5px; font-weight:600; white-space:nowrap; }
+  .ctx .rl { margin-left:auto; font-size:10px; color:var(--st); text-align:right; line-height:1.25; }
+
+  .body { flex:1; min-height:0; overflow:hidden; padding:0 16px 10px; display:flex; flex-direction:column; gap:8px; position:relative; }
+  .body::after { content:""; position:absolute; left:0; right:0; bottom:0; height:18px; background:linear-gradient(transparent,#000); pointer-events:none; z-index:3; } /* a lista rola: o pé esmaece */
+  .lbl { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); margin-top:2px; }
+  .list { background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .row { min-height:48px; display:flex; align-items:center; gap:10px; padding:6px 12px; }
+  .list .row + .row { border-top:1px solid var(--s2); }
+  .row .t { flex:1; min-width:0; }
+  .nm { font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .meta { font-size:11px; color:var(--mut); margin-top:2px; line-height:1.3; }
+  .val { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right; }
+  .val small { display:block; font-size:10.5px; font-weight:400; color:var(--mut); }
+  .chev { color:var(--nav); font-size:15px; }
+  .cb { width:4px; height:28px; border-radius:2px; flex:none; }
+  .cL { background:#F2F2F4; } .cR { background:#9FB6C0; } .cS { background:#7C7C84; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--tx); display:inline-block; flex:none; }
+  .sel { box-shadow:inset 0 0 0 1px var(--a); }
+  .seltxt { color:var(--a); }
+  .link { font-size:10.5px; color:var(--mut); display:flex; align-items:center; gap:6px; }
+  .link::before { content:"⛓"; font-size:10px; color:var(--nb); }
+  .medir { font-size:12px; color:var(--chip); }
+
+  /* Escrevendo… (Anel duplo de 18 px) */
+  .dual { width:18px; height:18px; overflow:visible; flex:none; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+  @media (prefers-reduced-motion:reduce) { .dual .a1 { animation-duration:2.2s } .dual .a2 { animation-duration:3s } }
+  .wr { display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--mut); font-weight:400; }
+  .dim { opacity:.5; }
+
+  /* Controles */
+  .step { display:flex; align-items:center; background:var(--s2); border-radius:12px; height:48px; }
+  .step b { width:48px; height:48px; display:grid; place-items:center; font-size:20px; font-weight:400; color:var(--tx); flex:none; }
+  .step span { flex:1; text-align:center; line-height:1.1; }
+  .step strong { display:block; font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .step small { font-size:10.5px; color:var(--mut); }
+  .seg { display:flex; background:var(--s2); border-radius:12px; padding:3px; height:48px; }
+  .seg span { flex:1; display:grid; place-items:center; font-size:12px; font-weight:700; border-radius:9px; color:var(--mut); }
+  .seg span.on { background:var(--a); color:var(--on); }
+
+  /* Salvar fixo no pé */
+  .save { display:flex; align-items:center; gap:10px; padding:8px 16px; background:var(--sh); border-top:1px solid var(--bs); flex:none; }
+  .save .n { flex:1; font-size:11.5px; color:var(--chip); display:flex; align-items:center; gap:7px; line-height:1.3; }
+  .btnp { min-height:48px; padding:0 24px; border-radius:12px; background:var(--a); color:var(--on); font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid var(--s2); padding:9px 4px 14px; font-size:10px; color:var(--nav); background:#000; flex:none; }
+  .nav div { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .nav div::before { content:""; width:20px; height:3px; border-radius:2px; background:transparent; }
+  .nav .on { color:var(--a); } .nav .on::before { background:var(--a); }
+
+  /* Barra de voltar (editor em tela própria) */
+  .back { display:flex; align-items:center; gap:8px; padding:0 16px 6px; flex:none; }
+  .back .bk { width:48px; height:48px; margin-left:-14px; display:grid; place-items:center; font-size:22px; color:var(--chip); }
+  .back .tt { font-size:18px; font-weight:700; }
+
+  /* 2 Esquema da sala */
+  .room { background:var(--s1); border-radius:14px; flex:none; }
+  .room svg { display:block; width:252px; height:176px; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--sh); border-top:1px solid var(--bs); border-radius:22px 22px 0 0; padding:10px 16px 12px; display:flex; flex-direction:column; gap:8px; box-shadow:0 -20px 40px #000; }
+  .grab { width:36px; height:4px; border-radius:2px; background:#3A3A40; margin:0 auto 2px; }
+  .sheet .list { background:var(--s1); }
+  .sheet h3 { font-size:14px; font-weight:800; display:flex; align-items:center; gap:8px; }
+
+  /* 3 Mesa de som */
+  .mix { display:grid; grid-template-columns:50px repeat(3,1fr); background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .mix > div { min-height:48px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:3px 2px; border-top:1px solid var(--s2); font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.15; position:relative; }
+  .mix > div.h { border-top:0; min-height:44px; font-size:12px; font-weight:700; gap:4px; }
+  .mix > div.h i { width:22px; height:4px; border-radius:2px; display:block; }
+  .mix > div.k { align-items:flex-start; text-align:left; padding-left:10px; font-size:10.5px; font-weight:400; color:var(--mut); }
+  .mix > div small { font-size:10px; font-weight:400; color:var(--mut); }
+  .mix > div.off { color:var(--nb); font-weight:400; font-size:11px; }
+  .mix > div.cellsel { box-shadow:inset 0 0 0 1.5px var(--a); border-radius:8px; color:var(--a); }
+  .mix .dot { position:absolute; top:7px; right:6px; }
+  .ctl { position:absolute; left:0; right:0; bottom:0; background:var(--sh); border-top:1px solid var(--bs); border-radius:22px 22px 0 0; padding:10px 16px 12px; display:flex; flex-direction:column; gap:8px; box-shadow:0 -20px 40px #000; }
+
+  /* 4 Por etapa */
+  .steps { background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .steps .row + .row, .steps .open + .row, .steps .row + .open { border-top:1px solid var(--s2); }
+  .num { width:22px; height:22px; border-radius:50%; background:var(--s2); color:var(--chip); font-size:11px; font-weight:700; display:grid; place-items:center; flex:none; }
+  .open { background:linear-gradient(180deg,var(--tf),var(--tt)); box-shadow:inset 0 0 0 1px var(--tb); border-radius:14px; padding:4px 10px 10px; }
+  .open .row { padding:6px 2px; }
+  .open .num { background:var(--a); color:var(--on); }
+  .chan { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
+  .chan .cl { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; }
+  .chan .cl .cb { height:12px; width:4px; }
+  .chan .cl span { font-weight:400; color:var(--mut); font-size:10.5px; }
+  .chan .ln { display:flex; gap:8px; }
+  .chan .step { width:160px; flex:none; }
+  .fz { width:64px; height:48px; border-radius:12px; background:var(--s2); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
+  .fz small { font-size:9.5px; color:var(--mut); }
+  .fz b { font-size:14px; }
+  .note { font-size:10.5px; color:var(--mut); line-height:1.4; }
+
+  /* 5 Curva */
+  .graph { background:var(--s1); border-radius:14px; flex:none; padding:6px 0 2px; }
+  .graph svg { display:block; width:252px; height:152px; }
+  .chips { display:flex; gap:6px; }
+  .chips span { flex:1; min-height:48px; border-radius:999px; background:var(--s2); color:var(--chip); font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .chips span i { width:14px; height:3px; border-radius:2px; }
+  .chips span.on { background:rgba(63,208,255,.10); box-shadow:inset 0 0 0 1px var(--a); color:var(--a); }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:6px; flex:none; }
+  .tile { background:var(--s1); border-radius:12px; min-height:52px; padding:7px 10px; display:flex; flex-direction:column; justify-content:center; position:relative; }
+  .tile small { font-size:10.5px; color:var(--mut); }
+  .tile b { font-size:14px; font-variant-numeric:tabular-nums; }
+  .tile .dot { position:absolute; top:9px; right:9px; }
+
+  /* 6 Abas internas */
+  .tabs { display:flex; background:var(--s2); border-radius:12px; padding:3px; height:48px; flex:none; }
+  .tabs span { flex:1; display:grid; place-items:center; font-size:12px; font-weight:700; border-radius:9px; color:var(--mut); }
+  .tabs span.on { background:#000; color:var(--a); box-shadow:inset 0 -2px 0 var(--a); }
+  .acc { background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .acc.opened { box-shadow:inset 0 0 0 1px var(--tb); }
+  .acc .in { background:#000; margin:0 8px 8px; border-radius:10px; }
+  .acc .in .row + .row { border-top:1px solid var(--s2); }
+  .acc .in .row { padding:6px 10px; }
+  .kv { font-size:12px; color:var(--mut); flex:1; }
+  .bands { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .band { background:var(--s2); border-radius:10px; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.15; }
+  .band small { font-size:10.5px; color:var(--mut); }
+  .band b { font-size:13px; font-variant-numeric:tabular-nums; }
+
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:36px; max-width:980px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>BGS Sound · Regular a memória (opções 1 a 6)</h1>
+  <p class="sub">Aba Ajustes com a memória FILME em uso, preset Ação, Setup Casa 2.1. Os valores são os relidos do PRO 2.4BT. Em todas as opções há 2 mudanças ainda não salvas: o atraso da JBL R (100 cm, sendo escrito agora) e o atraso do Sub (80 cm). O ponto branco marca o que mudou e ainda não foi salvo. As 6 opções mudam só a forma de organizar a tela; o visual é o mesmo.</p>
+
+  <div class="grid">
+
+    <!-- ===================== 1 ===================== -->
+    <section class="opt">
+      <h2><b>1</b>Lista por saída</h2>
+      <p>A forma da spine: uma lista curta com o resumo de cada saída, e cada uma abre o seu editor numa tela própria. Fica fácil achar uma saída e mexer nela com calma. Perde-se a comparação: para ver o atraso das três é preciso entrar e sair de cada editor.</p>
+      <div class="frames">
+        <div class="fr"><small>Lista</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="lbl">Saídas</div>
+            <div class="list">
+              <div class="row"><span class="cb cL"></span><div class="t"><div class="nm">JBL L</div><div class="meta">CH1 · +10 dB · lim −15 dB · 0 cm · HPF 150 Hz · EQ 1 banda</div></div><span class="chev">›</span></div>
+              <div class="row"><span class="cb cR"></span><div class="t"><div class="nm">JBL R <span class="dot"></span></div><div class="meta">CH2 · +7 dB · lim −18 dB · 100 cm · HPF 150 Hz</div></div><span class="chev">›</span></div>
+              <div class="row"><span class="cb cS"></span><div class="t"><div class="nm">Sub <span class="dot"></span></div><div class="meta">CH3 + CH4 · +6 dB · lim −12 dB · 80 cm · 180° · 40 a 150 Hz</div></div><span class="chev">›</span></div>
+            </div>
+            <div class="lbl">Globais</div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">EQ global</div><div class="meta">6 bandas mexidas · 160 Hz a 16 kHz</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">Rota</div><div class="meta">Saída 1 = B (L) · Saída 2 = A (R)</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">MASTER</div></div><span class="val">0 dB</span><span class="chev">›</span></div>
+            </div>
+            <div class="lbl">Preset</div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">15 bandas do Ação</div><div class="meta">Vale para toda memória que usa o Ação</div></div><span class="chev">›</span></div>
+            </div>
+            <div class="list"><div class="row"><div class="t medir">Medir · voltímetro, clip e gerador</div><span class="chev">›</span></div></div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Editor do Sub</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="back"><span class="bk">‹</span><span class="cb cS" style="height:22px"></span><div><div class="tt">Sub</div><div class="meta" style="margin:0">Protech Light 8" · FILME · <span class="seltxt">Ação</span></div></div></div>
+          <div class="body">
+            <div class="link">CH3 e CH4 ligados: alimentam o mesmo bridge</div>
+            <div class="list">
+              <div class="row"><div class="kv">Ganho</div><span class="val">+6 dB</span><span class="chev">›</span></div>
+              <div class="row"><div class="kv">Limitador</div><span class="val">−12 dB<small>liberação —</small></span><span class="chev">›</span></div>
+            </div>
+            <div class="list sel" style="padding:4px 8px 8px">
+              <div class="row" style="padding:4px 4px"><div class="kv seltxt">Atraso <span class="dot" style="margin-left:4px"></span></div><span class="val" style="font-size:11px;color:var(--mut);font-weight:400">relido agora</span></div>
+              <div class="step"><b>−</b><span><strong>80 cm</strong><small>2,3 ms</small></span><b>+</b></div>
+            </div>
+            <div class="list" style="padding:6px 8px 8px">
+              <div class="row" style="padding:2px 4px;min-height:30px"><div class="kv">Fase</div></div>
+              <div class="seg"><span>0°</span><span class="on">180°</span></div>
+            </div>
+            <div class="lbl">Cortes</div>
+            <div class="list">
+              <div class="row"><div class="kv">HPF</div><span class="val">40 Hz<small>BT24</small></span><span class="chev">›</span></div>
+              <div class="row"><div class="kv">LPF</div><span class="val">150 Hz<small>LR24</small></span><span class="chev">›</span></div>
+            </div>
+            <div class="list">
+              <div class="row"><div class="kv">EQ de saída</div><span class="val" style="font-weight:400;color:var(--mut)">plano</span><span class="chev">›</span></div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 2 ===================== -->
+    <section class="opt">
+      <h2><b>2</b>Esquema da sala</h2>
+      <p>A sala vista de cima, com as caixas, o sub e o ouvinte nas posições reais; um toque num equipamento abre a folha com os ajustes dele. Liga o atraso à distância de cada caixa, sem conta. Perde espaço: o desenho ocupa a metade de cima, e os globais e o preset ficam abaixo dele.</p>
+      <div class="frames">
+        <div class="fr"><small>Esquema</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="room">
+              <svg viewBox="0 0 252 176">
+                <line x1="12" y1="12" x2="240" y2="12" stroke="#2A2A30" stroke-width="2"/>
+                <text x="126" y="9" fill="#77777D" font-size="7.5" text-anchor="middle" letter-spacing=".1em">PAREDE DA FRENTE</text>
+                <g stroke="#2A2A30" stroke-width="1" stroke-dasharray="3 3">
+                  <line x1="45" y1="30" x2="200" y2="150"/><line x1="118" y1="32" x2="200" y2="150"/><line x1="144" y1="30" x2="200" y2="150"/>
+                </g>
+                <!-- JBL L -->
+                <rect x="34" y="20" width="22" height="16" rx="3" fill="#1C1C20" stroke="#F2F2F4" stroke-width="1.2"/>
+                <text x="45" y="50" fill="#F2F2F4" font-size="10" font-weight="700" text-anchor="middle">JBL L</text>
+                <text x="45" y="61" fill="#9A9AA2" font-size="8.5" text-anchor="middle">3,20 m</text>
+                <!-- Sub -->
+                <rect x="107" y="20" width="22" height="22" rx="3" fill="#1C1C20" stroke="#7C7C84" stroke-width="1.2"/>
+                <circle cx="118" cy="31" r="6" fill="none" stroke="#7C7C84" stroke-width="1"/>
+                <circle cx="118" cy="31" r="1.5" fill="#7C7C84"/>
+                <text x="104" y="57" fill="#F2F2F4" font-size="10" font-weight="700" text-anchor="middle">Sub</text>
+                <text x="104" y="68" fill="#9A9AA2" font-size="8.5" text-anchor="middle">2,40 m</text>
+                <circle cx="124" cy="53.5" r="2.6" fill="#F2F2F4"/>
+                <!-- JBL R -->
+                <rect x="133" y="20" width="22" height="16" rx="3" fill="#1C1C20" stroke="#9FB6C0" stroke-width="1.2"/>
+                <text x="160" y="50" fill="#F2F2F4" font-size="10" font-weight="700" text-anchor="middle">JBL R</text>
+                <text x="160" y="61" fill="#9A9AA2" font-size="8.5" text-anchor="middle">2,20 m</text>
+                <circle cx="180" cy="46.5" r="2.6" fill="#F2F2F4"/>
+                <!-- Ouvinte -->
+                <circle cx="200" cy="150" r="8" fill="#1C1C20" stroke="#CFCFD4" stroke-width="1.2"/>
+                <text x="186" y="154" fill="#CFCFD4" font-size="9.5" text-anchor="end">Ouvinte</text>
+                <line x1="144" y1="168" x2="200" y2="168" stroke="#77777D" stroke-width="1"/>
+                <line x1="144" y1="164" x2="144" y2="172" stroke="#77777D"/><line x1="200" y1="164" x2="200" y2="172" stroke="#77777D"/>
+                <text x="172" y="165" fill="#9A9AA2" font-size="8" text-anchor="middle">0,9 m</text>
+              </svg>
+            </div>
+            <div class="meta" style="text-align:center">Toque num equipamento para regular. Distâncias até o ouvinte.</div>
+            <div class="lbl">Globais</div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">EQ global</div><div class="meta">6 bandas mexidas</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">Rota</div><div class="meta">Saída 1 = B (L) · Saída 2 = A (R)</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">MASTER</div></div><span class="val">0 dB</span><span class="chev">›</span></div>
+            </div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">15 bandas do Ação</div><div class="meta">Preset</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t medir">Medir · voltímetro, clip e gerador</div><span class="chev">›</span></div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Folha da JBL R aberta</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="room" style="opacity:.55">
+              <svg viewBox="0 0 252 176">
+                <line x1="12" y1="12" x2="240" y2="12" stroke="#2A2A30" stroke-width="2"/>
+                <g stroke="#2A2A30" stroke-width="1" stroke-dasharray="3 3">
+                  <line x1="45" y1="30" x2="200" y2="150"/><line x1="118" y1="32" x2="200" y2="150"/>
+                </g>
+                <line x1="144" y1="30" x2="200" y2="150" stroke="#3FD0FF" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <rect x="34" y="20" width="22" height="16" rx="3" fill="#1C1C20" stroke="#F2F2F4" stroke-width="1.2"/>
+                <text x="45" y="50" fill="#F2F2F4" font-size="10" font-weight="700" text-anchor="middle">JBL L</text>
+                <rect x="107" y="20" width="22" height="22" rx="3" fill="#1C1C20" stroke="#7C7C84" stroke-width="1.2"/>
+                <text x="104" y="57" fill="#F2F2F4" font-size="10" font-weight="700" text-anchor="middle">Sub</text>
+                <rect x="133" y="20" width="22" height="16" rx="3" fill="#0B1D26" stroke="#3FD0FF" stroke-width="2"/>
+                <text x="160" y="50" fill="#3FD0FF" font-size="10" font-weight="700" text-anchor="middle">JBL R</text>
+                <text x="160" y="61" fill="#3FD0FF" font-size="8.5" text-anchor="middle">2,20 m</text>
+                <circle cx="200" cy="150" r="8" fill="#1C1C20" stroke="#CFCFD4" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <h3><span class="cb cR" style="height:16px"></span>JBL R <span class="meta" style="margin:0;font-weight:400">CH2 · a 2,20 m do ouvinte</span></h3>
+              <div class="list">
+                <div class="row"><div class="kv">Ganho</div><span class="val">+7 dB</span><span class="chev">›</span></div>
+                <div class="row"><div class="kv">Limitador</div><span class="val">−18 dB<small>liberação —</small></span><span class="chev">›</span></div>
+                <div class="row sel" style="border-radius:12px"><div class="kv seltxt">Atraso <span class="dot" style="margin-left:4px"></span></div><span class="wr"><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>escrevendo…</span><span class="val dim">100 cm<small>2,9 ms</small></span></div>
+                <div class="row"><div class="kv">Fase</div><span class="val">0°</span><span class="chev">›</span></div>
+                <div class="row"><div class="kv">HPF</div><span class="val">150 Hz<small>LR24</small></span><span class="chev">›</span></div>
+                <div class="row"><div class="kv">LPF</div><span class="val" style="font-weight:400;color:var(--mut)">desligado</span><span class="chev">›</span></div>
+                <div class="row"><div class="kv">EQ de saída</div><span class="val" style="font-weight:400;color:var(--mut)">plano</span><span class="chev">›</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 3 ===================== -->
+    <section class="opt">
+      <h2><b>3</b>Mesa de som</h2>
+      <p>As 3 saídas lado a lado em colunas, uma linha por parâmetro, como um mixer. Compara os canais de uma vez (quem tem atraso, quem está invertido, onde cada um corta), e um toque num valor abre o controle. Perde legibilidade: a coluna é estreita (cerca de 67 px), e o EQ de saída só cabe como resumo.</p>
+      <div class="frames">
+        <div class="fr"><small>Mesa</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="mix">
+              <div class="h"></div>
+              <div class="h"><i class="cL"></i>JBL L<small>CH1</small></div>
+              <div class="h"><i class="cR"></i>JBL R<small>CH2</small></div>
+              <div class="h"><i class="cS"></i>Sub<small>CH3 + CH4</small></div>
+              <div class="k">Ganho</div><div>+10 dB</div><div>+7 dB</div><div>+6 dB</div>
+              <div class="k">Limitador</div><div>−15 dB</div><div>−18 dB</div><div>−12 dB</div>
+              <div class="k">Liberação</div><div>200 ms</div><div class="off">—</div><div class="off">—</div>
+              <div class="k">Atraso</div><div>0 cm<small>0 ms</small></div><div><span class="dot"></span><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg><span class="dim">100 cm</span></div><div><span class="dot"></span>80 cm<small>2,3 ms</small></div>
+              <div class="k">Fase</div><div>0°</div><div>0°</div><div>180°</div>
+              <div class="k">HPF</div><div>150 Hz<small>LR24</small></div><div>150 Hz<small>LR24</small></div><div>40 Hz<small>BT24</small></div>
+              <div class="k">LPF</div><div class="off">desligado</div><div class="off">desligado</div><div>150 Hz<small>LR24</small></div>
+              <div class="k">EQ</div><div>1 banda<small>2 kHz</small></div><div class="off">plano</div><div class="off">plano</div>
+            </div>
+            <div class="link">CH3 e CH4 ligados: alimentam o mesmo bridge</div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">Globais</div><div class="meta">EQ global · rota · MASTER 0 dB</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">15 bandas do Ação</div><div class="meta">Preset</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t medir">Medir · voltímetro, clip e gerador</div><span class="chev">›</span></div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Toque no atraso do Sub</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="mix">
+              <div class="h"></div>
+              <div class="h"><i class="cL"></i>JBL L<small>CH1</small></div>
+              <div class="h"><i class="cR"></i>JBL R<small>CH2</small></div>
+              <div class="h"><i class="cS"></i>Sub<small>CH3 + CH4</small></div>
+              <div class="k">Ganho</div><div>+10 dB</div><div>+7 dB</div><div>+6 dB</div>
+              <div class="k">Limitador</div><div>−15 dB</div><div>−18 dB</div><div>−12 dB</div>
+              <div class="k">Liberação</div><div>200 ms</div><div class="off">—</div><div class="off">—</div>
+              <div class="k">Atraso</div><div>0 cm<small>0 ms</small></div><div><span class="dot"></span>100 cm<small>2,9 ms</small></div><div class="cellsel"><span class="dot"></span>80 cm<small>2,3 ms</small></div>
+              <div class="k">Fase</div><div>0°</div><div>0°</div><div>180°</div>
+            </div>
+            <div class="ctl">
+              <div class="grab"></div>
+              <h3 style="font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px"><span class="cb cS" style="height:16px"></span>Sub · Atraso</h3>
+              <div class="step"><b>−</b><span><strong>80 cm</strong><small>2,3 ms</small></span><b>+</b></div>
+              <div class="note">Cada toque escreve no aparelho e relê. Antes desta sessão: 0 cm.</div>
+              <div class="list" style="background:var(--s1)">
+                <div class="row"><div class="kv">Mesmo parâmetro nas outras saídas</div></div>
+                <div class="row"><span class="cb cL" style="height:16px"></span><div class="kv">JBL L</div><span class="val">0 cm</span></div>
+                <div class="row"><span class="cb cR" style="height:16px"></span><div class="kv">JBL R</div><span class="val">100 cm</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 4 ===================== -->
+    <section class="opt">
+      <h2><b>4</b>Por etapa da regulagem</h2>
+      <p>Seções na ordem do método do Denis (Rota, Cortes, Atraso e fase, Ganho, Limitador, EQ), cada uma com os 3 canais juntos naquele parâmetro. Guia a regulagem do começo ao fim e mostra a comparação que importa em cada passo. Perde o "tudo de uma saída": para ver o Sub inteiro é preciso abrir várias etapas.</p>
+      <div class="frames">
+        <div class="fr"><small>Etapa 3 aberta</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="steps">
+              <div class="row"><span class="num">1</span><div class="t"><div class="nm">Rota</div><div class="meta">Saída 1 = B (L) · Saída 2 = A (R)</div></div><span class="chev">›</span></div>
+              <div class="row"><span class="num">2</span><div class="t"><div class="nm">Cortes</div><div class="meta">L e R: HPF 150 Hz · Sub: 40 a 150 Hz</div></div><span class="chev">›</span></div>
+            </div>
+            <div class="open">
+              <div class="row"><span class="num">3</span><div class="t"><div class="nm seltxt">Atraso e fase</div></div><span class="chev" style="transform:rotate(90deg)">›</span></div>
+              <div class="note">A JBL L é a mais longe (3,20 m) e fica em 0 cm.</div>
+              <div class="chan">
+                <div class="cl"><span class="cb cL"></span>JBL L <span>a 3,20 m</span></div>
+                <div class="ln"><div class="step"><b>−</b><span><strong>0 cm</strong><small>0 ms</small></span><b>+</b></div><div class="fz"><small>Fase</small><b>0°</b></div></div>
+              </div>
+              <div class="chan">
+                <div class="cl"><span class="cb cR"></span>JBL R <span>a 2,20 m</span><span class="dot" style="margin-left:2px"></span><span class="wr" style="margin-left:auto"><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>escrevendo…</span></div>
+                <div class="ln"><div class="step sel"><b>−</b><span class="dim"><strong>100 cm</strong><small>2,9 ms</small></span><b>+</b></div><div class="fz"><small>Fase</small><b>0°</b></div></div>
+              </div>
+              <div class="chan">
+                <div class="cl"><span class="cb cS"></span>Sub <span>a 2,40 m · CH3 + CH4</span><span class="dot" style="margin-left:2px"></span></div>
+                <div class="ln"><div class="step"><b>−</b><span><strong>80 cm</strong><small>2,3 ms</small></span><b>+</b></div><div class="fz"><small>Fase</small><b>180°</b></div></div>
+              </div>
+            </div>
+            <div class="steps">
+              <div class="row"><span class="num">4</span><div class="t"><div class="nm">Ganho</div><div class="meta">+10 · +7 · +6 dB · MASTER 0 dB</div></div><span class="chev">›</span></div>
+              <div class="row"><span class="num">5</span><div class="t"><div class="nm">Limitador</div><div class="meta">−15 · −18 · −12 dB</div></div><span class="chev">›</span></div>
+              <div class="row"><span class="num">6</span><div class="t"><div class="nm">EQ</div><div class="meta">Global 6 bandas · saída: L 1 banda</div></div><span class="chev">›</span></div>
+            </div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">15 bandas do Ação</div><div class="meta">Preset</div></div><span class="chev">›</span></div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 5 ===================== -->
+    <section class="opt">
+      <h2><b>5</b>Curva</h2>
+      <p>Um gráfico em cima com a resposta de cada canal (cortes e EQ de saída), e o canal escolhido em ciano; tocar numa curva ou num chip escolhe o canal e mostra os ajustes dele embaixo. Mostra onde L, R e Sub se cruzam (os 150 Hz). Perde o tempo: atraso, fase, ganho e limitador não aparecem na curva, só nos quadros abaixo dela.</p>
+      <div class="frames">
+        <div class="fr"><small>Sub escolhido</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="graph">
+              <svg viewBox="0 0 252 152">
+                <defs><clipPath id="pl"><rect x="24" y="6" width="226" height="124"/></clipPath></defs>
+                <g stroke="#1C1C20" stroke-width="1">
+                  <line x1="24" y1="32" x2="248" y2="32"/><line x1="24" y1="80" x2="248" y2="80"/><line x1="24" y1="128" x2="248" y2="128"/>
+                  <line x1="76.2" y1="8" x2="76.2" y2="128"/><line x1="150.9" y1="8" x2="150.9" y2="128"/><line x1="225.5" y1="8" x2="225.5" y2="128"/>
+                </g>
+                <line x1="89.3" y1="8" x2="89.3" y2="128" stroke="#2A2A30" stroke-width="1" stroke-dasharray="2 3"/>
+                <g fill="#77777D" font-size="8" text-anchor="end"><text x="20" y="35">0</text><text x="20" y="83">−12</text><text x="20" y="131">−24</text></g>
+                <g fill="#77777D" font-size="8" text-anchor="middle"><text x="24" y="144" text-anchor="start">20</text><text x="76.2" y="144">100</text><text x="89.3" y="152" fill="#9A9AA2">150 Hz</text><text x="150.9" y="144">1k</text><text x="225.5" y="144">10k</text></g>
+                <g clip-path="url(#pl)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <!-- JBL L: HPF LR24 150 Hz + 2 kHz +2,5 dB Q 0,7 -->
+                  <path stroke="#F2F2F4" stroke-opacity=".55" stroke-width="1.5" d="M24.0,136.0 L65.1,136.0 L66.9,130.1 L68.8,122.6 L70.7,115.3 L72.5,108.1 L74.4,101.1 L76.3,94.3 L78.1,87.7 L80.0,81.5 L81.9,75.6 L83.7,70.0 L85.6,64.9 L87.5,60.2 L89.3,56.0 L91.2,52.2 L93.1,48.9 L94.9,46.0 L96.8,43.5 L98.7,41.3 L100.5,39.6 L102.4,38.1 L104.3,36.8 L106.1,35.8 L108.0,34.9 L109.9,34.2 L111.7,33.7 L113.6,33.2 L115.5,32.8 L117.3,32.4 L119.2,32.1 L121.1,31.9 L122.9,31.6 L124.8,31.4 L126.7,31.2 L128.5,31.0 L130.4,30.8 L132.3,30.6 L134.1,30.3 L136.0,30.1 L137.9,29.8 L139.7,29.5 L141.6,29.2 L143.5,28.9 L145.3,28.5 L147.2,28.1 L149.1,27.7 L150.9,27.2 L152.8,26.7 L154.7,26.2 L156.5,25.7 L158.4,25.1 L160.3,24.5 L162.1,24.0 L164.0,23.4 L165.9,23.0 L167.7,22.6 L169.6,22.3 L171.5,22.1 L173.3,22.0 L175.2,22.1 L177.1,22.3 L178.9,22.6 L180.8,23.0 L182.7,23.4 L184.5,24.0 L186.4,24.5 L188.3,25.1 L190.1,25.7 L192.0,26.2 L193.9,26.7 L195.7,27.2 L197.6,27.7 L199.5,28.1 L201.3,28.5 L203.2,28.9 L205.1,29.2 L206.9,29.5 L208.8,29.7 L210.7,30.0 L212.5,30.2 L214.4,30.4 L216.3,30.6 L218.1,30.7 L220.0,30.8 L221.9,31.0 L223.7,31.1 L225.6,31.2 L227.5,31.3 L229.3,31.3 L231.2,31.4 L233.1,31.5 L234.9,31.5 L236.8,31.6 L238.7,31.6 L240.5,31.7 L242.4,31.7 L244.3,31.7 L246.1,31.8 L248.0,31.8"/>
+                  <!-- JBL R: HPF LR24 150 Hz -->
+                  <path stroke="#9FB6C0" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="4 3" d="M24.0,136.0 L65.1,136.0 L66.9,130.1 L68.8,122.7 L70.7,115.3 L72.5,108.1 L74.4,101.1 L76.3,94.3 L78.1,87.8 L80.0,81.6 L81.9,75.7 L83.7,70.1 L85.6,65.0 L87.5,60.3 L89.3,56.1 L91.2,52.3 L93.1,49.0 L94.9,46.1 L96.8,43.6 L98.7,41.6 L100.5,39.8 L102.4,38.3 L104.3,37.1 L106.1,36.1 L108.0,35.3 L109.9,34.7 L111.7,34.1 L113.6,33.7 L115.5,33.4 L117.3,33.1 L119.2,32.9 L121.1,32.7 L122.9,32.5 L124.8,32.4 L126.7,32.3 L128.5,32.3 L130.4,32.2 L134.1,32.1 L141.6,32.1 L145.3,32.0 L248.0,32.0"/>
+                  <!-- Sub: HPF BT24 40 Hz + LPF LR24 150 Hz (escolhido) -->
+                  <path stroke="#3FD0FF" stroke-width="2.6" style="filter:drop-shadow(0 0 3px #3FD0FF)" d="M24.0,128.4 L25.9,120.5 L27.7,112.5 L29.6,104.6 L31.5,96.8 L33.3,89.0 L35.2,81.4 L37.1,74.0 L38.9,66.9 L40.8,60.2 L42.7,54.2 L44.5,48.8 L46.4,44.4 L48.3,40.8 L50.1,38.2 L52.0,36.3 L53.9,35.0 L55.7,34.2 L57.6,33.8 L59.5,33.6 L61.3,33.5 L63.2,33.6 L65.1,33.9 L66.9,34.2 L68.8,34.7 L70.7,35.4 L72.5,36.1 L74.4,37.1 L76.3,38.3 L78.1,39.8 L80.0,41.5 L81.9,43.6 L83.7,46.1 L85.6,49.0 L87.5,52.3 L89.3,56.1 L91.2,60.3 L93.1,65.0 L94.9,70.1 L96.8,75.6 L98.7,81.5 L100.5,87.8 L102.4,94.3 L104.3,101.1 L106.1,108.1 L108.0,115.3 L109.9,122.6 L111.7,130.1 L113.6,136.0 L248.0,136.0"/>
+                </g>
+              </svg>
+            </div>
+            <div class="meta" style="text-align:center;margin-top:-2px">Cortes e EQ de saída de cada canal, sem o EQ global</div>
+            <div class="chips"><span><i class="cL"></i>JBL L</span><span><i class="cR"></i>JBL R</span><span class="on"><i style="background:#3FD0FF"></i>Sub</span></div>
+            <div class="link">CH3 e CH4 ligados: alimentam o mesmo bridge</div>
+            <div class="tiles">
+              <div class="tile"><small>Ganho</small><b>+6 dB</b></div>
+              <div class="tile"><small>Limitador</small><b>−12 dB</b></div>
+              <div class="tile"><small>Atraso</small><b>80 cm</b><span class="dot"></span></div>
+              <div class="tile"><small>Fase</small><b>180°</b></div>
+              <div class="tile"><small>HPF · BT24</small><b>40 Hz</b></div>
+              <div class="tile"><small>LPF · LR24</small><b>150 Hz</b></div>
+            </div>
+            <div class="list">
+              <div class="row"><div class="t"><div class="nm">EQ de saída do Sub</div><div class="meta">plano</div></div><span class="chev">›</span></div>
+              <div class="row"><div class="t"><div class="nm">Globais e preset</div><div class="meta">EQ global · rota · MASTER · 15 bandas do Ação</div></div><span class="chev">›</span></div>
+            </div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ===================== 6 ===================== -->
+    <section class="opt">
+      <h2><b>6</b>Abas internas</h2>
+      <p>Três abas no topo de Ajustes (Saídas, Globais, Preset) separam o que é da memória por saída, o que é global e o que é do preset. Deixa à vista o que o Salvar vai repartir. Perde um nível: são duas camadas de abas (as de baixo e as de dentro), e só um bloco de saída fica aberto por vez.</p>
+      <div class="frames">
+        <div class="fr"><small>Aba Saídas, JBL L aberta</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="tabs"><span class="on">Saídas</span><span>Globais</span><span>Preset</span></div>
+            <div class="acc opened">
+              <div class="row"><span class="cb cL"></span><div class="t"><div class="nm">JBL L</div><div class="meta">CH1</div></div><span class="chev" style="transform:rotate(-90deg)">›</span></div>
+              <div class="in">
+                <div class="row"><div class="kv">Ganho</div><span class="val">+10 dB</span></div>
+                <div class="row"><div class="kv">Limitador</div><span class="val">−15 dB<small>liberação 200 ms</small></span></div>
+                <div class="row"><div class="kv">Atraso</div><span class="val">0 cm<small>0 ms</small></span></div>
+                <div class="row"><div class="kv">Fase</div><span class="val">0°</span></div>
+                <div class="row"><div class="kv">HPF</div><span class="val">150 Hz<small>LR24</small></span></div>
+                <div class="row"><div class="kv">LPF</div><span class="val" style="font-weight:400;color:var(--mut)">desligado</span></div>
+                <div class="row"><div class="kv">EQ de saída</div><span class="val">2 kHz +2,5 dB<small>Q 0,7</small></span></div>
+              </div>
+            </div>
+            <div class="acc"><div class="row"><span class="cb cR"></span><div class="t"><div class="nm">JBL R <span class="dot"></span></div><div class="meta">CH2 · +7 dB · −18 dB · 100 cm · 0°</div></div><span class="chev" style="transform:rotate(90deg)">›</span></div></div>
+            <div class="acc"><div class="row"><span class="cb cS"></span><div class="t"><div class="nm">Sub <span class="dot"></span></div><div class="meta">CH3 + CH4 ligados · +6 dB · 80 cm · 180°</div></div><span class="chev" style="transform:rotate(90deg)">›</span></div></div>
+            <div class="list"><div class="row"><div class="t medir">Medir · voltímetro, clip e gerador</div><span class="chev">›</span></div></div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+
+        <div class="fr"><small>Aba Globais</small>
+        <div class="phone">
+          <div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>
+          <div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>
+          <div class="ctx"><div><div class="k">Regulando</div><div class="mem">FILME</div></div><span class="pill">Ação ›</span><div class="rl">valores relidos<br>do PRO 2.4BT</div></div>
+          <div class="body">
+            <div class="tabs"><span>Saídas</span><span class="on">Globais</span><span>Preset</span></div>
+            <div class="lbl">EQ global (entrada)</div>
+            <div class="bands">
+              <div class="band"><small>160 Hz</small><b>+1 dB</b></div>
+              <div class="band"><small>400 Hz</small><b>−1 dB</b></div>
+              <div class="band"><small>4 kHz</small><b>−1 dB</b></div>
+              <div class="band"><small>6,3 kHz</small><b>−2 dB</b></div>
+              <div class="band"><small>10 kHz</small><b>+2 dB</b></div>
+              <div class="band"><small>16 kHz</small><b>+2 dB</b></div>
+            </div>
+            <div class="meta">As outras bandas do EQ global estão em 0 dB. Toque numa banda para ajustar.</div>
+            <div class="lbl">Rota</div>
+            <div class="list">
+              <div class="row"><div class="kv">Saída 1</div><span class="val">B (L)</span><span class="chev">›</span></div>
+              <div class="row"><div class="kv">Saída 2</div><span class="val">A (R)</span><span class="chev">›</span></div>
+            </div>
+            <div class="lbl">MASTER</div>
+            <div class="step"><b>−</b><span><strong>0 dB</strong></span><b>+</b></div>
+            <div class="note">As 15 bandas do Ação ficam na aba Preset. O Salvar manda estas e as das saídas para a FILME.</div>
+          </div>
+          <div class="save"><div class="n"><span class="dot"></span>2 mudanças não salvas</div><span class="btnp">Salvar</span></div>
+          <div class="nav"><div>Som</div><div>IA</div><div class="on">Ajustes</div><div>Setup</div></div>
+        </div></div>
+      </div>
+    </section>
+
+  </div>
+  <p class="foot">Responda com o número (de 1 a 6) ou com uma mistura, por exemplo "a 1, com a etapa Atraso e fase da 4 como atalho".</p>
+</div>
+</body>
+</html>

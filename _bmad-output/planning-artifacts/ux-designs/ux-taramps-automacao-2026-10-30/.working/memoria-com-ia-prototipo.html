@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Protótipo da memória com a IA</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --nb:#7C7C84; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --ok:#34D399; --stop:#D92D20; --s1:#111114; --s2:#1C1C20; --sh:#141418; --bs:#2A2A30;
+          --tf:#0B1D26; --tt:#05090C; --tb:#16394A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 48px; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .wrap { max-width:1000px; margin:0 auto; display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
+
+  /* Painel ao lado */
+  .panel { width:340px; max-width:100%; display:flex; flex-direction:column; gap:10px; }
+  .panel h1 { font-size:20px; }
+  .panel p { color:var(--mut); font-size:13px; line-height:1.5; }
+  .modes { display:flex; flex-direction:column; gap:6px; }
+  .modes button { text-align:left; background:var(--s1); border-radius:12px; padding:10px 12px; min-height:48px; display:flex; gap:10px; align-items:flex-start; }
+  .modes button b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--s2); color:var(--chip); font-size:13px; flex:none; }
+  .modes button span { font-size:13px; font-weight:700; line-height:1.3; }
+  .modes button small { display:block; font-size:11.5px; font-weight:400; color:var(--mut); margin-top:2px; }
+  .modes button.on { box-shadow:inset 0 0 0 1px var(--a); background:rgba(63,208,255,.06); }
+  .modes button.on b { background:var(--a); color:var(--on); }
+  .pb { min-height:44px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:13px; font-weight:700; }
+
+  /* Celular */
+  .phone { position:relative; width:340px; height:720px; border-radius:42px; border:8px solid #2A2A2E; background:#000; overflow:hidden; display:flex; flex-direction:column; flex:none; }
+  .sb { display:flex; justify-content:space-between; padding:8px 22px 2px; font-size:11px; color:var(--st); flex:none; }
+  .hdr { display:flex; align-items:center; gap:7px; padding:8px 16px 6px; flex:none; }
+  .hdr svg { width:22px; height:22px; }
+  .lg { display:flex; align-items:baseline; gap:.4em; line-height:1; }
+  .lg b { font-weight:900; font-size:15px; letter-spacing:-.02em; }
+  .lg span { font-size:9px; font-weight:500; letter-spacing:.32em; }
+  .hdr .r { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .setup { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--chip); background:var(--s2); border-radius:999px; padding:5px 10px; }
+  .setup i { width:6px; height:6px; border-radius:50%; background:var(--ok); }
+  .gear { color:var(--st); font-size:17px; width:28px; text-align:center; }
+  .nav { display:flex; justify-content:space-around; border-top:1px solid var(--s2); padding:6px 4px 12px; font-size:10px; color:var(--nav); background:#000; flex:none; }
+  .nav button { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:56px; min-height:40px; justify-content:center; }
+  .nav button::before { content:""; width:20px; height:3px; border-radius:2px; background:transparent; }
+  .nav .on { color:var(--a); } .nav .on::before { background:var(--a); }
+
+  .body { flex:1; min-height:0; overflow-y:auto; padding:0 16px 12px; display:flex; flex-direction:column; gap:10px; position:relative; scrollbar-width:none; }
+  .body::-webkit-scrollbar { display:none; }
+  .lbl { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); }
+  .ia { font-size:12.5px; line-height:1.45; color:var(--chip); }
+  .ia b { color:var(--tx); }
+
+  /* Roda (simplificada) */
+  .dialbox { display:flex; flex-direction:column; align-items:center; gap:14px; padding-top:28px; }
+  .dial { width:240px; height:240px; border-radius:50%; border:16px solid var(--s2); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; position:relative; }
+  .dial::after { content:""; position:absolute; inset:-16px; border-radius:50%; border:16px solid transparent; border-top-color:var(--a); }
+  .dial b { font-size:24px; font-weight:900; letter-spacing:1.5px; }
+  .dial small { font-size:11px; color:var(--mut); }
+  .pill { display:inline-flex; align-items:center; height:22px; border-radius:11px; padding:0 9px; background:rgba(63,208,255,.10); border:1px solid rgba(63,208,255,.33); color:var(--a); font-size:11.5px; font-weight:600; }
+  .chiprow { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .chip { min-height:44px; padding:0 14px; border-radius:999px; background:var(--s2); color:var(--chip); font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:7px; }
+  .chip.live { background:rgba(63,208,255,.12); color:var(--a); box-shadow:inset 0 0 0 1px var(--tb); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--a); box-shadow:0 0 0 3px rgba(63,208,255,.18); flex:none; }
+  .dim { opacity:.28; pointer-events:none; }
+
+  /* Perguntas */
+  .q { display:flex; flex-direction:column; gap:6px; }
+  .q h4 { font-size:12.5px; font-weight:700; line-height:1.3; }
+  .ops { display:flex; flex-wrap:wrap; gap:6px; }
+  .op { min-height:40px; padding:0 12px; border-radius:999px; background:var(--s2); color:var(--chip); font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; }
+  .op.on { background:rgba(63,208,255,.12); box-shadow:inset 0 0 0 1px var(--a); color:var(--a); }
+  .op.ou { background:transparent; box-shadow:inset 0 0 0 1px var(--bs); color:var(--mut); }
+  .op.ou.on { box-shadow:inset 0 0 0 1px var(--a); color:var(--a); }
+  .op[disabled] { cursor:default; }
+  .outro { display:flex; gap:6px; width:100%; }
+  .outro input { flex:1; min-height:40px; border-radius:999px; border:1px solid var(--a); background:#000; color:var(--tx); padding:0 14px; font:inherit; font-size:12px; outline:none; }
+  .outro button { min-height:40px; padding:0 14px; border-radius:999px; background:var(--a); color:var(--on); font-size:12px; font-weight:700; }
+  .card { background:var(--s1); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:12px; flex:none; }
+
+  /* Botões */
+  .btnp { min-height:48px; padding:0 20px; border-radius:12px; background:var(--a); color:var(--on); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; width:100%; }
+  .btnp[disabled] { opacity:.4; cursor:default; }
+  .btns { min-height:48px; padding:0 16px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:12.5px; font-weight:700; }
+  .btns[disabled] { opacity:.35; cursor:default; }
+  .stopb { min-height:40px; padding:0 12px; border-radius:10px; background:var(--stop); color:#fff; font-size:11.5px; font-weight:800; letter-spacing:.04em; flex:none; }
+  .pause { min-height:40px; padding:0 12px; border-radius:10px; background:var(--s2); color:var(--chip); font-size:11.5px; font-weight:700; }
+  .foot2 { display:flex; gap:8px; padding:8px 16px 12px; background:var(--sh); border-top:1px solid var(--bs); flex:none; }
+  .foot2 .btnp { flex:1; width:auto; }
+
+  /* Resumo */
+  .chg { background:var(--s1); border-radius:14px; overflow:hidden; flex:none; }
+  .card .chg { background:#000; }
+  .chg .it { padding:9px 12px; display:flex; flex-direction:column; gap:2px; }
+  .chg .it + .it { border-top:1px solid var(--s2); }
+  .chg .top { display:flex; justify-content:space-between; gap:8px; font-size:12.5px; font-weight:700; }
+  .chg .top span:last-child { font-variant-numeric:tabular-nums; color:var(--a); white-space:nowrap; }
+  .chg .why { font-size:11px; color:var(--mut); line-height:1.35; }
+  .chg .it.new { background:rgba(63,208,255,.07); }
+  .chg .it.new .top span:first-child::after { content:" · mudou"; font-weight:400; font-size:10.5px; color:var(--a); }
+  .tag { display:inline-block; font-size:10px; color:var(--a); background:rgba(63,208,255,.10); border-radius:6px; padding:2px 6px; margin-top:3px; align-self:flex-start; }
+  .fence { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--chip); background:var(--s1); border-radius:10px; padding:8px 10px; flex:none; }
+  .card .fence { background:#000; }
+  .fence::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; }
+  .hint { font-size:10.5px; color:var(--mut); line-height:1.4; }
+
+  /* 1 Folha */
+  .sheet { position:absolute; left:0; right:0; bottom:0; max-height:92%; overflow-y:auto; background:var(--sh); border-top:1px solid var(--bs); border-radius:22px 22px 0 0; padding:10px 16px 14px; display:flex; flex-direction:column; gap:12px; box-shadow:0 -20px 40px #000; z-index:5; scrollbar-width:none; }
+  .grab { width:36px; height:4px; border-radius:2px; background:#3A3A40; margin:0 auto; flex:none; }
+  .sheet h3 { font-size:14px; font-weight:800; display:flex; align-items:center; gap:8px; line-height:1.25; }
+  .sheet h3 span { flex:1; }
+
+  /* Cabeçalho de tela própria */
+  .back { display:flex; align-items:center; gap:6px; padding:2px 16px 4px; flex:none; }
+  .back .bk { width:40px; height:48px; margin-left:-12px; display:grid; place-items:center; font-size:24px; color:var(--chip); }
+  .back .bk[disabled] { opacity:.25; cursor:default; }
+  .back .tt { font-size:16px; font-weight:800; flex:1; line-height:1.15; }
+  .back .tt small { display:block; font-size:10.5px; font-weight:400; color:var(--mut); }
+
+  /* 2 Trilha */
+  .track { display:flex; gap:4px; padding:2px 16px 8px; flex:none; }
+  .track span { flex:1; display:flex; flex-direction:column; gap:4px; font-size:9.5px; color:var(--nav); text-align:center; }
+  .track span::before { content:""; height:4px; border-radius:2px; background:var(--s2); }
+  .track span.done::before { background:var(--ol); } .track span.done { color:var(--mut); }
+  .track span.now::before { background:var(--a); } .track span.now { color:var(--a); font-weight:700; }
+
+  /* 3 Balões */
+  .who { font-size:10px; color:var(--mut); letter-spacing:.1em; text-transform:uppercase; margin-top:2px; }
+  .bub { max-width:90%; padding:9px 12px; border-radius:16px; font-size:12px; line-height:1.4; display:flex; flex-direction:column; gap:8px; flex:none; }
+  .bub.ai { background:var(--s1); color:var(--chip); border-bottom-left-radius:4px; align-self:flex-start; }
+  .bub.me { background:rgba(63,208,255,.12); color:var(--a); border-bottom-right-radius:4px; align-self:flex-end; font-weight:600; }
+  .bub.wide { max-width:100%; align-self:stretch; }
+  .input { display:flex; align-items:center; gap:8px; padding:8px 12px 12px; background:var(--sh); border-top:1px solid var(--bs); flex:none; }
+  .input input { flex:1; min-height:44px; border-radius:22px; background:var(--s2); color:var(--tx); border:0; font:inherit; font-size:12px; padding:0 14px; outline:none; }
+  .input input::placeholder { color:var(--nav); }
+  .input button { width:44px; height:44px; border-radius:50%; background:var(--a); color:var(--on); font-weight:900; flex:none; }
+
+  /* 4 Ficha */
+  .vars { background:var(--s1); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:7px; flex:none; }
+  .var { display:grid; grid-template-columns:78px 1fr 92px; align-items:center; gap:8px; font-size:11px; }
+  .var .n { color:var(--mut); }
+  .var .v { font-weight:700; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar { height:6px; border-radius:3px; background:var(--s2); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--ol); border-radius:3px; transition:width .4s; }
+  .var.ask .n, .var.ask .v { color:var(--a); }
+  .var.ask .bar i { background:var(--a); }
+
+  /* 5 Sessão na aba IA */
+  .sess { background:linear-gradient(180deg,var(--tf),var(--tt)); box-shadow:inset 0 0 0 1px var(--tb); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; flex:none; }
+  .sess .l1 { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; }
+  .sess .l2 { font-size:11px; color:var(--mut); }
+  .sess .acts { display:flex; gap:8px; }
+  .sess .acts > * { flex:1; }
+  .stack { display:flex; flex-direction:column; gap:6px; flex:none; }
+  .doneq { background:var(--s1); border-radius:12px; min-height:44px; padding:6px 12px; font-size:11px; color:var(--mut); display:flex; justify-content:space-between; align-items:center; gap:8px; text-align:left; }
+  .doneq b { color:var(--chip); font-weight:600; }
+  .doneq b::after { content:" ›"; color:var(--nav); }
+
+  /* Aplicando em tela toda (padrão do UX de 30/10) */
+  .apply { position:absolute; inset:0; background:rgba(0,0,0,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:20; }
+  .apply small { font-size:12px; letter-spacing:.14em; color:var(--ol); text-transform:uppercase; }
+  .apply b { font-size:24px; font-weight:900; letter-spacing:.04em; }
+  .dual { width:96px; height:96px; overflow:visible; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+  @media (prefers-reduced-motion:reduce) { .dual .a1 { animation-duration:2.2s } .dual .a2 { animation-duration:3s } }
+
+  /* Folha de aviso (PARAR IA) e aviso curto */
+  .cover { position:absolute; inset:0; background:rgba(0,0,0,.6); z-index:15; }
+  .toast { position:absolute; left:16px; right:16px; bottom:76px; background:var(--s2); color:var(--tx); border-radius:12px; padding:12px 14px; font-size:12px; z-index:25; box-shadow:0 10px 30px #000; }
+  .play { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ok); }
+  .play::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--ok); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <div class="phone" id="phone"></div>
+
+  <div class="panel">
+    <h1>Memória com a IA</h1>
+    <p>Toque em "+ Nova memória" e faça o caminho todo: perguntas, resumo, Ouvir, "Como ficou?", refinar e Salvar. Depois troque a forma aqui e faça de novo, para comparar.</p>
+    <div class="modes" id="modes"></div>
+    <button class="pb" id="restart">Recomeçar</button>
+    <p>A IA é simulada: as respostas são fixas e os valores são de exemplo. O nome MUSICA ORIG já vem dado.</p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const MODES = [
+  ["Folha por cima da Roda", "O modal da forja, sobre a aba Som"],
+  ["Tela própria, passo a passo", "Ordem da física no topo, com Voltar"],
+  ["Conversa em balões", "Chat com campo para escrever"],
+  ["O que a IA já sabe, à vista", "Ficha de variáveis com certeza"],
+  ["Dentro da aba IA", "Junto da sessão ao vivo"],
+];
+
+const Q = {
+  uso:   { t: "Para que é esta memória?", o: ["Música", "Filme", "Os dois"], v: "Uso" },
+  vol:   { t: "Em que volume você costuma ouvir?", o: ["Baixo, à noite", "Moderado", "Alto"], v: "Volume" },
+  senta: { t: "Onde você senta?", o: ["No meio do sofá", "Fora do meio", "Varia"], v: "Onde senta" },
+  grave: { t: "Como você prefere o grave?", o: ["Presente, sem encobrir", "Forte, com pressão", "Rápido e preciso"], v: "Grave" },
+  aval:  { t: "Como ficou?", o: ["Ótimo, pode salvar", "Quero mais impacto", "Perdeu detalhe", "Não gostei"] },
+};
+
+// 0 e 1 perfil, 2 resumo, 3 avaliação, 4 resumo refinado, 5 salvar
+const STEPS = [
+  { k: "perfil", intro: "Para começar, <b>3 perguntas</b> sobre como você ouve. Nenhuma depende da outra.", qs: ["uso", "vol", "senta"] },
+  { k: "perfil", intro: "Mais <b>1 pergunta</b>: é a que mais muda o som agora.", qs: ["grave"] },
+  { k: "resumo" },
+  { k: "perfil", intro: "Está tocando a primeira versão. <b>Ouça um pouco</b> e diga:", qs: ["aval"], aval: true },
+  { k: "resumo", v2: true },
+  { k: "salvar" },
+];
+
+let mode = 0, st;
+
+function reset() {
+  st = { started: false, s: 0, A: {}, P: {}, outro: {}, refine: null, round: 1, log: [], tab: "som", stopped: false, applying: false, saved: null, toast: null };
+  render();
+}
+
+const cur = () => STEPS[st.s];
+const memName = () => st.started ? "MUSICA ORIG" : "Nova memória";
+
+/* ---------- conteúdo comum ---------- */
+
+function qHTML(q, live = true) {
+  const sel = st.P[q] ?? st.A[q];
+  const custom = sel && !Q[q].o.includes(sel) ? sel : null;
+  let h = `<div class="q"><h4>${Q[q].t}</h4><div class="ops">`;
+  h += Q[q].o.map(o => `<button class="op${sel === o ? " on" : ""}" ${live ? `data-q="${q}" data-v="${esc(o)}"` : "disabled"}>${o}</button>`).join("");
+  if (Q[q].v || q === "aval") {
+    if (live && st.outro[q]) h += `<span class="outro"><input id="in-${q}" placeholder="Escreva do seu jeito" value="${esc(custom || "")}"><button data-ok="${q}">OK</button></span>`;
+    else h += `<button class="op ou${custom ? " on" : ""}" ${live ? `data-outro="${q}"` : "disabled"}>${custom ? esc(custom) : "Outro…"}</button>`;
+  }
+  return h + `</div></div>`;
+}
+
+function filled() { return (cur().qs || []).every(q => st.P[q]); }
+function pendingCount() { const qs = cur().qs || []; return [qs.filter(q => st.P[q]).length, qs.length]; }
+
+function resumoItems() {
+  const A = st.A, forte = A.grave === "Forte, com pressão";
+  const it = [
+    { n: "Corte JBL L e R", v: "HPF 80 Hz", w: "O Sub fica com o grave abaixo de 80 Hz; as JBL param de sofrer no grave pesado.", t: "do Setup" },
+    { n: "Corte do Sub", v: "LPF 80 Hz", w: "Encontra as JBL no mesmo ponto.", t: "do Setup" },
+    A.uso === "Música" || !A.uso
+      ? { n: "Atraso", v: "0 em todas", w: "Memória de música: L igual a R, sem compensar distância.", t: "Uso: " + (A.uso || "?") }
+      : { n: "Atraso", v: "pela distância", w: "Filme: cada caixa chega junto em você.", t: "Uso: " + A.uso },
+    { n: "Ganho do Sub", v: forte ? "+6 dB" : "+4 dB", w: forte ? "Você pediu grave forte, com pressão." : "Grave presente sem encobrir as vozes.", t: "Grave: " + (A.grave || "?") },
+    { n: "Limitador", v: "−12 dB", w: "Abaixo do teto de cada canal.", t: "Volume: " + (A.vol || "?") },
+  ];
+  if (cur().v2) {
+    const r = st.refine;
+    if (r === "Quero mais impacto") return [{ n: "Ganho do Sub", v: forte ? "+7,5 dB" : "+5,5 dB", w: "Mais 1,5 dB de grave. Ainda abaixo do teto do Sub.", t: "Como ficou: mais impacto", nw: 1 }];
+    if (r === "Perdeu detalhe") return [{ n: "EQ de saída JBL L e R", v: "+1,5 dB em 4 kHz", w: "Devolve o detalhe dos instrumentos sem endurecer a voz.", t: "Como ficou: perdeu detalhe", nw: 1 }];
+    return [{ n: "Ganho do Sub", v: "+2 dB", w: "Volto para um grave mais contido e comparo de novo.", t: "Como ficou: " + r, nw: 1 },
+            { n: "Limitador", v: "−14 dB", w: "Mais folga para não cansar.", t: "Como ficou: " + r, nw: 1 }];
+  }
+  return it;
+}
+
+function resumoHTML(withTags) {
+  const intro = cur().v2
+    ? `Você disse <b>"${esc(st.refine)}"</b>. Mudei só isto:`
+    : (mode === 3 ? `Nenhuma resposta nova muda mais de 1 dB. <b>Hora de ouvir.</b>` : `Tenho o suficiente para a primeira versão. <b>Isto é o que muda e por quê:</b>`);
+  const items = resumoItems().map(i => `<div class="it${i.nw ? " new" : ""}"><div class="top"><span>${i.n}</span><span>${i.v}</span></div><div class="why">${i.w}</div>${withTags ? `<span class="tag">${esc(i.t)}</span>` : ""}</div>`).join("");
+  return `<p class="ia">${intro}</p><div class="chg">${items}</div><div class="fence">Dentro da cerca: nenhum canal passa do teto.</div>`;
+}
+
+function salvarHTML() {
+  const rows = ["uso", "vol", "senta", "grave"].map(q => `<div class="it"><div class="top"><span style="font-weight:400;color:var(--mut)">${Q[q].v}</span><span style="color:var(--chip)">${esc(st.A[q])}</span></div></div>`).join("");
+  return `<p class="ia">Você aprovou na escuta. <b>Salvar a MUSICA ORIG no Casa 2.1?</b></p><div class="chg">${rows}</div><p class="hint">A IA não salva: só você. Salvar guarda toda a regulagem que está tocando agora.</p>`;
+}
+
+function primary() {
+  const k = cur().k;
+  if (k === "perfil") { const [a, b] = pendingCount(); return `<button class="btnp" data-act="answer" ${filled() ? "" : "disabled"}>${filled() ? "Responder" : `Responder (${a} de ${b})`}</button>`; }
+  if (k === "resumo") return `<button class="btnp" data-act="ouvir">Ouvir</button>`;
+  return `<button class="btnp" data-act="save">Salvar</button>`;
+}
+
+function stepMain(withTags = false) {
+  const c = cur();
+  if (c.k === "perfil") return `<p class="ia">${c.intro}</p>` + c.qs.map(q => qHTML(q)).join("");
+  if (c.k === "resumo") return resumoHTML(withTags) + (mode !== 3 ? `<p class="hint">Ouvir aplica no aparelho. Nada fica salvo até você aprovar.</p>` : "");
+  return salvarHTML();
+}
+
+/* ---------- moldura ---------- */
+
+const SB = () => `<div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div>`;
+const HDR = () => `<div class="hdr"><svg><use href="#onda"/></svg><div class="lg"><b>BGS</b><span>SOUND</span></div><div class="r"><span class="setup"><i></i>Casa 2.1 ›</span><span class="gear">⚙</span></div></div>`;
+const NAV = on => `<div class="nav">${["som:Som", "ia:IA", "ajustes:Ajustes", "setup:Setup"].map(x => { const [k, l] = x.split(":"); return `<button class="${on === k ? "on" : ""}" data-tab="${k}">${l}</button>`; }).join("")}</div>`;
+
+function rodaHTML(dim) {
+  const playing = st.saved || "FILME";
+  const preset = st.saved ? "Sem preset ›" : "Ação ›";
+  let chips = `<button class="chip" data-act="newmem">+ Nova memória</button>`;
+  if (st.started && mode === 4) chips = `<button class="chip live" data-tab="ia"><span class="dot"></span>IA criando a MUSICA ORIG ›</button>`;
+  return `<div class="dialbox${dim ? " dim" : ""}"><div class="dial"><b>${playing}</b><span class="pill">${preset}</span><small>tocando</small></div><div class="chiprow">${chips}</div></div>`;
+}
+
+function stopBtn() { return `<button class="stopb" data-act="stop">PARAR IA</button>`; }
+
+function screen() {
+  // fora da criação: aba Som com a Roda
+  if (!st.started) {
+    if (mode === 4 && st.tab === "ia") return SB() + HDR() + `<div class="body"><div class="sess"><div class="l1">IA pareada · parada</div><div class="l2">IA no notebook · pela rede da casa</div></div><button class="btnp" data-act="newmem">Criar uma memória com a IA</button></div>` + NAV("ia");
+    if (st.tab !== "som") return SB() + HDR() + `<div class="body"><p class="ia" style="margin-top:20px">Esboço: a aba ${st.tab} não faz parte deste protótipo.</p></div>` + NAV(st.tab);
+    return SB() + HDR() + `<div class="body">${rodaHTML(false)}</div>` + NAV("som");
+  }
+
+  const title = cur().k === "perfil" && st.s < 2 ? "Nova memória" : "MUSICA ORIG";
+
+  if (mode === 0) {
+    const head = cur().k === "resumo" ? "A IA propõe · MUSICA ORIG" : cur().k === "salvar" ? "Salvar · MUSICA ORIG" : `${title} · com a IA`;
+    return SB() + HDR() + `<div class="body">${rodaHTML(true)}</div>` +
+      `<div class="sheet"><div class="grab"></div><h3><span>${head}</span>${stopBtn()}</h3>${stepMain()}${primary()}</div>` + NAV("som");
+  }
+
+  if (mode === 1) {
+    const order = ["Perfil", "Cerca", "Corte", "Tempo", "Tom", "Dinâmica", "Ouvir"];
+    const now = st.s < 2 ? 0 : (cur().k === "resumo" ? 4 : 6);
+    const track = `<div class="track">${order.map((o, i) => `<span class="${i < now ? "done" : i === now ? "now" : ""}">${o}</span>`).join("")}</div>`;
+    return SB() + `<div class="back"><button class="bk" data-act="back" ${st.s === 0 ? "disabled" : ""} aria-label="Voltar">‹</button><span class="tt">${title}<small>com a IA · Casa 2.1</small></span>${stopBtn()}</div>` + track +
+      `<div class="body">${stepMain()}</div><div class="foot2"><button class="btns" data-act="back" ${st.s === 0 ? "disabled" : ""}>Voltar</button>${primary()}</div>`;
+  }
+
+  if (mode === 2) {
+    let live = "";
+    const c = cur();
+    if (c.k === "perfil") {
+      const q = c.qs.find(q => !st.P[q]);
+      const pre = c.qs.indexOf(q) === 0 ? `<span>${c.intro.replace(/<b>|<\/b>/g, "")}</span>` : "";
+      if (q) live = `<div class="who">IA</div><div class="bub ai">${pre}${qHTML(q)}</div>`;
+    } else if (c.k === "resumo") live = `<div class="who">IA</div><div class="bub ai wide">${resumoHTML(false)}${primary()}</div>`;
+    else live = `<div class="who">IA</div><div class="bub ai wide">${salvarHTML()}${primary()}</div>`;
+    return SB() + `<div class="back"><span class="tt">${title}<small>conversa com a IA · Casa 2.1</small></span>${stopBtn()}</div>` +
+      `<div class="body" id="chatbody">${st.log.join("")}${live}</div>` +
+      `<div class="input"><input id="chatin" placeholder="Escrever para a IA…"><button data-act="send" aria-label="Enviar">↑</button></div>`;
+  }
+
+  if (mode === 3) {
+    const ask = cur().qs || [];
+    const vars = [["uso", 0], ["vol", 0], ["senta", 0], ["grave", 0], ["Voz", 60, "natural"], ["Dinâmica", 55, "padrão"], ["Cansaço", 70, "padrão"]].map(([q, p, d]) => {
+      const k = Q[q];
+      const val = k ? st.A[q] : d;
+      const pct = k ? (st.A[q] ? 100 : (q === "grave" ? 25 : 15)) : p;
+      return `<div class="var${ask.includes(q) ? " ask" : ""}"><span class="n">${k ? k.v : q}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="v">${esc(val || "?")}</span></div>`;
+    }).join("");
+    return SB() + `<div class="back"><span class="tt">${title}<small>com a IA · Casa 2.1</small></span>${stopBtn()}</div>` +
+      `<div class="body"><div class="lbl">O que a IA já sabe</div><div class="vars">${vars}</div>${cur().k === "perfil" ? `<div class="card">${stepMain()}</div>` : stepMain(true)}</div><div class="foot2">${primary()}</div>`;
+  }
+
+  // mode 4: aba IA
+  if (st.tab !== "ia") {
+    if (st.tab === "som") return SB() + HDR() + `<div class="body">${rodaHTML(false)}</div>` + NAV("som");
+    return SB() + HDR() + `<div class="body"><p class="ia" style="margin-top:20px">Esboço: a aba ${st.tab} não faz parte deste protótipo.</p></div>` + NAV(st.tab);
+  }
+  const answered = ["uso", "vol", "senta", "grave"].filter(q => st.A[q]);
+  const stack = answered.length ? `<div class="lbl">Respostas · toque para mudar</div><div class="stack">${answered.map(q => `<button class="doneq" data-redo="${q}"><span>${Q[q].v}</span><b>${esc(st.A[q])}</b></button>`).join("")}</div>` : "";
+  return SB() + HDR() + `<div class="body"><div class="sess"><div class="l1"><span class="dot"></span>Criando a ${title === "Nova memória" ? "memória nova" : title}</div><div class="l2">IA no notebook · pela rede da casa</div><div class="acts"><button class="pause">Pausar</button>${stopBtn()}</div></div>` +
+    `<div class="card">${stepMain()}${primary()}</div>${stack}</div>` + NAV("ia");
+}
+
+function overlays() {
+  let h = "";
+  if (st.applying) h += `<div class="apply"><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg><small>Aplicando</small><b>MUSICA ORIG</b></div>`;
+  if (st.stopped) h += `<div class="cover"></div><div class="sheet" style="z-index:16"><div class="grab"></div><h3><span>A IA parou</span></h3><p class="ia">Nada foi salvo. O aparelho voltou para a <b>FILME</b>, como estava antes.</p><button class="btnp" data-act="restart">Voltar à Roda</button></div>`;
+  if (st.toast) h += `<div class="toast">${st.toast}</div>`;
+  return h;
+}
+
+function render() {
+  $("modes").innerHTML = MODES.map(([t, s], i) => `<button class="${i === mode ? "on" : ""}" data-mode="${i}"><b>${i + 1}</b><span>${t}<small>${s}</small></span></button>`).join("");
+  $("phone").innerHTML = screen() + overlays();
+  const cb = $("chatbody"); if (cb) cb.scrollTop = cb.scrollHeight;
+}
+
+/* ---------- ações ---------- */
+
+function logChat(q, v) {
+  const c = cur();
+  const first = c.qs.indexOf(q) === 0 ? `<span>${c.intro.replace(/<b>|<\/b>/g, "")}</span>` : "";
+  const saveP = st.P; st.P = { ...st.P, [q]: v };
+  const bubble = `<div class="who">IA</div><div class="bub ai">${first}${qHTML(q, false)}</div><div class="bub me">${esc(v)}</div>`;
+  st.P = saveP;
+  st.log.push(bubble);
+}
+
+function choose(q, v) {
+  st.P[q] = v; st.outro[q] = false;
+  if (mode === 2) {
+    logChat(q, v);
+    if (filled()) return answer();
+  }
+  render();
+}
+
+function answer() {
+  Object.assign(st.A, st.P);
+  const c = cur();
+  st.P = {}; st.outro = {};
+  if (c.aval) {
+    const r = st.A.aval; delete st.A.aval;
+    if (r === "Ótimo, pode salvar") st.s = 5;
+    else { st.refine = r; st.round++; st.s = 4; }
+  } else st.s++;
+  render();
+}
+
+function ouvir() {
+  if (mode === 2) st.log.push(`<div class="who">IA</div><div class="bub ai wide">${resumoHTML(false)}<span class="play">Tocando no aparelho</span></div>`);
+  st.applying = true; render();
+  setTimeout(() => { st.applying = false; st.s = 3; render(); }, 1500);
+}
+
+function back() {
+  if (st.s === 0) return;
+  st.s = st.s === 4 ? 3 : st.s === 5 ? 3 : st.s - 1;
+  st.P = {}; (cur().qs || []).forEach(q => { if (st.A[q]) st.P[q] = st.A[q]; });
+  render();
+}
+
+function toast(msg) { st.toast = msg; render(); setTimeout(() => { st.toast = null; render(); }, 2600); }
+
+$("phone").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.q) return choose(b.dataset.q, b.dataset.v);
+  if (b.dataset.outro) { st.outro[b.dataset.outro] = true; render(); const i = $("in-" + b.dataset.outro); if (i) i.focus(); return; }
+  if (b.dataset.ok) { const v = $("in-" + b.dataset.ok).value.trim(); if (v) choose(b.dataset.ok, v); return; }
+  if (b.dataset.tab) { st.tab = b.dataset.tab; return render(); }
+  if (b.dataset.redo) {
+    const q = b.dataset.redo; st.s = STEPS.findIndex(s => (s.qs || []).includes(q));
+    st.P = {}; STEPS[st.s].qs.forEach(x => { if (st.A[x]) st.P[x] = st.A[x]; }); delete st.P[q];
+    return render();
+  }
+  const a = b.dataset.act;
+  if (a === "newmem") { st.started = true; st.tab = mode === 4 ? "ia" : "som"; return render(); }
+  if (a === "answer") return answer();
+  if (a === "ouvir") return ouvir();
+  if (a === "back") return back();
+  if (a === "stop") { st.stopped = true; return render(); }
+  if (a === "restart") return reset();
+  if (a === "save") { const m = mode; reset(); st.saved = "MUSICA ORIG"; mode = m; return toast("Memória MUSICA ORIG criada no Casa 2.1."); }
+  if (a === "send") {
+    const i = $("chatin"), v = i.value.trim(); if (!v) return;
+    const q = (cur().qs || []).find(q => !st.P[q]);
+    if (q) return choose(q, v);
+    st.log.push(`<div class="bub me">${esc(v)}</div><div class="who">IA</div><div class="bub ai">Anotei. Use o botão do cartão para seguir.</div>`); render();
+  }
+});
+
+$("phone").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  if (e.target.id === "chatin") { e.preventDefault(); $("phone").querySelector('[data-act="send"]').click(); }
+  else if (e.target.id && e.target.id.startsWith("in-")) { e.preventDefault(); const q = e.target.id.slice(3), v = e.target.value.trim(); if (v) choose(q, v); }
+});
+
+$("modes").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; mode = +b.dataset.mode; reset(); });
+$("restart").onclick = reset;
+
+reset();
+</script>
+</body>
+</html>

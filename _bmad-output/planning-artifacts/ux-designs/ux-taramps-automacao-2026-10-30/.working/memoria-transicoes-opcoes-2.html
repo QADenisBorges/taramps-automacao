@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Transições laterais</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --s1:#111114; --s2:#1C1C20; --bs:#2A2A30; --glow:#0B2230; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .wrap { max-width:1340px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 16px; line-height:1.5; max-width:980px; }
+  .bar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+  .pb { min-height:44px; padding:0 18px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:13px; font-weight:700; }
+  .grid { display:grid; gap:28px 20px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+  .opt { display:flex; flex-direction:column; gap:8px; }
+  .opt h2 { font-size:15px; display:flex; align-items:center; gap:8px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:12px; flex:none; }
+  .opt p { color:var(--mut); font-size:12px; line-height:1.45; min-height:4.4em; }
+  .opt p span { color:var(--chip); }
+
+  .stage { position:relative; height:300px; border-radius:22px; border:6px solid #2A2A2E; overflow:hidden; background:radial-gradient(circle at 50% 50%, var(--glow) 0%, #000 64%); text-align:left; width:100%; }
+  .stage .hd { position:absolute; top:10px; left:0; right:0; text-align:center; font-size:11px; font-weight:700; color:var(--chip); z-index:3; }
+  .stage .hd small { display:block; font-size:9.5px; font-weight:400; color:var(--mut); }
+  .stage.big { width:340px; height:600px; border-width:8px; border-radius:40px; }
+
+  /* Motor das transições: cada frase vive num "slot" centrado */
+  .slot { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 18px; perspective:700px; pointer-events:none; }
+  .ln { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; will-change:transform, opacity; }
+  .ln .p { font-size:19px; font-weight:800; line-height:1.25; letter-spacing:.01em; position:relative; }
+  .big .ln .p { font-size:24px; }
+  .ln .p .em, .ln .p em { font-style:normal; color:var(--a); }
+  .ln .v { font-size:12.5px; font-weight:600; color:var(--ol); font-variant-numeric:tabular-nums; opacity:0; }
+  .big .ln .v { font-size:15px; }
+  .w { display:inline-block; white-space:nowrap; }
+  .ch { display:inline-block; }
+  .ghostp { visibility:hidden; }
+  .slice { position:absolute; inset:0; }
+  .streak { position:absolute; left:0; top:50%; width:170px; height:2px; margin-top:-14px; border-radius:2px; background:linear-gradient(90deg, transparent, rgba(63,208,255,.85), #fff); box-shadow:0 0 14px 3px rgba(63,208,255,.55); z-index:2; }
+  .streak.rev { background:linear-gradient(270deg, transparent, rgba(63,208,255,.85), #fff); }
+  .lbx { position:absolute; left:0; right:0; height:0; background:#000; z-index:2; border-color:#1C1C20; border-style:solid; border-width:0; }
+  .lbx.t { border-bottom-width:1px; } .lbx.b { border-top-width:1px; }
+  .lbx.t { top:0; } .lbx.b { bottom:0; }
+
+  .apl { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .apl small { font-size:11px; letter-spacing:.14em; color:var(--ol); text-transform:uppercase; }
+  .apl b { font-size:20px; font-weight:900; letter-spacing:.04em; }
+  .big .apl b { font-size:26px; }
+  .dual { width:72px; height:72px; overflow:visible; }
+  .big .dual { width:96px; height:96px; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; gap:28px; z-index:50; padding:16px; flex-wrap:wrap; }
+  .modal.on { display:flex; }
+  .modal .info { width:300px; display:flex; flex-direction:column; gap:10px; }
+  .modal .info h2 { font-size:20px; }
+  .modal .info p { color:var(--mut); font-size:13px; line-height:1.5; }
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:36px; max-width:980px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · Transições laterais das frases (opções 1 a 10)</h1>
+  <p class="sub">Premissa do Denis: a frase entra por um lado, para no centro e sai pelo outro. Para mostrar os dois sentidos, as frases alternam: a 1ª vai da esquerda para a direita, a 2ª da direita para a esquerda, e assim por diante. O que muda entre as opções é o jeito de dar cinema à travessia. Todas tocam juntas e em ciclo (5 frases da MUSICA ORIG e o "Aplicando"). Toque numa tela para ver grande. Com o movimento reduzido do Android, todas viram um fade simples.</p>
+  <div class="bar"><button class="pb" id="replay">Repetir todas</button></div>
+  <div class="grid" id="grid"></div>
+  <p class="foot">Para ver a escolhida no caminho completo (perguntas, frases, Aplicando, resumo e refino), use o seletor "Transição das frases" no protótipo 3 (memoria-com-ia-prototipo-3.html).</p>
+</div>
+
+<div class="modal" id="modal">
+  <div class="stage big" id="bigStage"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></div>
+  <div class="info"><h2 id="bigTitle"></h2><p id="bigDesc"></p><button class="pb" id="close">Fechar</button></div>
+</div>
+
+<script>
+/* ================= Motor das transições (o mesmo do protótipo 3) ================= */
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const EXPO_OUT = "cubic-bezier(.16,1,.3,1)", EXPO_IN = "cubic-bezier(.7,0,.84,0)";
+const anim = (el, kf, o) => el.animate(kf, { fill: "both", easing: EXPO_OUT, ...o }).finished;
+const width = ln => ln.closest(".slot").clientWidth;
+const X = px => `translateX(${px}px)`;
+
+function segs(html) {
+  return html.split(/(<em>.*?<\/em>)/).filter(Boolean).map(s => { const m = s.match(/^<em>(.*)<\/em>$/); return { t: m ? m[1] : s, em: !!m }; });
+}
+// Quebra a frase em palavras (que não se partem) e, se pedido, em letras
+function split(p, html, byChar) {
+  p.innerHTML = ""; const parts = [];
+  for (const sg of segs(html)) {
+    for (const tok of sg.t.split(/(\s+)/)) {
+      if (!tok) continue;
+      if (/^\s+$/.test(tok)) { p.appendChild(document.createTextNode(" ")); continue; }
+      const w = document.createElement("span"); w.className = "w" + (sg.em ? " em" : "");
+      if (byChar) for (const c of tok) { const s = document.createElement("span"); s.className = "ch"; s.textContent = c; w.appendChild(s); parts.push(s); }
+      else { w.textContent = tok; parts.push(w); }
+      p.appendChild(w);
+    }
+  }
+  return parts;
+}
+// O valor acompanha o sentido da frase. d = 1: da esquerda para a direita; d = -1: o contrário
+const valIn = (ln, d) => anim(ln.querySelector(".v"), [{ opacity: 0, transform: X(-d * 28) }, { opacity: 1, transform: "none" }], { duration: 420 });
+const valOut = (ln, d) => anim(ln.querySelector(".v"), [{ opacity: 1, transform: "none" }, { opacity: 0, transform: X(d * 28) }], { duration: 220, easing: EXPO_IN });
+const trail = (d, a) => `${-d * 14}px 0 8px rgba(242,242,244,${.35 * a}), ${-d * 30}px 0 14px rgba(242,242,244,${.16 * a})`;
+
+const TRANS = [
+  null,
+  { nome: "Chicote", entra: "chega rápida com rastro de movimento e freia seco no centro", sai: "arranca com rastro para o outro lado",
+    enter: (ln, it, d) => anim(ln, [{ transform: X(-d * width(ln)), opacity: 0, textShadow: trail(d, 1), filter: "blur(2px)" }, { opacity: 1, offset: .25 }, { transform: "none", opacity: 1, textShadow: trail(d, 0), filter: "blur(0)" }], { duration: 760 }),
+    exit: (ln, d) => anim(ln, [{ transform: "none", opacity: 1, textShadow: trail(d, 0), filter: "blur(0)" }, { transform: X(d * width(ln)), opacity: 0, textShadow: trail(d, 1), filter: "blur(2px)" }], { duration: 460, easing: EXPO_IN }) },
+
+  { nome: "Comboio", entra: "as letras chegam em fila, a da frente primeiro, e se encaixam", sai: "saem em fila, a da frente puxando",
+    enter(ln, it, d) {
+      const cs = split(ln.querySelector(".p"), it.p, true), w = width(ln), n = cs.length;
+      return Promise.all(cs.map((c, i) => anim(c, [{ transform: X(-d * w), opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 680, delay: (d > 0 ? n - 1 - i : i) * 16 })));
+    },
+    exit(ln, d) {
+      const cs = [...ln.querySelectorAll(".ch")], w = width(ln), n = cs.length;
+      return Promise.all(cs.map((c, i) => anim(c, [{ transform: "none", opacity: 1 }, { transform: X(d * w), opacity: 0 }], { duration: 420, delay: (d > 0 ? n - 1 - i : i) * 9, easing: EXPO_IN })));
+    } },
+
+  { nome: "Fatias", entra: "a frase vem cortada em 3 faixas, em tempos diferentes, e se alinha", sai: "as faixas se separam e saem",
+    enter(ln, it, d) {
+      const p = ln.querySelector(".p"), w = width(ln), cuts = ["inset(-12% 0 66% 0)", "inset(33% 0 33% 0)", "inset(66% 0 -12% 0)"], wait = [90, 0, 180];
+      p.innerHTML = `<span class="ghostp">${it.p}</span>` + cuts.map(c => `<div class="slice" style="clip-path:${c}">${it.p}</div>`).join("");
+      return Promise.all([...p.querySelectorAll(".slice")].map((s, i) => anim(s, [{ transform: X(-d * w), opacity: 0 }, { opacity: 1, offset: .3 }, { transform: "none", opacity: 1 }], { duration: 760, delay: wait[i] })));
+    },
+    exit(ln, d) {
+      const w = width(ln), wait = [70, 0, 140];
+      return Promise.all([...ln.querySelectorAll(".slice")].map((s, i) => anim(s, [{ transform: "none", opacity: 1 }, { transform: X(d * w), opacity: 0 }], { duration: 460, delay: wait[i], easing: EXPO_IN })));
+    } },
+
+  { nome: "Painel 3D", entra: "chega girando, como uma placa virando de frente para você", sai: "vira de novo e sai pelo outro lado",
+    enter: (ln, it, d) => anim(ln, [{ transform: `${X(-d * width(ln) * .6)} rotateY(${d * 75}deg)`, opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 820 }),
+    exit: (ln, d) => anim(ln, [{ transform: "none", opacity: 1 }, { transform: `${X(d * width(ln) * .6)} rotateY(${-d * 75}deg)`, opacity: 0 }], { duration: 520, easing: EXPO_IN }) },
+
+  { nome: "Profundidade", entra: "vem de longe e de lado, ganhando tamanho e foco", sai: "passa rente à câmera, cresce e desfoca",
+    enter: (ln, it, d) => anim(ln, [{ transform: `${X(-d * width(ln) * .5)} scale(.55)`, opacity: 0, filter: "blur(6px)" }, { transform: "none", opacity: 1, filter: "blur(0)" }], { duration: 950, easing: "cubic-bezier(.22,1,.36,1)" }),
+    exit: (ln, d) => anim(ln, [{ transform: "none", opacity: 1, filter: "blur(0)" }, { transform: `${X(d * width(ln) * .5)} scale(1.6)`, opacity: 0, filter: "blur(10px)" }], { duration: 560, easing: EXPO_IN }) },
+
+  { nome: "Contraluz", entra: "atravessa apagada, como silhueta, e acende ao parar no centro", sai: "apaga primeiro e depois segue para o outro lado",
+    enter: (ln, it, d) => anim(ln, [
+      { transform: X(-d * width(ln) * .7), opacity: 0, filter: "brightness(.12)", textShadow: "0 0 0 rgba(63,208,255,0)" },
+      { transform: "none", opacity: 1, filter: "brightness(.22)", textShadow: "0 0 0 rgba(63,208,255,0)", offset: .55 },
+      { transform: "none", opacity: 1, filter: "brightness(1)", textShadow: "0 0 18px rgba(63,208,255,.55)" }], { duration: 1350, easing: "cubic-bezier(.22,1,.36,1)" }),
+    exit: (ln, d) => anim(ln, [
+      { transform: "none", opacity: 1, filter: "brightness(1)", textShadow: "0 0 18px rgba(63,208,255,.55)" },
+      { transform: "none", opacity: 1, filter: "brightness(.2)", textShadow: "0 0 0 rgba(63,208,255,0)", offset: .4 },
+      { transform: X(d * width(ln) * .7), opacity: 0, filter: "brightness(.1)" }], { duration: 900, easing: "ease-in" }) },
+
+  { nome: "Rastro de luz", entra: "um risco de luz ciano cruza a tela e vai revelando a frase", sai: "o risco cruza de novo e leva a frase",
+    enter(ln, it, d) { return streak(ln, d, true); },
+    exit(ln, d) { return streak(ln, d, false); } },
+
+  { nome: "Parallax", entra: "valor, frase e palavra-chave chegam em velocidades diferentes, como camadas", sai: "as camadas saem descasadas",
+    ownsValue: true,
+    enter(ln, it, d) {
+      const w = width(ln), p = ln.querySelector(".p"), v = ln.querySelector(".v"), em = p.querySelector("em");
+      if (em) em.style.display = "inline-block";
+      return Promise.all([
+        anim(p, [{ transform: X(-d * w * .8), opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 950 }),
+        em ? anim(em, [{ transform: X(-d * 110) }, { transform: "none" }], { duration: 1250 }) : 0,
+        anim(v, [{ transform: X(-d * w * 1.5), opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 1200, delay: 60 })]);
+    },
+    exit(ln, d) {
+      const w = width(ln), p = ln.querySelector(".p"), v = ln.querySelector(".v"), em = p.querySelector("em");
+      return Promise.all([
+        anim(v, [{ transform: "none", opacity: 1 }, { transform: X(d * w * 1.5), opacity: 0 }], { duration: 430, easing: EXPO_IN }),
+        anim(p, [{ transform: "none", opacity: 1 }, { transform: X(d * w * .8), opacity: 0 }], { duration: 520, delay: 70, easing: EXPO_IN }),
+        em ? anim(em, [{ transform: "none" }, { transform: X(d * 110) }], { duration: 520, delay: 70, easing: EXPO_IN }) : 0]);
+    } },
+
+  { nome: "Encontro", entra: "a frase vem de um lado e a palavra-chave do outro; quando se encontram, a palavra brilha", sai: "tudo sai junto, a palavra-chave por último",
+    enter(ln, it, d) {
+      const ws = split(ln.querySelector(".p"), it.p, false), w = width(ln);
+      return Promise.all(ws.map((x, i) => {
+        const em = x.classList.contains("em");
+        return anim(x, [{ transform: X((em ? d : -d) * w), opacity: 0 }, { transform: "none", opacity: 1 }], { duration: em ? 950 : 760, delay: em ? 120 : i * 45 })
+          .then(() => em && anim(x, [{ textShadow: "0 0 0 rgba(63,208,255,0)" }, { textShadow: "0 0 24px rgba(63,208,255,.95)", offset: .3 }, { textShadow: "0 0 8px rgba(63,208,255,.35)" }], { duration: 650, easing: "ease-out" }));
+      }));
+    },
+    exit(ln, d) {
+      const ws = [...ln.querySelectorAll(".w")], w = width(ln);
+      return Promise.all(ws.map((x, i) => anim(x, [{ transform: "none", opacity: 1 }, { transform: X(d * w), opacity: 0 }], { duration: 460, delay: x.classList.contains("em") ? 160 : i * 25, easing: EXPO_IN })));
+    } },
+
+  { nome: "Letreiro de cinema", entra: "faixas pretas de cinema fecham a tela; a frase desliza devagar e se abre no espaçamento", sai: "segue deslizando e some na borda",
+    enter(ln, it, d) {
+      const box = ln.closest(".slot").parentNode, slot = ln.closest(".slot"), p = ln.querySelector(".p");
+      slot.style.webkitMaskImage = slot.style.maskImage = "linear-gradient(90deg, transparent, #000 24%, #000 76%, transparent)";
+      if (!box.querySelector(".lbx")) for (const k of ["t", "b"]) { const b = document.createElement("div"); b.className = "lbx " + k; box.appendChild(b); anim(b, [{ height: "0%" }, { height: "24%" }], { duration: 900 }); }
+      return anim(p, [{ transform: X(-d * width(ln) * .55), opacity: 0, letterSpacing: "-.02em" }, { opacity: 1, offset: .45 }, { transform: "none", opacity: 1, letterSpacing: ".06em" }], { duration: 1500, easing: "cubic-bezier(.33,0,.15,1)" });
+    },
+    exit(ln, d) {
+      return anim(ln.querySelector(".p"), [{ transform: "none", opacity: 1, letterSpacing: ".06em" }, { opacity: .9, offset: .4 }, { transform: X(d * width(ln) * .55), opacity: 0, letterSpacing: ".12em" }], { duration: 1100, easing: "cubic-bezier(.6,0,.8,.4)" });
+    } },
+];
+
+function streak(ln, d, entering) {
+  const slot = ln.closest(".slot"), w = slot.clientWidth, p = ln.querySelector(".p"), s = document.createElement("div");
+  s.className = "streak" + (d < 0 ? " rev" : ""); slot.appendChild(s);
+  const from = d > 0 ? -190 : w + 20, to = d > 0 ? w + 20 : -190, ease = "cubic-bezier(.45,0,.2,1)";
+  const a1 = anim(s, [{ transform: X(from) }, { transform: X(to) }], { duration: 820, easing: ease }).then(() => s.remove());
+  const shut = d > 0 ? "inset(-20% 100% -20% 0)" : "inset(-20% 0 -20% 100%)", gone = d > 0 ? "inset(-20% 0 -20% 100%)" : "inset(-20% 100% -20% 0)", open = "inset(-20% 0 -20% 0)";
+  const a2 = entering
+    ? anim(p, [{ clipPath: shut, transform: X(-d * 30) }, { clipPath: open, transform: "none" }], { duration: 760, delay: 110, easing: ease })
+    : anim(p, [{ clipPath: open, transform: "none" }, { clipPath: gone, transform: X(d * 30) }], { duration: 700, delay: 110, easing: ease });
+  return Promise.all([a1, a2]);
+}
+
+const FADE = { enter: ln => anim(ln, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease" }), exit: ln => anim(ln, [{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "ease" }) };
+
+function makeSlot(stage, item) {
+  const slot = document.createElement("div"); slot.className = "slot";
+  slot.innerHTML = `<div class="ln"><div class="p">${item.p}</div><div class="v">${item.v}</div></div>`;
+  stage.appendChild(slot); return slot;
+}
+async function showPhrase(stage, n, item, d = 1) {
+  const slot = makeSlot(stage, item), ln = slot.firstChild;
+  if (reduceMotion) { await FADE.enter(ln); await anim(ln.querySelector(".v"), [{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); return slot; }
+  const t = TRANS[n]; await t.enter(ln, item, d); if (!t.ownsValue) await valIn(ln, d); return slot;
+}
+async function hidePhrase(slot, n, d = 1) {
+  const ln = slot.firstChild;
+  if (reduceMotion) await FADE.exit(ln);
+  else { const t = TRANS[n]; if (!t.ownsValue) await valOut(ln, d); await t.exit(ln, d); }
+  slot.remove();
+}
+// Antes do "Aplicando": tira o que ficou na tela (as faixas do letreiro)
+async function clearGhosts(stage) {
+  await Promise.all([...stage.querySelectorAll(".lbx")].map(b => anim(b, [{ height: "24%" }, { height: "0%" }], { duration: 500 }).then(() => b.remove())));
+}
+/* ================= fim do motor ================= */
+
+const RING = `<svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>`;
+const PHRASES = [
+  { p: "Definindo o corte das <em>JBL</em>", v: "HPF em 80 Hz" },
+  { p: "Encaixando o <em>Sub</em> nas JBL", v: "LPF em 80 Hz" },
+  { p: "Alinhando o tempo das <em>caixas</em>", v: "atraso 0 em todas" },
+  { p: "Ajustando o <em>grave</em>", v: "Sub em +6 dB" },
+  { p: "Protegendo os <em>canais</em>", v: "limitador em −12 dB" },
+];
+
+async function loop(stage, n, tok) {
+  while (tok.on) {
+    for (const [i, item] of PHRASES.entries()) {
+      const d = i % 2 ? -1 : 1;
+      const slot = await showPhrase(stage, n, item, d); if (!tok.on) return;
+      await sleep(1200); if (!tok.on) return;
+      await hidePhrase(slot, n, d); if (!tok.on) return;
+      await sleep(120);
+    }
+    await clearGhosts(stage);
+    const ap = document.createElement("div"); ap.className = "slot";
+    ap.innerHTML = `<div class="apl">${RING}<small>Aplicando</small><b>MUSICA ORIG</b></div>`;
+    stage.appendChild(ap);
+    await anim(ap, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+    await sleep(1500); if (!tok.on) return;
+    await anim(ap, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); ap.remove();
+    await sleep(500);
+  }
+}
+
+const grid = document.getElementById("grid");
+let toks = [];
+function startAll() {
+  toks.forEach(t => t.on = false); toks = [];
+  grid.innerHTML = TRANS.map((t, n) => !t ? "" : `<div class="opt"><h2><b>${n}</b>${t.nome}</h2><p><span>Entra:</span> ${t.entra}. <span>Sai:</span> ${t.sai}.</p>
+    <button class="stage" data-n="${n}" aria-label="Ver ${t.nome} grande"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></button></div>`).join("");
+  grid.querySelectorAll(".stage").forEach(s => { const tok = { on: true }; toks.push(tok); loop(s, +s.dataset.n, tok); });
+}
+
+let bigTok = { on: false };
+grid.addEventListener("click", e => {
+  const s = e.target.closest(".stage"); if (!s) return;
+  const n = +s.dataset.n, big = document.getElementById("bigStage");
+  bigTok.on = false; big.querySelectorAll(".slot, .lbx").forEach(x => x.remove());
+  document.getElementById("bigTitle").textContent = n + ". " + TRANS[n].nome;
+  document.getElementById("bigDesc").textContent = `Entra: ${TRANS[n].entra}. Sai: ${TRANS[n].sai}.`;
+  document.getElementById("modal").classList.add("on");
+  bigTok = { on: true }; loop(big, n, bigTok);
+});
+document.getElementById("close").onclick = () => { bigTok.on = false; document.getElementById("modal").classList.remove("on"); };
+document.getElementById("replay").onclick = startAll;
+startAll();
+</script>
+</body>
+</html>

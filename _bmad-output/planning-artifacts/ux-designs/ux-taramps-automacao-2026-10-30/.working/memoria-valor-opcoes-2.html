@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Valor: eco, antes e medidor</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --nav:#77777D; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --ok:#34D399; --s1:#111114; --s2:#1C1C20; --bs:#2A2A30; --tb:#16394A; --tf:#0B1D26; --glow:#0B2230; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .wrap { max-width:1340px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 16px; line-height:1.5; max-width:980px; }
+  .bar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+  .pb { min-height:44px; padding:0 18px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:13px; font-weight:700; }
+  .grid { display:grid; gap:28px 20px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+  .opt { display:flex; flex-direction:column; gap:8px; }
+  .opt h2 { font-size:15px; display:flex; align-items:center; gap:8px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:12px; flex:none; }
+  .opt p { color:var(--mut); font-size:12px; line-height:1.45; min-height:4.4em; }
+
+  .stage { position:relative; height:340px; border-radius:22px; border:6px solid #2A2A2E; overflow:hidden; background:radial-gradient(circle at 50% 50%, var(--glow) 0%, #000 64%); text-align:left; width:100%; }
+  .stage .hd { position:absolute; top:10px; left:0; right:0; text-align:center; font-size:11px; font-weight:700; color:var(--chip); z-index:3; }
+  .stage .hd small { display:block; font-size:9.5px; font-weight:400; color:var(--mut); }
+  .stage.big { width:340px; height:600px; border-width:8px; border-radius:40px; }
+
+  .slot { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 18px; pointer-events:none; }
+  .ln { display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; }
+  .ln .p { font-size:19px; font-weight:800; line-height:1.25; letter-spacing:.01em; }
+  .big .ln .p { font-size:24px; }
+  .ln .p em { font-style:normal; color:var(--a); }
+
+  /* Bloco do valor */
+  .v { font-size:12.5px; font-weight:600; color:var(--ol); font-variant-numeric:tabular-nums; display:flex; flex-direction:column; align-items:center; gap:8px; opacity:0; }
+  .big .v { font-size:15px; }
+  .row { display:flex; align-items:center; justify-content:center; gap:7px; white-space:nowrap; }
+  .cy { color:var(--a); font-weight:800; }
+  .old { color:var(--mut); font-weight:500; background:linear-gradient(var(--mut), var(--mut)) no-repeat 0 55% / 0% 1px; }
+  .arr { color:var(--nav); display:inline-block; }
+  .hide { opacity:0; }
+  .tiny { font-size:.8em; color:var(--mut); font-weight:500; }
+
+  .track { position:relative; width:170px; height:6px; border-radius:3px; background:var(--s2); }
+  .big .track { width:210px; }
+  .track.mini { width:54px; height:5px; }
+  .fill { position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:linear-gradient(90deg, var(--tb), var(--a)); box-shadow:0 0 8px rgba(63,208,255,.45); }
+  .tick { position:absolute; top:-4px; width:2px; height:14px; margin-left:-1px; border-radius:1px; background:var(--mut); opacity:.7; }
+  .dot { position:absolute; top:50%; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:var(--a); box-shadow:0 0 0 3px rgba(63,208,255,.2), 0 0 10px rgba(63,208,255,.8); }
+
+  /* 2: marcas com rótulos acima e abaixo */
+  .marks { position:relative; width:170px; height:52px; }
+  .big .marks { width:210px; }
+  .marks .track { position:absolute; left:0; top:23px; width:100%; }
+  .marks .lb { position:absolute; white-space:nowrap; font-size:.85em; }
+  .marks .lb.o { top:0; color:var(--mut); font-weight:500; }
+  .marks .lb.n { bottom:0; color:var(--a); font-weight:800; }
+
+  /* 4: cursor deslizante */
+  .slider { position:relative; width:170px; height:62px; }
+  .big .slider { width:210px; }
+  .slider .track { position:absolute; left:0; top:34px; width:100%; }
+  .bub { position:absolute; bottom:36px; padding:3px 8px; border-radius:8px; white-space:nowrap; font-size:.9em; }
+  .bub::after { content:""; position:absolute; left:var(--px,50%); bottom:-4px; width:8px; height:8px; margin-left:-4px; transform:rotate(45deg); background:inherit; }
+  .bub.a { color:var(--on); background:var(--a); font-weight:800; box-shadow:0 0 12px rgba(63,208,255,.5); }
+  .gl { position:absolute; top:46px; white-space:nowrap; font-size:.8em; color:var(--mut); font-weight:500; }
+
+  .apl { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .apl small { font-size:11px; letter-spacing:.14em; color:var(--ol); text-transform:uppercase; }
+  .apl b { font-size:20px; font-weight:900; letter-spacing:.04em; }
+  .big .apl b { font-size:26px; }
+  .dual { width:72px; height:72px; overflow:visible; }
+  .big .dual { width:96px; height:96px; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; gap:28px; z-index:50; padding:16px; flex-wrap:wrap; }
+  .modal.on { display:flex; }
+  .modal .info { width:300px; display:flex; flex-direction:column; gap:10px; }
+  .modal .info h2 { font-size:20px; }
+  .modal .info p { color:var(--mut); font-size:13px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · Valor com eco, antes → depois e medidor (opções 1 a 5)</h1>
+  <p class="sub">Em todas, o bloco do valor vem logo atrás da frase com o mesmo Foco (o eco), chega mostrando o valor de antes e, quando para no centro, vira o valor novo, com o medidor indo da posição antiga para a nova. Na saída, frase e valor vão juntos para a direita, desfocando. As 5 opções mudam como as três ideias se arrumam na tela. Todas tocam juntas, no mesmo compasso. Toque numa tela para ver grande. Valores, "antes" e posições no medidor são de exemplo.</p>
+  <div class="bar"><button class="pb" id="replay">Repetir todas</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="stage big" id="bigStage"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></div>
+  <div class="info"><h2 id="bigTitle"></h2><p id="bigDesc"></p><button class="pb" id="close">Fechar</button></div>
+</div>
+
+<script>
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const anim = (el, kf, o) => el.animate(kf, { fill: "both", easing: "cubic-bezier(.16,1,.3,1)", ...o }).finished;
+const X = px => `translateX(${px}px)`;
+const RING = `<svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>`;
+
+/* Frases e valores de exemplo. oldNum null = não dá para contar (ex.: "desligado"). pos = lugar no medidor (0 a 1) */
+const ITEMS = [
+  { p: "Definindo o corte das <em>JBL</em>", lead: "HPF", unit: "Hz", num: 80, oldNum: null, oldTxt: "desligado", pos: .35, oldPos: 0 },
+  { p: "Encaixando o <em>Sub</em> nas JBL", lead: "LPF", unit: "Hz", num: 80, oldNum: 150, pos: .35, oldPos: .72 },
+  { p: "Alinhando o tempo das <em>caixas</em>", lead: "", unit: "ms", num: 0, oldNum: 2.9, tail: "em todas", pos: 0, oldPos: .58 },
+  { p: "Ajustando o <em>grave</em>", lead: "Sub", unit: "dB", num: 6, oldNum: 4, sign: true, pos: .68, oldPos: .55 },
+  { p: "Protegendo os <em>canais</em>", lead: "", unit: "dB", num: -12, oldNum: -8, pos: .45, oldPos: .6 },
+];
+const fmtN = (it, n) => { const r = Math.round(n * 10) / 10; return (r < 0 ? "−" : it.sign && r > 0 ? "+" : "") + String(Math.abs(r)).replace(".", ","); };
+const newTxt = it => [it.lead, `${fmtN(it, it.num)} ${it.unit}`].filter(Boolean).join(" ");
+const oldTxt = it => it.oldNum == null ? it.oldTxt : `${fmtN(it, it.oldNum)} ${it.unit}`;
+const pct = x => (x * 100).toFixed(1) + "%";
+const tail = it => it.tail ? `<span class="tiny">${it.tail}</span>` : "";
+
+/* ---------- Foco (frase) e o eco (valor) ---------- */
+const offOf = el => (el.closest(".slot").clientWidth + el.getBoundingClientRect().width) / 2;
+const focoIn = (el, ms = 800) => anim(el, [{ transform: X(-offOf(el)), filter: "blur(12px)" }, { transform: "none", filter: "blur(0)" }], { duration: ms, easing: "cubic-bezier(.3,.55,.35,1)" });
+const focoOut = (el, ms = 650) => anim(el, [{ transform: "none", filter: "blur(0)" }, { transform: X(offOf(el)), filter: "blur(12px)" }], { duration: ms, easing: "cubic-bezier(.6,0,.7,.45)" });
+
+const strike = el => anim(el, [{ backgroundSize: "0% 1px" }, { backgroundSize: "100% 1px" }], { duration: 300, easing: "ease-out" });
+const appear = (el, o = {}) => { el.classList.remove("hide"); return anim(el, [{ opacity: 0, filter: "blur(6px)", transform: X(-8) }, { opacity: 1, filter: "blur(0)", transform: "none" }], { duration: 450, ...o }); };
+const moveFill = (fill, it, ms = 750) => anim(fill, [{ width: pct(it.oldPos) }, { width: pct(it.pos) }], { duration: ms, easing: "cubic-bezier(.45,0,.2,1)" });
+function countBetween(el, it, ms) {
+  if (it.oldNum == null) return anim(el, [{ opacity: 1 }, { opacity: 0 }], { duration: ms / 2, easing: "ease" }).then(() => { el.textContent = fmtN(it, it.num); return anim(el, [{ opacity: 0 }, { opacity: 1 }], { duration: ms / 2, easing: "ease" }); });
+  return new Promise(res => {
+    const t0 = performance.now(), a = it.oldNum, b = it.num;
+    const step = t => { const k = Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; el.textContent = fmtN(it, a + (b - a) * e); k < 1 ? requestAnimationFrame(step) : (el.textContent = fmtN(it, b), res()); };
+    requestAnimationFrame(step);
+  });
+}
+
+const OPTS = [
+  null,
+  { nome: "Seta e barra", desc: "chega mostrando o valor de antes e a barra na posição antiga; ao parar, o antigo é riscado, a seta e o novo entram, e a barra corre até a posição nova",
+    render: (v, it) => v.innerHTML = `<span class="row"><span class="old">${oldTxt(it)}</span><span class="arr hide">→</span><b class="cy hide">${newTxt(it)}</b>${tail(it)}</span><span class="track"><span class="fill" style="width:${pct(it.oldPos)}"></span></span>`,
+    async settle(v, it) {
+      const old = v.querySelector(".old"), arr = v.querySelector(".arr"), nw = v.querySelector(".cy");
+      await strike(old);
+      await Promise.all([appear(arr, { duration: 260 }), sleep(120).then(() => appear(nw)), moveFill(v.querySelector(".fill"), it)]);
+    } },
+
+  { nome: "Barra com marcas", desc: "o medidor vira o centro: o valor de antes fica escrito em cima, numa marca apagada; a barra corre e o valor novo aparece embaixo, na posição nova",
+    render: (v, it) => {
+      const o = it.oldPos, n = it.pos;
+      v.innerHTML = `<span class="marks"><span class="lb o" style="left:${pct(o)};transform:translateX(-${pct(o)})">antes ${oldTxt(it)}</span>
+        <span class="track"><span class="fill" style="width:${pct(o)}"></span><span class="tick" style="left:${pct(o)}"></span><span class="dot hide" style="left:${pct(n)}"></span></span>
+        <span class="lb n hide" style="left:${pct(n)};transform:translateX(-${pct(n)})">${newTxt(it)}${it.tail ? " " + it.tail : ""}</span></span>`;
+    },
+    async settle(v, it) {
+      await moveFill(v.querySelector(".fill"), it);
+      const dot = v.querySelector(".dot"); dot.classList.remove("hide");
+      await Promise.all([anim(dot, [{ transform: "scale(0)" }, { transform: "scale(1)" }], { duration: 300, easing: "cubic-bezier(.3,1.6,.5,1)" }), appear(v.querySelector(".lb.n"), { duration: 380 })]);
+    } },
+
+  { nome: "O valor se transforma", desc: "chega com o número de antes; ao parar, o número corre até o novo junto com a barra, acende em ciano, e embaixo fica \"era …\" bem discreto",
+    render: (v, it) => v.innerHTML = `<span class="row">${it.lead ? `<span>${it.lead}</span>` : ""}<b class="num" style="font-weight:800;color:var(--chip)">${it.oldNum == null ? it.oldTxt : fmtN(it, it.oldNum)}</b><span class="un">${it.oldNum == null ? "" : it.unit}</span>${tail(it)}</span>
+      <span class="track"><span class="fill" style="width:${pct(it.oldPos)}"></span></span><span class="tiny hide">era ${oldTxt(it)}</span>`,
+    async settle(v, it) {
+      const num = v.querySelector(".num"), un = v.querySelector(".un");
+      await Promise.all([countBetween(num, it, 750).then(() => { un.textContent = it.unit; }), moveFill(v.querySelector(".fill"), it)]);
+      await Promise.all([anim(num, [{ color: "#CFCFD4", textShadow: "0 0 0 rgba(63,208,255,0)" }, { color: "#3FD0FF", textShadow: "0 0 12px rgba(63,208,255,.9)", offset: .4 }, { color: "#3FD0FF", textShadow: "0 0 0 rgba(63,208,255,0)" }], { duration: 500, easing: "ease-out" }), appear(v.querySelector(".tiny.hide"), { duration: 380 })]);
+    } },
+
+  { nome: "Cursor deslizante", desc: "uma etiqueta ciano chega com o valor de antes, sobre uma marca no medidor; ao parar, ela desliza pelo trilho até a posição nova, trocando o número no caminho, e o \"antes\" fica escrito embaixo da marca",
+    render: (v, it) => {
+      const o = it.oldPos;
+      v.innerHTML = `<span class="slider"><span class="bub a" style="left:${pct(o)};transform:translateX(-${pct(o)});--px:${pct(o)}">${oldTxt(it)}</span>
+        <span class="track"><span class="fill" style="width:${pct(o)}"></span><span class="tick" style="left:${pct(o)}"></span></span>
+        <span class="gl" style="left:${pct(o)};transform:translateX(-${pct(o)})">antes ${oldTxt(it)}</span></span>${tail(it)}`;
+    },
+    async settle(v, it) {
+      const b = v.querySelector(".bub.a"), o = it.oldPos, n = it.pos;
+      const ms = 850, mid = sleep(ms * .45).then(() => { b.textContent = newTxt(it); });
+      await Promise.all([
+        anim(b, [{ left: pct(o), transform: `translateX(-${pct(o)})` }, { left: pct(n), transform: `translateX(-${pct(n)})` }], { duration: ms, easing: "cubic-bezier(.45,0,.2,1)" }).then(() => b.style.setProperty("--px", pct(n))),
+        moveFill(v.querySelector(".fill"), it, ms), mid]);
+      await anim(b, [{ boxShadow: "0 0 12px rgba(63,208,255,.5)" }, { boxShadow: "0 0 22px rgba(63,208,255,1)", offset: .3 }, { boxShadow: "0 0 12px rgba(63,208,255,.5)" }], { duration: 450, easing: "ease-out" });
+    } },
+
+  { nome: "Tudo numa linha", desc: "versão compacta: uma barrinha, o valor de antes e o novo na mesma linha; ao parar, a barrinha anda, o antigo é riscado e o novo acende",
+    // só os valores: sem "HPF", "Sub" ou "em todas", que a frase já diz
+    render: (v, it) => v.innerHTML = `<span class="row"><span class="track mini"><span class="fill" style="width:${pct(it.oldPos)}"></span></span><span class="old">${oldTxt(it)}</span><span class="arr hide">→</span><b class="cy hide">${fmtN(it, it.num)} ${it.unit}</b></span>`,
+    async settle(v, it) {
+      await Promise.all([moveFill(v.querySelector(".fill"), it, 600), strike(v.querySelector(".old"))]);
+      await Promise.all([appear(v.querySelector(".arr"), { duration: 240 }), sleep(100).then(() => appear(v.querySelector(".cy"), { duration: 400 }))]);
+    } },
+];
+
+/* ---------- Ciclo: as 5 no mesmo compasso ---------- */
+const T = { arrive: 950, settle: 1300, hold: 1000, gap: 140 };
+async function loop(stage, n, tok) {
+  const O = OPTS[n];
+  while (tok.on) {
+    for (const it of ITEMS) {
+      const slot = document.createElement("div"); slot.className = "slot";
+      slot.innerHTML = `<div class="ln"><div class="p">${it.p}</div><div class="v"></div></div>`;
+      stage.appendChild(slot);
+      const p = slot.querySelector(".p"), v = slot.querySelector(".v");
+      O.render(v, it);
+      if (reduceMotion) { await anim(slot, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 }); v.style.opacity = 1; await O.settle(v, it); await sleep(T.hold); await anim(slot, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); slot.remove(); continue; }
+      // chegada: a frase com o Foco e o valor logo atrás, no mesmo foco (o eco), mostrando o "antes"
+      v.style.opacity = 1;
+      await Promise.all([focoIn(p), focoIn(v, 900), sleep(T.arrive)]); if (!tok.on) return;
+      // parou: o antes vira o depois
+      await Promise.all([O.settle(v, it), sleep(T.settle)]); if (!tok.on) return;
+      await sleep(T.hold); if (!tok.on) return;
+      // saída: os dois juntos para a direita, desfocando
+      await Promise.all([focoOut(p), sleep(60).then(() => focoOut(v, 620))]);
+      slot.remove();
+      await sleep(T.gap); if (!tok.on) return;
+    }
+    const ap = document.createElement("div"); ap.className = "slot";
+    ap.innerHTML = `<div class="apl">${RING}<small>Aplicando</small><b>MUSICA ORIG</b></div>`;
+    stage.appendChild(ap);
+    await anim(ap, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+    await sleep(1400); if (!tok.on) return;
+    await anim(ap, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); ap.remove();
+    await sleep(500);
+  }
+}
+
+const grid = document.getElementById("grid");
+let toks = [];
+function startAll() {
+  toks.forEach(t => t.on = false); toks = [];
+  grid.innerHTML = OPTS.map((O, n) => !O ? "" : `<div class="opt"><h2><b>${n}</b>${O.nome}</h2><p>${O.desc[0].toUpperCase() + O.desc.slice(1)}.</p>
+    <button class="stage" data-n="${n}" aria-label="Ver ${O.nome} grande"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></button></div>`).join("");
+  grid.querySelectorAll(".stage").forEach(s => { const tok = { on: true }; toks.push(tok); loop(s, +s.dataset.n, tok); });
+}
+let bigTok = { on: false };
+grid.addEventListener("click", e => {
+  const s = e.target.closest(".stage"); if (!s) return;
+  const n = +s.dataset.n, big = document.getElementById("bigStage");
+  bigTok.on = false; big.querySelectorAll(".slot").forEach(x => x.remove());
+  document.getElementById("bigTitle").textContent = n + ". " + OPTS[n].nome;
+  document.getElementById("bigDesc").textContent = OPTS[n].desc[0].toUpperCase() + OPTS[n].desc.slice(1) + ".";
+  document.getElementById("modal").classList.add("on");
+  bigTok = { on: true }; loop(big, n, bigTok);
+});
+document.getElementById("close").onclick = () => { bigTok.on = false; document.getElementById("modal").classList.remove("on"); };
+document.getElementById("replay").onclick = startAll;
+startAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Transições da criação</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --s1:#111114; --s2:#1C1C20; --bs:#2A2A30; --glow:#0B2230; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .wrap { max-width:1340px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 16px; line-height:1.5; max-width:980px; }
+  .bar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+  .pb { min-height:44px; padding:0 18px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:13px; font-weight:700; }
+  .grid { display:grid; gap:28px 20px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+  .opt { display:flex; flex-direction:column; gap:8px; }
+  .opt h2 { font-size:15px; display:flex; align-items:center; gap:8px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:12px; flex:none; }
+  .opt.ref h2 b { background:var(--s2); color:var(--mut); }
+  .opt p { color:var(--mut); font-size:12px; line-height:1.45; min-height:3em; }
+  .opt p span { color:var(--chip); }
+
+  /* Palco da criação (mesmo visual da tela do protótipo 3) */
+  .stage { position:relative; height:300px; border-radius:22px; border:6px solid #2A2A2E; overflow:hidden; background:radial-gradient(circle at 50% 50%, var(--glow) 0%, #000 64%); text-align:left; width:100%; }
+  .stage .hd { position:absolute; top:10px; left:0; right:0; text-align:center; font-size:11px; font-weight:700; color:var(--chip); z-index:3; }
+  .stage .hd small { display:block; font-size:9.5px; font-weight:400; color:var(--mut); }
+  .stage.big { width:340px; height:600px; border-width:8px; border-radius:40px; }
+
+  /* Motor das transições: cada frase vive num "slot" centrado */
+  .slot { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 18px; perspective:600px; pointer-events:none; }
+  .ln { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; will-change:transform, opacity; }
+  .ln .p { font-size:19px; font-weight:800; line-height:1.25; letter-spacing:.01em; }
+  .big .ln .p { font-size:24px; }
+  .ln .p .em, .ln .p em { font-style:normal; color:var(--a); }
+  .ln .v { font-size:12.5px; font-weight:600; color:var(--ol); font-variant-numeric:tabular-nums; opacity:0; }
+  .big .ln .v { font-size:15px; }
+  .w { display:inline-block; white-space:nowrap; }
+  .ch { display:inline-block; }
+  .cur { display:inline-block; width:3px; height:1em; margin-left:2px; vertical-align:-.12em; background:var(--a); border-radius:1px; animation:pisca .8s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity:0 } }
+  .sweep { color:transparent; background-image:linear-gradient(100deg, #F2F2F4 0%, #F2F2F4 33%, #3FD0FF 40%, #FFFFFF 43%, #3FD0FF 46%, #2A2A30 53%, #2A2A30 100%); background-size:300% 100%; background-position:100% 0; -webkit-background-clip:text; background-clip:text; }
+  .sweep em { color:transparent; }
+  .apl { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .apl small { font-size:11px; letter-spacing:.14em; color:var(--ol); text-transform:uppercase; }
+  .apl b { font-size:20px; font-weight:900; letter-spacing:.04em; }
+  .big .apl b { font-size:26px; }
+  .dual { width:72px; height:72px; overflow:visible; }
+  .big .dual { width:96px; height:96px; }
+  .dual * { transform-box:view-box; transform-origin:50px 50px; }
+  .dual .bg { fill:none; stroke:#ffffff14; stroke-width:6; }
+  .dual .a1 { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .dual .a2 { fill:none; stroke:var(--mg); stroke-width:6; stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  /* Ver grande */
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; gap:28px; z-index:50; padding:16px; flex-wrap:wrap; }
+  .modal.on { display:flex; }
+  .modal .info { width:300px; display:flex; flex-direction:column; gap:10px; }
+  .modal .info h2 { font-size:20px; }
+  .modal .info p { color:var(--mut); font-size:13px; line-height:1.5; }
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:36px; max-width:980px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · Transições das frases na criação do som (opções 1 a 10)</h1>
+  <p class="sub">A tela que aparece depois da última pergunta, ao criar a MUSICA ORIG. Cada ajuste vira uma frase que entra, fica 1,2 s e sai; no fim vem "Aplicando" com o anel duplo, e o ciclo recomeça. Todas as telas tocam juntas. Toque numa tela para ver grande, no tamanho do celular. O valor (ex.: HPF em 80 Hz) entra logo depois da frase em todas. Com o movimento reduzido do Android, todas viram um fade simples. Frases e valores são de exemplo.</p>
+  <div class="bar"><button class="pb" id="replay">Repetir todas</button></div>
+  <div class="grid" id="grid"></div>
+  <p class="foot">Para ver a escolhida no caminho completo (perguntas, frases, Aplicando, resumo e refino), use o seletor "Transição" no protótipo 3 (memoria-com-ia-prototipo-3.html).</p>
+</div>
+
+<div class="modal" id="modal">
+  <div class="stage big" id="bigStage"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></div>
+  <div class="info"><h2 id="bigTitle"></h2><p id="bigDesc"></p><button class="pb" id="close">Fechar</button></div>
+</div>
+
+<script>
+/* ================= Motor das transições (o mesmo do protótipo 3) ================= */
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const EASE = "cubic-bezier(.2,.8,.2,1)";
+const anim = (el, kf, o) => el.animate(kf, { fill: "both", easing: EASE, ...o }).finished;
+const RAND = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&";
+const rnd = () => RAND[Math.floor(Math.random() * RAND.length)];
+
+function segs(html) {
+  return html.split(/(<em>.*?<\/em>)/).filter(Boolean).map(s => { const m = s.match(/^<em>(.*)<\/em>$/); return { t: m ? m[1] : s, em: !!m }; });
+}
+// Quebra a frase em palavras (que não se partem) e, se pedido, em letras
+function split(p, html, byChar) {
+  p.innerHTML = ""; const parts = [];
+  for (const sg of segs(html)) {
+    for (const tok of sg.t.split(/(\s+)/)) {
+      if (!tok) continue;
+      if (/^\s+$/.test(tok)) { p.appendChild(document.createTextNode(" ")); continue; }
+      const w = document.createElement("span"); w.className = "w" + (sg.em ? " em" : "");
+      if (byChar) for (const c of tok) { const s = document.createElement("span"); s.className = "ch"; s.textContent = c; s.dataset.c = c; w.appendChild(s); parts.push(s); }
+      else { w.textContent = tok; parts.push(w); }
+      p.appendChild(w);
+    }
+  }
+  return parts;
+}
+const valIn = ln => anim(ln.querySelector(".v"), [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 320 });
+const valOut = ln => anim(ln.querySelector(".v"), [{ opacity: 1 }, { opacity: 0 }], { duration: 180 });
+
+const TRANS = [
+  { nome: "Subir com desfoque (atual)", entra: "sobe saindo do desfoque", sai: "sobe e desfoca",
+    enter: ln => anim(ln, [{ opacity: 0, transform: "translateY(22px)", filter: "blur(6px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }], { duration: 550 }),
+    exit: ln => anim(ln, [{ opacity: 1, transform: "none", filter: "blur(0)" }, { opacity: 0, transform: "translateY(-22px)", filter: "blur(6px)" }], { duration: 450, easing: "cubic-bezier(.4,0,.8,.4)" }) },
+
+  { nome: "Máquina de escrever", entra: "letra por letra, com cursor ciano", sai: "apaga de trás para a frente",
+    async enter(ln, item) {
+      const p = ln.querySelector(".p"), cs = split(p, item.p, true), cur = document.createElement("span"); cur.className = "cur";
+      cs.forEach(c => c.style.visibility = "hidden"); p.prepend(cur);
+      for (const c of cs) { c.style.visibility = "visible"; c.after(cur); await sleep(36); }
+    },
+    async exit(ln) {
+      const p = ln.querySelector(".p"), cs = [...p.querySelectorAll(".ch")], cur = p.querySelector(".cur");
+      await valOut(ln);
+      for (const c of cs.reverse()) { c.style.visibility = "hidden"; c.before(cur); await sleep(16); }
+      await sleep(150); ln.style.opacity = 0;
+    } },
+
+  { nome: "Palavra por palavra", entra: "cada palavra sobe, uma depois da outra", sai: "todas sobem juntas",
+    async enter(ln, item) {
+      const ws = split(ln.querySelector(".p"), item.p, false);
+      await Promise.all(ws.map((w, i) => anim(w, [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: i * 95 })));
+    },
+    exit: async ln => { await valOut(ln); await anim(ln, [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-18px)" }], { duration: 380, easing: "ease-in" }); } },
+
+  { nome: "Cortina", entra: "revela da esquerda para a direita", sai: "cobre da esquerda para a direita",
+    enter: ln => anim(ln.querySelector(".p"), [{ clipPath: "inset(-10% 100% -10% 0)" }, { clipPath: "inset(-10% 0% -10% 0)" }], { duration: 650, easing: "cubic-bezier(.6,0,.2,1)" }),
+    exit: async ln => { await valOut(ln); await anim(ln.querySelector(".p"), [{ clipPath: "inset(-10% 0 -10% 0%)" }, { clipPath: "inset(-10% 0 -10% 100%)" }], { duration: 500, easing: "cubic-bezier(.6,0,.2,1)" }); } },
+
+  { nome: "Decodificar", entra: "letras aleatórias se acertam até formar a frase", sai: "embaralha e some",
+    async enter(ln, item) {
+      const cs = split(ln.querySelector(".p"), item.p, true);
+      const end = cs.map(() => 150 + Math.random() * 650), t0 = performance.now();
+      while (true) {
+        const t = performance.now() - t0; let left = 0;
+        cs.forEach((c, i) => { if (t >= end[i]) c.textContent = c.dataset.c; else { c.textContent = rnd(); left++; } });
+        if (!left) break; await sleep(40);
+      }
+    },
+    async exit(ln) {
+      await valOut(ln);
+      const cs = [...ln.querySelectorAll(".ch")], fade = anim(ln, [{ opacity: 1 }, { opacity: 0 }], { duration: 380, easing: "ease-in" });
+      const t0 = performance.now(); while (performance.now() - t0 < 360) { cs.forEach(c => { if (Math.random() < .6) c.textContent = rnd(); }); await sleep(40); }
+      await fade;
+    } },
+
+  { nome: "Onda", entra: "as letras sobem em onda, como o traço da logo", sai: "descem em onda",
+    async enter(ln, item) {
+      const cs = split(ln.querySelector(".p"), item.p, true);
+      await Promise.all(cs.map((c, i) => anim(c, [{ opacity: 0, transform: "translateY(20px)" }, { opacity: 1, transform: "translateY(-5px)", offset: .6 }, { opacity: 1, transform: "none" }], { duration: 520, delay: i * 26, easing: "ease-out" })));
+    },
+    async exit(ln) {
+      await valOut(ln);
+      const cs = [...ln.querySelectorAll(".ch")];
+      await Promise.all(cs.map((c, i) => anim(c, [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(16px)" }], { duration: 320, delay: i * 12, easing: "ease-in" })));
+    } },
+
+  { nome: "Foco de lente", entra: "vem grande e desfocada e fica nítida", sai: "encolhe e apaga",
+    enter: ln => anim(ln.querySelector(".p"), [{ opacity: 0, transform: "scale(1.7)", filter: "blur(14px)" }, { opacity: 1, transform: "scale(1)", filter: "blur(0)" }], { duration: 700 }),
+    exit: ln => anim(ln, [{ opacity: 1, transform: "scale(1)", filter: "blur(0)" }, { opacity: 0, transform: "scale(.82)", filter: "blur(4px)" }], { duration: 420, easing: "ease-in" }) },
+
+  { nome: "Placar", entra: "gira no eixo, como placar de aeroporto", sai: "gira para cima",
+    enter: ln => anim(ln, [{ opacity: 0, transform: "rotateX(-90deg) translateY(24px)" }, { opacity: 1, transform: "rotateX(0)" }], { duration: 620, easing: "cubic-bezier(.3,1.35,.5,1)" }),
+    exit: ln => anim(ln, [{ opacity: 1, transform: "rotateX(0)" }, { opacity: 0, transform: "rotateX(90deg) translateY(-24px)" }], { duration: 420, easing: "ease-in" }) },
+
+  { nome: "Rolo", entra: "sobe de baixo; a anterior fica apagada em cima", sai: "sobe e fica de leve em cima",
+    async enter(ln) {
+      const old = [...ln.closest(".stage").querySelectorAll(".slot.ghost")];
+      old.forEach(s => anim(s.firstChild, [{ opacity: .22, transform: "translateY(-80px) scale(.86)" }, { opacity: 0, transform: "translateY(-150px) scale(.75)" }], { duration: 500 }).then(() => s.remove()));
+      await anim(ln, [{ opacity: 0, transform: "translateY(80px) scale(.92)" }, { opacity: 1, transform: "none" }], { duration: 520 });
+    },
+    async exit(ln) {
+      await anim(ln, [{ opacity: 1, transform: "none" }, { opacity: .22, transform: "translateY(-80px) scale(.86)" }], { duration: 500 });
+      ln.parentNode.classList.add("ghost"); return "keep";
+    } },
+
+  { nome: "Luz de varredura", entra: "aparece apagada e uma luz ciano passa e acende", sai: "a luz apaga",
+    async enter(ln) {
+      const p = ln.querySelector(".p"); p.classList.add("sweep");
+      await anim(p, [{ backgroundPosition: "100% 0" }, { backgroundPosition: "0% 0" }], { duration: 1000, easing: "cubic-bezier(.5,0,.3,1)" });
+      p.classList.remove("sweep"); p.getAnimations().forEach(a => a.cancel());
+    },
+    exit: ln => anim(ln, [{ opacity: 1, filter: "brightness(1)" }, { opacity: .4, filter: "brightness(.35)", offset: .6 }, { opacity: 0, filter: "brightness(0)" }], { duration: 520, easing: "ease-in" }) },
+
+  { nome: "Neon com falha", entra: "treme com sombra ciano e rosa e se firma", sai: "treme e some",
+    enter: ln => anim(ln.querySelector(".p"), [
+      { opacity: 0, transform: "translateX(-8px) skewX(12deg)", textShadow: "-5px 0 #3FD0FF, 5px 0 #FF2BD6" },
+      { opacity: .9, transform: "translateX(6px)", textShadow: "4px 0 #3FD0FF, -4px 0 #FF2BD6", offset: .15 },
+      { opacity: .2, transform: "translate(-3px,1px)", textShadow: "-2px 0 #3FD0FF, 2px 0 #FF2BD6", offset: .3 },
+      { opacity: 1, transform: "translateX(2px) skewX(-6deg)", textShadow: "-3px 0 #3FD0FF, 3px 0 #FF2BD6", offset: .45 },
+      { opacity: .6, transform: "none", textShadow: "1px 0 #3FD0FF, -1px 0 #FF2BD6", offset: .6 },
+      { opacity: 1, transform: "none", textShadow: "0 0 14px rgba(63,208,255,.55)", offset: .8 },
+      { opacity: 1, transform: "none", textShadow: "0 0 8px rgba(63,208,255,.35)" }], { duration: 720, easing: "linear" }),
+    exit: async ln => { await valOut(ln); await anim(ln.querySelector(".p"), [
+      { opacity: 1, transform: "none", textShadow: "0 0 8px rgba(63,208,255,.35)" },
+      { opacity: .3, transform: "translateX(5px) skewX(-10deg)", textShadow: "-4px 0 #3FD0FF, 4px 0 #FF2BD6", offset: .3 },
+      { opacity: .9, transform: "translateX(-4px)", textShadow: "3px 0 #3FD0FF, -3px 0 #FF2BD6", offset: .55 },
+      { opacity: 0, transform: "translateX(8px) skewX(12deg)", textShadow: "-6px 0 #3FD0FF, 6px 0 #FF2BD6" }], { duration: 420, easing: "linear" }); } },
+];
+
+const FADE = { enter: ln => anim(ln, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 }), exit: ln => anim(ln, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }) };
+
+function makeSlot(stage, item) {
+  const slot = document.createElement("div"); slot.className = "slot";
+  slot.innerHTML = `<div class="ln"><div class="p">${item.p}</div><div class="v">${item.v}</div></div>`;
+  stage.appendChild(slot); return slot;
+}
+async function showPhrase(stage, n, item) {
+  const slot = makeSlot(stage, item), ln = slot.firstChild, t = reduceMotion ? FADE : TRANS[n];
+  await t.enter(ln, item); await valIn(ln); return slot;
+}
+async function hidePhrase(slot, n) {
+  const t = reduceMotion ? FADE : TRANS[n], keep = await t.exit(slot.firstChild);
+  if (keep !== "keep") slot.remove();
+}
+async function clearGhosts(stage) {
+  await Promise.all([...stage.querySelectorAll(".slot.ghost")].map(s => anim(s.firstChild, [{ opacity: .22 }, { opacity: 0 }], { duration: 300 }).then(() => s.remove())));
+}
+/* ================= fim do motor ================= */
+
+const RING = `<svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>`;
+const PHRASES = [
+  { p: "Definindo o corte das <em>JBL</em>", v: "HPF em 80 Hz" },
+  { p: "Encaixando o <em>Sub</em> nas JBL", v: "LPF em 80 Hz" },
+  { p: "Alinhando o tempo das <em>caixas</em>", v: "atraso 0 em todas" },
+  { p: "Ajustando o <em>grave</em>", v: "Sub em +6 dB" },
+  { p: "Protegendo os <em>canais</em>", v: "limitador em −12 dB" },
+];
+
+async function loop(stage, n, tok) {
+  while (tok.on) {
+    for (const item of PHRASES) {
+      const slot = await showPhrase(stage, n, item); if (!tok.on) return;
+      await sleep(1200); if (!tok.on) return;
+      await hidePhrase(slot, n); if (!tok.on) return;
+      await sleep(120);
+    }
+    await clearGhosts(stage);
+    const ap = document.createElement("div"); ap.className = "slot";
+    ap.innerHTML = `<div class="apl">${RING}<small>Aplicando</small><b>MUSICA ORIG</b></div>`;
+    stage.appendChild(ap);
+    await anim(ap, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+    await sleep(1500); if (!tok.on) return;
+    await anim(ap, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }); ap.remove();
+    await sleep(500);
+  }
+}
+
+const grid = document.getElementById("grid");
+let toks = [];
+function startAll() {
+  toks.forEach(t => t.on = false); toks = [];
+  grid.innerHTML = TRANS.map((t, n) => `<div class="opt${n === 0 ? " ref" : ""}"><h2><b>${n === 0 ? "•" : n}</b>${t.nome}</h2><p><span>Entra:</span> ${t.entra}. <span>Sai:</span> ${t.sai}.</p>
+    <button class="stage" data-n="${n}" aria-label="Ver ${t.nome} grande"><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></button></div>`).join("");
+  grid.querySelectorAll(".stage").forEach(s => { const tok = { on: true }; toks.push(tok); loop(s, +s.dataset.n, tok); });
+}
+
+let bigTok = { on: false };
+grid.addEventListener("click", e => {
+  const s = e.target.closest(".stage"); if (!s) return;
+  const n = +s.dataset.n, big = document.getElementById("bigStage");
+  bigTok.on = false; big.querySelectorAll(".slot").forEach(x => x.remove());
+  document.getElementById("bigTitle").textContent = (n ? n + ". " : "") + TRANS[n].nome;
+  document.getElementById("bigDesc").textContent = `Entra: ${TRANS[n].entra}. Sai: ${TRANS[n].sai}.`;
+  document.getElementById("modal").classList.add("on");
+  bigTok = { on: true }; loop(big, n, bigTok);
+});
+document.getElementById("close").onclick = () => { bigTok.on = false; document.getElementById("modal").classList.remove("on"); };
+document.getElementById("replay").onclick = startAll;
+startAll();
+</script>
+</body>
+</html>

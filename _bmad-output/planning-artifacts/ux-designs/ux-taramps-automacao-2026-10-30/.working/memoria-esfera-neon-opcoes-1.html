@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Esfera de neon</title>
+<style>
+  /* Hex do DESIGN.md (BGS Sound, 30/10). Fundo da página fora do celular #141416, igual aos mocks anteriores. */
+  :root { --pg:#141416; --tx:#F2F2F4; --chip:#CFCFD4; --mut:#9A9AA2; --st:#8A8A90; --ol:#9FB6C0;
+          --a:#3FD0FF; --on:#00131A; --mg:#FF2BD6; --s2:#1C1C20; --glow:#0B2230; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  button { font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
+  .wrap { max-width:1500px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 16px; line-height:1.5; max-width:1000px; }
+  .bar { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; align-items:center; }
+  .pb { min-height:44px; padding:0 18px; border-radius:12px; background:var(--s2); color:var(--chip); font-size:13px; font-weight:700; }
+  .pb.on { background:var(--a); color:var(--on); }
+  .ref { display:flex; gap:14px; align-items:center; margin-bottom:22px; color:var(--mut); font-size:12.5px; }
+  .ref img { width:120px; border-radius:10px; }
+  .sec { font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--mut); margin:8px 0 14px; }
+  .grid { display:grid; gap:28px 22px; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); margin-bottom:36px; }
+  .opt { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .opt h2 { font-size:15px; display:flex; align-items:center; gap:8px; align-self:flex-start; }
+  .opt h2 b { display:inline-grid; place-items:center; min-width:26px; height:26px; padding:0 6px; border-radius:13px; background:var(--tx); color:var(--pg); font-size:12px; flex:none; }
+  .opt p { color:var(--mut); font-size:12px; line-height:1.45; min-height:4.4em; align-self:flex-start; }
+
+  .stage { position:relative; width:270px; height:560px; border-radius:36px; border:8px solid #2A2A2E; overflow:hidden; background:#000; perspective:900px; --hz:44%; }
+  .scene { position:absolute; inset:0; background:radial-gradient(ellipse 80% 40% at 50% 34%, var(--glow) 0%, transparent 70%), #000; }
+  .scene::before { content:""; position:absolute; left:0; right:0; bottom:0; top:var(--hz); background:linear-gradient(180deg, #03070A, #000 60%); }
+  .scene::after { content:""; position:absolute; left:0; right:0; top:var(--hz); height:1px; background:linear-gradient(90deg, transparent, rgba(63,208,255,.35), transparent); box-shadow:0 0 14px 2px rgba(63,208,255,.18); }
+  .scene .sb { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:8px 18px; font-size:10px; color:var(--st); }
+  .scene .hd { position:absolute; top:32px; left:0; right:0; text-align:center; font-size:12px; font-weight:700; color:var(--chip); }
+  .scene .hd small { display:block; font-size:10px; font-weight:400; color:var(--mut); }
+  .layer { position:absolute; inset:0; background:rgba(0,0,0,.9); z-index:5; opacity:0; pointer-events:none; }
+  .apS, .apN { position:absolute; left:0; right:0; text-align:center; z-index:7; opacity:0; }
+  .apS { font-size:12px; letter-spacing:.14em; color:var(--ol); text-transform:uppercase; }
+  .apN { font-size:24px; font-weight:900; letter-spacing:.04em; }
+
+  /* O spinner padrão (trilho, arco ciano, arco rosa) */
+  .ring { position:absolute; z-index:6; pointer-events:none; }
+  .ring svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring circle { transform-box:view-box; transform-origin:50px 50px; fill:none; }
+  .ring .bg circle { stroke:#ffffff14; }
+  .ring .l1 circle { stroke:var(--a); stroke-linecap:round; stroke-dasharray:80 184; animation:gira 1.1s linear infinite; }
+  .ring .l2 circle { stroke:var(--mg); stroke-linecap:round; stroke-dasharray:50 164; animation:giraV 1.5s linear infinite; }
+  .ring .l2 { mix-blend-mode:screen; }
+  @keyframes gira { to { transform:rotate(360deg) } }
+  @keyframes giraV { to { transform:rotate(-360deg) } }
+
+  /* A esfera de anéis de neon */
+  .orb { position:absolute; z-index:6; pointer-events:none; transform-style:preserve-3d; opacity:0; }
+  .orb .rg { position:absolute; inset:0; transform-style:preserve-3d; }
+  .orb .rg svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .orb .rg circle { fill:none; }
+  .orb .c circle { stroke:var(--a); }
+  .orb .m circle { stroke:var(--mg); }
+  .glow1 .c svg { filter:drop-shadow(0 0 2px rgba(63,208,255,.9)) drop-shadow(0 0 6px rgba(63,208,255,.5)); }
+  .glow1 .m svg { filter:drop-shadow(0 0 2px rgba(255,43,214,.9)) drop-shadow(0 0 6px rgba(255,43,214,.5)); }
+  .glow2 .c svg { filter:drop-shadow(0 0 3px rgba(63,208,255,1)) drop-shadow(0 0 10px rgba(63,208,255,.8)) drop-shadow(0 0 22px rgba(63,208,255,.45)); }
+  .glow2 .m svg { filter:drop-shadow(0 0 3px rgba(255,43,214,1)) drop-shadow(0 0 10px rgba(255,43,214,.8)) drop-shadow(0 0 22px rgba(255,43,214,.45)); }
+  .orb .arrows { position:absolute; inset:-28%; width:156%; height:156%; overflow:visible; opacity:0; }
+  .orb .arrows path { fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · A esfera de anéis de neon na passagem até o Aplicando</h1>
+  <p class="sub">Com base na imagem de referência: anéis azuis em pé girando num sentido e anéis rosa deitados ou inclinados girando no sentido contrário. Na passagem, o anel apagado do chão se abre nessa esfera enquanto sobe, a esfera gira e, no centro, se fecha de volta no spinner do Aplicando ("APLICANDO" em cima, nome embaixo). As opções combinam traço (1 ou 2 linhas), quantidade de anéis e brilho. Todas tocam juntas a cada 4 s. "Ver a esfera girando" mostra só o objeto, parado no centro, para comparar o desenho.</p>
+  <div class="ref"><img src="../imports/referencia-esfera-neon.png" alt="Referência: esfera de anéis de neon azul e rosa"><span>Referência enviada pelo Denis (imports/referencia-esfera-neon.png).</span></div>
+  <div class="bar"><button class="pb on" id="mPass">Ver a passagem</button><button class="pb" id="mObj">Ver a esfera girando</button><button class="pb" id="slow">Câmera lenta</button></div>
+  <div class="sec">1 linha</div>
+  <div class="grid" id="g1"></div>
+  <div class="sec">2 linhas (tubo, como na referência)</div>
+  <div class="grid" id="g2"></div>
+</div>
+
+<script>
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let SPEED = 1, MODE = "pass";
+const sleep = ms => new Promise(r => setTimeout(r, ms * SPEED));
+const anim = (el, kf, o) => el.animate(kf, { fill: "both", easing: "cubic-bezier(.16,1,.3,1)", ...o, duration: o.duration * SPEED, delay: (o.delay || 0) * SPEED }).finished.catch(() => {});
+const EASE = "cubic-bezier(.45,0,.2,1)";
+
+/* Posições dos anéis: os azuis em pé (meridianos), os rosa deitados ou inclinados (órbitas). O primeiro de cada cor vira o arco do spinner */
+const CYAN = [{ y: 0 }, { y: 60 }, { y: -60 }];
+const PINK = [{ x: 64 }, { x: 64, z: 55 }, { x: 64, z: -55 }];
+const OPTS = [
+  { k: "1A", g: 1, lines: 1, n: 1, glow: 1, nome: "1 linha · 1 azul e 1 rosa", desc: "O mínimo: um anel azul em pé e um rosa deitado, girando em sentidos contrários." },
+  { k: "1B", g: 1, lines: 1, n: 2, glow: 1, nome: "1 linha · 2 e 2", desc: "Dois azuis em pé e dois rosa inclinados. Já forma a esfera sem ficar cheio." },
+  { k: "1C", g: 1, lines: 1, n: 3, glow: 1, nome: "1 linha · 3 e 3", desc: "Três de cada cor, como na referência, com traço fino." },
+  { k: "1D", g: 1, lines: 1, n: 3, glow: 2, nome: "1 linha · 3 e 3 · neon forte", desc: "Igual à anterior, com o brilho do neon bem mais forte em volta de cada anel." },
+  { k: "2A", g: 2, lines: 2, n: 1, glow: 1, nome: "2 linhas · 1 azul e 1 rosa", desc: "Cada anel é um tubo de duas linhas, como na referência. Um de cada cor." },
+  { k: "2B", g: 2, lines: 2, n: 2, glow: 1, nome: "2 linhas · 2 e 2", desc: "Dois tubos de cada cor. Mais volume, ainda leve." },
+  { k: "2C", g: 2, lines: 2, n: 3, glow: 1, nome: "2 linhas · 3 e 3", desc: "O mais próximo da referência: três tubos azuis em pé e três rosa inclinados." },
+  { k: "2D", g: 2, lines: 2, n: 3, glow: 2, nome: "2 linhas · 3 e 3 · neon forte", desc: "A da referência com o brilho de neon forte, como tubo aceso no escuro." },
+  { k: "2E", g: 2, lines: 2, n: 3, glow: 1, arrows: true, nome: "2 linhas · 3 e 3 · com setas", desc: "A da referência com as duas setas curvas: a azul mostra um sentido de giro e a rosa o outro." },
+];
+
+const SVG1 = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke-width="2.2"/></svg>`;
+const SVG2 = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke-width="1.5"/><circle cx="50" cy="50" r="40" stroke-width="1.5"/></svg>`;
+const ARROWS = `<svg class="arrows" viewBox="0 0 100 100">
+  <path d="M38 14 A38 38 0 0 0 14 44" stroke="#3FD0FF"/><path d="M9 39 L14 46 L20 40" stroke="#3FD0FF"/>
+  <path d="M62 86 A38 38 0 0 0 86 56" stroke="#FF2BD6"/><path d="M81 61 L86 54 L91 61" stroke="#FF2BD6"/></svg>`;
+const RING = `<svg class="bg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42"/></svg><svg class="l2" viewBox="0 0 100 100"><circle cx="50" cy="50" r="34"/></svg>`;
+
+const smooth = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const tilt = (b, f) => `rotateZ(${(b.z || 0) * f}deg) rotateY(${(b.y || 0) * f}deg) rotateX(${(b.x || 0) * f}deg)`;
+
+/* Quadros de cada anel na passagem: abre (0 a 25%), gira, fecha no plano (70 a 100%).
+   Os azuis giram no eixo vertical num sentido; os rosa no eixo horizontal no sentido contrário. */
+function frames(kind, i, b) {
+  const out = [], N = 48;
+  for (let s = 0; s <= N; s++) {
+    const t = s / N, f = Math.min(smooth(0, .25, t), 1 - smooth(.7, 1, t)), a = 720 * ease(t);
+    const spin = kind === "c" ? `rotateY(${a}deg)` : `rotateX(${-a}deg)`;
+    const shrink = kind === "m" ? ` scale(${1 - .23 * smooth(.7, 1, t)})` : ""; // o rosa fecha no raio do arco rosa
+    out.push({ transform: `${spin} ${tilt(b, f)}${shrink}`, opacity: i === 0 ? 1 : f, offset: t });
+  }
+  return out;
+}
+
+function geo(stage) {
+  const W = stage.clientWidth, H = stage.clientHeight, big = W * .56, med = W * .3;
+  const block = 15 + 16 + med + 16 + 30, top = (H - block) / 2;
+  return {
+    big: { width: big + "px", height: big + "px", left: (W - big) / 2 + "px", top: H * .58 + "px" },
+    med: { width: med + "px", height: med + "px", left: (W - med) / 2 + "px", top: top + 31 + "px" },
+    show: { width: W * .62 + "px", height: W * .62 + "px", left: W * .19 + "px", top: (H - W * .62) / 2 + "px" },
+    sTop: top, nTop: top + 31 + med + 16,
+  };
+}
+
+function build(stage, o) {
+  const orb = stage.querySelector(".orb");
+  orb.classList.add("glow" + o.glow);
+  const svg = o.lines === 1 ? SVG1 : SVG2;
+  orb.innerHTML = CYAN.slice(0, o.n).map((b, i) => `<div class="rg c" data-i="${i}">${svg}</div>`).join("") + PINK.slice(0, o.n).map((b, i) => `<div class="rg m" data-i="${i}">${svg}</div>`).join("") + (o.arrows ? ARROWS : "");
+}
+
+function reset(stage, g) {
+  stage.getAnimations({ subtree: true }).filter(a => !(a instanceof CSSAnimation)).forEach(a => a.cancel());
+  Object.assign(stage.querySelector(".ring").style, g.big, { opacity: .35 });
+  stage.querySelectorAll(".ring circle").forEach(c => c.style.strokeWidth = 2.5);
+  Object.assign(stage.querySelector(".orb").style, g.big, { opacity: 0 });
+}
+
+async function passage(stage, o, g) {
+  const ms = 1600, ring = stage.querySelector(".ring"), orb = stage.querySelector(".orb");
+  anim(stage.querySelector(".layer"), [{ opacity: 0 }, { opacity: 1 }], { duration: 800, easing: "ease" });
+  // o spinner apagado do chão vira a esfera; no fim, a esfera vira o spinner do Aplicando
+  // tamanho e lugar seguem a subida; o brilho troca de um para o outro só no fim, com a esfera já achatada
+  anim(ring, [g.big, g.med], { duration: ms, easing: EASE });
+  anim(ring, [{ opacity: .35 }, { opacity: 0, offset: .12 }, { opacity: 0, offset: .87 }, { opacity: 1 }], { duration: ms, easing: "linear" });
+  [...ring.querySelectorAll("circle")].forEach(c => anim(c, [{ strokeWidth: 2.5 }, { strokeWidth: 6 }], { duration: ms, easing: EASE }));
+  anim(orb, [g.big, g.med], { duration: ms, easing: EASE });
+  anim(orb, [{ opacity: .35 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .88 }, { opacity: 0 }], { duration: ms, easing: "linear" });
+  orb.querySelectorAll(".rg").forEach(el => { const kind = el.classList.contains("c") ? "c" : "m", i = +el.dataset.i; anim(el, frames(kind, i, (kind === "c" ? CYAN : PINK)[i]), { duration: ms, easing: "linear" }); });
+  const ar = orb.querySelector(".arrows");
+  if (ar) anim(ar, [{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: 1, offset: .65 }, { opacity: 0, offset: .8 }], { duration: ms, easing: "linear" });
+  await sleep(ms);
+}
+
+/* Ver a esfera girando: o objeto sozinho, no centro, aberto e girando sem parar */
+function showObject(stage, o, g) {
+  const orb = stage.querySelector(".orb");
+  stage.querySelector(".ring").style.opacity = 0; stage.querySelector(".layer").style.opacity = 1;
+  Object.assign(orb.style, g.show, { opacity: 1 });
+  const ar = orb.querySelector(".arrows"); if (ar) ar.style.opacity = 1;
+  orb.querySelectorAll(".rg").forEach(el => {
+    const kind = el.classList.contains("c") ? "c" : "m", b = (kind === "c" ? CYAN : PINK)[+el.dataset.i];
+    const kf = [0, 1].map(t => ({ transform: `${kind === "c" ? `rotateY(${360 * t}deg)` : `rotateX(${-360 * t}deg)`} ${tilt(b, 1)}` }));
+    el.animate(kf, { duration: 3200 * SPEED, iterations: Infinity, easing: "linear" });
+  });
+}
+
+const C = { before: 500, pass: 1600, hold: 1100, out: 400, period: 4000 };
+let T0 = performance.now(), toks = [];
+async function loop(stage, o, tok) {
+  const g = geo(stage), sT = stage.querySelector(".apS"), nT = stage.querySelector(".apN");
+  sT.style.top = g.sTop + "px"; nT.style.top = g.nTop + "px";
+  while (tok.on) {
+    const P = C.period * SPEED, w = P - ((performance.now() - T0) % P);
+    if (w < P - 60) { await new Promise(r => setTimeout(r, w)); if (!tok.on) return; }
+    reset(stage, g);
+    await sleep(C.before); if (!tok.on) return;
+    if (reduceMotion) {
+      anim(stage.querySelector(".layer"), [{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease" });
+      Object.assign(stage.querySelector(".ring").style, g.med, { opacity: 1 });
+    } else {
+      const p = passage(stage, o, g);
+      await sleep(1150); if (!tok.on) return;
+      anim(sT, [{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 350 });
+      anim(nT, [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 350, delay: 80 });
+      await p;
+    }
+    if (!tok.on) return;
+    await sleep(C.hold); if (!tok.on) return;
+    await Promise.all([".ring", ".apS", ".apN", ".layer"].map(s => stage.querySelector(s)).map(e => anim(e, [{ opacity: getComputedStyle(e).opacity }, { opacity: 0 }], { duration: C.out, easing: "ease" })));
+  }
+}
+
+const stageHTML = k => `<div class="stage" data-k="${k}"><div class="scene"><div class="sb"><span>21:14</span><span>▮▮▮ 78%</span></div><div class="hd">MUSICA ORIG<small>Casa 2.1</small></div></div>
+  <div class="layer"></div><div class="ring">${RING}</div><div class="orb"></div><div class="apS">Aplicando</div><div class="apN">MUSICA ORIG</div></div>`;
+function startAll() {
+  toks.forEach(t => t.on = false); toks = []; T0 = performance.now();
+  for (const n of [1, 2]) document.getElementById("g" + n).innerHTML = OPTS.filter(o => o.g === n).map(o => `<div class="opt"><h2><b>${o.k}</b>${o.nome}</h2><p>${o.desc}</p>${stageHTML(o.k)}</div>`).join("");
+  document.querySelectorAll(".stage").forEach(s => {
+    const o = OPTS.find(x => x.k === s.dataset.k); build(s, o);
+    if (MODE === "obj") return showObject(s, o, geo(s));
+    const tok = { on: true }; toks.push(tok); loop(s, o, tok);
+  });
+}
+const setMode = m => { MODE = m; document.getElementById("mPass").classList.toggle("on", m === "pass"); document.getElementById("mObj").classList.toggle("on", m === "obj"); startAll(); };
+document.getElementById("mPass").onclick = () => setMode("pass");
+document.getElementById("mObj").onclick = () => setMode("obj");
+document.getElementById("slow").onclick = e => { SPEED = SPEED === 1 ? 2.5 : 1; e.currentTarget.classList.toggle("on", SPEED !== 1); startAll(); };
+startAll();
+</script>
+</body>
+</html>
