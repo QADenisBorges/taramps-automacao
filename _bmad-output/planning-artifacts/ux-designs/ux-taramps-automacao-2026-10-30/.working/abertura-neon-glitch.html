@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Neon com glitch</title>
+<style>
+  /* Símbolo: piscar do Neon (10) com as camadas ciano #00F0FF e rosa #FF2BD6 borradas do Glitch (6).
+     Nome: animação da opção 6 (sai do desfoque). Ciclo de 5 s. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --cy:#00F0FF; --mg:#FF2BD6; --T:5s; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; }
+  .grid { display:grid; gap:28px 20px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+  .opt h2 { font-size:15px; margin-bottom:4px; }
+  .opt h2 b { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--tx); color:var(--pg); font-size:13px; margin-right:6px; }
+  .opt p { color:var(--mut); font-size:12.5px; line-height:1.45; min-height:4.4em; margin-bottom:10px; }
+  .phone { position:relative; width:240px; height:480px; border-radius:34px; border:7px solid #2A2A2E; background:#000; overflow:hidden; margin:0 auto; }
+  .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; animation:out var(--T) infinite both; }
+  @keyframes out { 0%,93% { opacity:1 } 100% { opacity:0 } }
+  .stage * { animation-duration:var(--T); animation-iteration-count:infinite; animation-fill-mode:both; }
+  .box { position:relative; width:104px; height:104px; }
+  .box > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring { fill:none; stroke:#fff; stroke-opacity:.35; stroke-width:3; }
+  .wave { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+  .wm { display:flex; flex-direction:column; align-items:center; line-height:1; color:#fff; font-size:32px; }
+  .wm b { font-weight:900; letter-spacing:-.02em; }
+  .wm span { font-weight:500; font-size:.37em; letter-spacing:.62em; margin:.4em -.62em 0 0; }
+  button { display:block; margin:10px auto 0; background:none; border:1px solid var(--line); color:var(--tx); border-radius:999px; padding:6px 14px; font:inherit; font-size:12px; cursor:pointer; }
+  button:hover { border-color:var(--mut); }
+  .foot { color:var(--mut); font-size:14px; line-height:1.6; margin-top:28px; }
+
+  /* Nome (opção 6) */
+  .wm b, .wm span { animation-name:nome; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+  .wm span { animation-delay:.25s; }
+  @keyframes nome { 0%,36% { opacity:0; filter:blur(10px); transform:scale(1.15) } 52%,100% { opacity:1; filter:blur(0); transform:none } }
+
+  /* Piscar do neon: igual nas três camadas (círculo primeiro, depois a onda) */
+  .ring { animation-name:pisca-ring; animation-timing-function:steps(1,end); }
+  .wave { animation-name:pisca-wave; animation-timing-function:steps(1,end); }
+  @keyframes pisca-ring { 0% { opacity:0 } 3% { opacity:1 } 4% { opacity:0 } 7% { opacity:1 } 8% { opacity:.2 } 9%,100% { opacity:1 } }
+  @keyframes pisca-wave { 0%,10% { opacity:0 } 12% { opacity:1 } 13% { opacity:0 } 16% { opacity:.8 } 17% { opacity:0 } 19% { opacity:1 } 21% { opacity:.3 } 22%,100% { opacity:1 } }
+
+  /* Camadas ciano e rosa, borradas */
+  .cy, .mg { mix-blend-mode:screen; }
+  .cy * { stroke:var(--cy) !important; } .mg * { stroke:var(--mg) !important; }
+  .cy .ring, .mg .ring { stroke-opacity:1; stroke-width:4; }
+  .cy .wave, .mg .wave { stroke-width:7; }
+  .main { animation-name:brilho; animation-timing-function:ease; }
+  @keyframes brilho { 0%,22% { filter:drop-shadow(0 0 6px #3FD0FF) drop-shadow(0 0 16px #3FD0FF) } 36%,100% { filter:drop-shadow(0 0 0 #3FD0FF) } }
+
+  /* A: termina limpo */
+  .vA .cy { animation-name:aCy; } .vA .mg { animation-name:aMg; }
+  @keyframes aCy { 0% { opacity:1; transform:translateX(-9px); filter:blur(1.2px) } 22% { opacity:1; transform:translateX(-7px); filter:blur(1.2px) } 34%,100% { opacity:0; transform:none; filter:blur(0) } }
+  @keyframes aMg { 0% { opacity:1; transform:translateX(9px); filter:blur(1.2px) } 22% { opacity:1; transform:translateX(7px); filter:blur(1.2px) } 34%,100% { opacity:0; transform:none; filter:blur(0) } }
+
+  /* B: fica uma aura azul e rosa */
+  .vB .cy { animation-name:bCy; } .vB .mg { animation-name:bMg; }
+  @keyframes bCy { 0% { transform:translateX(-9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(-7px); filter:blur(1.2px); opacity:1 } 34%,100% { transform:translateX(-3.5px); filter:blur(1px); opacity:.9 } }
+  @keyframes bMg { 0% { transform:translateX(9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(7px); filter:blur(1.2px); opacity:1 } 34%,100% { transform:translateX(3.5px); filter:blur(1px); opacity:.9 } }
+
+  /* C: glitch forte, tremendo e cortado, termina limpo */
+  .vC .cy, .vC .mg, .vC .main { animation-timing-function:steps(1,end); }
+  .vC .cy { animation-name:cCy; } .vC .mg { animation-name:cMg; }
+  .vC .main { animation-name:cMain,brilho; animation-timing-function:steps(1,end),ease; }
+  @keyframes cCy { 0% { transform:translate(-10px,0); filter:blur(1.4px) } 4% { transform:translate(-6px,3px) } 8% { transform:translate(-13px,-2px) } 12% { transform:translate(-7px,0) } 16% { transform:translate(-12px,2px) } 20% { transform:translate(-6px,0) } 26% { transform:translate(-4px,0); filter:blur(1px); opacity:1 } 32%,100% { opacity:0; transform:none; filter:blur(0) } }
+  @keyframes cMg { 0% { transform:translate(10px,0); filter:blur(1.4px) } 4% { transform:translate(6px,-3px) } 8% { transform:translate(13px,2px) } 12% { transform:translate(7px,0) } 16% { transform:translate(12px,-2px) } 20% { transform:translate(6px,0) } 26% { transform:translate(4px,0); filter:blur(1px); opacity:1 } 32%,100% { opacity:0; transform:none; filter:blur(0) } }
+  @keyframes cMain { 0% { clip-path:inset(0) } 5% { clip-path:inset(30% 0 45% 0); transform:translateX(4px) } 8% { clip-path:inset(0); transform:none } 14% { clip-path:inset(0 0 60% 0); transform:translateX(-4px) } 17% { clip-path:inset(55% 0 0 0); transform:translateX(3px) } 20% { clip-path:inset(0); transform:none } 24%,100% { clip-path:inset(0); transform:none } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · Neon com glitch</h1>
+  <p class="sub">O símbolo acende piscando como o Neon (10), com as camadas azul e rosa borradas do Glitch (6), agora mais afastadas, mais grossas e menos borradas para o contraste aparecer mais. O nome entra igual nas três, saindo do desfoque. O que muda é como o azul e o rosa terminam.</p>
+  <div class="grid" id="grid"></div>
+  <p class="foot">Escolha A, B ou C, ou peça ajustes: mais ou menos borrado, o rosa mais forte, piscar mais rápido ou mais lento.</p>
+</div>
+
+<noscript><p class="foot">Esta página precisa de JavaScript ligado para montar as animações.</p></noscript>
+<script>
+  const WAVE = "M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50";
+  const layer = c => `<svg class="${c}" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="${WAVE}"/></svg>`;
+  const opcoes = [
+    ["A", "Termina limpo", "Pisca em azul e rosa borrados e, quando acende de vez, as cores se juntam e fica só a logo ciano, nítida."],
+    ["B", "Fica a aura", "Pisca igual, mas o azul e o rosa não somem: ficam como uma aura fina e borrada em volta do símbolo."],
+    ["C", "Glitch forte", "Pisca tremendo, cortado em faixas, com o azul e o rosa pulando de lugar. Depois firma e fica limpo."],
+  ];
+  const grid = document.getElementById("grid");
+  for (const [v, nome, ideia] of opcoes) {
+    const el = document.createElement("section");
+    el.className = "opt";
+    el.innerHTML = `<h2><b>${v}</b>${nome}</h2><p>${ideia}</p>
+      <div class="phone"><div class="stage v${v}"><div class="box">${layer("cy")}${layer("mg")}${layer("main")}</div>
+      <div class="wm"><b>BGS</b><span>SOUND</span></div></div></div><button type="button">Repetir</button>`;
+    el.querySelector("button").addEventListener("click", () => {
+      const st = el.querySelector(".stage"); st.replaceWith(st.cloneNode(true));
+    });
+    grid.appendChild(el);
+  }
+</script>
+</body>
+</html>
