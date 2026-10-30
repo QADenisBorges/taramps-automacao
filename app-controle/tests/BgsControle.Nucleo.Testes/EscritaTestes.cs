@@ -90,14 +90,14 @@ public sealed class EscritaTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo, as escritas de áudio do catálogo, os comandos de memória permitidos, o
-    /// <c>*202*0*</c> (desligar o gerador, sempre permitido) e o 251 e o 252 (história 7b: o teste
-    /// que passa por toda escrita do codificador manda os dois).
+    /// catálogo, as escritas de áudio do catálogo, o <c>*202*0*</c> (desligar o gerador, sempre
+    /// permitido) e o 251 e o 252 (história 7b: o teste que passa por toda escrita do codificador
+    /// manda os dois). Nenhum comando de memória do aparelho.
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador
+                        || e == Catalogo.DesligarGerador
                         || Catalogo.ComandoDeAparelho(e) is { Tipo: TipoComandoAparelho.RemoteOut or TipoComandoAparelho.BluetoothAudio }, e));
 
     private async Task Conectar()
@@ -443,8 +443,9 @@ public sealed class EscritaTestes : IDisposable
     [Theory]
     [InlineData("*240*5*", Sessao.MotivoNaoLiberado)] // o 240 e o 23N não saem deste app (história 8c)
     [InlineData("*240*0*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*241*3*", Sessao.MotivoMemoriaForaDoFormato)]
-    [InlineData("*241*0", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*241*3*", Sessao.MotivoNaoLiberado)] // nem o 241 (decisão do Denis, 29/10/2026)
+    [InlineData("*241*0", Sessao.MotivoNaoLiberado)]
+    [InlineData("*241*0*", Sessao.MotivoNaoLiberado)]
     [InlineData("*231*filme*", Sessao.MotivoNaoLiberado)]
     [InlineData("*231*FILME*", Sessao.MotivoNaoLiberado)]
     [InlineData("*231* FILME*", Sessao.MotivoNaoLiberado)]
@@ -506,10 +507,9 @@ public sealed class EscritaTestes : IDisposable
 
             var r = await _sessao.EnviarAsync(quadro);
 
-            // Os nomes das memórias (23N) nunca passam (história 8c); o *202*0* (desligar o
-            // gerador) passa sem a chave (história 7a); o 251 e o 252 passam com as chaves
-            // "Bluetooth de áudio" e "Remote out", ligadas por padrão (história 7b).
-            var passa = !p.Extra || Catalogo.ComandoDeMemoria(quadro) is not null || quadro == Catalogo.DesligarGerador
+            // O *202*0* (desligar o gerador) passa sem a chave (história 7a); o 251 e o 252 passam
+            // com as chaves "Bluetooth de áudio" e "Remote out", ligadas por padrão (história 7b).
+            var passa = !p.Extra || quadro == Catalogo.DesligarGerador
                         || Catalogo.ComandoDeAparelho(quadro) is not null;
             Assert.True(r.Enviado == passa, $"{quadro}: {r.Motivo}");
             Assert.Equal(passa, _simulador.Escritas.Contains(quadro));
@@ -568,23 +568,23 @@ public sealed class EscritaTestes : IDisposable
     {
         await _chaves.Carregada;
 
-        Assert.Equal(11, _chaves.Definicoes.Count);
+        Assert.Equal(10, _chaves.Definicoes.Count);
         Assert.Equal(Enum.GetValues<Chave>(), _chaves.Definicoes.Select(d => d.Chave));
         foreach (var c in new[] { Chave.ResetFabrica, Chave.IaPelaRede, Chave.ResetAudio, Chave.TrocaSenha, Chave.Gerador })
             Assert.False(_chaves.Ligada(c), c.ToString());
-        foreach (var c in new[] { Chave.CarregarMemoria, Chave.AplicarMemoriaCelular, Chave.RemoteOut, Chave.BluetoothAudio, Chave.NomeProduto, Chave.AjustesAudio })
+        foreach (var c in new[] { Chave.AplicarMemoriaCelular, Chave.RemoteOut, Chave.BluetoothAudio, Chave.NomeProduto, Chave.AjustesAudio })
             Assert.True(_chaves.Ligada(c), c.ToString());
         Assert.Equal("Um tom forte pode queimar o tweeter ou o sub.", ChavesPadrao.De(Chave.Gerador).Risco);
         Assert.Equal("Apaga a senha e as 3 memórias.", ChavesPadrao.De(Chave.ResetFabrica).Risco);
         Assert.Equal("Deixa a IA comandar o som pela rede.", ChavesPadrao.De(Chave.IaPelaRede).Risco);
         Assert.Null(ChavesPadrao.De(Chave.AjustesAudio).Risco);
-        Assert.Equal("Carregar memória do aparelho", ChavesPadrao.De(Chave.CarregarMemoria).Nome);
-        Assert.Equal("carregar-memoria", ChavesPadrao.De(Chave.CarregarMemoria).Id); // o id guardado não muda
         Assert.Equal("Aplicar memória do celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Nome);
         Assert.Equal("aplicar-memoria-celular", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Id);
         Assert.Equal(ConfirmacaoIa.Sempre, ChavesPadrao.De(Chave.AplicarMemoriaCelular).ConfirmacaoIa);
         Assert.Equal("Troca todo o som de uma vez.", ChavesPadrao.De(Chave.AplicarMemoriaCelular).Risco);
         Assert.DoesNotContain(ChavesPadrao.Todas, d => d.Nome.Contains("Salvar", StringComparison.Ordinal));
+        // As memórias do processador não aparecem no app (decisão do Denis, 29/10/2026): nenhuma chave de carregar.
+        Assert.DoesNotContain(ChavesPadrao.Todas, d => d.Id == "carregar-memoria" || d.Codigo.Contains("241", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -717,21 +717,22 @@ public sealed class EscritaTestes : IDisposable
     }
 
     /// <summary>
-    /// História 8c: o JSON de antes tem o id "salvar-memoria", que saiu; ele é ignorado, o
-    /// "carregar-memoria" guardado continua valendo e a chave nova vem no padrão (ligada).
+    /// O JSON de antes tem os ids que saíram: o "salvar-memoria" (história 8c) e o "carregar-memoria"
+    /// (as memórias do processador saíram do app em 29/10/2026). Eles são ignorados, os outros
+    /// valem e a chave que falta vem no padrão (ligada).
     /// </summary>
     [Fact]
     public async Task Guardado_com_o_id_que_saiu_ignora_o_id_e_le_os_outros()
     {
         var chaves = new Chaves(new RepositorioMemoria
         {
-            Json = "{\"formato\": 1, \"chaves\": {\"salvar-memoria\": false, \"carregar-memoria\": false, \"desconhecida\": true}}",
+            Json = "{\"formato\": 1, \"chaves\": {\"salvar-memoria\": false, \"carregar-memoria\": false, \"remote-out\": false, \"desconhecida\": true}}",
         });
         await chaves.Carregada;
 
-        Assert.False(chaves.Ligada(Chave.CarregarMemoria));
+        Assert.False(chaves.Ligada(Chave.RemoteOut));
         Assert.True(chaves.Ligada(Chave.AplicarMemoriaCelular));
-        Assert.Equal(11, chaves.Definicoes.Count);
+        Assert.Equal(10, chaves.Definicoes.Count);
     }
 
     // ----------------------------------------------------------------- booleanos e preset

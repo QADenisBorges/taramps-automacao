@@ -167,7 +167,6 @@ public sealed class PlayerViewModelTestes : IDisposable
     private readonly GerentePlaylists _playlists;
     private readonly Player _player;
     private readonly PlayerViewModel _vm;
-    private readonly List<string> _carregadas = [];
 
     public PlayerViewModelTestes()
     {
@@ -177,15 +176,14 @@ public sealed class PlayerViewModelTestes : IDisposable
     }
 
     /// <summary>
-    /// Critério de aceite: nenhuma escrita do Player chegou ao aparelho. Fora a senha e as leituras, só
-    /// os carregar de memória do aparelho que o próprio teste pediu.
+    /// Critério de aceite: nenhuma escrita do Player chegou ao aparelho; só a senha e as leituras.
     /// </summary>
     public void Dispose()
     {
         _vm.Dispose();
         _player.Dispose();
         var escritas = _b.Simulador.Escritas.Where(e => !Senha.IsMatch(e) && !Catalogo.EhLeitura(e)).ToList();
-        Assert.Equal(_carregadas, escritas);
+        Assert.Empty(escritas);
         Assert.Empty(_b.Tela.Erros);
     }
 
@@ -205,17 +203,6 @@ public sealed class PlayerViewModelTestes : IDisposable
         if (_b.Sessao.Estado != EstadoSessao.Conectado)
             await _b.Conectar();
         await Apoio.Esperar(() => _player.Memoria == Filme);
-        await _b.Tela.EsvaziarAsync();
-    }
-
-    /// <summary>Carrega a memória n (0 a 2) do aparelho: sem memória do celular em uso, não há playlist.</summary>
-    private async Task CarregarDoAparelho(int n)
-    {
-        _carregadas.Add($"*241*{n}*");
-        var r = _b.Memorias.CarregarAsync(n);
-        await _b.Rodar(r);
-        Assert.True((await r).Ok, (await r).Mensagem);
-        await Apoio.Esperar(() => _player.Memoria is null);
         await _b.Tela.EsvaziarAsync();
     }
 
@@ -283,24 +270,6 @@ public sealed class PlayerViewModelTestes : IDisposable
         Assert.Equal(0, _seletor.Aberturas);
         Assert.Empty(_reprodutor.Pedidas);
         Assert.Null(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPlaylists));
-    }
-
-    [Fact]
-    public async Task Com_uma_memoria_do_aparelho_em_uso_nao_ha_playlist_e_tocar_fica_travado()
-    {
-        await FilmeCom(2);
-        await _vm.TocarPausar.ExecutarAsync();
-        Assert.Equal(Uri(1), _reprodutor.Tocando);
-
-        await CarregarDoAparelho(0);
-
-        Assert.False(_vm.TemMemoria);
-        Assert.Equal(SemMemoria, _vm.TextoAviso);
-        Assert.Empty(_vm.Linhas);
-        Assert.Null(_reprodutor.Tocando); // trocar de memória para o Player
-        await _vm.TocarPausar.ExecutarAsync();
-        Assert.Equal(SemMemoria, _vm.Mensagem);
-        Assert.Equal([Uri(1)], _reprodutor.Pedidas);
     }
 
     [Fact]

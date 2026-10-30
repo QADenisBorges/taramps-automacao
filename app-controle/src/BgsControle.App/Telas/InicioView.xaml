@@ -85,8 +85,9 @@
             <!-- O cartão da memória em uso. -->
             <Border Style="{StaticResource cartao-grande}" IsVisible="{Binding MostrarMemoria}">
                 <Grid>
-                    <c:ArcoView WidthRequest="180" HeightRequest="180" HorizontalOptions="End" VerticalOptions="Start"
-                                Margin="0,-90,-90,0" />
+                    <!-- Só o canto: a 180/−90 o arco cruzava o nome da memória (12b, print 05). -->
+                    <c:ArcoView WidthRequest="120" HeightRequest="120" HorizontalOptions="End" VerticalOptions="Start"
+                                Margin="0,-80,-80,0" />
                     <VerticalStackLayout Spacing="10">
                         <Label Style="{StaticResource tipo-rotulo}" Text="MEMÓRIA EM USO" />
                         <Label Style="{StaticResource tipo-memoria-hero}" Text="{Binding NomeMemoria}"

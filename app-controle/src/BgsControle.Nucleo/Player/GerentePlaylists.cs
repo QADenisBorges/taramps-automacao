@@ -49,6 +49,9 @@ public sealed class GerentePlaylists
     /// <summary>O formato antigo (3 listas por posição), lido e convertido em pendentes.</summary>
     public const int FormatoAntigo = 1;
 
+    /// <summary>No formato antigo, uma lista por memória do aparelho (as 3 posições do protótipo).</summary>
+    private const int ListasNoFormatoAntigo = 3;
+
     public const string MsgNaoGuardou = "Não consegui guardar a playlist no celular.";
     public const string MsgSemMemoria = "Sem memória do celular, não há playlist.";
     public const string MsgPosicao = "Posição fora da playlist.";
@@ -415,7 +418,7 @@ public sealed class GerentePlaylists
             var n = 0;
             foreach (var lista in listas.EnumerateArray())
             {
-                if (n >= Catalogo.Memorias)
+                if (n >= ListasNoFormatoAntigo)
                     break;
                 var faixas = LerFaixas(lista, ids);
                 var nota = ConhecimentoHerdado.NotaMemoria(++n);

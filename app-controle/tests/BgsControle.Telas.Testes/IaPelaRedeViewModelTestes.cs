@@ -62,7 +62,7 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
 
     private PortaComandos NovaPorta(int numero) =>
         new(_b.Sessao, _b.Chaves, Uso, Historico, _pareamento, _confirmacoes, new RedeFalsa(), _b.Estado, _b.Escritor,
-            _b.Memorias, _b.Setups!, _b.Gerador, _b.Comandos, _b.Monitor, _b.Log, _b.Relogio, numero);
+            _b.Setups!, _b.Gerador, _b.Comandos, _b.Monitor, _b.Log, _b.Relogio, numero);
 
     private async Task Conectar()
     {
@@ -103,7 +103,7 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
     // ----------------------------------------------------------------- critério de aceite
 
     [Fact]
-    public async Task Cliente_pareado_le_o_estado_muda_o_ganho_da_saida_3_e_carrega_a_memoria_2_com_o_toque()
+    public async Task Cliente_pareado_le_o_estado_muda_o_ganho_da_saida_3_e_desliga_o_remote_out_com_o_toque()
     {
         await Conectar();
         await LigarPorta();
@@ -122,18 +122,20 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
         Assert.Equal("+2,0 dB", controle.TextoValor);
 
-        var carregar = Pedir("POST", "/memoria/carregar", """{"memoria":2}""", chave);
+        var remote = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await Apoio.Esperar(() => _confirmacoes.Atual is not null);
         await _b.Tela.EsvaziarAsync();
         Assert.True(_folha.FolhaAberta);
         await _folha.Confirmar.ExecutarAsync();
-        await _b.Rodar(carregar);
-        Assert.True(Ok(await carregar));
+        await _b.Rodar(remote);
+        Assert.True(Ok(await remote));
+        // As memórias do aparelho não têm caminho na porta (o salvar desde a 8c, o carregar desde 29/10/2026).
         Assert.Equal(404, (await Pedir("POST", "/memoria/salvar", """{"memoria":2}""", chave)).Status);
+        Assert.Equal(404, (await Pedir("POST", "/memoria/carregar", """{"memoria":2}""", chave)).Status);
 
         var daIa = Historico.Entradas.Where(e => e.Origem == OrigemComando.Ia && e.Enviado).Select(e => e.Tipo).ToArray();
         Assert.Contains(TipoComando.AjusteAudio, daIa);
-        Assert.Contains(TipoComando.CarregarMemoria, daIa);
+        Assert.Contains(TipoComando.RemoteOut, daIa);
         Assert.DoesNotContain(TipoComando.SalvarMemoria, daIa);
         using var h = _b.CriarHistoricoViewModel();
         await _b.Tela.EsvaziarAsync();
@@ -319,14 +321,14 @@ public sealed class IaPelaRedeViewModelTestes : IDisposable
         var chave = await Parear();
         Assert.False(_folha.FolhaAberta);
 
-        var pedido = Pedir("POST", "/memoria/carregar", """{"memoria":3}""", chave);
+        var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await Apoio.Esperar(() => _confirmacoes.Atual is not null);
         await _b.Tela.EsvaziarAsync();
 
         Assert.True(_folha.FolhaAberta);
-        Assert.Equal("A IA pede para carregar a FILME", _folha.Titulo);
-        Assert.Equal(ChavesPadrao.De(Chave.CarregarMemoria).Risco, _folha.Risco);
-        Assert.Equal("Carregar a FILME", _folha.TextoConfirmar);
+        Assert.Equal("A IA pede para desligar o remote out", _folha.Titulo);
+        Assert.Equal(ChavesPadrao.De(Chave.RemoteOut).Risco, _folha.Risco);
+        Assert.Equal("Desligar o remote out", _folha.TextoConfirmar);
         Assert.Equal("Não deixar", _folha.TextoRecusar);
 
         await _folha.Recusar.ExecutarAsync();

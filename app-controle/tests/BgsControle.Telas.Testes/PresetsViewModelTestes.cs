@@ -80,11 +80,12 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.Empty(memorias.Cartoes);
         Assert.Equal("Memórias do Casa 2.1", memorias.TituloCelular);
 
-        // Do aparelho: a nota das 3, pela posição, sem selo.
-        Assert.Contains("máximo seguro", memorias.Aparelho(1).NotaHerdada);
-        Assert.Contains("MUSICA ORIG", memorias.Aparelho(2).NotaHerdada);
-        Assert.Contains("precisa ser refeita", memorias.Aparelho(2).NotaHerdada);
-        Assert.Contains("definitiva", memorias.Aparelho(3).NotaHerdada);
+        // As notas das 3 posições do protótipo ficam no conhecimento herdado (as memórias do processador não
+        // aparecem na tela Memórias desde 29/10/2026).
+        Assert.Contains("máximo seguro", herdado.NotaMemoria(1)!.Texto);
+        Assert.Equal("MUSICA ORIG", herdado.NotaMemoria(2)!.NomeNoPrototipo);
+        Assert.Contains("precisa ser refeita", herdado.NotaMemoria(2)!.Texto);
+        Assert.Contains("definitiva", herdado.NotaMemoria(3)!.Texto);
 
         // As seções de texto.
         Assert.Equal("HERDADO", herdado.Selo);
@@ -98,32 +99,6 @@ public sealed class PresetsViewModelTestes : IDisposable
         Assert.Empty(b.Simulador.Escritas);
         Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
         Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
-    }
-
-    [Fact]
-    public async Task Tocar_na_nota_mostra_a_nota_da_memoria_e_nao_manda_nada()
-    {
-        using var memorias = _b.CriarMemoriasViewModel();
-        var cartao = memorias.Aparelho(2);
-        Assert.False(cartao.NotaVisivel);
-
-        await cartao.AlternarNota.ExecutarAsync();
-        Assert.True(cartao.NotaVisivel);
-        await cartao.AlternarNota.ExecutarAsync();
-        Assert.False(cartao.NotaVisivel);
-
-        Assert.Empty(_b.Simulador.Escritas);
-    }
-
-    [Fact]
-    public async Task A_nota_vale_pela_posicao_mesmo_com_o_nome_de_hoje_diferente()
-    {
-        using var memorias = _b.CriarMemoriasViewModel();
-        _b.Simulador.Definir("231", null, "OUTRA");
-        await _b.Conectar();
-
-        Assert.Equal(["OUTRA", "MUSICA ORIG", "FILME"], memorias.DoAparelho.Select(m => m.Nome));
-        Assert.Contains("SPL", memorias.Aparelho(1).NotaHerdada); // o nome do protótipo, não o de hoje
     }
 
     [Fact]

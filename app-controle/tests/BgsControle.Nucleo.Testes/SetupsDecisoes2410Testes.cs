@@ -41,6 +41,16 @@ public sealed partial class SetupsTestes
     }
 
     [Fact]
+    public async Task Antes_de_conferir_o_link_guardado_nao_junta_as_saidas()
+    {
+        // O Início desconectado mostrava "Sem Setup" com CH3 + CH4 juntos, pelo link da última sessão (12b).
+        Assert.Null(await _link.DefinirEstadoAsync(false, true));
+
+        Assert.Null(_setups.SetupEmUso);
+        Assert.Equal(["CH1", "CH2", "CH3", "CH4"], _setups.SaidasEmUso.Select(s => s.Nome));
+    }
+
+    [Fact]
     public async Task Duvida_interrompida_tambem_deixa_os_links_desligados()
     {
         await EntrarNaDuvida();
@@ -289,19 +299,6 @@ public sealed partial class SetupsTestes
     }
 
     [Fact]
-    public async Task Conectado_carregar_uma_memoria_do_aparelho_ainda_para_o_Player()
-    {
-        var (player, reprodutor) = await FilmeTocandoAFaixa2();
-
-        Assert.True((await Rodar(_memorias.CarregarAsync(0))).Ok);
-        await AndarAte(() => player.Memoria is null);
-
-        Assert.False(player.Retida);
-        Assert.Null(reprodutor.Tocando);
-        player.Dispose();
-    }
-
-    [Fact]
     public async Task Reconectar_e_conferir_outra_memoria_para_e_troca_a_playlist()
     {
         // A SHOW (a ativa) toca e cai; desconectado, a SHOW é apagada: a ativa do Casa volta a ser a FILME.
@@ -323,25 +320,6 @@ public sealed partial class SetupsTestes
         Assert.Equal(EstadoPlayer.Parado, player.Estado);
         Assert.Null(reprodutor.Tocando);
         Assert.Equal(3, player.Faixas.Count); // a playlist da FILME
-        player.Dispose();
-    }
-
-    [Fact]
-    public async Task Reconectar_e_carregar_uma_memoria_do_aparelho_para_e_fica_sem_playlist()
-    {
-        var (player, reprodutor) = await FilmeTocandoAFaixa2();
-        await Cair(player);
-        await Conectar();
-        await AndarAte(() => !player.Retida);
-        Assert.Equal("content://musica/2", reprodutor.Tocando);
-
-        Assert.True((await Rodar(_memorias.CarregarAsync(0))).Ok);
-        await AndarAte(() => player.Memoria is null);
-
-        Assert.False(player.Retida);
-        Assert.Equal(EstadoPlayer.Parado, player.Estado);
-        Assert.Null(reprodutor.Tocando);
-        Assert.Empty(player.Faixas);
         player.Dispose();
     }
 

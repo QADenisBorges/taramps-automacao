@@ -141,8 +141,8 @@ public sealed class LeituraTestes
     {
         ResponderComOArquivoReal();
         _transporte.Respostas["#005#"] = ["#005#120#\r\n"];
-        _transporte.Respostas["#231#"] = ["#231#FILME#\r\n"];
-        _transporte.Respostas["#232#"] = ["#232#0#MUSICA#\r\n"]; // formato inesperado: guarda o que veio
+        _transporte.Respostas["#211#"] = ["#211#22000#\r\n"];
+        _transporte.Respostas["#251#"] = ["#251#0#\r\n"];
         _transporte.Respostas["#252#"] = ["#252#1#\r\n"];
         _transporte.Respostas["#202#"] = ["#202#x#\r\n"]; // ilegível
         await Conectar();
@@ -153,10 +153,11 @@ public sealed class LeituraTestes
         Assert.Equal($"4 de {Catalogo.TotalExtras}", r.PlacarExtras.Texto);
         Assert.Equal("12,0 V", r.Item("005")!.Valor.Exibicao);
         Assert.Equal("#005#120#", r.Item("005")!.Cru);
-        Assert.Equal("FILME", r.Item("231")!.Valor.Texto);
-        Assert.Equal("0#MUSICA", r.Item("232")!.Valor.Texto);
-        Assert.Equal("#232#0#MUSICA#", r.Item("232")!.Cru);
+        Assert.Equal("#211#22000#", r.Item("211")!.Cru);
+        Assert.False(r.Item("251")!.Valor.Ligado);
         Assert.True(r.Item("252")!.Valor.Ligado);
+        // Os nomes das memórias do aparelho não são perguntados (decisão do Denis, 29/10/2026).
+        Assert.DoesNotContain(_transporte.Escritas, e => e.StartsWith("#23", StringComparison.Ordinal));
 
         var ilegivel = r.FalhaDe("202")!;
         Assert.Equal(Parametro.MotivoIlegivel, ilegivel.Motivo);
@@ -179,30 +180,13 @@ public sealed class LeituraTestes
     public async Task Extra_dividido_em_duas_notificacoes_espera_o_fim_de_linha()
     {
         ResponderComOArquivoReal();
-        _transporte.Respostas["#232#"] = ["#232#0#", "MUSICA#\r\n"];
+        _transporte.Respostas["#212#"] = ["#212#", "-30.0#\r\n"];
         await Conectar();
 
         var r = await _leitor.LerAsync();
 
-        Assert.Equal("0#MUSICA", r.Item("232")!.Valor.Texto);
-        Assert.Equal("#232#0#MUSICA#", r.Item("232")!.Cru);
-        Assert.Empty(r.Orfaos);
-    }
-
-    [Fact]
-    public async Task Nome_vazio_de_extra_e_registrado()
-    {
-        ResponderComOArquivoReal();
-        _transporte.Respostas["#231#"] = ["#231##\r\n"];
-        await Conectar();
-
-        var r = await _leitor.LerAsync();
-
-        var item = r.Item("231")!;
-        Assert.Equal("", item.Valor.Texto);
-        Assert.Equal("(vazio)", item.Valor.Exibicao);
-        Assert.Equal("#231##", item.Cru);
-        Assert.Null(r.FalhaDe("231"));
+        Assert.Equal(-30.0m, r.Item("212")!.Valor.Numero);
+        Assert.Equal("#212#-30.0#", r.Item("212")!.Cru);
         Assert.Empty(r.Orfaos);
     }
 
@@ -573,10 +557,10 @@ public sealed class LeituraTestes
     [InlineData("*252*1*", Sessao.MotivoChaveDesligada)] // remote out: chave "Remote out" (história 7b)
     [InlineData("*252*2*", Sessao.MotivoAparelhoForaDoFormato)]
     [InlineData("*240*0*", Sessao.MotivoNaoLiberado)] // o salvar e o nome não saem deste app (história 8c)
-    [InlineData("*241*0*", Sessao.MotivoChaveDesligada)]
+    [InlineData("*241*0*", Sessao.MotivoNaoLiberado)] // nem o carregar (decisão do Denis, 29/10/2026)
     [InlineData("*231*FILME*", Sessao.MotivoNaoLiberado)]
     [InlineData("*240*5*", Sessao.MotivoNaoLiberado)]
-    [InlineData("*241*5*", Sessao.MotivoMemoriaForaDoFormato)]
+    [InlineData("*241*5*", Sessao.MotivoNaoLiberado)]
     public async Task Escrita_codificada_pelo_catalogo_sem_chaves_e_recusada_com_o_motivo(string quadro, string motivo)
     {
         // Esta sessão não tem IChaves: toda escrita conhecida cai na chave; fora da forma exata, no formato.

@@ -41,6 +41,22 @@ public sealed partial class ProcessadorSimulado : ITransporte
     /// <summary>Memórias do DSP: <c>*240*n*</c> e <c>*241*n*</c> com n de 0 a 2.</summary>
     public const int Memorias = 3;
 
+    /// <summary>
+    /// Os nomes das 3 memórias (<c>231</c> a <c>233</c>, MAPA §5). O aparelho tem; o app não lê nem
+    /// escreve (as memórias do processador não aparecem no app desde a decisão do Denis de
+    /// 29/10/2026), então eles saíram do <see cref="Catalogo"/> e ficam só aqui.
+    /// </summary>
+    public static IReadOnlyList<Parametro> NomesDasMemorias { get; } =
+        Enumerable.Range(1, Memorias).Select(n => new Parametro
+        {
+            Codigo = $"23{n}", Nome = $"nome da memória {n}", Escopo = Escopo.Global, Tipo = TipoValor.Nome, Extra = true,
+        }).ToArray();
+
+    private static readonly Dictionary<string, Parametro> NomesPorCodigo = NomesDasMemorias.ToDictionary(p => p.Codigo);
+
+    private static readonly Dictionary<string, Consulta> ConsultasDosNomes =
+        NomesDasMemorias.SelectMany(p => p.Consultas()).ToDictionary(c => c.Texto, StringComparer.Ordinal);
+
     /// <summary>O processador derruba a conexão uns 29 s depois de um <c>ERRO</c> (medido em 20/10).</summary>
     public static readonly TimeSpan QuedaAposErroReal = TimeSpan.FromSeconds(29);
 
@@ -142,7 +158,8 @@ public sealed partial class ProcessadorSimulado : ITransporte
     public TimeSpan AtrasoEco { get; set; } = AtrasoEcoReal;
 
     /// <summary>
-    /// Atraso do ack de <c>*240*n*</c> (~1,17 s medidos) e de <c>*241*n*</c> (Suposição ACK-241: o mesmo).
+    /// Atraso do ack de <c>*240*n*</c> (~1,17 s medidos) e de <c>*241*n*</c> (Suposição ACK-241: o mesmo;
+    /// fora de uso, o app não envia mais o 241).
     /// </summary>
     public TimeSpan AtrasoAckMemoria { get; set; } = AtrasoAckSalvarReal;
 
@@ -514,7 +531,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
         // não foi medida e continua ignorada, sem resposta.
         if (!_autenticado)
         {
-            if (Catalogo.ConsultaDe(texto) is not null)
+            if (ConsultaDe(texto) is not null)
                 Responder(RespostaSemSenha, AtrasoLeitura);
             else
                 Recusar(texto, "antes da senha");
@@ -522,7 +539,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
         }
 
         // Leitura de uma consulta do catálogo.
-        if (Catalogo.ConsultaDe(texto) is { } consulta)
+        if (ConsultaDe(texto) is { } consulta)
         {
             var leitura = consulta.Parametro.Codigo == CodigoVoltimetro
                 ? RespostaVoltimetro // Suposição VOLTIMETRO-CRLF: o "ERRO 0" chega com \r\n, como as outras respostas.
@@ -647,7 +664,7 @@ public sealed partial class ProcessadorSimulado : ITransporte
     private static (Parametro? Parametro, int? Indice, string? NoFio, string? Motivo) ValidarEscrita(string texto)
     {
         var q = Quadros.Analisar(texto);
-        if (q is null || Catalogo.ParametroDe(q.Codigo) is not { } p)
+        if (q is null || ParametroDe(q.Codigo) is not { } p)
             return (null, null, null, "comando desconhecido");
         if (p.SomenteLeitura)
             return (null, null, null, $"o {p.Codigo} só tem leitura");
@@ -835,12 +852,18 @@ public sealed partial class ProcessadorSimulado : ITransporte
     private static void Guardar(Dictionary<(string, int?), string> estado, string cru)
     {
         var q = Quadros.Analisar(cru) ?? throw new InvalidOperationException($"Resposta ilegível na semente: {cru}");
-        var p = Catalogo.ParametroDe(q.Codigo) ?? throw new InvalidOperationException($"Código fora do catálogo: {cru}");
+        var p = ParametroDe(q.Codigo) ?? throw new InvalidOperationException($"Código fora do catálogo: {cru}");
         if (p.Escopo == Escopo.Global)
             estado[(p.Codigo, null)] = string.Join("#", q.Segmentos);
         else
             estado[(p.Codigo, int.Parse(q.Segmentos[0], Fio))] = q.Segmentos[1];
     }
+
+    /// <summary>Um parâmetro do catálogo do app, ou um dos nomes das memórias (que só o simulador conhece).</summary>
+    private static Parametro? ParametroDe(string codigo) => Catalogo.ParametroDe(codigo) ?? NomesPorCodigo.GetValueOrDefault(codigo);
+
+    /// <summary>Uma consulta do catálogo do app, ou a de um dos nomes das memórias (<c>#231#</c>).</summary>
+    private static Consulta? ConsultaDe(string texto) => Catalogo.ConsultaDe(texto) ?? ConsultasDosNomes.GetValueOrDefault(texto);
 
     /// <summary>O que uma memória guarda: o Marco 1 e o 200 e o 201 (medido em 24/10).</summary>
     private static Dictionary<(string, int?), string> CopiaMemoria(Dictionary<(string Codigo, int? Indice), string> estado)

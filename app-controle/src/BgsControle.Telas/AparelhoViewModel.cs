@@ -2,7 +2,6 @@ using BgsControle.Nucleo;
 using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Protocolo;
 using BgsControle.Nucleo.Seguranca;
 
@@ -43,7 +42,6 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias? _memorias;
     private readonly GeradorSinal? _gerador;
 
     private string? _mensagem;
@@ -64,7 +62,6 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
         CopiaAntes copia,
         IDespachante despachante,
         TimeProvider relogio,
-        GerenteMemorias? memorias = null,
         GeradorSinal? gerador = null)
         : base(despachante, relogio)
     {
@@ -73,7 +70,6 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
         _chaves = chaves;
         _estado = estado;
         _copia = copia;
-        _memorias = memorias;
         _gerador = gerador;
 
         LigarRemoteOut = new Comando(() => DefinirRemoteOutAsync(true));
@@ -91,8 +87,6 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
         _copia.Mudou += AoMudarAlgo;
-        if (_memorias is not null)
-            _memorias.Mudou += AoMudarAlgo;
         if (_gerador is not null)
             _gerador.Mudou += AoMudarAlgo;
         _estado.Recarregou += AoMudarAlgo;
@@ -596,8 +590,6 @@ public sealed class AparelhoViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudarAlgo;
         _chaves.Mudou -= AoMudarChave;
         _copia.Mudou -= AoMudarAlgo;
-        if (_memorias is not null)
-            _memorias.Mudou -= AoMudarAlgo;
         if (_gerador is not null)
             _gerador.Mudou -= AoMudarAlgo;
         _estado.Recarregou -= AoMudarAlgo;

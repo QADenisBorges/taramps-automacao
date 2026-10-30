@@ -9,7 +9,6 @@ using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Herdado;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
@@ -98,7 +97,6 @@ public sealed class PortaTestes : IDisposable
     private readonly EstadoAparelho _estado;
     private readonly Escritor _escritor;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias _memorias;
     private readonly LinkCanais _link;
     private readonly GerentePresets _presets;
     private readonly GerentePlaylists _playlists;
@@ -124,16 +122,15 @@ public sealed class PortaTestes : IDisposable
         _estado = new EstadoAparelho(_sessao, _leitura);
         _escritor = new Escritor(_sessao, _estado, _log, Escrita, _relogio);
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
-        _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, Escrita, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, new TextoMemoria(), _log);
         // História 8f: o app nasce sem memórias; a porta testa com a FILME e o Cinema do cenário de teste.
         _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio);
         _playlists = new GerentePlaylists(new TextoMemoria(), _log);
-        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _presets, _playlists, _chaves,
+        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _presets, _playlists, _chaves,
             new TextoMemoria(CenarioFilme.SetupsJson), new TextoMemoria(), _log, _relogio);
-        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, _memorias, Escrita, TemposDoGerador, _relogio);
+        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, Escrita, TemposDoGerador, _relogio);
         _monitor = new MonitorAparelho(_sessao, _leitura, _relogio);
-        _comandos = new ComandosAparelho(_sessao, _estado, _leitura, _copia, _cofre, _log, _memorias, _gerador, Escrita, _relogio);
+        _comandos = new ComandosAparelho(_sessao, _estado, _leitura, _copia, _cofre, _log, _gerador, Escrita, _relogio);
         _pareamento = new Pareamento(_arquivoPorta, _relogio, _log);
         _confirmacoes = new PedidosConfirmacao(_relogio, _log);
         _porta = NovaPorta(_pareamento);
@@ -145,7 +142,7 @@ public sealed class PortaTestes : IDisposable
         _porta.Dispose();
         Assert.All(_simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null || Catalogo.ComandoDeGerador(e) is not null
+                        || Catalogo.ComandoDeGerador(e) is not null
                         || Catalogo.ComandoDeAparelho(e) is not null, e));
         Assert.DoesNotContain("AB12", Historico.ParaJson(_historico.Entradas));
         Assert.All(_respostas, r => Assert.DoesNotContain("AB12", r));
@@ -155,7 +152,7 @@ public sealed class PortaTestes : IDisposable
 
     private PortaComandos NovaPorta(Pareamento pareamento, int numero = 0, IRedeLocal? rede = null, GerenteSetups? setups = null) =>
         new(_sessao, _chaves, _uso, _historico, pareamento, _confirmacoes, rede ?? _rede, _estado, _escritor,
-            _memorias, setups ?? _setups, _gerador, _comandos, _monitor, _log, _relogio, numero);
+            setups ?? _setups, _gerador, _comandos, _monitor, _log, _relogio, numero);
 
     private async Task Conectar()
     {
@@ -475,12 +472,11 @@ public sealed class PortaTestes : IDisposable
         var antes = _simulador.Escritas.Count;
 
         var ajuste = await Pedir("POST", "/ajuste", """{"codigo":"081","indice":2,"valor":2.0}""", chave);
-        var carregar = await Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
         var aplicar = await Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);
         var tarefa = await Pedir("POST", "/tarefa", """{"frase":"IA mexendo"}""", chave);
         var estado = await Pedir("GET", "/estado", chave: chave);
 
-        foreach (var r in new[] { ajuste, carregar, aplicar, tarefa })
+        foreach (var r in new[] { ajuste, aplicar, tarefa })
         {
             Assert.Equal(409, r.Status);
             Assert.Equal("Setup em dúvida; escolha na tela.", Motivo(r));
@@ -505,7 +501,7 @@ public sealed class PortaTestes : IDisposable
     {
         // Um segundo gerente cujo setups.json só se lê no fim: a conferência dele fica pendente.
         var guardado = new TextoSegurado(CenarioFilme.SetupsJson);
-        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias,
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
             new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio),
             new GerentePlaylists(new TextoMemoria(), _log), _chaves, guardado, new TextoMemoria(), _log, _relogio);
         using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
@@ -528,24 +524,22 @@ public sealed class PortaTestes : IDisposable
     }
 
     [Fact]
-    public async Task Nao_deixar_na_folha_do_carregar_recusa_com_409_e_entra_no_historico()
+    public async Task Nao_deixar_na_folha_recusa_com_409_e_entra_no_historico()
     {
         var chave = await Pronto();
 
-        var pedido = Pedir("POST", "/memoria/carregar", """{"memoria":3}""", chave);
+        var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
-        Assert.Equal("A IA pede para carregar a FILME", _confirmacoes.Atual!.Titulo);
-        Assert.Equal("Troca todo o som de uma vez.", _confirmacoes.Atual.Risco);
-        Assert.Equal("Carregar a FILME", _confirmacoes.Atual.TextoBotao);
+        Assert.Equal("A IA pede para desligar o remote out", _confirmacoes.Atual!.Titulo);
         _confirmacoes.Recusar();
         var r = await pedido;
 
         Assert.Equal(409, r.Status);
         Assert.Equal("O usuário recusou na tela.", Motivo(r));
-        Assert.DoesNotContain("*241*2*", _simulador.Escritas);
+        Assert.DoesNotContain("*252*0*", _simulador.Escritas);
         var e = Ultima();
         Assert.Equal(OrigemComando.Ia, e.Origem);
-        Assert.Equal(TipoComando.CarregarMemoria, e.Tipo);
+        Assert.Equal(TipoComando.RemoteOut, e.Tipo);
         Assert.False(e.Enviado);
         Assert.Equal("O usuário recusou na tela.", e.Motivo);
     }
@@ -557,7 +551,7 @@ public sealed class PortaTestes : IDisposable
         Assert.Equal(200, (await Pedir("POST", "/tarefa", """{"frase":"IA conferindo as memórias"}""", chave)).Status);
         Assert.True(_uso.IaAtiva);
 
-        var pedido = Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
+        var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
         _relogio.Avancar(TimeSpan.FromSeconds(31));
         // O pedido esperando conta como o cliente presente: a IA não "sumiu".
@@ -579,13 +573,13 @@ public sealed class PortaTestes : IDisposable
     public async Task Um_toque_antigo_nao_decide_um_pedido_novo()
     {
         var chave = await Pronto();
-        var a = Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
+        var a = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
         var folhaA = _confirmacoes.Atual!;
         _relogio.Avancar(PedidosConfirmacao.Prazo);
         Assert.Equal("O usuário não confirmou a tempo.", Motivo(await a));
 
-        var b = Pedir("POST", "/memoria/carregar", """{"memoria":3}""", chave);
+        var b = Pedir("POST", "/aparelho/remote-out", """{"ligado":true}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
         var folhaB = _confirmacoes.Atual!;
 
@@ -596,7 +590,7 @@ public sealed class PortaTestes : IDisposable
         Assert.False(b.IsCompleted);
         _confirmacoes.Recusar(folhaB);
         Assert.Equal(409, (await b).Status);
-        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*241*", StringComparison.Ordinal));
+        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*252*", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -625,7 +619,7 @@ public sealed class PortaTestes : IDisposable
     public async Task Com_uma_folha_aberta_outro_risco_recebe_409()
     {
         var chave = await Pronto();
-        var primeiro = Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
+        var primeiro = Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
 
         var segundo = await Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
@@ -635,7 +629,7 @@ public sealed class PortaTestes : IDisposable
         var e = Ultima();
         Assert.Equal(TipoComando.RemoteOut, e.Tipo);
         Assert.Equal("Já há um pedido esperando confirmação na tela.", e.Motivo);
-        Assert.Equal("A IA pede para carregar a SPL", _confirmacoes.Atual!.Titulo);
+        Assert.Equal("A IA pede para aplicar a memória FILME", _confirmacoes.Atual!.Titulo);
 
         _confirmacoes.Recusar();
         Assert.Equal(409, (await primeiro).Status);
@@ -665,7 +659,7 @@ public sealed class PortaTestes : IDisposable
     public async Task PARAR_IA_com_uma_folha_aberta_recusa_o_pedido()
     {
         var chave = await Pronto();
-        var pedido = Pedir("POST", "/memoria/carregar", """{"memoria":1}""", chave);
+        var pedido = Pedir("POST", "/aparelho/remote-out", """{"ligado":false}""", chave);
         await EsperarSemAndar(() => _confirmacoes.Atual is not null);
 
         _uso.PararIa();
@@ -871,7 +865,7 @@ public sealed class PortaTestes : IDisposable
     // ----------------------------------------------------------------- caminhos
 
     [Fact]
-    public async Task Estado_traz_a_conexao_as_memorias_a_IA_o_gerador_e_os_parametros()
+    public async Task Estado_traz_a_conexao_a_IA_o_gerador_e_os_parametros_e_nada_das_memorias_do_aparelho()
     {
         var chave = await Pronto();
 
@@ -879,7 +873,8 @@ public sealed class PortaTestes : IDisposable
 
         Assert.True(r.GetProperty("conexao").GetProperty("conectado").GetBoolean());
         Assert.Equal("R003", r.GetProperty("conexao").GetProperty("firmware").GetString());
-        Assert.Equal(new[] { "SPL", "MUSICA ORIG", "FILME" }, r.GetProperty("memorias").GetProperty("nomes").EnumerateArray().Select(n => n.GetString()!));
+        // As memórias do processador não aparecem (decisão do Denis, 29/10/2026): nem a em uso, nem os nomes.
+        Assert.False(r.TryGetProperty("memorias", out _));
         Assert.Equal("inativa", r.GetProperty("ia").GetProperty("estado").GetString());
         Assert.Equal("Casa 2.1", r.GetProperty("setup").GetProperty("nome").GetString());
         Assert.False(r.GetProperty("setup").GetProperty("duvida").GetBoolean());
@@ -937,7 +932,6 @@ public sealed class PortaTestes : IDisposable
     [InlineData("/ajuste", """{"codigo":"081","valor":1.0}""")]
     [InlineData("/ajuste", """{"codigo":"081","indice":2,"valor":99.0}""")]
     [InlineData("/ajuste", """{"codigo":"081","indice":2,"valor":"2"}""")]
-    [InlineData("/memoria/carregar", """{"memoria":4}""")]
     [InlineData("/gerador/sweep", """{"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":0}""")]
     [InlineData("/aparelho/remote-out", """{"ligado":"sim"}""")]
     [InlineData("/tarefa", "{}")]
@@ -958,6 +952,7 @@ public sealed class PortaTestes : IDisposable
     [InlineData("POST", "/aparelho/senha")]
     [InlineData("POST", "/chaves")]
     [InlineData("POST", "/modo")]
+    [InlineData("POST", "/memoria/carregar")] // as memórias do processador não aparecem (29/10/2026)
     [InlineData("PUT", "/ajuste")]
     public async Task Caminho_desconhecido_404_e_nao_ha_caminho_da_senha_nem_das_chaves(string metodo, string caminho)
     {
@@ -978,11 +973,12 @@ public sealed class PortaTestes : IDisposable
 
         var texto = Json(r).GetProperty("texto").GetString()!;
         foreach (var caminho in new[] { "/parear", "/estado", "/catalogo", "/eventos", "/historico", "/ajuste",
-                     "/memoria/carregar", "/gerador/tom", "/gerador/sweep", "/gerador/parar", "/aparelho/remote-out",
+                     "/memoria/aplicar", "/gerador/tom", "/gerador/sweep", "/gerador/parar", "/aparelho/remote-out",
                      "/aparelho/bluetooth", "/aparelho/nome", "/aparelho/reset-audio", "/aparelho/reset-fabrica", "/tarefa" })
             Assert.Contains(caminho, texto);
         Assert.DoesNotContain("senha", texto, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("/memoria/salvar", texto);
+        Assert.DoesNotContain("/memoria/carregar", texto);
     }
 
     [Fact]

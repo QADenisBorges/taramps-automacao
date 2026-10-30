@@ -18,11 +18,12 @@ public sealed class CatalogoTestes
     public void Extras_sao_os_que_o_app_da_Taramps_nao_pede()
     {
         Assert.Equal(
-            ["005", "111", "150", "200", "201", "202", "210", "211", "212", "213", "231", "232", "233", "251", "252"],
+            ["005", "111", "150", "200", "201", "202", "210", "211", "212", "213", "251", "252"],
             Catalogo.Extras.Select(p => p.Codigo));
         Assert.All(Catalogo.Extras, p => Assert.True(p.Extra));
         Assert.All(Catalogo.Extras, p => Assert.Equal(Escopo.Global, p.Escopo));
-        Assert.Equal(15, Catalogo.TotalExtras);
+        // Os nomes das memórias (231–233) não são lidos: as memórias do processador não aparecem (29/10/2026).
+        Assert.Equal(12, Catalogo.TotalExtras);
         // Fila: o Marco 1 primeiro, depois os extras.
         Assert.Equal(Catalogo.ConsultasMarco1.Concat(Catalogo.ConsultasExtras), Catalogo.Consultas);
     }
@@ -40,7 +41,6 @@ public sealed class CatalogoTestes
     [InlineData("092", 3, "#092#3#")]
     [InlineData("020", 0, "020#0")]
     [InlineData("020", 14, "020#14")]
-    [InlineData("231", null, "#231#")]
     public void Monta_a_consulta_pelo_escopo(string codigo, int? indice, string esperado) =>
         Assert.Equal(esperado, Catalogo.ParametroDe(codigo)!.TextoConsulta(indice));
 
@@ -109,9 +109,6 @@ public sealed class CatalogoTestes
         { "211", null, "#211#20000#", "20000 Hz", "20000", "*211*20000*" },
         { "212", null, "#212#-30.0#", "-30,0 dB", "-30", "*212*-30.0*" },
         { "213", null, "#213#2#", "médio", "3", "*213*3*" },
-        { "231", null, "#231#FILME#", "\"FILME\"", "FILME", "*231*FILME*" },
-        { "232", null, "#232#MUSICA ORIG#", "\"MUSICA ORIG\"", "MUSICA ORIG", "*232*MUSICA ORIG*" },
-        { "233", null, "#233#MUSICA HIGH#", "\"MUSICA HIGH\"", "MUSICA HIGH", "*233*MUSICA HIGH*" },
         { "251", null, "#251#1#", "ligado", "0", "*251*0*" },
         { "252", null, "#252#1#", "ligado", "0", "*252*0*" },
     };
@@ -322,9 +319,11 @@ public sealed class CatalogoTestes
     [InlineData("\n")]
     [InlineData("   ")]
     [InlineData(" ")]
-    public void Nome_de_memoria_sem_separador_e_ate_12(string nome)
+    public void Um_parametro_de_nome_vai_sem_separador_e_ate_12(string nome)
     {
-        var p = Catalogo.ParametroDe("231")!;
+        // Nenhum parâmetro do catálogo é de nome desde 29/10/2026 (os nomes 231–233 saíram); o tipo fica
+        // para o simulador, que imita os nomes das memórias do aparelho.
+        var p = new Parametro { Codigo = "231", Nome = "nome da memória 1", Escopo = Escopo.Global, Tipo = TipoValor.Nome, Extra = true };
         if (nome == "TREZE LETRAS")
             Assert.Equal("*231*TREZE LETRAS*", p.CodificarEscrita(null, nome));
         else
@@ -354,7 +353,7 @@ public sealed class CatalogoTestes
     [InlineData("020#3#-1.", false)]
     [InlineData("020#3", false)]
     [InlineData("#004#1#", false)]
-    [InlineData("#232#0#", false)] // extra: o resto do nome pode estar a caminho
+    [InlineData("#213#0#", false)] // extra: o resto pode estar a caminho (só o \r\n diz que acabou)
     [InlineData("#150#3#", false)]
     public void Reconhece_resposta_inteira_sem_fim_de_linha(string texto, bool inteira) =>
         Assert.Equal(inteira, Catalogo.RespostaInteira(texto));

@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace BgsControle.Nucleo.Seguranca;
 
-/// <summary>As 11 chaves de acesso (CAP-11), na ordem de <c>chaves-de-acesso.md</c>.</summary>
+/// <summary>As 10 chaves de acesso (CAP-11), na ordem de <c>chaves-de-acesso.md</c>.</summary>
 public enum Chave
 {
     ResetFabrica,
@@ -11,7 +11,6 @@ public enum Chave
     ResetAudio,
     TrocaSenha,
     Gerador,
-    CarregarMemoria,
     AplicarMemoriaCelular,
     RemoteOut,
     BluetoothAudio,
@@ -97,9 +96,6 @@ public static class ChavesPadrao
             "Uma senha perdida tranca o aparelho."),
         new(Chave.Gerador, "gerador", "Gerador: tom fixo e sweep", "200–202, 210–213", false, ConfirmacaoIa.Sempre,
             "Um tom forte pode queimar o tweeter ou o sub."),
-        // O id "carregar-memoria" fica: é o que está guardado no celular desde a história 6.
-        new(Chave.CarregarMemoria, "carregar-memoria", "Carregar memória do aparelho", "*241*n*", true, ConfirmacaoIa.Sempre,
-            "Troca todo o som de uma vez."),
         new(Chave.AplicarMemoriaCelular, "aplicar-memoria-celular", "Aplicar memória do celular", "vários (MAPA §4)", true, ConfirmacaoIa.Sempre,
             "Troca todo o som de uma vez."),
         new(Chave.RemoteOut, "remote-out", "Remote out (módulo)", "*252*0/1*", true, ConfirmacaoIa.Sempre,
@@ -245,8 +241,9 @@ public sealed class Chaves : IChaves
 
     /// <summary>
     /// Lê o JSON guardado. Ilegível, sem o <c>formato</c> 1, ou uma chave que falta: fica o
-    /// padrão. Um id que o app não conhece mais (o <c>salvar-memoria</c>, que saiu na história 8c)
-    /// é ignorado. Chamar com a trava.
+    /// padrão. Um id que o app não conhece mais (o <c>salvar-memoria</c>, que saiu na história 8c, e o
+    /// <c>carregar-memoria</c>, que saiu com as memórias do processador em 29/10/2026) é ignorado.
+    /// Chamar com a trava.
     /// </summary>
     private void Aplicar(string json)
     {

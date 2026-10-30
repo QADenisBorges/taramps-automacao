@@ -1,0 +1,446 @@
+{
+  "formato": 2,
+  "ultimoSetup": "herdado-setup-casa-2-1",
+  "setups": [
+    {
+      "id": "herdado-setup-casa-2-1",
+      "nome": "Casa 2.1",
+      "quando": "2026-10-18T21:45:57.0000000-03:00",
+      "equilibrio": {
+        "ganho": [
+          0,
+          -3.0,
+          0,
+          0
+        ],
+        "limiter": [
+          0,
+          -3.0,
+          0,
+          0
+        ]
+      },
+      "link12": false,
+      "link34": true,
+      "calibracao": [
+        {
+          "codigo": "010",
+          "indice": 0,
+          "noFio": "b"
+        },
+        {
+          "codigo": "010",
+          "indice": 1,
+          "noFio": "a"
+        },
+        {
+          "codigo": "010",
+          "indice": 2,
+          "noFio": "a+b"
+        },
+        {
+          "codigo": "010",
+          "indice": 3,
+          "noFio": "a+b"
+        },
+        {
+          "codigo": "060",
+          "indice": 0,
+          "noFio": "0"
+        },
+        {
+          "codigo": "060",
+          "indice": 1,
+          "noFio": "0"
+        },
+        {
+          "codigo": "060",
+          "indice": 2,
+          "noFio": "180"
+        },
+        {
+          "codigo": "060",
+          "indice": 3,
+          "noFio": "180"
+        },
+        {
+          "codigo": "040",
+          "indice": 0,
+          "noFio": "150"
+        },
+        {
+          "codigo": "040",
+          "indice": 1,
+          "noFio": "150"
+        },
+        {
+          "codigo": "040",
+          "indice": 2,
+          "noFio": "40"
+        },
+        {
+          "codigo": "040",
+          "indice": 3,
+          "noFio": "40"
+        },
+        {
+          "codigo": "041",
+          "indice": 0,
+          "noFio": "22000"
+        },
+        {
+          "codigo": "041",
+          "indice": 1,
+          "noFio": "22000"
+        },
+        {
+          "codigo": "041",
+          "indice": 2,
+          "noFio": "150"
+        },
+        {
+          "codigo": "041",
+          "indice": 3,
+          "noFio": "150"
+        },
+        {
+          "codigo": "042",
+          "indice": 0,
+          "noFio": "3"
+        },
+        {
+          "codigo": "042",
+          "indice": 1,
+          "noFio": "3"
+        },
+        {
+          "codigo": "042",
+          "indice": 2,
+          "noFio": "11"
+        },
+        {
+          "codigo": "042",
+          "indice": 3,
+          "noFio": "11"
+        },
+        {
+          "codigo": "043",
+          "indice": 0,
+          "noFio": "0"
+        },
+        {
+          "codigo": "043",
+          "indice": 1,
+          "noFio": "0"
+        },
+        {
+          "codigo": "043",
+          "indice": 2,
+          "noFio": "3"
+        },
+        {
+          "codigo": "043",
+          "indice": 3,
+          "noFio": "3"
+        },
+        {
+          "codigo": "050",
+          "indice": 0,
+          "noFio": "0.0"
+        },
+        {
+          "codigo": "050",
+          "indice": 1,
+          "noFio": "100.0"
+        },
+        {
+          "codigo": "050",
+          "indice": 2,
+          "noFio": "80.0"
+        },
+        {
+          "codigo": "050",
+          "indice": 3,
+          "noFio": "80.0"
+        },
+        {
+          "codigo": "030",
+          "noFio": "+0.0"
+        },
+        {
+          "codigo": "031",
+          "noFio": "1000"
+        },
+        {
+          "codigo": "032",
+          "noFio": "+1.0"
+        }
+      ],
+      "equipamentos": [
+        {
+          "id": "herdado-modulo",
+          "grupo": "amplificador",
+          "categoria": "módulo",
+          "nome": "Módulo genérico",
+          "nota": "×19,6 nos canais das JBL e ×40 no bridge do sub. O modelo não se sabe.",
+          "dados": {
+            "ganho": 19.6,
+            "canais": 4
+          },
+          "canais": [
+            {
+              "n": 1,
+              "fonte": "CH1"
+            },
+            {
+              "n": 2,
+              "fonte": "CH2"
+            },
+            {
+              "n": 3,
+              "fonte": "CH3"
+            },
+            {
+              "n": 4,
+              "fonte": "CH4"
+            }
+          ],
+          "bridges": [
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "id": "herdado-jbl-l",
+          "grupo": "alto-falante",
+          "categoria": "médio-grave",
+          "nome": "JBL L",
+          "modelo": "JBL 4TRMS80",
+          "nota": "JBL 4TRMS80, 3,6 Ω, com passa-alta mínimo de 100 Hz a 24 dB/oit (ficha do fabricante).",
+          "dados": {
+            "impedancia": 3.6
+          },
+          "ligado": {
+            "equipamento": "herdado-modulo",
+            "canal": 1
+          }
+        },
+        {
+          "id": "herdado-jbl-r",
+          "grupo": "alto-falante",
+          "categoria": "médio-grave",
+          "nome": "JBL R",
+          "modelo": "JBL 4TRMS80",
+          "nota": "JBL 4TRMS80, 3,6 Ω, com passa-alta mínimo de 100 Hz a 24 dB/oit (ficha do fabricante).",
+          "dados": {
+            "impedancia": 3.6
+          },
+          "ligado": {
+            "equipamento": "herdado-modulo",
+            "canal": 2
+          }
+        },
+        {
+          "id": "herdado-sub",
+          "grupo": "alto-falante",
+          "categoria": "subwoofer",
+          "nome": "Sub",
+          "nota": "Subwoofer genérico: o modelo não se sabe.",
+          "dados": {},
+          "ligado": {
+            "equipamento": "herdado-modulo",
+            "bridge": [
+              3,
+              4
+            ]
+          }
+        }
+      ],
+      "recentes": [
+        "herdado-memoria-filme"
+      ],
+      "botoes": [
+        "herdado-memoria-filme",
+        null,
+        null
+      ]
+    }
+  ],
+  "memorias": [
+    {
+      "id": "herdado-memoria-filme",
+      "setup": "herdado-setup-casa-2-1",
+      "nome": "FILME",
+      "quando": "2026-10-18T21:45:57.0000000-03:00",
+      "preset": "herdado-cinema-2026-10-18",
+      "carater": [
+        {
+          "codigo": "080",
+          "noFio": "+0.0"
+        },
+        {
+          "codigo": "081",
+          "indice": 0,
+          "noFio": "+10.0"
+        },
+        {
+          "codigo": "081",
+          "indice": 1,
+          "noFio": "+10.0"
+        },
+        {
+          "codigo": "081",
+          "indice": 2,
+          "noFio": "+6.0"
+        },
+        {
+          "codigo": "081",
+          "indice": 3,
+          "noFio": "+6.0"
+        },
+        {
+          "codigo": "070",
+          "indice": 0,
+          "noFio": "0"
+        },
+        {
+          "codigo": "070",
+          "indice": 1,
+          "noFio": "0"
+        },
+        {
+          "codigo": "070",
+          "indice": 2,
+          "noFio": "0"
+        },
+        {
+          "codigo": "070",
+          "indice": 3,
+          "noFio": "0"
+        },
+        {
+          "codigo": "071",
+          "indice": 0,
+          "noFio": "-15.0"
+        },
+        {
+          "codigo": "071",
+          "indice": 1,
+          "noFio": "-15.0"
+        },
+        {
+          "codigo": "071",
+          "indice": 2,
+          "noFio": "-12.0"
+        },
+        {
+          "codigo": "071",
+          "indice": 3,
+          "noFio": "-12.0"
+        },
+        {
+          "codigo": "072",
+          "indice": 0,
+          "noFio": "50.0"
+        },
+        {
+          "codigo": "072",
+          "indice": 1,
+          "noFio": "50.0"
+        },
+        {
+          "codigo": "072",
+          "indice": 2,
+          "noFio": "50.0"
+        },
+        {
+          "codigo": "072",
+          "indice": 3,
+          "noFio": "50.0"
+        },
+        {
+          "codigo": "073",
+          "indice": 0,
+          "noFio": "200"
+        },
+        {
+          "codigo": "073",
+          "indice": 1,
+          "noFio": "200"
+        },
+        {
+          "codigo": "073",
+          "indice": 2,
+          "noFio": "200"
+        },
+        {
+          "codigo": "073",
+          "indice": 3,
+          "noFio": "200"
+        },
+        {
+          "codigo": "090",
+          "indice": 0,
+          "noFio": "2000"
+        },
+        {
+          "codigo": "090",
+          "indice": 1,
+          "noFio": "2000"
+        },
+        {
+          "codigo": "090",
+          "indice": 2,
+          "noFio": "45"
+        },
+        {
+          "codigo": "090",
+          "indice": 3,
+          "noFio": "45"
+        },
+        {
+          "codigo": "091",
+          "indice": 0,
+          "noFio": "+2.5"
+        },
+        {
+          "codigo": "091",
+          "indice": 1,
+          "noFio": "+2.5"
+        },
+        {
+          "codigo": "091",
+          "indice": 2,
+          "noFio": "+3.0"
+        },
+        {
+          "codigo": "091",
+          "indice": 3,
+          "noFio": "+3.0"
+        },
+        {
+          "codigo": "092",
+          "indice": 0,
+          "noFio": "+0.7"
+        },
+        {
+          "codigo": "092",
+          "indice": 1,
+          "noFio": "+0.7"
+        },
+        {
+          "codigo": "092",
+          "indice": 2,
+          "noFio": "+0.7"
+        },
+        {
+          "codigo": "092",
+          "indice": 3,
+          "noFio": "+0.7"
+        }
+      ]
+    }
+  ]
+}

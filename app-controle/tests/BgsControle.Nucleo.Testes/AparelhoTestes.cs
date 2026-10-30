@@ -3,7 +3,6 @@ using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Simulador;
@@ -46,7 +45,6 @@ public sealed class AparelhoTestes : IDisposable
     private readonly LeituraAutomatica _leitura;
     private readonly EstadoAparelho _estado;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias _memorias;
     private readonly GeradorSinal _gerador;
     private readonly MonitorAparelho _monitor;
     private readonly ComandosAparelho _comandos;
@@ -66,10 +64,9 @@ public sealed class AparelhoTestes : IDisposable
         _estado = new EstadoAparelho(_sessao, _leitura);
         var escritor = new Escritor(_sessao, _estado, _log, relogio: _relogio);
         _copia = new CopiaAntes(_sessao, _estado, escritor, _leitura, new TextoMemoria(), _log, _relogio);
-        _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
-        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, _memorias, Escrita, relogio: _relogio);
+        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, Escrita, relogio: _relogio);
         _monitor = new MonitorAparelho(_sessao, _leitura, _relogio);
-        _comandos = new ComandosAparelho(_sessao, _estado, _leitura, _copia, _cofre, _log, _memorias, _gerador, Escrita, _relogio);
+        _comandos = new ComandosAparelho(_sessao, _estado, _leitura, _copia, _cofre, _log, _gerador, Escrita, _relogio);
     }
 
     /// <summary>
@@ -180,15 +177,16 @@ public sealed class AparelhoTestes : IDisposable
     }
 
     [Fact]
-    public async Task Com_as_chaves_ligadas_os_resets_e_a_senha_passam_e_so_o_240_e_o_23N_ficam_nao_liberados()
+    public async Task Com_as_chaves_ligadas_os_resets_e_a_senha_passam_e_so_o_240_o_241_e_o_23N_ficam_nao_liberados()
     {
         await Conectar(Chave.ResetFabrica, Chave.ResetAudio, Chave.TrocaSenha);
 
         Assert.Null(_sessao.Conferir("*004*"));
         Assert.Null(_sessao.Conferir("*242*"));
         Assert.Null(_sessao.Conferir("*001*AB12*CD34*"));
-        // História 8c: salvar (240) e renomear (23N) as memórias do aparelho só no app da Taramps.
-        string[] naoLiberados = ["240", "231", "232", "233"];
+        // Salvar (240), carregar (241) e renomear (23N) as memórias do aparelho só no app da Taramps
+        // (história 8c e decisão do Denis de 29/10/2026).
+        string[] naoLiberados = ["240", "241", "231", "232", "233"];
         foreach (var codigo in naoLiberados)
             Assert.Equal(Sessao.MotivoNaoLiberado, _sessao.Conferir($"*{codigo}*1*"));
         foreach (var codigo in Catalogo.Todos.Select(p => p.Codigo).Concat(Catalogo.CodigosDoAparelho).Except(naoLiberados))
@@ -608,16 +606,13 @@ public sealed class AparelhoTestes : IDisposable
     }
 
     [Fact]
-    public async Task Com_um_carregar_pela_metade_reset_e_nome_sao_recusados_sem_enviar()
+    public async Task Com_uma_operacao_pela_metade_reset_e_nome_sao_recusados_sem_enviar()
     {
-        _simulador.DefinirMemoria(2, "081", 0, "-20.0");
         await Conectar(Chave.ResetAudio);
-        Pedir("*241*2*");
-        _simulador.CairDepoisDaEscrita = _simulador.Escritas.Count + 1;
-        Assert.False((await Rodar(_memorias.CarregarAsync(2))).Ok);
-        _simulador.CairDepoisDaEscrita = null;
-        await Conectar();
-        await AndarAte(() => _copia.PelaMetade is not null);
+        // Uma operação de vários parâmetros parou no meio com a conexão aberta.
+        Assert.True((await _copia.IniciarAsync(new OperacaoPendente("teste", "x", "Operação de teste"))).Ok);
+        _copia.MarcarPelaMetade();
+        Assert.NotNull(_copia.PelaMetade);
         var antes = _simulador.Escritas.Count;
 
         var reset = await _comandos.ResetAudioAsync();

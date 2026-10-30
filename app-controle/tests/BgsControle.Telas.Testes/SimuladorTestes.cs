@@ -130,16 +130,15 @@ public sealed class SimuladorTestes
 
         Assert.True(r.Completo);
         Assert.Equal("84 de 84", r.PlacarMarco1.Texto);
-        Assert.Equal("14 de 15", r.PlacarExtras.Texto);
+        Assert.Equal("11 de 12", r.PlacarExtras.Texto);
         Assert.Equal(["ERRO 0"], r.Orfaos);
         var reais = LeiturasReais();
         Assert.Equal(84, reais.Count);
         foreach (var (codigo, canal, cru) in reais)
             Assert.Equal(cru, r.Item(codigo, canal)?.Cru);
 
-        Assert.Equal("SPL", r.Item("231")!.Valor.Texto);
-        Assert.Equal("MUSICA ORIG", r.Item("232")!.Valor.Texto);
-        Assert.Equal("FILME", r.Item("233")!.Valor.Texto);
+        Assert.Null(r.Item("231")); // o app não lê os nomes das memórias (29/10/2026); o simulador ainda os tem
+        Assert.Equal("SPL", _simulador.Valor("231"));
         Assert.Equal("#200#-25.0#", r.Item("200")!.Cru);
         Assert.Equal("#252#1#", r.Item("252")!.Cru);
         Assert.Equal("005", Assert.Single(r.Falhas).Codigo);
@@ -621,7 +620,7 @@ public sealed class SimuladorTestes
 
         Assert.True(r.Completo);
         Assert.Equal("84 de 84", r.PlacarMarco1.Texto);
-        Assert.Equal("14 de 15", r.PlacarExtras.Texto);
+        Assert.Equal("11 de 12", r.PlacarExtras.Texto);
         Assert.Equal(["ERRO 0"], r.Orfaos);
         Assert.DoesNotContain(r.Lidos, l => l.Tentativas > 1);
         lock (tamanhos)
@@ -639,7 +638,7 @@ public sealed class SimuladorTestes
 
         Assert.True(r.Completo);
         Assert.Equal("84 de 84", r.PlacarMarco1.Texto);
-        Assert.Equal("14 de 15", r.PlacarExtras.Texto);
+        Assert.Equal("11 de 12", r.PlacarExtras.Texto);
         Assert.Equal(["ERRO 0"], r.Orfaos);
         Assert.DoesNotContain(r.Lidos, l => l.Tentativas > 1);
         // Houve mesmo quebra: mais notificações do que mensagens.

@@ -7,12 +7,14 @@ using BgsControle.Nucleo.Registro;
 namespace BgsControle.Nucleo.Escrita;
 
 /// <summary>
-/// Uma operação que mexe em vários parâmetros de uma vez (carregar ou salvar uma memória; na
-/// história 8, aplicar um preset), guardada como marca enquanto anda.
+/// Uma operação que mexe em vários parâmetros de uma vez (aplicar uma memória do celular, um preset
+/// ou um Setup), guardada como marca enquanto anda.
 /// </summary>
-/// <param name="Tipo">Quem sabe refazê-la ("carregar-memoria", "salvar-memoria").</param>
-/// <param name="Alvo">Com que alvo (a memória 0 a 2 no fio, o preset).</param>
-/// <param name="Descricao">Para a tela: "Carregar a memória 3 (FILME)".</param>
+/// <param name="Tipo">Quem sabe refazê-la ("aplicar-memoria", "aplicar-preset"…). Uma marca de um tipo
+/// que ninguém registrou (o "salvar-memoria" de antes da 8c, o "carregar-memoria" de antes de
+/// 29/10/2026) fica pela metade, só com o Voltar à cópia.</param>
+/// <param name="Alvo">Com que alvo (a memória do celular, o preset).</param>
+/// <param name="Descricao">Para a tela: "Aplicar a memória FILME".</param>
 /// <param name="Nome">O nome que a operação grava, quando há.</param>
 /// <param name="Etapa">Até onde ela chegou, quando importa (o salvar: "nome" ou "240").</param>
 public sealed record OperacaoPendente(string Tipo, string Alvo, string Descricao, string? Nome = null, string? Etapa = null);
@@ -54,7 +56,7 @@ public sealed record ResultadoCopia(bool Ok, string? Motivo)
 /// <item><see cref="VoltarAsync"/>: escreve pelo <see cref="Escritor"/> cada parâmetro de áudio da
 /// cópia que difere do estado atual (precisa da chave "Ajustes de áudio"; o link não repete).</item>
 /// </list>
-/// Genérica: as memórias (história 6) e os presets do celular (história 8) usam.
+/// Genérica: as memórias e os presets do celular e os Setups usam.
 /// </summary>
 public sealed class CopiaAntes
 {
@@ -66,6 +68,9 @@ public sealed class CopiaAntes
     public const string MsgNadaPelaMetade = "Nada ficou aplicado pela metade.";
     public const string MsgNaoSeiRefazer = "O app não sabe refazer esta operação.";
     public const string MsgPelaMetadePendente = "Uma operação ficou aplicada pela metade: escolha Terminar ou Voltar à cópia.";
+
+    /// <summary>A leitura nova depois de aplicar (uma memória do celular, um preset) parou no meio.</summary>
+    public const string MsgLeituraParou = "A leitura depois de aplicar parou no meio.";
 
     public static string MsgCopiaIlegivel(int n) => n == 1
         ? "1 ajuste da cópia não pode ser escrito de volta. Nada foi enviado."
@@ -267,7 +272,7 @@ public sealed class CopiaAntes
     }
 
     /// <summary>
-    /// A operação parou no meio com a conexão aberta (a leitura depois de carregar parou): fica
+    /// A operação parou no meio com a conexão aberta (a leitura depois de aplicar parou): fica
     /// "aplicado pela metade" já, sem esperar outra conexão.
     /// </summary>
     public void MarcarPelaMetade()

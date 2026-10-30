@@ -61,23 +61,21 @@ public enum TipoSomEmUso
     /// <summary>Uma memória do celular, aplicada, criada ou confirmada pela conferência nesta conexão.</summary>
     MemoriaCelular,
 
-    /// <summary>Uma memória do aparelho carregada por este app nesta conexão.</summary>
-    MemoriaAparelho,
-
-    /// <summary>O app não sabe: Seguir sem Setup, regulagem diferente da memória ativa, ou reconexão depois de carregar.</summary>
+    /// <summary>
+    /// O app não sabe: Seguir sem Setup, ou a regulagem diferente da memória ativa. Não é uma memória
+    /// do processador: elas não aparecem no app (decisão do Denis, 29/10/2026).
+    /// </summary>
     SomDoAparelho,
 }
 
-/// <summary>O som em uso: o tipo e, conforme o tipo, a memória do celular ou a memória do aparelho (0 a 2).</summary>
-public sealed record SomEmUso(TipoSomEmUso Tipo, string? IdMemoria = null, int? MemoriaAparelho = null)
+/// <summary>O som em uso: o tipo e, numa memória do celular, o id dela.</summary>
+public sealed record SomEmUso(TipoSomEmUso Tipo, string? IdMemoria = null)
 {
     public static SomEmUso Nenhum { get; } = new(TipoSomEmUso.Nenhum);
 
     public static SomEmUso SomDoAparelho { get; } = new(TipoSomEmUso.SomDoAparelho);
 
     public static SomEmUso DoCelular(string id) => new(TipoSomEmUso.MemoriaCelular, IdMemoria: id);
-
-    public static SomEmUso DoAparelho(int n) => new(TipoSomEmUso.MemoriaAparelho, MemoriaAparelho: n);
 }
 
 /// <summary>Em que pé está a conferência do Setup (failure-modes, regra 5).</summary>
@@ -120,7 +118,7 @@ public sealed record DiferencaConferencia(string Codigo, int? Indice, string Rot
 public sealed record MarcaMudo(string? IdSetup, IReadOnlyList<string> MuteAnterior, DateTimeOffset Quando);
 
 /// <summary>Como terminou uma operação de Setup ou de memória do celular. <see cref="Mensagem"/> é a frase para a tela.</summary>
-/// <param name="PedeFolhaSalvar">Criar memória com uma memória do aparelho (ou o som do aparelho) em uso: o caminho é a folha do Salvar.</param>
+/// <param name="PedeFolhaSalvar">Criar memória com o som do aparelho em uso: o caminho é a folha do Salvar.</param>
 /// <param name="ErroNomeMemoria">Criar Setup novo: quem errou foi o nome da primeira memória, não o do Setup (a tela põe o erro embaixo do campo dela).</param>
 /// <param name="ErroNomeSetup">Criar Setup novo: quem errou foi o nome do Setup (inválido ou repetido).</param>
 public sealed record ResultadoSetup(bool Ok, string? Motivo, string? Mensagem = null, bool PedeFolhaSalvar = false, bool ErroNomeMemoria = false,

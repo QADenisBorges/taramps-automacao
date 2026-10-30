@@ -5,15 +5,6 @@ namespace BgsControle.Nucleo;
 /// <summary>Uma escrita de ajuste de áudio reconhecida pelo catálogo: o parâmetro, o canal ou a banda e o valor no fio.</summary>
 public sealed record EscritaAudio(Parametro Parametro, int? Indice, string NoFio);
 
-public enum TipoComandoMemoria
-{
-    /// <summary><c>*241*n*</c>: o único comando de memória que sai deste app (história 8c).</summary>
-    Carregar,
-}
-
-/// <summary>Um comando de memória reconhecido pela trava: o tipo e a memória (0 a 2). O nome não é usado desde a história 8c.</summary>
-public sealed record ComandoMemoria(TipoComandoMemoria Tipo, int Memoria);
-
 /// <summary>Um comando do gerador reconhecido pela trava: o parâmetro (200–202, 210–213) e o valor.</summary>
 public sealed record ComandoGerador(Parametro Parametro, decimal Valor)
 {
@@ -124,10 +115,11 @@ public static class Catalogo
     ];
 
     /// <summary>
-    /// Fora do Marco 1 (MAPA §4): voltímetro, clip, gerador, nomes das memórias, Audio
-    /// Classic e remote out. Perguntados uma vez em cada leitura; o texto cru fica registrado,
-    /// seja o que vier. As faixas do gerador que o MAPA não dá (frequências, ganho do sweep)
-    /// seguem as do resto do aparelho.
+    /// Fora do Marco 1 (MAPA §4): voltímetro, clip, gerador, Audio Classic e remote out.
+    /// Perguntados uma vez em cada leitura; o texto cru fica registrado, seja o que vier. As
+    /// faixas do gerador que o MAPA não dá (frequências, ganho do sweep) seguem as do resto do
+    /// aparelho. Os nomes das memórias do aparelho (231–233) não são lidos: as memórias do
+    /// processador não aparecem no app (decisão do Denis, 29/10/2026).
     /// </summary>
     public static IReadOnlyList<Parametro> Extras { get; } =
     [
@@ -141,9 +133,6 @@ public static class Catalogo
         Extra(Hz("211", "sweep frequência final", Escopo.Global)),
         Extra(Db("212", "sweep ganho", Escopo.Global, -60, 0)),
         Extra(Indice("213", "sweep velocidade", Escopo.Global, VelocidadesSweep)),
-        Extra(Nome("231", "nome da memória 1")),
-        Extra(Nome("232", "nome da memória 2")),
-        Extra(Nome("233", "nome da memória 3")),
         Extra(Bool("251", "Audio Classic", Escopo.Global, "ligado", "desligado")),
         Extra(Bool("252", "remote out", Escopo.Global, "ligado", "desligado")),
     ];
@@ -221,63 +210,15 @@ public static class Catalogo
         }
     }
 
-    // ------------------------------------------------------------------ memórias (MAPA §5)
-
-    /// <summary>As 3 memórias do DSP: <c>n</c> de 0 a 2 no fio; a memória 1 é o <c>n</c> 0 e o nome 231.</summary>
-    public const int Memorias = 3;
+    // ------------------------------------------------------------------ memórias do aparelho (MAPA §5)
 
     /// <summary>
-    /// O salvar do aparelho (<c>*240*n*</c>). Só para a trava recusar: desde a história 8c, salvar e
-    /// renomear as memórias do aparelho ficam no app da Taramps.
+    /// Os códigos das 3 memórias do aparelho: o salvar (<c>240</c>), o carregar (<c>241</c>) e os
+    /// nomes (<c>231</c> a <c>233</c>). Só para a trava recusar: as memórias do processador não
+    /// aparecem no app (decisão do Denis, 29/10/2026). Salvar, renomear e carregar ficam no app da
+    /// Taramps (o 240 e o 23N desde a história 8c).
     /// </summary>
-    public const string CodigoSalvarMemoria = "240";
-
-    public const string CodigoCarregarMemoria = "241";
-
-    // Suposição MEMORIA-N-NOME (história 12): "memória 1 = n 0 = nome 231".
-    private static readonly System.Text.RegularExpressions.Regex QuadroCarregar =
-        new(@"^\*241\*([0-2])\*\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
-    private static readonly System.Text.RegularExpressions.Regex NomeMemoriaValido =
-        new(@"^[A-Z0-9 _]{1,12}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
-    /// <summary>O código do nome da memória <paramref name="n"/> (0 a 2): 231, 232 ou 233. Só leitura neste app.</summary>
-    public static string CodigoNomeMemoria(int n)
-    {
-        ValidarMemoria(n);
-        return $"23{n + 1}";
-    }
-
-    /// <summary><c>*241*n*</c>: carrega a memória n (0 a 2).</summary>
-    public static string CarregarMemoria(int n)
-    {
-        ValidarMemoria(n);
-        return $"*{CodigoCarregarMemoria}*{n}*";
-    }
-
-    /// <summary>
-    /// Um nome como o aparelho o aceita: sem espaços nas pontas e em maiúsculas, de 1 a 12
-    /// caracteres entre A–Z, 0–9, espaço e <c>_</c>. Fora disso, null (nada sai). Vale para o nome
-    /// do produto (<see cref="NormalizarNomeProduto"/>).
-    /// Suposição REGRA-NOMES: a regra de nomes da Taramps vale para o nome do produto.
-    /// </summary>
-    public static string? NormalizarNomeMemoria(string? digitado)
-    {
-        if (digitado is null)
-            return null;
-        var nome = digitado.Trim().ToUpperInvariant();
-        return NomeMemoriaValido.IsMatch(nome) ? nome : null;
-    }
-
-    /// <summary>
-    /// Se o quadro é exatamente <c>*241*n*</c> (n = 0 a 2), devolve o comando; senão null. É a
-    /// regra da trava para as memórias: <c>*241*3*</c> e <c>*241*0</c> não passam. O <c>*240*</c> e o
-    /// <c>*23N*</c> não são comandos deste app (a trava os recusa em qualquer forma).
-    /// </summary>
-    public static ComandoMemoria? ComandoDeMemoria(string quadro) =>
-        QuadroCarregar.Match(quadro) is { Success: true } m
-            ? new ComandoMemoria(TipoComandoMemoria.Carregar, m.Groups[1].Value[0] - '0')
-            : null;
+    public static IReadOnlyList<string> CodigosDasMemoriasDoAparelho { get; } = ["240", "241", "231", "232", "233"];
 
     // ------------------------------------------------------------------ gerador (MAPA §4 e §5)
 
@@ -382,12 +323,22 @@ public static class Catalogo
         return $"*{CodigoTrocaSenha}*{antiga}*{nova}*";
     }
 
+    private static readonly System.Text.RegularExpressions.Regex NomeProdutoValido =
+        new(@"^[A-Z0-9 _]{1,12}\z", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
     /// <summary>
-    /// O nome do produto como vai no fio: a mesma regra do nome da memória (a regra do Demo): sem
+    /// O nome do produto como vai no fio: a regra de nomes do app da Taramps (a regra do Demo): sem
     /// espaços nas pontas, em maiúsculas, de 1 a 12 caracteres entre A–Z, 0–9, espaço e <c>_</c>.
     /// Fora disso, null (nada sai).
+    /// Suposição REGRA-NOMES: a regra de nomes da Taramps vale para o nome do produto.
     /// </summary>
-    public static string? NormalizarNomeProduto(string? digitado) => NormalizarNomeMemoria(digitado);
+    public static string? NormalizarNomeProduto(string? digitado)
+    {
+        if (digitado is null)
+            return null;
+        var nome = digitado.Trim().ToUpperInvariant();
+        return NomeProdutoValido.IsMatch(nome) ? nome : null;
+    }
 
     /// <summary>
     /// Se o quadro é exatamente um comando de aparelho, devolve o comando; senão null. É a regra da
@@ -420,12 +371,6 @@ public static class Catalogo
         return null;
     }
 
-    private static void ValidarMemoria(int n)
-    {
-        if (n is < 0 or >= Memorias)
-            throw new ArgumentOutOfRangeException(nameof(n), "Memória de 0 a 2 no fio (1 a 3 na tela).");
-    }
-
     public static string RotuloBanda(int banda)
     {
         var hz = BandasHz[banda];
@@ -442,7 +387,7 @@ public static class Catalogo
     public static bool RespostaInteira(string texto)
     {
         var q = Quadros.Analisar(texto);
-        // Um extra pode ter vários segmentos (#232#0#MUSICA#): só o \r\n diz que acabou.
+        // Um extra pode ter vários segmentos (o texto cru fica, seja o que vier): só o \r\n diz que acabou.
         if (q is null || ParametroDe(q.Codigo) is not { } p || p.Extra)
             return false;
         if (p.Escopo == Escopo.Banda && !texto.TrimStart().StartsWith('#'))

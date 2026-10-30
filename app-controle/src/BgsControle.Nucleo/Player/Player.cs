@@ -324,15 +324,15 @@ public sealed class Player : IDisposable
 
     /// <summary>
     /// Com a memória retida, o que a solta: uma mudança do som em uso feita com a conexão aberta e já
-    /// conferida (outra memória do celular, ou a mesma, que só tira a marca; uma memória do aparelho
-    /// carregada; Seguir sem Setup; um Setup sem memórias). Ficam com ela: a queda, a conferência ainda
+    /// conferida (outra memória do celular, ou a mesma, que só tira a marca; Seguir sem Setup; um Setup
+    /// sem memórias). Ficam com ela: a queda, a conferência ainda
     /// por vir, "som diferente", a dúvida e a troca de Setup. Chamar com a trava.
     /// </summary>
     private bool MantemRetida(SomEmUso uso, string? emUso)
     {
         if (!_setups.ConexaoAberta || !_setups.Conferido)
             return true;
-        if (emUso is not null || uso.Tipo == TipoSomEmUso.MemoriaAparelho)
+        if (emUso is not null)
             return false;
         return _setups.Estado is EstadoConferencia.SomDiferente or EstadoConferencia.Duvida or EstadoConferencia.Trocando;
     }

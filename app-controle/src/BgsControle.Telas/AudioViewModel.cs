@@ -1,7 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 
@@ -94,7 +93,6 @@ public sealed class AudioViewModel : TelaBase, IDisposable
 
     private readonly FabricaControles _fabrica;
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
     private readonly LinkCanais _link;
@@ -108,7 +106,6 @@ public sealed class AudioViewModel : TelaBase, IDisposable
     public AudioViewModel(
         FabricaControles fabrica,
         GerenteSetups setups,
-        GerenteMemorias memorias,
         Sessao sessao,
         EstadoAparelho estado,
         LinkCanais link,
@@ -125,7 +122,6 @@ public sealed class AudioViewModel : TelaBase, IDisposable
         _gerador = gerador;
         _fabrica = fabrica;
         _setups = setups;
-        _memorias = memorias;
         _sessao = sessao;
         _estado = estado;
         _link = link;
@@ -175,7 +171,7 @@ public sealed class AudioViewModel : TelaBase, IDisposable
     {
         if (!_telas.TryGetValue(funcao, out var tela))
         {
-            tela = new FuncaoViewModel(funcao, _fabrica, _setups, _memorias, _sessao, _estado, _link, _linkTela, _salvar, _nav, Despachante, Relogio);
+            tela = new FuncaoViewModel(funcao, _fabrica, _setups, _sessao, _estado, _link, _linkTela, _salvar, _nav, Despachante, Relogio);
             _telas[funcao] = tela;
         }
         return tela;

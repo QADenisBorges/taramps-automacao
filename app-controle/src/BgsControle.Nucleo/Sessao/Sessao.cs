@@ -67,17 +67,16 @@ public sealed class Sessao
     public const string MotivoChaveDesligada = "chave desligada";
     public const string MotivoNaoLiberado = "comando não liberado nesta versão do app";
     public const string MotivoEscritaForaDoCatalogo = "escrita fora do catálogo";
-    public const string MotivoMemoriaForaDoFormato = "comando de memória fora do formato";
     public const string MotivoGeradorForaDoFormato = "comando do gerador fora do formato";
     public const string MotivoAparelhoForaDoFormato = "comando do aparelho fora do formato";
     public const string MotivoConexaoTerminou = "a conexão terminou";
     public const string MotivoFalhaEscrita = "falha na escrita";
 
-    // O salvar (240) e os nomes (231 a 233) das memórias do aparelho não saem deste app (história
-    // 8c): qualquer escrita com esses códigos é recusada com MotivoNaoLiberado. Só o carregar (241)
-    // passa, na forma exata (Catalogo.ComandoDeMemoria); fora dela, MotivoMemoriaForaDoFormato.
-    private static readonly HashSet<string> CodigosNaoLiberados =
-        [Catalogo.CodigoSalvarMemoria, .. Enumerable.Range(0, Catalogo.Memorias).Select(Catalogo.CodigoNomeMemoria)];
+    // As memórias do aparelho não saem deste app: o salvar (240) e os nomes (231 a 233) desde a
+    // história 8c, e o carregar (241) desde a decisão do Denis de 29/10/2026 ("as memórias do
+    // processador não devem aparecer no app"). Qualquer texto com esses códigos, em qualquer forma,
+    // é recusado com MotivoNaoLiberado.
+    private static readonly HashSet<string> CodigosNaoLiberados = [.. Catalogo.CodigosDasMemoriasDoAparelho];
 
     // Os códigos do gerador (200–202, 210–213): só a forma exata passa (Catalogo.ComandoDeGerador).
     private static readonly HashSet<string> CodigosDoGerador = [.. Catalogo.CodigosDoGerador];
@@ -87,10 +86,9 @@ public sealed class Sessao
     private static readonly HashSet<string> CodigosDoAparelho = [.. Catalogo.CodigosDoAparelho];
 
     // A trava deixa passar as leituras do catálogo (Catalogo.EhLeitura), a senha, as escritas
-    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada e o
-    // carregar de uma memória do aparelho (Catalogo.ComandoDeMemoria) com a chave "Carregar
-    // memória do aparelho" ligada. Estes formatos só servem para explicar a recusa de uma
-    // leitura desconhecida.
+    // de áudio do Marco 1 (Catalogo.EscritaDeAudio) com a chave "Ajustes de áudio" ligada, o
+    // gerador e os comandos de aparelho, cada um com a sua chave. Estes formatos só servem para
+    // explicar a recusa de uma leitura desconhecida.
     private static readonly Regex FormaDeLeitura = new(@"^(#\d{3}#(\d{1,2}#)?|\d{3}#\d{1,2})$", RegexOptions.CultureInvariant);
     private static readonly Regex QuadroSenha = new(@"^\*000\*[0-9A-Z]{4}\*$", RegexOptions.CultureInvariant);
 
@@ -351,10 +349,10 @@ public sealed class Sessao
     /// <item>o quadro da senha no estado Autenticando;</item>
     /// <item>uma escrita de ajuste de áudio do Marco 1, exatamente como o catálogo a codifica, com
     /// a sessão conectada, fora do modo só leitura e com a chave "Ajustes de áudio" ligada;</item>
-    /// <item><c>*241*n*</c> com a chave "Carregar memória do aparelho", só na forma exata, conectada e
-    /// fora do modo só leitura. O <c>*240*</c> (salvar) e o <c>*23N*</c> (nome) das memórias do
-    /// aparelho são recusados em qualquer forma, com <see cref="MotivoNaoLiberado"/> (história 8c:
-    /// só o app da Taramps salva e renomeia);</item>
+    /// <item>nenhum comando das memórias do aparelho: o <c>*240*</c> (salvar), o <c>*241*</c>
+    /// (carregar) e o <c>*23N*</c> (nome) são recusados em qualquer forma, com
+    /// <see cref="MotivoNaoLiberado"/> (só o app da Taramps salva, renomeia e carrega: história 8c e
+    /// decisão do Denis de 29/10/2026);</item>
     /// <item>os comandos do gerador (<c>*200*v*</c>, <c>*201*v*</c>, <c>*210*v*</c> a
     /// <c>*212*v*</c>, <c>*213*i*</c> e <c>*202*1*</c>) com a chave "Gerador", só na forma exata,
     /// conectada e fora do modo só leitura; <c>*202*0*</c> (desligar) passa sem a chave.</item>
@@ -450,7 +448,8 @@ public sealed class Sessao
             return conectado ? null : MotivoSemConexao;
         if (QuadroSenha.IsMatch(quadro))
             return Estado == EstadoSessao.Autenticando ? null : "a senha só sai na autenticação";
-        // O 240 e o 23N, em qualquer forma e de qualquer origem: nunca saem (história 8c).
+        // O 240, o 241 e o 23N, em qualquer forma e de qualquer origem: nunca saem (história 8c e
+        // decisão do Denis de 29/10/2026).
         if (Quadros.Analisar(quadro)?.Codigo is { } codigoNaoLiberado && CodigosNaoLiberados.Contains(codigoNaoLiberado))
             return MotivoNaoLiberado;
         if (FormaDeLeitura.IsMatch(quadro))
@@ -459,11 +458,7 @@ public sealed class Sessao
             return MotivoSoLeitura;
 
         Chave chave;
-        if (Catalogo.ComandoDeMemoria(quadro) is not null)
-        {
-            chave = Chave.CarregarMemoria;
-        }
-        else if (Catalogo.EscritaDeAudio(quadro) is not null)
+        if (Catalogo.EscritaDeAudio(quadro) is not null)
         {
             chave = Chave.AjustesAudio;
         }
@@ -491,8 +486,6 @@ public sealed class Sessao
         else
         {
             var codigo = Quadros.Analisar(quadro)?.Codigo;
-            if (codigo == Catalogo.CodigoCarregarMemoria)
-                return MotivoMemoriaForaDoFormato;
             if (codigo is not null && CodigosDoGerador.Contains(codigo))
                 return MotivoGeradorForaDoFormato;
             if (codigo is not null && CodigosDoAparelho.Contains(codigo))

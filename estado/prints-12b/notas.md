@@ -1,0 +1,23 @@
+# 12b — notas no aparelho (29/10)
+- Backup do app antigo: estado/backups/app-celular-2026-10-29/ (setups.json formato 2: Casa 2.1 + FILME).
+- Instalação do APK do main (9971cf7): ok.
+- 01/02: abertura estática (ondas) ~6 s; Início desconectado mostra "Sem Setup" e CH3 + CH4 juntos antes da conferência (link do link-canais.json antigo).
+- 03 primeira conexão: R003, mutou, "O Casa 2.1 ainda não tem memória." PASSOU. Log: 4× *100*n*1* e, no Escolher, 4× *100*n*0*, nenhum áudio.
+- 04/05 Escolher: entrou direto no Casa 2.1 (único Setup); por ~3 s o Início mostrou "Sem Setup / Som do aparelho / Setup em dúvida; escolha na tela" antes de trocar. Depois: "Nenhuma memória" + Criar memória.
+- 05: arco lilás decorativo cruza o texto do cartão da memória.
+- 06 Mesa: Sub = CH3 + CH4 (link automático) PASSOU. DEFEITO: "+10,0 dB" da JBL L não cabe na caixa ("dB" quebra).
+- 07 editar valor: dica "Toque em ✓ para" cortada; o ✓ não aparece, só Cancelar (o OK do teclado confirma).
+- 08 Sub 6→5: *081*2*5.0* e *081*3*5.0* com eco. PASSOU. JBL L 10→9→10 e JBL R 7→6→7 com eco; Sub de volta a 6. PASSOU (deferred 27-28).
+- 12 Crossover Avançado: só "CH3 e CH4 ligados: alimentam o mesmo bridge". PASSOU.
+- 13 Configurações: Remote out "Desl." e Bluetooth de áudio "Desl." batem com a leitura (#252#0#, #251#0#) — conferir com o Denis se o módulo está ligado. Nome do produto: campo vazio (o app não lê o 002). Memória 3 do aparelho agora se chama CINEMA (231 SPL, 232 MUSICA ORIG, 233 CINEMA). Voltímetro #005# sem resposta na leitura.
+- 14 Setups: Casa 2.1 HERDADO, em uso, 0 memórias. OK.
+- 15 Esquema: processador, Módulo SD800.4 EVO, JBL L, JBL R e Sub com os cabos CH1–CH4 coloridos, bridge 3+4 para o Sub, sombra visível. Saídas JBL L / JBL R / Sub (CH3 + CH4). PASSOU (visual). Falta gesto (Denis).
+- 16 DEFEITO GRAVE: arrastar o dedo no esquema (Denis, 19:34) travou o app ("não está respondendo"). Todas as threads dormindo, 0% CPU (bloqueio, não laço). Sem root para pegar a pilha.
+- DECISÕES DO DENIS (29/10, durante a 12b):
+  - A configuração nova começa do zero no app; nada é copiado das memórias de hoje do processador (SPL, MUSICA ORIG, CINEMA).
+  - As memórias do processador somem do app inteiro: sem a seção "Do aparelho" e sem o carregar (241). O teste 3 de paridade passa a ser só no estado atual.
+- 30/10, pendências sem o celular:
+  - Caixa do ganho da Mesa: fonte 20→18, folga 10→4, uma linha só (MesaView.xaml). Conferir no aparelho.
+  - Edição de valor: a dica agora diz "Aplica no OK (✓) do teclado. Até lá: X." e quebra em linhas (CampoEdicaoView.xaml); o teclado do Samsung mostra OK, não ✓. Conferir no aparelho.
+  - Arco lilás: 120 px no canto (era 180 com −90), para não cruzar o nome da memória (InicioView.xaml). Conferir no aparelho.
+  - Travamento do esquema: a sonda das contas do desenho em todos os ângulos (−45° a +45°, passo 0,05°, 3 larguras, 3 aproximações; 16.209 casos, Casa 2.1) não deu nenhuma exceção, e o código do esquema não tem espera nem laço sem fim. A causa está na plataforma (gestos do MAUI no Android dentro da rolagem) e só aparece no aparelho ou num emulador. Continua aberto.

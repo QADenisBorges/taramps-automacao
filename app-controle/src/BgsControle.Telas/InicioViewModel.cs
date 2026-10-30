@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -98,7 +97,6 @@ public sealed class InicioViewModel : TelaBase, IDisposable
     public const string TextoReaplicar = "Reaplicar";
 
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
     private readonly LinkCanais _link;
@@ -114,7 +112,6 @@ public sealed class InicioViewModel : TelaBase, IDisposable
 
     public InicioViewModel(
         GerenteSetups setups,
-        GerenteMemorias memorias,
         Sessao sessao,
         EstadoAparelho estado,
         LinkCanais link,
@@ -131,7 +128,6 @@ public sealed class InicioViewModel : TelaBase, IDisposable
         Presets = presets;
         AbrirPresets = new Comando(() => presets?.AbrirFolha.ExecutarAsync() ?? Task.CompletedTask);
         _setups = setups;
-        _memorias = memorias;
         _sessao = sessao;
         _estado = estado;
         _link = link;
@@ -156,7 +152,6 @@ public sealed class InicioViewModel : TelaBase, IDisposable
         TrocarSetup = new Comando(TrocarAsync);
 
         _setups.Mudou += AoMudar;
-        _memorias.Mudou += AoMudar;
         _sessao.Mudou += AoMudarSessao;
         _estado.Recarregou += AoMudar;
         _estado.Mudou += AoMudarValor;
@@ -212,7 +207,7 @@ public sealed class InicioViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ memória em uso
 
-    private SomEmUsoTexto Som => SomEmUsoTexto.De(_setups, _memorias, _sessao);
+    private SomEmUsoTexto Som => SomEmUsoTexto.De(_setups, _sessao);
 
     /// <summary>O cartão da memória em uso aparece (conectado, com o app sabendo o que dizer).</summary>
     public bool MostrarMemoria => Conectado && Som.Nome is not null;
@@ -220,7 +215,7 @@ public sealed class InicioViewModel : TelaBase, IDisposable
     /// <summary>"FILME", "Som do aparelho", "Nenhuma memória"…</summary>
     public string? NomeMemoria => Som.Nome;
 
-    /// <summary>"Memória 2 do aparelho (app da Taramps)", "O app não sabe qual memória está tocando.", ou null.</summary>
+    /// <summary>"O app não sabe qual memória está tocando.", ou null.</summary>
     public string? LinhaMemoria => Som.Linha;
 
     /// <summary>O chip: o nome do preset lembrado ("Cinema"), ou null (sem chip). Tocar abre a folha de presets.</summary>
@@ -374,7 +369,6 @@ public sealed class InicioViewModel : TelaBase, IDisposable
     public void Dispose()
     {
         _setups.Mudou -= AoMudar;
-        _memorias.Mudou -= AoMudar;
         _sessao.Mudou -= AoMudarSessao;
         _estado.Recarregou -= AoMudar;
         _estado.Mudou -= AoMudarValor;

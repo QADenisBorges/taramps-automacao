@@ -41,7 +41,7 @@ O Link 3–4 sai sozinho: o CH3 e o CH4 alimentam o mesmo bridge. Na tela, o Sub
 
 ## As 3 memórias do aparelho (índice em `estado/memorias.json`)
 
-O app só lê os nomes e carrega estas memórias. Quem salva e renomeia é o app da Taramps. As notas abaixo valem pela posição. Elas são **intocáveis** e **não são referência** para o agente nem para as memórias novas do celular (decisão do Denis, 29/10/2026).
+As memórias do processador não aparecem no app (decisão do Denis, 29/10/2026): o app não lê os nomes nem carrega; quem salva, renomeia e carrega é o app da Taramps. Elas são intocáveis e não são referência para as memórias novas do celular. Também não são referência para o agente. As notas abaixo valem pela posição e ficam só como registro.
 
 1. **SPL** (salva em 20/10; antes era a MUSICA HIGH): o máximo seguro de cada falante pelo BT a 100 %. JBL +6 com passa-alta LR24 em 200 Hz e limitador −7 (ataque 5 ms); sub +2,6 com passa-alta BT24 em 40 Hz, passa-baixa LR24 em 200 Hz e limitador −9 (ataque 10 ms); liberação 200 ms, fase e atrasos 0, EQ plano. Medido: 17,7 V nas JBL e 27,5 V no sub (`_bmad-output/regulagem/memoria-spl.md`, seção 12.8; leitura de 24/10 em `estado/leituras/2026-10-24_1714-app-memoria1-spl.json`). Decisão do Denis de 24/10.
 2. **MUSICA ORIG:** ainda é a versão antiga (ganhos −5/−10, limitadores −11/−6). Precisa ser refeita, e esse é o teste 1 do sinal de sucesso.
@@ -56,7 +56,7 @@ O app só lê os nomes e carrega estas memórias. Quem salva e renomeia é o app
 
 ## Memórias e presets do celular
 
-O app nasce **sem memórias e sem presets do celular** (decisão do Denis, 29/10/2026: as calibrações de hoje estão mal feitas, e tudo começa do zero). A FILME dividida em camadas e o preset "Cinema", herdados até 29/10, saíram. Para comparar com o app da Taramps (teste 3), o app carrega a FILME do aparelho.
+O app nasce **sem memórias e sem presets do celular** (decisão do Denis, 29/10/2026: as calibrações de hoje estão mal feitas, e tudo começa do zero). A FILME dividida em camadas e o preset "Cinema", herdados até 29/10, saíram. Para comparar com o app da Taramps, os dois olham o estado atual do aparelho; este app não carrega memória do aparelho.
 
 ## Presets
 - O preset é só o EQ de 15 bandas. Não há preset herdado.

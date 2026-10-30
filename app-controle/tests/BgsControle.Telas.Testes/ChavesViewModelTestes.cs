@@ -28,14 +28,15 @@ public sealed class ChavesViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Lista_as_11_chaves_com_o_estado_padrao()
+    public async Task Lista_as_10_chaves_com_o_estado_padrao()
     {
         await Pronto();
 
-        Assert.Equal(11, _vm.Itens.Count);
+        Assert.Equal(10, _vm.Itens.Count);
         Assert.Equal(ChavesPadrao.Todas.Select(d => d.Nome), _vm.Itens.Select(i => i.Nome));
-        // História 8c: "Carregar memória do aparelho" e "Aplicar memória do celular"; o "Salvar memória" saiu.
-        Assert.Contains("Carregar memória do aparelho", _vm.Itens.Select(i => i.Nome));
+        // História 8c: o "Salvar memória" saiu; em 29/10/2026, o "Carregar memória do aparelho" (as memórias
+        // do processador não aparecem no app). Fica o "Aplicar memória do celular".
+        Assert.DoesNotContain("Carregar memória do aparelho", _vm.Itens.Select(i => i.Nome));
         Assert.Contains("Aplicar memória do celular", _vm.Itens.Select(i => i.Nome));
         Assert.DoesNotContain(_vm.Itens, i => i.Nome.Contains("Salvar", StringComparison.Ordinal));
         Assert.True(_vm.Item(Chave.AplicarMemoriaCelular).Ligada);

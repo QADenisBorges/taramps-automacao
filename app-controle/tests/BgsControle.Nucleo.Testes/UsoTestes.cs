@@ -3,7 +3,6 @@ using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
@@ -80,8 +79,7 @@ public sealed class UsoTestes : IDisposable
         _estado = new EstadoAparelho(_sessao, _leitura);
         _escritor = new Escritor(_sessao, _estado, _log, Escrita, _relogio);
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
-        var memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
-        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, memorias, Escrita, TemposDoGerador, _relogio);
+        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, Escrita, TemposDoGerador, _relogio);
     }
 
     /// <summary>Nada além da senha, das leituras e dos comandos do catálogo chega ao simulador; a senha nunca vai ao histórico.</summary>

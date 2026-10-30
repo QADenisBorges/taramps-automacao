@@ -1,6 +1,5 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Herdado;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;
@@ -9,8 +8,8 @@ namespace BgsControle.Telas.Testes;
 
 /// <summary>
 /// A tela Memórias das histórias 8c e 8d contra o processador simulado: as memórias do celular do
-/// Setup em uso (Aplicar, Renomear, Apagar, Criar memória do som atual, o preset lembrado), a seção
-/// "Do aparelho" (só Carregar) e o "aplicado pela metade".
+/// Setup em uso (Aplicar, Renomear, Apagar, Criar memória do som atual, o preset lembrado) e o
+/// "aplicado pela metade". As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
 /// </summary>
 public sealed class MemoriasViewModelTestes : IDisposable
 {
@@ -165,7 +164,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Sem_Setup_as_memorias_do_celular_ficam_travadas_e_o_aparelho_continua_carregando()
+    public async Task Sem_Setup_as_memorias_do_celular_ficam_travadas()
     {
         _b.Simulador.Definir("050", 2, "0.0");
         await _b.Conectar();
@@ -175,7 +174,6 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.Equal("Escolha um Setup para usar as memórias do celular.", _vm.MotivoTravaCelular);
         Assert.Equal("Escolha um Setup para usar as memórias do celular.", _vm.MotivoTravaAplicar);
         Assert.Equal("Escolha um Setup para usar as memórias do celular.", _vm.MotivoTravaCriar);
-        Assert.Null(_vm.MotivoTravaCarregar);
         await _vm.AbrirCriar.ExecutarAsync();
         Assert.False(_vm.CriarAberto);
         Assert.Equal("Escolha um Setup para usar as memórias do celular.", _vm.Mensagem);
@@ -198,10 +196,12 @@ public sealed class MemoriasViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Criar_com_uma_memoria_do_aparelho_em_uso_abre_a_folha_do_Salvar()
+    public async Task Criar_com_o_som_do_aparelho_em_uso_abre_a_folha_do_Salvar()
     {
+        _b.Simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: o som do aparelho
         await _b.Conectar();
-        await _b.Rodar(_vm.Aparelho(2).Carregar.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(SomEmUso.SomDoAparelho, Setups.EmUso);
 
         await _vm.AbrirCriar.ExecutarAsync();
 
@@ -210,98 +210,34 @@ public sealed class MemoriasViewModelTestes : IDisposable
         Assert.True(_salvar.PedeNome);
     }
 
-    // ----------------------------------------------------------------- do aparelho
-
-    [Fact]
-    public async Task Do_aparelho_mostra_os_3_nomes_lidos_so_Carregar_e_o_lembrete()
-    {
-        await _b.Conectar();
-
-        Assert.Equal(["SPL", "MUSICA ORIG", "FILME"], _vm.DoAparelho.Select(m => m.Nome));
-        Assert.Equal("Memória 2 do aparelho", _vm.Aparelho(2).Titulo);
-        Assert.Equal("Do aparelho", MemoriasViewModel.TituloAparelho);
-        Assert.Equal("Salvar e renomear estas memórias só no app da Taramps.", MemoriasViewModel.LembreteAparelho);
-        Assert.Contains("SPL", _vm.Aparelho(1).NotaHerdada); // a nota vale pela posição
-    }
-
-    [Fact]
-    public async Task Carregar_uma_memoria_do_aparelho_fica_em_uso_e_os_cartoes_do_celular_nao()
-    {
-        _b.Simulador.DefinirMemoria(2, "081", 0, "-20.0");
-        await _b.Conectar();
-
-        await _b.Rodar(_vm.Aparelho(3).Carregar.ExecutarAsync());
-
-        Assert.Equal("Memória 3 FILME em uso.", _vm.Mensagem);
-        Assert.True(_vm.Aparelho(3).EmUso);
-        Assert.False(_vm.Cartao("FILME")!.EmUso);
-        Assert.Equal("-20.0", _b.Simulador.Valor("081", 0));
-        Assert.Equal(SomEmUso.DoAparelho(2), Setups.EmUso);
-    }
-
-    [Fact]
-    public async Task Carregar_com_a_chave_desligada_nada_sai()
-    {
-        await _b.Conectar();
-        await _b.Chaves.DefinirAsync(Chave.CarregarMemoria, false, OrigemComando.Tela);
-        await _b.Tela.EsvaziarAsync();
-        var antes = _b.Simulador.Escritas.Count;
-
-        await _vm.Aparelho(2).Carregar.ExecutarAsync();
-
-        Assert.Equal("Chave desligada", _vm.Mensagem);
-        Assert.Equal(antes, _b.Simulador.Escritas.Count);
-    }
-
     // ----------------------------------------------------------------- aplicado pela metade
 
-    private async Task CarregarComQueda()
+    /// <summary>Aplicar a FILME (com dois ganhos diferentes) e cair logo depois do primeiro ajuste; reconecta.</summary>
+    private async Task AplicarComQueda()
     {
-        _b.Simulador.DefinirMemoria(2, "081", 0, "-20.0");
         await _b.Conectar();
-        _b.Simulador.CairDepoisDaEscrita = _b.Simulador.Escritas.Count + 1; // cai depois do *241*2*
-        await _b.Rodar(_vm.Aparelho(3).Carregar.ExecutarAsync());
-        Assert.Equal(GerenteMemorias.MsgCaiuCarregar, _vm.Mensagem);
+        await _b.Rodar(_b.Escritor.EscreverAsync(Ganho, 0, 4.0m));
+        await _b.Rodar(_b.Escritor.EscreverAsync(Ganho, 2, 1.0m));
+        _b.Simulador.CairDepoisDaEscrita = _b.Simulador.Escritas.Count + 1;
 
+        await _b.Rodar(_vm.Cartao("FILME")!.Aplicar.ExecutarAsync());
         await _b.Conectar();
         await Apoio.Esperar(() => _b.Copia.PelaMetade is not null);
         await _b.Tela.EsvaziarAsync();
     }
 
     [Fact]
-    public async Task Queda_no_carregar_ao_reconectar_mostra_aplicado_pela_metade_com_os_dois_botoes()
-    {
-        await CarregarComQueda();
-
-        Assert.True(_vm.PelaMetade);
-        Assert.Equal("Carregar a memória 3 (FILME) caiu no meio.", _vm.TextoPelaMetade);
-        Assert.False(_vm.Aparelho(3).EmUso);
-    }
-
-    [Fact]
     public async Task Voltar_a_copia_escreve_so_o_que_mudou_e_fecha_o_pela_metade()
     {
-        await CarregarComQueda();
-        var antes = _b.Simulador.Escritas.Count;
+        await AplicarComQueda();
+        Assert.True(_vm.PelaMetade);
 
         await _b.Rodar(_vm.VoltarACopia.ExecutarAsync());
 
         Assert.Equal("O som voltou à cópia.", _vm.Mensagem);
         Assert.False(_vm.PelaMetade);
-        Assert.Equal(["*081*0*10.0*"], _b.Simulador.Escritas.Skip(antes).Where(e => Catalogo.EscritaDeAudio(e) is not null));
-    }
-
-    [Fact]
-    public async Task Terminar_refaz_o_carregar()
-    {
-        await CarregarComQueda();
-
-        await _b.Rodar(_vm.Terminar.ExecutarAsync());
-
-        Assert.False(_vm.PelaMetade);
-        Assert.True(_vm.Aparelho(3).EmUso);
-        Assert.Equal("Memória 3 FILME em uso.", _vm.Mensagem); // o aviso do dono do carregar, não um dos Setups
-        Assert.Equal("-20.0", _b.Simulador.Valor("081", 0));
+        Assert.Equal("+4.0", _b.Simulador.Valor("081", 0));
+        Assert.Equal("+1.0", _b.Simulador.Valor("081", 2));
     }
 
     [Fact]

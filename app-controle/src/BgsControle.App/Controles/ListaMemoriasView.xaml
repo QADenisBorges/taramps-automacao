@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     A lista de memórias do "…" (EXPERIENCE, Lista de memórias; DESIGN, linha-de-escolha): as memórias do
-    celular do Setup em uso e, sob DO APARELHO, as 3 do processador pelos nomes lidos. Tocar aplica (celular)
-    ou carrega (aparelho) e fecha. Sem Setup, as do celular ficam travadas com a frase.
+    celular do Setup em uso. As memórias do processador não aparecem (decisão do Denis, 29/10/2026). Tocar
+    aplica e fecha. Sem Setup, elas ficam travadas com a frase.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -14,46 +14,6 @@
                IsVisible="{Binding TituloCelular, Converter={StaticResource TemTexto}}" />
         <Label Style="{StaticResource tipo-apoio}" Text="{Binding MotivoTravaCelular}" IsVisible="{Binding TravadoCelular}" />
         <VerticalStackLayout BindableLayout.ItemsSource="{Binding LinhasCelular}">
-            <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="telas:LinhaMemoriaViewModel">
-                        <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="14,8"
-                                MinimumHeightRequest="52" BackgroundColor="{StaticResource sup-2}" Margin="0,0,0,6">
-                            <Grid>
-                                <VerticalStackLayout VerticalOptions="Center" Spacing="2">
-                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding Nome}">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding EmUso}" Value="True">
-                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Label" Binding="{Binding Travada}" Value="True">
-                                                <Setter Property="TextColor" Value="{StaticResource apagado}" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Detalhe}"
-                                           IsVisible="{Binding Detalhe, Converter={StaticResource TemTexto}}">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding EmUso}" Value="True">
-                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido-apoio}" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
-                                </VerticalStackLayout>
-                            </Grid>
-                            <Border.Triggers>
-                                <DataTrigger TargetType="Border" Binding="{Binding EmUso}" Value="True">
-                                    <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
-                                </DataTrigger>
-                            </Border.Triggers>
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding Tocar}" />
-                            </Border.GestureRecognizers>
-                        </Border>
-                    </DataTemplate>
-            </BindableLayout.ItemTemplate>
-        </VerticalStackLayout>
-        <Label Style="{StaticResource tipo-rotulo}" Text="DO APARELHO" Margin="0,6,0,0" />
-        <VerticalStackLayout BindableLayout.ItemsSource="{Binding LinhasAparelho}">
             <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="telas:LinhaMemoriaViewModel">
                         <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="14,8"

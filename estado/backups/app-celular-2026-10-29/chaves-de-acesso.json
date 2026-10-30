@@ -1,0 +1,16 @@
+{
+  "formato": 1,
+  "chaves": {
+    "reset-fabrica": false,
+    "ia-pela-rede": false,
+    "reset-audio": false,
+    "troca-senha": false,
+    "gerador": false,
+    "carregar-memoria": true,
+    "aplicar-memoria-celular": true,
+    "remote-out": true,
+    "bluetooth-audio": true,
+    "nome-produto": true,
+    "ajustes-audio": true
+  }
+}

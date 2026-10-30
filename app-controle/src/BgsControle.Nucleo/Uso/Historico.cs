@@ -243,7 +243,9 @@ public sealed class Historico
 
     /// <summary>
     /// Lê o <c>historico.json</c>, da mais antiga à mais nova. Fora do formato 1, ou com outra
-    /// forma: vazio. Uma entrada sem hora, origem, tipo ou "enviado" legíveis é descartada.
+    /// forma: vazio. Uma entrada sem hora, origem, tipo ou "enviado" legíveis é descartada (também a
+    /// de um tipo que o app não tem mais, como o <c>CarregarMemoria</c>, que saiu com as memórias do
+    /// processador em 29/10/2026).
     /// </summary>
     public static IReadOnlyList<EntradaHistorico> DeJson(string json)
     {

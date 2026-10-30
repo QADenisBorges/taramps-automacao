@@ -1,6 +1,5 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -82,7 +81,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     public const string RotuloMaster = "MASTER · todas as saídas";
 
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
     private readonly LinkCanais _link;
@@ -93,7 +91,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
 
     public MesaViewModel(
         GerenteSetups setups,
-        GerenteMemorias memorias,
         Sessao sessao,
         EstadoAparelho estado,
         LinkCanais link,
@@ -107,7 +104,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     {
         _monitoracao = monitoracao;
         _setups = setups;
-        _memorias = memorias;
         _sessao = sessao;
         _estado = estado;
         _link = link;
@@ -119,7 +115,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
         Master.Expandir();
 
         _setups.Mudou += AoMudar;
-        _memorias.Mudou += AoMudar;
         _sessao.Mudou += AoMudar;
         _estado.Recarregou += AoMudar;
         _estado.Mudou += AoMudarValor;
@@ -136,20 +131,14 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     public string RotuloMemoria => InicioViewModel.RotuloMemoria;
 
     /// <summary>
-    /// O nome da memória em uso ("FILME"), ou o que o app sabe ("MUSICA ORIG · memória 2 do aparelho",
-    /// "Som do aparelho"); "—" sem conexão.
+    /// O nome da memória em uso ("FILME"), ou o que o app sabe ("Som do aparelho"); "—" sem conexão.
     /// </summary>
     public string NomeMemoria
     {
         get
         {
-            var som = SomEmUsoTexto.De(_setups, _memorias, _sessao);
-            if (som.Nome is null)
-                return "—";
-            // O sufixo só com o nome lido; sem ele, o nome já é "Memória 2".
-            if (_setups.EmUso is { Tipo: TipoSomEmUso.MemoriaAparelho, MemoriaAparelho: { } n } && _memorias.Nome(n) is { Length: > 0 })
-                return $"{som.Nome} · memória {n + 1} do aparelho";
-            return som.Nome;
+            var som = SomEmUsoTexto.De(_setups, _sessao);
+            return som.Nome ?? "—";
         }
     }
 
@@ -218,7 +207,6 @@ public sealed class MesaViewModel : TelaBase, IDisposable
     public void Dispose()
     {
         _setups.Mudou -= AoMudar;
-        _memorias.Mudou -= AoMudar;
         _sessao.Mudou -= AoMudar;
         _estado.Recarregou -= AoMudar;
         _estado.Mudou -= AoMudarValor;

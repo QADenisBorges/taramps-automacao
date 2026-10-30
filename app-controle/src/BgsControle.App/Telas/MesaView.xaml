@@ -38,10 +38,12 @@
                                 <Label Style="{StaticResource tipo-escala}" Text="{Binding Subtitulo}" HorizontalTextAlignment="Center" />
                             </VerticalStackLayout>
                             <!-- O campo do ganho: tocar no número vira campo. -->
-                            <Border Grid.Row="2" Style="{StaticResource campo-numerico}" Margin="6,0" MinimumWidthRequest="0"
+                            <!-- Numa linha só: "+10,0 dB" cabe na coluna de 3 saídas (12b: o "dB" quebrava a 20 com folga de 10). -->
+                            <Border Grid.Row="2" Style="{StaticResource campo-numerico}" Margin="6,0" Padding="4,0" MinimumWidthRequest="0"
                                     BindingContext="{Binding Ganho}">
                                 <Grid x:DataType="telas:ControleParametroViewModel">
-                                    <Label Style="{StaticResource tipo-valor-canal}" FontSize="20" Text="{Binding TextoValor}"
+                                    <Label Style="{StaticResource tipo-valor-canal}" FontSize="18" Text="{Binding TextoValor}"
+                                           MaxLines="1" LineBreakMode="NoWrap"
                                            HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
                                     <BoxView HeightRequest="2" VerticalOptions="End" Margin="-10,0"
                                              Color="{Binding Canal, Converter={StaticResource CorDaSaida}}" />

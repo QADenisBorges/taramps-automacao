@@ -4,7 +4,6 @@ using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Setups;
 
@@ -533,7 +532,7 @@ public sealed class GerentePresets
                     return Terminar(ResultadoPreset.Falha(MsgCaiuAplicar));
                 }
                 _copia.MarcarPelaMetade();
-                return Terminar(ResultadoPreset.Falha(GerenteMemorias.MsgLeituraParou));
+                return Terminar(ResultadoPreset.Falha(CopiaAntes.MsgLeituraParou));
             }
 
             var (restam, _) = CopiaAntes.Diferencas(alvo, _estado.Copiar());

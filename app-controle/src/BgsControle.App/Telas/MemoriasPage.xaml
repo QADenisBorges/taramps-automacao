@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     Configurações › Memórias (EXPERIENCE, Cartão de memória; DESIGN, cartao-de-memoria): as memórias do celular
-    do Setup em uso (EM USO, HERDADO, o preset lembrado; Aplicar, Renomear, Apagar), Criar memória do som atual
-    e a seção DO APARELHO, com as 3 do processador pelos nomes lidos e só Carregar.
+    do Setup em uso (EM USO, HERDADO, o preset lembrado; Aplicar, Renomear, Apagar) e Criar memória do som atual.
+    As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -75,30 +75,6 @@
                             Command="{Binding AbrirCriar}" />
                     <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaCriar}"
                            IsVisible="{Binding MotivoTravaCriar, Converter={StaticResource TemTexto}}" />
-
-                    <!-- Do aparelho: só Carregar. -->
-                    <Label Style="{StaticResource tipo-rotulo}" Text="DO APARELHO" Margin="0,10,0,0" />
-                    <Label Style="{StaticResource tipo-detalhe}" Text="{x:Static telas:MemoriasViewModel.LembreteAparelho}" />
-                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding DoAparelho}">
-                        <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="telas:CartaoMemoriaAparelhoViewModel">
-                                <Border Style="{StaticResource cartao-grande}">
-                                    <VerticalStackLayout Spacing="6">
-                                        <Label Style="{StaticResource tipo-rotulo}" Text="{Binding Titulo}" />
-                                        <Label Style="{StaticResource tipo-memoria-lista}" Text="{Binding Nome}" />
-                                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding NotaHerdada}" IsVisible="{Binding NotaVisivel}" />
-                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                            <Button Style="{StaticResource botao-pequeno}" Text="Carregar" Command="{Binding Carregar}" />
-                                            <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Nota"
-                                                    Command="{Binding AlternarNota}" />
-                                        </Grid>
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </BindableLayout.ItemTemplate>
-                    </VerticalStackLayout>
-                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaCarregar}"
-                           IsVisible="{Binding MotivoTravaCarregar, Converter={StaticResource TemTexto}}" />
                 </VerticalStackLayout>
             </ScrollView>
         </Grid>

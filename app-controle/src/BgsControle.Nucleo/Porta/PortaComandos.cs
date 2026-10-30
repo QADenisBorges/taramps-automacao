@@ -4,7 +4,6 @@ using System.Text.Json;
 using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
@@ -81,7 +80,6 @@ public sealed class PortaComandos : IDisposable
     private readonly IRedeLocal _rede;
     private readonly EstadoAparelho _estado;
     private readonly Escritor _escritor;
-    private readonly GerenteMemorias _memorias;
     private readonly GerenteSetups _setups;
     private readonly GeradorSinal _gerador;
     private readonly ComandosAparelho _aparelho;
@@ -116,7 +114,6 @@ public sealed class PortaComandos : IDisposable
         IRedeLocal rede,
         EstadoAparelho estado,
         Escritor escritor,
-        GerenteMemorias memorias,
         GerenteSetups setups,
         GeradorSinal gerador,
         ComandosAparelho aparelho,
@@ -134,7 +131,6 @@ public sealed class PortaComandos : IDisposable
         _rede = rede;
         _estado = estado;
         _escritor = escritor;
-        _memorias = memorias;
         _setups = setups;
         _gerador = gerador;
         _aparelho = aparelho;
@@ -543,7 +539,6 @@ public sealed class PortaComandos : IDisposable
         Func<CorpoPedido, Operacao>? montar = (pedido.Metodo, pedido.Caminho) switch
         {
             ("POST", "/ajuste") => Ajuste,
-            ("POST", "/memoria/carregar") => CarregarMemoria,
             ("POST", "/memoria/aplicar") => AplicarMemoria,
             ("POST", "/gerador/tom") => Tom,
             ("POST", "/gerador/sweep") => Sweep,
@@ -713,30 +708,6 @@ public sealed class PortaComandos : IDisposable
         });
     }
 
-    /// <summary>A memória de 1 a 3 (como na tela); o núcleo usa de 0 a 2.</summary>
-    private static int Memoria(CorpoPedido corpo)
-    {
-        var n = corpo.Inteiro("memoria");
-        if (n is < 1 or > Catalogo.Memorias)
-            throw new PedidoInvalidoException("O campo \"memoria\" vai de 1 a 3.");
-        return n - 1;
-    }
-
-    private string AlvoMemoria(int n) => _memorias.Nome(n) is { Length: > 0 } nome ? nome : $"memória {n + 1}";
-
-    private Operacao CarregarMemoria(CorpoPedido corpo)
-    {
-        var n = Memoria(corpo);
-        var quadro = Catalogo.CarregarMemoria(n);
-        var alvo = AlvoMemoria(n);
-        return new Operacao(ComandoNaPorta.Ler(quadro), quadro,
-            Folha(Chave.CarregarMemoria, $"A IA pede para carregar a {alvo}", $"Carregar a {alvo}"), async () =>
-            {
-                var r = await _memorias.CarregarAsync(n);
-                return r.Ok ? Feito(r.Mensagem) : Recusa(409, r.Mensagem ?? r.Motivo ?? "falhou");
-            });
-    }
-
     /// <summary>
     /// Aplicar uma memória do celular (CAP-12): pelo id ou pelo nome (sem diferença de caixa), só entre
     /// as memórias do Setup em uso; sem Setup em uso, ou uma memória de fora dele, é 400 antes da folha.
@@ -880,17 +851,6 @@ public sealed class PortaComandos : IDisposable
         w.WriteBoolean("soLeitura", _sessao.SoLeitura);
         w.WriteBoolean("lido", _estado.Pronto);
         w.WriteBoolean("lendo", _estado.Lendo);
-        w.WriteEndObject();
-
-        w.WriteStartObject("memorias");
-        if (_memorias.EmUso is { } emUso)
-            w.WriteNumber("emUso", emUso + 1);
-        else
-            w.WriteNull("emUso");
-        w.WriteStartArray("nomes");
-        for (var n = 0; n < Catalogo.Memorias; n++)
-            w.WriteStringValue(_memorias.Nome(n));
-        w.WriteEndArray();
         w.WriteEndObject();
 
         var setup = _setups.SetupEmUso;
@@ -1131,12 +1091,11 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos está na tela IA pela rede do celular. Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, a memória do aparelho em uso e os nomes, o Setup (nome em uso ou null, duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada e cada comando da tela enviado). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
-        POST /memoria/carregar {"memoria":1}: carrega a memória do aparelho de 1 a 3. Pede o toque do usuário na tela.
         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na tela. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na tela. O gerador desliga sozinho em 30 s.
         POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque.
@@ -1149,7 +1108,7 @@ public sealed class PortaComandos : IDisposable
         POST /tarefa {"frase":"IA ajustando o EQ da FILME"}: a faixa da tela mostra a frase; a IA fica ativa.
         DELETE /tarefa: a IA terminou; os controles da tela destravam.
 
-        A IA não salva nem renomeia memórias: a porta não tem esse comando.
+        A IA não salva nem renomeia memórias: a porta não tem esse comando. As 3 memórias do aparelho não aparecem: a porta não as carrega nem lê os nomes (isso fica no app da Taramps).
         Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela, uma confirmação na tela ou o PARAR IA), o próximo espera o Continuar na tela; recusado ou sem resposta, só ele é recusado (409).

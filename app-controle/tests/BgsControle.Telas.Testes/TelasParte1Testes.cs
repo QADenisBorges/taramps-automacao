@@ -22,10 +22,10 @@ internal sealed class Telas10 : IDisposable
         Setup = b.CriarSetupViewModel();
         Memorias = b.CriarMemoriasViewModel(Salvar);
         Link = b.CriarLinkViewModel();
-        Botoes = new BotoesMemoriaViewModel(setups, b.Memorias, Memorias, b.Sessao, b.Tela, b.Relogio);
-        Inicio = new InicioViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio);
-        Mesa = new MesaViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio);
-        Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
+        Botoes = new BotoesMemoriaViewModel(setups, Memorias, b.Sessao, b.Tela, b.Relogio);
+        Inicio = new InicioViewModel(setups, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio);
+        Mesa = new MesaViewModel(setups, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio);
+        Audio = new AudioViewModel(b.Fabrica, setups, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
         Casca = new CascaViewModel(b.Sessao, Conexao, Setup, Memorias, Inicio, Mesa, Audio, Salvar, b.Fabrica, Nav, b.Tela, b.Relogio);
         Setups = new SetupsViewModel(setups, b.Sessao, Nav, b.Tela, b.Relogio);
         Configuracoes = new ConfiguracoesViewModel(Nav, b.Tela, b.Relogio);
@@ -50,7 +50,7 @@ internal sealed class Telas10 : IDisposable
     {
         if (!_ajustes.TryGetValue(s, out var a))
         {
-            a = new AjusteSaidaViewModel(s, B.Fabrica, B.Setups!, B.Memorias, B.Sessao, B.Chaves, B.Estado, B.Link, Salvar, Nav, B.Tela, B.Relogio);
+            a = new AjusteSaidaViewModel(s, B.Fabrica, B.Setups!, B.Sessao, B.Chaves, B.Estado, B.Link, Salvar, Nav, B.Tela, B.Relogio);
             _ajustes[s] = a;
         }
         return a;
@@ -346,7 +346,7 @@ public sealed class TelasParte1Testes : IDisposable
     }
 
     [Fact]
-    public async Task A_lista_do_mais_tem_as_memorias_do_Setup_e_as_do_aparelho_e_carregar_fecha()
+    public async Task A_lista_do_mais_tem_so_as_memorias_do_Setup_e_tocar_fecha()
     {
         await _b.Conectar();
         await _t.Botoes.AbrirLista.ExecutarAsync();
@@ -356,18 +356,16 @@ public sealed class TelasParte1Testes : IDisposable
         Assert.Equal("FILME", filme.Nome);
         Assert.Equal("Preset: Cinema", filme.Detalhe);
         Assert.True(filme.EmUso);
-        Assert.Equal(3, _t.Botoes.LinhasAparelho.Count);
-        Assert.Equal("Memória 2 do aparelho", _t.Botoes.LinhasAparelho[1].Detalhe);
+        // As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
+        Assert.Null(typeof(BotoesMemoriaViewModel).GetProperty("LinhasAparelho"));
+        var antes = _b.Simulador.Escritas.Count;
 
-        await _b.Rodar(_t.Botoes.LinhasAparelho[1].Tocar.ExecutarAsync());
+        await _b.Rodar(filme.Tocar.ExecutarAsync()); // a FILME já está em uso: só fecha
         await _b.Tela.EsvaziarAsync();
 
         Assert.False(_t.Botoes.ListaAberta);
-        Assert.Equal("Memória 2 do aparelho (app da Taramps)", _t.Inicio.LinhaMemoria);
-        Assert.Equal(_b.Memorias.Nome(1), _t.Inicio.NomeMemoria);
-        Assert.Null(_t.Inicio.TextoChip);
-        Assert.All(_t.Botoes.Botoes, b => Assert.False(b.EmUso));
-        Assert.True(_t.Botoes.LinhasAparelho[1].EmUso);
+        Assert.Equal("FILME", _t.Inicio.NomeMemoria);
+        Assert.Equal(antes, _b.Simulador.Escritas.Count);
     }
 
     [Fact]

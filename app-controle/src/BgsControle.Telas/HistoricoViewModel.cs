@@ -30,7 +30,7 @@ public sealed record LinhaHistorico(string Hora, string Origem, string Frase, bo
 
 /// <summary>
 /// A frase curta de um comando, em português (EXPERIENCE, Voice and Tone): "Ganho · saída 3 ·
-/// +2,0 dB", "Carregar a memória 3", "Troca de senha". Nunca mostra uma senha.
+/// +2,0 dB", "Aplicar a memória FILME", "Troca de senha". Nunca mostra uma senha.
 /// </summary>
 public static class FraseComando
 {
@@ -46,7 +46,6 @@ public static class FraseComando
         {
             TipoComando.AjusteAudio or TipoComando.Gerador => Parametro(codigo, indice, e.Valor),
             TipoComando.SalvarMemoria => $"Salvar na memória {Memoria(e.Valor)}",
-            TipoComando.CarregarMemoria => $"Carregar a memória {Memoria(e.Valor)}",
             TipoComando.NomearMemoria => Juntar($"Nome da memória {MemoriaDoNome(codigo)}", e.Valor),
             TipoComando.RemoteOut => Juntar("Remote out", LigaDesliga(e.Valor)),
             TipoComando.BluetoothAudio => Juntar("Bluetooth de áudio", LigaDesliga(e.Valor)),

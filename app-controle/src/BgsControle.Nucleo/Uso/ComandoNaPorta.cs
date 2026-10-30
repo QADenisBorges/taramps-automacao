@@ -13,7 +13,6 @@ public enum TipoComando
 
     /// <summary>Não sai mais do app (história 8c); fica para ler o <c>historico.json</c> antigo.</summary>
     SalvarMemoria,
-    CarregarMemoria,
 
     /// <summary>Não sai mais do app (história 8c); fica para ler o <c>historico.json</c> antigo.</summary>
     NomearMemoria,
@@ -68,9 +67,6 @@ public sealed record ComandoNaPorta(TipoComando Tipo, Endereco? Endereco, string
         if (Catalogo.EscritaDeAudio(quadro) is { } audio)
             return new(TipoComando.AjusteAudio, new Endereco(audio.Parametro.Codigo, audio.Indice), audio.NoFio);
 
-        if (Catalogo.ComandoDeMemoria(quadro) is { } memoria)
-            return new(TipoComando.CarregarMemoria, new Endereco(Catalogo.CodigoCarregarMemoria, null), Texto(memoria.Memoria));
-
         if (Catalogo.ComandoDeGerador(quadro) is { } gerador)
         {
             var q = Quadros.Analisar(quadro)!;
@@ -105,6 +101,4 @@ public sealed record ComandoNaPorta(TipoComando Tipo, Endereco? Endereco, string
             return new(TipoComando.TrocaSenha, new Endereco(codigo, null), null);
         return new(TipoComando.Desconhecido, codigo is null ? null : new Endereco(codigo, null), null);
     }
-
-    private static string Texto(int n) => n.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

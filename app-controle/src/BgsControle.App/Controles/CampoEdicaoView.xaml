@@ -19,8 +19,9 @@
                    ReturnCommand="{Binding Confirmar}" HorizontalTextAlignment="End"
                    FontSize="22" Unfocused="AoSair" />
         </Border>
-        <Label Style="{StaticResource tipo-detalhe}"
-               Text="{Binding TextoValor, StringFormat='Toque em ✓ para aplicar. Até lá, o som continua em {0}.'}" />
+        <!-- O teclado do Samsung mostra OK no lugar do ✓ (12b); o texto cabe quebrado na coluna da Mesa. -->
+        <Label Style="{StaticResource tipo-detalhe}" LineBreakMode="WordWrap"
+               Text="{Binding TextoValor, StringFormat='Aplica no OK (✓) do teclado. Até lá: {0}.'}" />
         <Label Style="{StaticResource tipo-texto-erro}" Text="{Binding ErroCampo}"
                IsVisible="{Binding ErroCampo, Converter={StaticResource TemTexto}}" />
         <Button Style="{StaticResource botao-contornado-pequeno}" Text="Cancelar" HorizontalOptions="Start"

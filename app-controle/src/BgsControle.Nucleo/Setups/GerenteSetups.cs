@@ -4,7 +4,6 @@ using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
@@ -220,7 +219,6 @@ public sealed class GerenteSetups
         LeituraAutomatica leitura,
         CopiaAntes copia,
         LinkCanais link,
-        GerenteMemorias memorias,
         GerentePresets presets,
         GerentePlaylists playlists,
         IChaves chaves,
@@ -249,8 +247,6 @@ public sealed class GerenteSetups
         _sessao.Mudou += AoMudarSessao;
         // Depois do espelho (criado antes): quando este aviso chega, o espelho já é a leitura nova.
         _leitura.Terminou += AoTerminarLeitura;
-        memorias.Carregou += AoCarregar;
-        memorias.Bloqueio = () => EmEscolha ? MsgDuvida : null;
         // O preset lembrado: o apagar pergunta quem lembra; o aplicar faz a memória em uso lembrar.
         presets.Lembrados = id => Dados.Memorias.Count(m => m.IdPreset == id);
         presets.AoAplicar = AoAplicarPresetAsync;
@@ -375,7 +371,7 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// O id do preset em uso: o lembrado pela memória do celular em uso, ou o último aplicado nesta
-    /// conexão; nenhum depois de carregar uma memória do aparelho ou de uma queda.
+    /// conexão; nenhum depois de uma queda.
     /// </summary>
     public string? IdPresetEmUso
     {
@@ -501,8 +497,14 @@ public sealed class GerenteSetups
     /// As saídas do app no Setup em uso, com o link que vale agora no app (o tirado das ligações do
     /// Setup em uso): cada par com link é uma saída só. Sem Setup em uso, CH1 a CH4.
     /// </summary>
+    /// <remarks>
+    /// Sem Setup em uso o link guardado não conta: antes da conferência ele é o da última sessão (o Início
+    /// desconectado mostrava "Sem Setup" com CH3 + CH4 juntos; 12b, 29/10/2026).
+    /// </remarks>
     public IReadOnlyList<SaidaApp> SaidasEmUso =>
-        Ligacoes.Saidas(SetupEmUso?.Equipamentos ?? [], _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34));
+        SetupEmUso is { } setup
+            ? Ligacoes.Saidas(setup.Equipamentos, _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34))
+            : Ligacoes.Saidas([], false, false);
 
     /// <summary>As saídas de um Setup guardado, com o link tirado das ligações dele (vazio se o Setup não existe).</summary>
     public IReadOnlyList<SaidaApp> Saidas(string? idSetup) =>
@@ -1312,8 +1314,8 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// Criar memória do som atual, no Setup em uso: guarda a regulagem lida, com o valor final. Vira a
-    /// memória em uso e a ativa e entra nos botões. Com uma memória do aparelho (ou o som do aparelho)
-    /// em uso, não cria: o caminho é a folha do Salvar.
+    /// memória em uso e a ativa e entra nos botões. Com o som do aparelho em uso, não cria: o caminho
+    /// é a folha do Salvar.
     /// </summary>
     public async Task<ResultadoSetup> CriarMemoriaAsync(string? nomeDigitado)
     {
@@ -1326,7 +1328,7 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(MsgDuvida));
             if (SetupEmUso is not { } setup)
                 return Terminar(ResultadoSetup.Falha(MsgSemSetup));
-            if (EmUso.Tipo is TipoSomEmUso.MemoriaAparelho or TipoSomEmUso.SomDoAparelho)
+            if (EmUso.Tipo is TipoSomEmUso.SomDoAparelho)
                 return Terminar(new ResultadoSetup(false, MsgPedeFolha, MsgPedeFolha, PedeFolhaSalvar: true));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
@@ -1547,7 +1549,7 @@ public sealed class GerenteSetups
             };
         }
 
-        // Uma memória do aparelho, o som do aparelho, ou o Setup sem memórias: a regulagem vai para uma
+        // O som do aparelho, ou o Setup sem memórias: a regulagem vai para uma
         // memória nova; as 15 bandas, para o preset igual ou um novo.
         linhas.Add(new LinhaSalvar(Camada.Regulagem, "Regulagem → memória nova", []));
         var (linha, igual) = LinhaBandasMemoriaNova(espelho);
@@ -1819,20 +1821,6 @@ public sealed class GerenteSetups
         return (new MemoriaCelular($"memoria-{Guid.NewGuid():N}", setup.Id, nome, _relogio.GetLocalNow(), regulagem, idPreset), null, false);
     }
 
-    // ------------------------------------------------------------------ memória do aparelho
-
-    private void AoCarregar(int n)
-    {
-        lock (_trava)
-        {
-            _emUso = SomEmUso.DoAparelho(n);
-            _ultimoPreset = null; // o som do aparelho: nenhum preset em uso
-            if (_situacao == EstadoConferencia.SomDiferente)
-                _situacao = EstadoConferencia.Confere;
-        }
-        Notificar();
-    }
-
     // ------------------------------------------------------------------ aplicar (a regra 3)
 
     private sealed record Aplicado(bool Ok, string? Motivo, bool Iniciou, int Restam)
@@ -1919,7 +1907,7 @@ public sealed class GerenteSetups
                 return Aplicado.Falha(MsgCaiu);
             }
             _copia.MarcarPelaMetade();
-            return Aplicado.Falha(GerenteMemorias.MsgLeituraParou);
+            return Aplicado.Falha(CopiaAntes.MsgLeituraParou);
         }
         var (restam, _) = CopiaAntes.Diferencas(copiaAlvo, _estado.Copiar());
         return new Aplicado(true, null, Iniciou: true, Restam: restam.Count);

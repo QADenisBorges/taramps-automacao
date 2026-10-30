@@ -50,8 +50,9 @@ As antigas histórias 3 (telas de leitura) e 4 (paridade) são absorvidas pelas 
 | 9b | **Porta da IA:** HTTP, pareamento de 6 dígitos, só a rede local, confirmação na tela, "Parar IA" | 12 |
 | 10 | **Telas, parte 1** (pelo UX): leitura, ajustes, link e memórias | 2, 3, 4, 14 |
 | 11 | **Telas, parte 2** (pelo UX): gerador, monitoração, aparelho, chaves, presets, IA e histórico | 5, 7–13 |
-| 12 | **Integração e testes no aparelho:** conferir a lista de suposições do simulador; paridade nas 3 memórias; testes 1, 2 e 3 do sinal de sucesso; voltímetro contra o multímetro; gerador só com o RCA dos módulos desconectado; Wi-Fi real; o reset de fábrica testado só na recusa, a menos que o Denis decida outra coisa | todas |
+| 12 | **Integração e testes no aparelho:** conferir a lista de suposições do simulador; paridade no estado atual do aparelho; testes 1, 2 e 3 do sinal de sucesso; voltímetro contra o multímetro; gerador só com o RCA dos módulos desconectado; Wi-Fi real; o reset de fábrica testado só na recusa, a menos que o Denis decida outra coisa | todas |
 
+- **Mudança de 29/10/2026 (memórias do processador):** as memórias do processador não aparecem no app (decisão do Denis). O carregar da história 6 saiu: a trava recusa o `241` como o `240` e o `23N`, e a leitura completa não lê mais os nomes 231–233. O simulador continua imitando o 241 e os nomes, porque é o aparelho; a suposição do ack do 241 fica fora de uso.
 - **Cada história do núcleo (5 a 9b)** entrega o seu ViewModel testado contra o simulador. As histórias 10 e 11 ficam com o XAML, a navegação e o acabamento.
 - **Se uma spec passar muito do tamanho** (a 7 é a candidata), divido.
 
@@ -74,4 +75,4 @@ As antigas histórias 3 (telas de leitura) e 4 (paridade) são absorvidas pelas 
   - `dotnet build app-controle/src/BgsControle.App -f net10.0-android -c Debug` dá 0 erros e 0 avisos.
   - Revisão com os três revisores do bmad-build e commit local.
 - **No fim de cada pedaço:** merge no `main` e push, como o Denis pediu nas histórias 1 e 2.
-- **História 12:** o APK no Galaxy A52 com o processador; a leitura 84 de 84 e a paridade valor a valor nas 3 memórias; a MUSICA ORIG refeita só pelo celular; a IA lendo, ajustando e salvando pela porta, com a tela ao vivo.
+- **História 12:** o APK no Galaxy A52 com o processador; a leitura 84 de 84 e a paridade valor a valor no estado atual do aparelho (a memória, se for outra, é carregada pelo app da Taramps); a MUSICA ORIG refeita só pelo celular; a IA lendo, ajustando e salvando pela porta, com a tela ao vivo.

@@ -1,6 +1,5 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 
@@ -19,7 +18,6 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
 {
     private readonly FabricaControles _fabrica;
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly Sessao _sessao;
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
@@ -41,7 +39,6 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         int canal,
         FabricaControles fabrica,
         GerenteSetups setups,
-        GerenteMemorias memorias,
         Sessao sessao,
         IChaves chaves,
         EstadoAparelho estado,
@@ -55,7 +52,6 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         _pedido = canal;
         _fabrica = fabrica;
         _setups = setups;
-        _memorias = memorias;
         _sessao = sessao;
         _chaves = chaves;
         _estado = estado;
@@ -73,7 +69,6 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         Voltar = new Comando(nav.Voltar);
 
         _setups.Mudou += AoMudar;
-        _memorias.Mudou += AoMudar;
         _sessao.Mudou += AoMudar;
         _chaves.Mudou += AoMudarChave;
         _estado.Recarregou += AoMudar;
@@ -96,7 +91,7 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         get
         {
             var texto = $"{_saida.Rotulo} · rota {TextosParametro.Rota(_estado, Canal)}";
-            return SomEmUsoTexto.De(_setups, _memorias, _sessao).Nome is { } nome ? $"{texto} · {nome}" : texto;
+            return SomEmUsoTexto.De(_setups, _sessao).Nome is { } nome ? $"{texto} · {nome}" : texto;
         }
     }
 
@@ -227,7 +222,6 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
     public void Dispose()
     {
         _setups.Mudou -= AoMudar;
-        _memorias.Mudou -= AoMudar;
         _sessao.Mudou -= AoMudar;
         _chaves.Mudou -= AoMudarChave;
         _estado.Recarregou -= AoMudar;

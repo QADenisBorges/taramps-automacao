@@ -31,14 +31,14 @@ Uma visão a realizar, que nasceu de uma dor. Para regular o 2.1, o Denis depend
   - **intent:** O app conecta e autentica no PRO 2.4BT pelo Bluetooth do celular e lê a versão do firmware.
   - **success:** Com a senha certa, conecta e mostra "R003". Com a senha errada, recusa sem enviar nenhuma escrita. Com um firmware simulado diferente de R003, entra em modo só leitura e avisa.
 - **CAP-2**
-  - **intent:** O usuário vê o estado completo do aparelho: os parâmetros do MAPA §4, o gerador, a monitoração e os nomes das memórias do aparelho (só leitura, para escolher qual carregar).
-  - **success:** Uma leitura completa traz todos os parâmetros sem falha (a referência do protótipo foi 84 de 84). Cada valor do estado atual bate com o que o app da Taramps mostra, também depois de carregar a FILME do aparelho (`241`).
+  - **intent:** O usuário vê o estado completo do aparelho: os parâmetros do MAPA §4, o gerador e a monitoração. As memórias do processador não aparecem no app (decisão do Denis, 29/10/2026): o app não lê os nomes delas (231–233).
+  - **success:** Uma leitura completa traz todos os parâmetros sem falha (a referência do protótipo foi 84 de 84). Cada valor do estado atual bate com o que o app da Taramps mostra do som atual.
 - **CAP-3**
   - **intent:** O usuário regula, pelas telas, todos os parâmetros de áudio do MAPA §4, por canal e globais. O link dos canais 1–2 e 3–4 não é ajuste do usuário: sai sozinho das ligações do Setup (CAP-16). As saídas na tela são as do Setup: um canal, ou um par de canais vizinhos com o link ligado, que vira uma saída só e escreve nos dois.
   - **success:** Cada parâmetro escrito é relido igual ao valor pedido, dentro do passo do MAPA. Com o link ligado, mexer no canal mestre muda o par. No Casa 2.1, o Sub aparece como uma saída só e mexer nele muda o CH3 e o CH4.
 - **CAP-4**
-  - **intent:** O usuário cria, aplica, renomeia e apaga memórias no celular. Cada memória pertence a um Setup (CAP-16) e guarda toda a regulagem, com o valor final de cada parâmetro (atraso, fase, cortes, rota, EQ de entrada, ganho, limitador, EQ de saída e MASTER; tudo menos as 15 bandas, o link e o que fica fora das camadas), e a playlist (CAP-15), e lembra o último preset usado com ela, que volta junto quando ela é aplicada. Uma memória nova começa do som atual. Salvar é um passo à parte, com um só botão: cada mudança vai para a camada dona dela (regulagem → memória; 15 bandas → preset, CAP-5); o link vem sozinho do Setup. Aplicar é escrever ao vivo, com cópia antes e releitura. O app nasce sem memórias nem presets do celular (decisão do Denis, 29/10/2026). O usuário também pode carregar uma das 3 memórias do processador (`241`), com cópia antes e releitura: o som carregado aparece como "Memória N do aparelho (app da Taramps)", sem Setup e sem playlist, e este app não salva nem renomeia memórias do aparelho.
-  - **success:** Depois de aplicar uma memória, a releitura mostra a regulagem da memória, o link tirado do Setup e o preset escolhido. Nenhum `240` ou `23N` sai do app.
+  - **intent:** O usuário cria, aplica, renomeia e apaga memórias no celular. Cada memória pertence a um Setup (CAP-16) e guarda toda a regulagem, com o valor final de cada parâmetro (atraso, fase, cortes, rota, EQ de entrada, ganho, limitador, EQ de saída e MASTER; tudo menos as 15 bandas, o link e o que fica fora das camadas), e a playlist (CAP-15), e lembra o último preset usado com ela, que volta junto quando ela é aplicada. Uma memória nova começa do som atual. Salvar é um passo à parte, com um só botão: cada mudança vai para a camada dona dela (regulagem → memória; 15 bandas → preset, CAP-5); o link vem sozinho do Setup. Aplicar é escrever ao vivo, com cópia antes e releitura. O app nasce sem memórias nem presets do celular (decisão do Denis, 29/10/2026). As 3 memórias do processador não aparecem no app (decisão do Denis, 29/10/2026): o app não salva, não renomeia, não carrega e não lê os nomes delas. Para usar uma memória do aparelho, o caminho é o app da Taramps; depois, este app relê. Quando o som atual não bate com nenhuma memória do celular, o app mostra "Som do aparelho".
+  - **success:** Depois de aplicar uma memória, a releitura mostra a regulagem da memória, o link tirado do Setup e o preset escolhido. Nenhum `240`, `241` ou `23N` sai do app.
 - **CAP-5**
   - **intent:** O preset é só o EQ gráfico de 15 bandas (gênero ou conteúdo: Rock, Sertanejo, Ação, Diálogo…), guardado no celular e aplicado por cima da memória, sem mexer no resto da regulagem. O usuário pode aplicá-los, renomeá-los e apagá-los. Ao salvar 15 bandas mexidas, o usuário escolhe entre atualizar o preset em uso (vale para toda memória que usa ele) e criar um preset novo.
   - **success:** Trocar o preset muda só as 15 bandas na releitura; os demais parâmetros ficam iguais.
@@ -82,7 +82,7 @@ Uma visão a realizar, que nasceu de uma dor. Para regular o 2.1, o Denis depend
 ## Constraints
 
 - O app é Android e roda no celular. O notebook sai das configurações.
-- As telas cobrem tudo o que o app da Taramps faz, menos a edição das 3 memórias do processador, que fica só no app da Taramps (decisão do Denis, 22–23/10/2026). No lugar delas, o app tem memórias no celular, ligadas a um Setup. Nenhuma função fica só na IA.
+- As telas cobrem tudo o que o app da Taramps faz, menos as 3 memórias do processador (salvar, renomear e carregar), que ficam só no app da Taramps (decisões do Denis, 22–23/10/2026 e 29/10/2026). No lugar delas, o app tem memórias no celular, ligadas a um Setup. Nenhuma função fica só na IA.
 - Não há IA dentro do app. A IA fica fora e só entra pela porta de comandos.
 - O Setup é só o físico; toda a regulagem é da memória (forja de 29/10/2026).
 - Tudo é reescrito do zero, inclusive o protocolo e o guardião. O código dos protótipos serve só de consulta. `MAPA.md` e `APK.md` são a referência do protocolo.
@@ -99,7 +99,7 @@ Uma visão a realizar, que nasceu de uma dor. Para regular o 2.1, o Denis depend
 - IA dentro do app: fica para depois; primeiro, o agente pela porta (forja de 29/10/2026).
 - O agente que cria a memória (perguntas adaptativas, escuta "1 ou 2", aprendizado, ouvintes simulados, porta nos dois sentidos com modal e o serviço que acorda o agente): spec própria, depois do Rendimento, a partir de `../../forge/montagem-do-setup/forged-idea.md`.
 - Guardião completo, com limites por alto-falante (fica para uma etapa posterior; aqui existem só as chaves de acesso).
-- Editar as 3 memórias do processador: salvar (`240`) e renomear (`23N`) só pelo app da Taramps. Este app só lê os nomes e carrega (`241`).
+- Usar as 3 memórias do processador: salvar (`240`), renomear (`23N`) e carregar (`241`) só pelo app da Taramps. Elas não aparecem neste app, que não lê nem os nomes (decisão do Denis, 29/10/2026).
 - Guardar o som no aparelho para tocar sem o celular. Se a história 12 mostrar que o processador perde o estado ao vivo quando é desligado, o app reaplica a memória ativa do celular ao conectar, depois de confirmar o Setup. Sem o celular, o processador toca o que estiver nele, e isso é responsabilidade do app da Taramps (limitação conhecida).
 - Rendimento (níveis Baixo a Extra, análise da playlist, teste a seco, teto por preset): spec própria depois da história 12, a partir de `../../forge/teste-de-playlist/forged-idea.md`. Os limites físicos por equipamento (potência, tensão, teto) usam os equipamentos cadastrados na CAP-16.
 - Medição por microfone e leitura de dados de softwares profissionais (POC 2).
@@ -116,7 +116,7 @@ O POC 1 está pronto quando passa nestes quatro testes:
 
 1. O Denis refaz a MUSICA ORIG como memória do Setup "Casa 2.1" só pelo celular, sem abrir o app da Taramps. Depois de desligar e religar o processador, ao conectar, o app deixa o som igual ao da memória (o aparelho guardou, ou o app reaplicou).
 2. A IA, pela porta de comandos, lê tudo, muda um ajuste e aplica uma memória, com a tela do celular mostrando ao vivo.
-3. Cada valor lido pelo app é igual ao que o app da Taramps mostra, no estado atual e depois de carregar a FILME do aparelho.
+3. Cada valor lido pelo app é igual ao que o app da Taramps mostra do estado atual do aparelho. Este app não carrega memória: para comparar outro som, o Denis carrega a memória pelo app da Taramps, e este app relê.
 4. Com o processador com corte, atraso, fase ou rota diferentes da última memória aplicada, o app não aplica nem toca antes de o usuário confirmar na tela.
 
 ## Assumptions

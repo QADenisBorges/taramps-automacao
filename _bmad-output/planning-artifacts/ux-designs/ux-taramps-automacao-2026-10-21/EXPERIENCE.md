@@ -32,6 +32,8 @@ Origem e histórico das suposições: `.memlog.md`.
 
 **Mudança de 29/10/2026** (`sprint-change-proposal-2026-10-29.md`): o Setup é só o físico (equipamentos e fichas com origem); toda a regulagem, com o valor final, é da memória; o link sai sozinho das ligações; o equilíbrio do Setup sai; o app começa sem memórias e sem presets do celular; a conferência ao conectar compara com a última memória aplicada; a IA espera **Continuar** a cada 3 ajustes seguidos sem um toque do Denis. Os mocks ainda mostram o modelo antigo nesses pontos.
 
+**Mudança de 29/10/2026 (memórias do processador):** "As memórias do processador não devem aparecer no app" (decisão do Denis). Saem a seção **Do aparelho** da tela Memórias e da lista de memórias ("…"), o carregar (`241`), a chave "Carregar memória do aparelho" (ficam 10 chaves), o estado "Memória N do aparelho" no cartão da memória em uso e na Mesa, e o estado **Carregando memória do aparelho**. Fica o **"Som do aparelho"**: ele só diz que o som atual não bate com nenhuma memória do celular. Para usar uma memória do aparelho, o caminho é o app da Taramps; depois, este app relê. Os mocks que mostram as memórias do aparelho estão velhos nesse ponto.
+
 ## Foundation
 
 - **Plataforma:** Android, app em **.NET MAUI** (projeto `BgsControle.App`, com os ViewModels em `BgsControle.Telas`). Sem iOS.
@@ -40,7 +42,7 @@ Origem e histórico das suposições: `.memlog.md`.
 - **Aparelho:** PRO 2.4BT + AUDIO, firmware R003, uma conexão BLE por vez. A música do Player sai do celular pelo Bluetooth de áudio do processador.
 - **Sistema de interface:** nenhum de terceiros. Navegação, teclado, seletor de arquivos e botão Voltar seguem o Android; o visual vem todo do [`DESIGN.md`](DESIGN.md), que é a referência de identidade.
 - **Tema:** só escuro. Fonte Roboto variável embutida; os tamanhos acompanham a escala de fonte do Android.
-- **As 3 memórias do processador:** o app só lê os nomes e carrega. Salvar e renomear ficam no app da Taramps. O processador não diz qual memória dele está tocando.
+- **As 3 memórias do processador:** não aparecem no app (decisão do Denis, 29/10/2026). O app não lê os nomes nem carrega; salvar, renomear e carregar ficam no app da Taramps. O processador não diz qual memória dele está tocando.
 
 ### Três camadas do som
 
@@ -67,7 +69,7 @@ Barra inferior com quatro destinos: **Início · Mesa · Áudio · Player**. A *
 | **Player** | Barra | Playlist da memória do celular em uso: tocar músicas do celular pelo Bluetooth até o processador | só este documento |
 | **Setup em dúvida** | Sozinha ao conectar, quando corte, atraso, fase ou rota lidos não batem com a memória ativa do último Setup usado, ou quando ele ainda não tem memória | Escolher ou criar o Setup antes de tocar, com o som mutado (ver Conectar e Setup) | mock da 3b, quadro 2 |
 | **Trocar de Setup** | Tocar no nome do Setup no cabeçalho do Início ("Setup Casa 2.1 ›") | A mesma tela, para escolher outro Setup ou criar um (ver Conectar e Setup) | mock da 3b, quadro 2 (variante sem dúvida) |
-| **Lista de memórias** | Botão "…" ao lado dos 3 botões de memória (Início, Mesa) | As memórias do celular do Setup em uso e, na seção **"Do aparelho"**, as 3 do processador | só este documento |
+| **Lista de memórias** | Botão "…" ao lado dos 3 botões de memória (Início, Mesa) | As memórias do celular do Setup em uso | só este documento |
 | **Ajuste da saída** (uma por saída do Setup; no Casa 2.1: JBL L, JBL R, Sub) | "Ajustar ›" no cartão de saída (Início) ou "Ajustar" no canal (Mesa) | Os ajustes de uma saída numa tela (ver Ajuste da saída) | v2 quadros 3, 3b, 4 (com a divisão antiga); mock da 3b, quadro 3 (Salvar e folha do Salvar) |
 | **Telas de função** (Roteamento, EQ 15 bandas, EQ de entrada, Crossover, Alinhamento, Fase, Limitador, Nível das saídas, EQ de saída) | Bloco da grade Áudio | Uma função para as três saídas, com abas de saída [ASSUMPTION] | telas-chave 2a, 2b (Crossover); as outras, só este documento |
 | **Gerador** | Bloco Gerador da grade Áudio | Tom fixo e sweep, com prazo de 30 s | só este documento |
@@ -75,11 +77,11 @@ Barra inferior com quatro destinos: **Início · Mesa · Áudio · Player**. A *
 | **Setups** | Configurações › Setups [ASSUMPTION] | Ver os Setups, renomear e apagar [ASSUMPTION]; selo HERDADO no Casa 2.1. Criar e trocar de Setup só pela tela Trocar de Setup ou Setup em dúvida. Tocar num Setup abre a tela **Setup** | só este documento |
 | **Setup** (um Setup) | Configurações › Setups › tocar num Setup; tocar no esquema no Início [ASSUMPTION] | O **esquema do Setup** em cima (2D com sensação de 3D) e a lista de **equipamentos** embaixo: adicionar, editar, tirar (ver Equipamentos e saídas) | só este documento (proposta de 23/10, equipamentos) |
 | **Folha de equipamento** | "Adicionar equipamento" ou tocar num equipamento (lista ou esquema) | Grupo, categoria, nome, modelo, função acústica, dados técnicos e onde está ligado | só este documento |
-| **Memórias** | Configurações › Memórias | Memórias do celular do Setup em uso: aplicar, criar do som atual, renomear, apagar. Seção **"Do aparelho"**: as 3 memórias do processador, pelos nomes lidos, só para carregar (são intocáveis) | telas-chave 4a, 4b (modelo antigo) |
+| **Memórias** | Configurações › Memórias | Memórias do celular do Setup em uso: aplicar, criar do som atual, renomear, apagar. As memórias do processador não aparecem | telas-chave 4a, 4b (modelo antigo) |
 | **Presets no celular** | Configurações › Presets; chip de preset no Início (folha com a lista) | Presets de 15 bandas: aplicar por cima da memória, renomear, apagar, exportar. Não há preset herdado. Preset novo nasce na folha do Salvar | só este documento |
 | **Aparelho** (grupo dentro de Configurações) | Configurações | Remote out, Bluetooth de áudio, nome do produto, senha, Voltímetro e clip; resets em Avançado | telas-chave 3 |
 | **Voltímetro e clip** | Configurações › Aparelho › Voltímetro e clip; tocar na faixa de monitoração da Mesa | Tensão e clip das saídas e da entrada ao vivo, maiores | só este documento |
-| **Chaves de acesso** | Configurações › Chaves de acesso | Ligar e desligar as 11 chaves, com aviso do risco | telas-chave 5a, 5b |
+| **Chaves de acesso** | Configurações › Chaves de acesso | Ligar e desligar as 10 chaves, com aviso do risco | telas-chave 5a, 5b |
 | **IA pela rede** | Configurações › IA pela rede | Chave da IA, código de pareamento de 6 dígitos, cliente pareado, revogar, e o comportamento do toque durante a IA | só este documento |
 | **IA ativa** | Abre sozinha quando a IA começa uma tarefa | Ver ao vivo o que a IA mexe; PARAR IA | v2 quadro 5 |
 | **Histórico** | Configurações › Histórico | Cada comando, da tela e da IA, com origem, hora e valor | só este documento (o recorte "O que a IA fez" é o modelo) |
@@ -154,8 +156,7 @@ Tela **Setup em dúvida** (decisão do Denis sobre a recomendação da IA; [mock
 | Situação | Cartão |
 |---|---|
 | Memória do celular aplicada ou criada nesta conexão, ou confirmada pela conferência ao conectar | O nome dela, com o chip de preset; o botão dela em branco |
-| Memória do aparelho carregada por este app nesta conexão | O nome lido ("MUSICA ORIG") e, embaixo, "Memória 2 do aparelho (app da Taramps)"; sem chip; nenhum botão em branco |
-| O app não sabe: Seguir sem Setup, ganho, limitador, EQ ou MASTER diferentes da memória ativa, ou reconexão depois de carregar uma memória do aparelho | **"Som do aparelho"**, sem nome nem chip; nenhum botão em branco. [ASSUMPTION] Embaixo: "O app não sabe qual memória está tocando." Com ganho ou EQ diferente, também o aviso "Som diferente da FILME" e **Reaplicar** |
+| O app não sabe: Seguir sem Setup, ou ganho, limitador, EQ ou MASTER diferentes da memória ativa (por exemplo, depois de carregar uma memória pelo app da Taramps) | **"Som do aparelho"**, sem nome nem chip; nenhum botão em branco. [ASSUMPTION] Embaixo: "O app não sabe qual memória está tocando." Com ganho ou EQ diferente, também o aviso "Som diferente da FILME" e **Reaplicar** |
 | Setup sem memórias | "Nenhuma memória" e **Criar memória do som atual** |
 
 ### Salvar por camadas
@@ -165,25 +166,25 @@ Tela **Setup em dúvida** (decisão do Denis sobre a recomendação da IA; [mock
 | Caso | Para onde vai | O que a folha pergunta |
 |---|---|---|
 | Memória do celular em uso | Regulagem → memória em uso; 15 bandas → preset lembrado | Com as 15 bandas mexidas: **Atualizar o preset Rock** ("Vale para toda memória que usa ele.") ou **Criar preset novo**, com o nome. [ASSUMPTION] Nenhuma vem escolhida; o botão branco só destrava depois da escolha |
-| Memória do aparelho ou "Som do aparelho" em uso | Regulagem → **memória nova do celular**, com o nome. [ASSUMPTION] 15 bandas → **preset novo**, com o nome, lembrado pela memória nova | — Com isso, a próxima conexão confere sem dúvida |
+| "Som do aparelho" em uso | Regulagem → **memória nova do celular**, com o nome. [ASSUMPTION] 15 bandas → **preset novo**, com o nome, lembrado pela memória nova | — Com isso, a próxima conexão confere sem dúvida |
 | Setup sem memórias | [ASSUMPTION] Regulagem → memória nova do celular, com o nome | — |
 | Seguir sem Setup | Nada | [ASSUMPTION] Salvar travado: "Escolha um Setup para salvar." |
-| Nada mudou | Nada | [ASSUMPTION] Salvar travado: "Nada para salvar." Com memória do aparelho ou "Som do aparelho" em uso, o Salvar nunca trava por isso |
+| Nada mudou | Nada | [ASSUMPTION] Salvar travado: "Nada para salvar." Com "Som do aparelho" em uso, o Salvar nunca trava por isso |
 
 Regras:
 
 - [ASSUMPTION] O antes e o depois mostram o valor da tela, que é o final no aparelho e o que a memória guarda.
 - O Salvar não manda nada pelo BLE.
 - [ASSUMPTION] Ao fim, aviso curto do que foi para onde: "Salvo: regulagem na MUSICA ORIG, 15 bandas no Rock."
-- [ASSUMPTION] Aplicar ou carregar outra memória, ou Reaplicar, descarta as mudanças não salvas sem perguntar, porque aplicar não pede confirmação.
-- **Criar memória do som atual** (Memórias, cartão "Nenhuma memória") guarda a regulagem que está tocando numa memória nova, sem a folha. Com memória do aparelho ou "Som do aparelho" em uso, abre a folha do Salvar (terceira linha da tabela).
+- [ASSUMPTION] Aplicar outra memória, ou Reaplicar, descarta as mudanças não salvas sem perguntar, porque aplicar não pede confirmação.
+- **Criar memória do som atual** (Memórias, cartão "Nenhuma memória") guarda a regulagem que está tocando numa memória nova, sem a folha. Com "Som do aparelho" em uso, abre a folha do Salvar (terceira linha da tabela).
 
 ### Player
 
 A pílula **Player** abre a playlist da **memória do celular em uso**. **Cada memória do celular tem a sua playlist** (CAP-15), montada com arquivos de áudio do celular. O app toca e o som vai pelo Bluetooth de áudio até o processador.
 
 - **Uma playlist só na tela:** a da memória em uso, com a linha "Playlist da MUSICA ORIG" em cima. **Sem abas de memória.** Para ver ou editar outra playlist, troque de memória (Início ou Mesa).
-- **Sem playlist:** sem memória do celular em uso (memória do aparelho, "Som do aparelho", Seguir sem Setup). Ver o estado **Sem playlist**.
+- **Sem playlist:** sem memória do celular em uso ("Som do aparelho", Seguir sem Setup). Ver o estado **Sem playlist**.
 - **Lista:** as faixas da playlist, na ordem. A que toca fica marcada.
 - **Adicionar músicas:** abre o seletor de arquivos do Android, com vários arquivos de áudio de uma vez. As escolhidas entram no fim da lista. [ASSUMPTION] O app guarda o caminho do arquivo; ele não copia a música.
 - **Editar:** mostra − para remover e ≡ para arrastar e ordenar. **Pronto** sai do modo.
@@ -269,7 +270,7 @@ Os textos abaixo ilustram o padrão; o texto final de cada estado está em State
 | "Atualizar o preset Rock?" + "**Vale para toda memória que usa ele.**" [ASSUMPTION na redação] | Atualizar sem dizer quem mais muda |
 | "Atraso do Sub: 80 cm no Casa 2.1, 0 cm no aparelho" | "Estado inconsistente" |
 | "Som diferente da FILME" + **Reaplicar** | "Estado alterado" |
-| "Memória 2 do aparelho (app da Taramps)" só quando este app carregou; senão, "Som do aparelho" | "Memória 2" sem dizer de onde vem, ou um nome que o app não sabe |
+| "Som do aparelho" quando o som não bate com nenhuma memória do celular | "Memória 2", ou um nome que o app não sabe |
 | "Ligar a chave do Gerador?" + o risco escrito da spec | "Atenção: operação perigosa" |
 | "Senha errada. Digite de novo (tentativa 2 de 3)" | "Erro de autenticação" |
 | "Desconectado. Ligue o som e fique perto dele." | "Falha na conexão BLE" |
@@ -325,13 +326,13 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Seletor de Setup** | Segunda linha do cabeçalho do Início, ao lado da pílula de status ("Setup Casa 2.1 ›") | Mostra o Setup em uso. Tocar abre **Trocar de Setup** (ver Conectar e Setup). Não há troca solta. [ASSUMPTION] Com Seguir sem Setup, diz "Sem Setup ›" e tocar abre a mesma tela. |
 | **Cartão da memória em uso** | Início | Nome da memória e, embaixo dele, o **chip de preset**; depois, os botões de memória. O nome aparece só quando o app sabe o que toca (ver Conectar e Setup › O que o cartão da memória em uso mostra). O MASTER fica na Mesa. Sem selo HERDADO. Só leitura, menos o chip, os botões e o aviso. Na IA ativa diz "a IA está mexendo nela". [ASSUMPTION] Nome longo: a letra diminui até o tamanho da lista de memórias e depois quebra em duas linhas; nunca corta. |
 | **Chip de preset** | Cartão da memória em uso ("Preset: Rock ▾") | Tocar abre a **folha de presets** [ASSUMPTION], com uma linha de escolha por preset, e troca ali mesmo: aplica só as 15 bandas por cima da memória, sem confirmação (cópia antes, releitura). Cada memória do celular **lembra o último preset usado com ela**; ao aplicar a memória, o preset dela volta junto. Sem memória do celular em uso, não há chip. |
-| **Botões de memória** | Início; topo da Mesa | **3 botões** das memórias do celular usadas por último no Setup em uso (contando a que está em uso) e o botão **"…"**. Quem fica à vista é o app que decide. Os 3 **não mudam de lugar**: a memória que entra ocupa o lugar da usada há mais tempo; as outras duas ficam onde estão. Memórias do aparelho nunca ocupam os 3 botões. Um toque troca para uma das 3; dois toques ("…" e escolher) para as outras. Tocar numa memória que não está em uso **aplica** essa memória, **sem confirmação** (ver Aplicando memória). [ASSUMPTION] Com menos de 3 memórias no Setup, aparecem só as que existem, mais o "…". [ASSUMPTION] Ao apagar uma memória que está num dos 3, a vaga fica com a próxima usada por último, no mesmo lugar; sem outra, fica vazia. |
-| **Lista de memórias** ("…") | Início, Mesa | [ASSUMPTION] Sobe de baixo, como uma folha, e fecha ao escolher. Em cima, as memórias do celular do Setup em uso, em linhas de escolha; embaixo, a seção **"Do aparelho"** com as 3 memórias do processador, pelos nomes lidos. Tocar numa do celular **aplica** (como os botões); numa do aparelho **carrega** (ver Carregando memória do aparelho). |
-| **Linha de escolha** | Lista de memórias, folha de presets, lista de Setups | [ASSUMPTION] Uma linha por item: nome e detalhe (preset lembrado, "Memória 2 do aparelho"), com o selo HERDADO à direita quando é herdado. A que está em uso fica em branco. Tocar escolhe e fecha a folha. Travada (Seguir sem Setup), diz por quê. |
+| **Botões de memória** | Início; topo da Mesa | **3 botões** das memórias do celular usadas por último no Setup em uso (contando a que está em uso) e o botão **"…"**. Quem fica à vista é o app que decide. Os 3 **não mudam de lugar**: a memória que entra ocupa o lugar da usada há mais tempo; as outras duas ficam onde estão. Um toque troca para uma das 3; dois toques ("…" e escolher) para as outras. Tocar numa memória que não está em uso **aplica** essa memória, **sem confirmação** (ver Aplicando memória). [ASSUMPTION] Com menos de 3 memórias no Setup, aparecem só as que existem, mais o "…". [ASSUMPTION] Ao apagar uma memória que está num dos 3, a vaga fica com a próxima usada por último, no mesmo lugar; sem outra, fica vazia. |
+| **Lista de memórias** ("…") | Início, Mesa | [ASSUMPTION] Sobe de baixo, como uma folha, e fecha ao escolher. As memórias do celular do Setup em uso, em linhas de escolha. Tocar numa delas **aplica** (como os botões). As memórias do processador não aparecem (decisão do Denis, 29/10/2026). |
+| **Linha de escolha** | Lista de memórias, folha de presets, lista de Setups | [ASSUMPTION] Uma linha por item: nome e detalhe (preset lembrado), com o selo HERDADO à direita quando é herdado. A que está em uso fica em branco. Tocar escolhe e fecha a folha. Travada (Seguir sem Setup), diz por quê. |
 | **Botão principal "Salvar"** | Fixo no pé do Ajuste e das telas de função [ASSUMPTION] | Um só Salvar para tudo. Abre a folha do Salvar. Trava quando nada mudou ou sem Setup (ver Salvar por camadas). [ASSUMPTION] Some enquanto o teclado está aberto. |
 | **Folha do Salvar** | Sobe do botão Salvar ([mock da 3b, quadro 3](mockups/key-screens-3b.html)) | "Salvar o que mudou?" + "Cada mudança vai para o lugar dela." Uma linha por camada ("Regulagem → memória MUSICA ORIG", "15 bandas → preset Rock") e, embaixo de cada uma, o que mudou, com o antes e o depois ("Atraso do Sub: 80 → 85 cm"). Os casos e as perguntas estão em **Salvar por camadas**. Nada é guardado antes do botão branco. |
-| **Cartão de memória** | Memórias | Memórias do celular do Setup em uso, em quantidade livre: nome, selo EM USO na que toca e os botões **Aplicar**, **Renomear** e **Apagar**. Aplicar faz o mesmo que os botões de memória. Renomear abre o campo do nome (vale no ✓). Apagar: ver o estado **Apagar memória**. **Criar memória do som atual**: ver Salvar por camadas; [ASSUMPTION] a playlist começa vazia, o preset lembrado é o preset em uso e a memória nova passa a ser a memória em uso. Na seção **"Do aparelho"**, as 3 memórias do processador só têm **Carregar**: sem selo, sem renomear e sem salvar. [ASSUMPTION] Um lembrete diz "Salvar e renomear estas memórias só no app da Taramps." Criar, renomear e apagar no celular não mandam nada pelo BLE. |
-| **Selo herdado** | Setups | Marca o que veio dos protótipos (CAP-6): o Setup **Casa 2.1**, com os equipamentos e as fichas. Não há memória nem preset herdados (decisão do Denis, 29/10/2026). **Não aparece no Início**, para o Início ficar leve (decisão do Denis, 23/10). [ASSUMPTION] Tocar no selo abre uma folha só de leitura com a nota de `conhecimento-herdado.md`. As memórias do aparelho não têm selo. DIALOGO e NOITE não entram, porque são `.trps` cifrados. |
+| **Cartão de memória** | Memórias | Memórias do celular do Setup em uso, em quantidade livre: nome, selo EM USO na que toca e os botões **Aplicar**, **Renomear** e **Apagar**. Aplicar faz o mesmo que os botões de memória. Renomear abre o campo do nome (vale no ✓). Apagar: ver o estado **Apagar memória**. **Criar memória do som atual**: ver Salvar por camadas; [ASSUMPTION] a playlist começa vazia, o preset lembrado é o preset em uso e a memória nova passa a ser a memória em uso. As memórias do processador não têm cartão (decisão do Denis, 29/10/2026). Criar, renomear e apagar no celular não mandam nada pelo BLE. |
+| **Selo herdado** | Setups | Marca o que veio dos protótipos (CAP-6): o Setup **Casa 2.1**, com os equipamentos e as fichas. Não há memória nem preset herdados (decisão do Denis, 29/10/2026). **Não aparece no Início**, para o Início ficar leve (decisão do Denis, 23/10). [ASSUMPTION] Tocar no selo abre uma folha só de leitura com a nota de `conhecimento-herdado.md`. DIALOGO e NOITE não entram, porque são `.trps` cifrados. |
 
 ### Folhas e avisos
 
@@ -340,7 +341,7 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Folha de confirmação** | Salvar (camadas), apagar memória, ligar chave com risco, apagar preset [ASSUMPTION], apagar Setup [ASSUMPTION], pedido de risco da IA, aplicado pela metade, reset, troca de senha | [ASSUMPTION] Sobe de baixo; o botão branco faz e o contornado desiste. [ASSUMPTION] Tocar no véu ou em Voltar desiste. Nada é enviado ao aparelho antes do botão branco. |
 | **Aviso de risco** | Dentro da folha | Repete o risco escrito em `chaves-de-acesso.md`, sem mudar o texto. |
 | **Aviso de erro** | Senha, valor fora da faixa | Texto curto que diz o que fazer. |
-| **Aviso de som diferente** | Cartão da memória em uso | "Som diferente da FILME" e **Reaplicar**, que aplica a memória ativa como os botões de memória (sem confirmação, cópia antes, releitura). Não muta. [ASSUMPTION] Some ao Reaplicar, ao aplicar ou carregar outra memória, ou ao Salvar. |
+| **Aviso de som diferente** | Cartão da memória em uso | "Som diferente da FILME" e **Reaplicar**, que aplica a memória ativa como os botões de memória (sem confirmação, cópia antes, releitura). Não muta. [ASSUMPTION] Some ao Reaplicar, ao aplicar outra memória ou ao Salvar. |
 | **Lembrete** | Ajuste, telas de função, Memórias, Chaves | Texto fixo explicativo; não é tocável. |
 | **Botão secundário** | Folhas, linhas de Configurações | Desiste ou faz uma ação secundária; quando travado, diz por quê ("Desligado pela chave"). |
 
@@ -382,7 +383,7 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Dúvida interrompida** | Ao conectar | O app fechou ou a conexão caiu com a tela Setup em dúvida aberta. O mudo continua no aparelho. Ao reconectar, o app lê o mudo e volta à tela Setup em dúvida, que confere de novo. [ASSUMPTION] O app guarda no celular que deixou o aparelho mutado; se o mudo foi tirado pelo app da Taramps, a conferência segue normal. |
 | **Trocando de Setup** | Tocar no nome do Setup no Início | A mesma tela, com o título "Trocar de Setup" e ‹. Ver Conectar e Setup. |
 | **Reaplicando a memória ativa** | Ao conectar, depois da conferência | Se o processador perdeu o estado ao desligar (a história 12 mede), o app reaplica a memória ativa do Setup só **depois** de o Setup ser escolhido: cópia antes, aplica, relê, desmuta. Nada toca antes. [ASSUMPTION] Os valores ficam esmaecidos com "Aplicando a MUSICA ORIG" até a releitura. |
-| **Seguir sem Setup** | Todas | Som desmutado e aparelho como está; o cartão mostra "Som do aparelho". Memórias do celular travadas até escolher um Setup: [ASSUMPTION] os 3 botões e a parte do celular na lista ficam esmaecidos com "Escolha um Setup para usar as memórias do celular."; a seção "Do aparelho" continua carregando. [ASSUMPTION] O seletor diz "Sem Setup ›". Sem Setup em uso, os links 1–2 e 3–4 ficam **desligados** (decisão do Denis, 24/10/2026): cada canal é uma saída, e nada é espelhado sem querer numa instalação desconhecida. |
+| **Seguir sem Setup** | Todas | Som desmutado e aparelho como está; o cartão mostra "Som do aparelho". Memórias do celular travadas até escolher um Setup: [ASSUMPTION] os 3 botões e a lista ficam esmaecidos com "Escolha um Setup para usar as memórias do celular." [ASSUMPTION] O seletor diz "Sem Setup ›". Sem Setup em uso, os links 1–2 e 3–4 ficam **desligados** (decisão do Denis, 24/10/2026): cada canal é uma saída, e nada é espelhado sem querer numa instalação desconhecida. |
 | **Som do aparelho** | Início, Mesa | O app não sabe qual memória toca (ver Conectar e Setup › O que o cartão da memória em uso mostra). Sem chip, nenhum botão em branco, Player sem playlist. Salvar cria uma memória nova do celular (ver Salvar por camadas). |
 | **Desconectado** | Início (telas-chave 6a) | Cartão "Desconectado" grande com a hora em que caiu e o botão Conectar. Saídas vazias com "—": nunca mostrar valor que não veio do aparelho. Nas outras telas, [ASSUMPTION] os controles ficam travados com "Sem conexão" e um Conectar. O Player continua tocando (é Bluetooth de áudio, não o BLE). |
 | **App da Taramps conectado** | Conectar | Só cabe uma conexão BLE. [ASSUMPTION] Se as 3 tentativas falharem: "Não conectou. Se o app da Taramps estiver aberto, feche ele e tente de novo." |
@@ -395,14 +396,13 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 | **Passa-alta ou passa-baixa em OFF** | Crossover (telas-chave 2a), Ajuste | [ASSUMPTION] A frequência some da tela e volta junto com o tipo escolhido. |
 | **Link ligado** | Telas de saída | O par vira **uma saída só** nas abas, nos cartões e na Mesa, com o nome dos equipamentos e a cor do canal mestre; mexer nela escreve nos dois canais. O link é automático: liga quando os dois canais alimentam o mesmo bridge (no Casa 2.1, o CH3 e o CH4) e desliga quando não; não há controle de link. Propostas de 23/10 (equipamentos) e 29/10. |
 | **Aplicando memória** (celular) | Início, Mesa, lista "…", Memórias, Reaplicar | Sem confirmação. Passa pela chave "Aplicar memória do celular", guarda a cópia (failure-modes 3), escreve a regulagem da memória e o preset que ela lembra, e relê. [ASSUMPTION] Os valores ficam esmaecidos com "Aplicando a FILME" até a releitura. |
-| **Carregando memória do aparelho** | Lista "…" › Do aparelho, Memórias › Do aparelho | Sem confirmação. Passa pela chave "Carregar memória do aparelho", guarda a cópia, carrega (`241`) e relê. [ASSUMPTION] Os valores ficam esmaecidos com "Carregando a memória 2 do aparelho" até a releitura. Depois, o cartão mostra o nome lido e "Memória 2 do aparelho (app da Taramps)" até a conexão cair. Para guardar esse som no celular: Salvar (ver Salvar por camadas). |
 | **Salvando** | Folha do Salvar | Guarda no celular; nada vai pelo BLE, então não há queda no meio do salvar. |
-| **Aplicado pela metade** | Ao reconectar | Folha "Aplicado pela metade": aplicar memória do celular, aplicar preset ou carregar memória do aparelho caiu no meio. Botões **Terminar** (branco) e **Voltar à cópia** (contornado). [ASSUMPTION na redação] |
+| **Aplicado pela metade** | Ao reconectar | Folha "Aplicado pela metade": aplicar memória do celular ou aplicar preset caiu no meio. Botões **Terminar** (branco) e **Voltar à cópia** (contornado). [ASSUMPTION na redação] Uma marca de carregar memória do aparelho guardada de antes de 29/10/2026 também abre esta folha, mas só **Voltar à cópia** funciona; Terminar diz "O app não sabe refazer esta operação." |
 | **Preset aplicado** | Chip de preset, Presets | Cópia antes, aplica só as 15 bandas, relê. A memória em uso passa a lembrar esse preset. [ASSUMPTION] "Preset Rock aplicado na MUSICA ORIG." |
 | **Presets vazio** | Presets no celular | [ASSUMPTION] "Mexa nas 15 bandas e toque em Salvar para criar um preset." É o estado da primeira abertura. |
 | **Apagar preset** | Presets | Folha de confirmação "Apagar o preset X?" [ASSUMPTION]. [ASSUMPTION] Um preset lembrado por alguma memória não se apaga: Apagar fica travado com "Lembrado por 2 memórias." |
 | **Setup sem equipamentos** | Início, Mesa, Áudio, Setup | As saídas aparecem como **CH1 a CH4** (os pares com link, como "CH3 + CH4"), na cor de cada canal. Na tela Setup, o esquema mostra só o processador e a frase "Adicione os equipamentos ligados em cada canal." com **Adicionar equipamento**. |
-| **Setup sem memórias** | Início, Memórias | [ASSUMPTION] Logo depois de Criar Setup novo: o cartão diz "Nenhuma memória" e oferece **Criar memória do som atual**; sem chip de preset; a lista "…" só tem a seção "Do aparelho". |
+| **Setup sem memórias** | Início, Memórias | [ASSUMPTION] Logo depois de Criar Setup novo: o cartão diz "Nenhuma memória" e oferece **Criar memória do som atual**; sem chip de preset; a lista "…" não tem nenhuma memória. |
 | **Apagar memória** | Memórias | [ASSUMPTION] Folha "Apagar a MUSICA ORIG?" + "**A memória e a playlist dela somem.**" Na memória em uso, Apagar fica travado com "Esta memória está em uso." [ASSUMPTION na redação] |
 | **Apagar Setup** | Setups | [ASSUMPTION] Folha "Apagar o Setup Carro?" + "**O Setup, as memórias e as playlists dele somem.**" O Setup em uso e o Casa 2.1 herdado não se apagam. |
 | **Gerador tocando** | Gerador | [ASSUMPTION] Contagem regressiva de 30 s visível e botão grande Parar. Ao fim do prazo, ao fechar o app, ao perder a conexão ou num erro, o app manda desligar o gerador e relê para confirmar. |
@@ -438,11 +438,11 @@ Esta seção trata do comportamento; o visual de cada peça está em DESIGN.md �
 - **Ritmo de envio** (MAPA §2): uma resposta pendente por vez; cerca de 30 ms entre escritas; durante o arrasto ou a repetição de − e +, no máximo um envio a cada 300 ms por parâmetro. [ASSUMPTION] Ao soltar, o último valor sempre é enviado.
 - **Eco e releitura:** a tela mostra o valor que o aparelho confirmou.
 - **Abrir uma tela nunca escreve nada no aparelho.** [ASSUMPTION] Herdado do cuidado com o app da Taramps, que reescreve ataque e liberação ao abrir o Limiter em Auto.
-- **Cópia antes de mexer em vários parâmetros:** antes de aplicar uma memória do celular, aplicar um preset, ou carregar uma memória do aparelho, o app guarda o estado (failure-modes 3).
-- **Aplicar e carregar:** memória do celular se **aplica** (a regulagem dela, mais o preset que ela lembra); memória do aparelho se **carrega** (`241`). As duas com cópia antes e releitura.
+- **Cópia antes de mexer em vários parâmetros:** antes de aplicar uma memória do celular ou aplicar um preset, o app guarda o estado (failure-modes 3).
+- **Aplicar:** memória do celular se **aplica** (a regulagem dela, mais o preset que ela lembra), com cópia antes e releitura. O app não carrega memória do aparelho (`241`); isso fica no app da Taramps.
 - **Nada toca antes de conferir o Setup.** Na dúvida, os 4 canais ficam mutados no aparelho até a escolha.
-- **Toque, arrasto e escrita.** Sem deslizar para aplicar, carregar ou apagar (o app da Taramps carrega uma memória ao deslizar; aqui não). O único arrasto de lista é a alça ≡ da playlist no modo Editar.
-- **Proibidos:** tocar num bloco para entrar em edição; esconder um número ou nível atrás de um toque; confirmação para mexer em ajustes de áudio, para aplicar ou carregar memória ou para trocar de preset.
+- **Toque, arrasto e escrita.** Sem deslizar para aplicar ou apagar (o app da Taramps carrega uma memória ao deslizar; aqui não). O único arrasto de lista é a alça ≡ da playlist no modo Editar.
+- **Proibidos:** tocar num bloco para entrar em edição; esconder um número ou nível atrás de um toque; confirmação para mexer em ajustes de áudio, para aplicar memória ou para trocar de preset.
 
 ## Accessibility Floor
 
@@ -464,7 +464,7 @@ Esta seção trata do comportamento; o contraste visual está em DESIGN.md › C
 Teste 1 do sinal de sucesso.
 
 1. Denis abre o app. A senha está guardada; a pílula passa de "Conectando" a "Conectado · R003" e o app lê o aparelho. É a primeira vez, e o Casa 2.1 ainda não tem memória: sobe a tela **Setup em dúvida** com os 4 canais mutados; ele toca em **Escolher o Setup** › **Casa 2.1**, e o app desmuta sem aplicar nada. O cabeçalho mostra **Setup Casa 2.1 ›**.
-2. No **Início**, o cartão diz **Nenhuma memória**. A MUSICA ORIG ainda não existe no celular; a antiga é a memória 2 do aparelho, feita no app da Taramps, e ela não é referência.
+2. No **Início**, o cartão diz **Nenhuma memória**. A MUSICA ORIG ainda não existe no celular; a antiga é a memória 2 do aparelho, feita no app da Taramps; ela não aparece no app e não é referência.
 3. Ele vai à **Mesa** e acerta os ganhos: arrasta a capa do Sub, toca no número da JBL L, escreve o valor e toca em ✓. O som muda a cada passo; a faixa de monitoração mostra se algum canal clipa.
 4. Em **Áudio** › **Limitador**, ele escolhe a aba de cada saída e segura + até o limiar que quer.
 5. Ele ouve e volta ao passo 3 quantas vezes quiser. Nada foi salvo ainda.
@@ -526,14 +526,16 @@ Falha: um arquivo foi apagado do celular → vale o estado **Arquivo sumiu**.
 
 Teste 3 do sinal de sucesso.
 
-1. No app da Taramps, Denis carrega as memórias 1, 2 e 3, uma por vez, e anota os valores tela a tela. Ele **não abre a tela Limiter com o Auto ligado**, porque ela reescreve o ataque e a liberação. Termina com a memória 1 carregada.
-2. Ele fecha o app da Taramps (só cabe uma conexão BLE).
-3. Ele abre o BGS Controle, que conecta, relê tudo (84 parâmetros) e confere com a memória ativa do Casa 2.1. Se o corte, o atraso, a fase ou a rota não batem (ou não há memória), sobe a tela **Setup em dúvida**, com os 4 canais mutados; ele toca em **Seguir sem Setup**, e o app desmuta sem aplicar nada. Se só o ganho ou o EQ diferem, o app entra direto, com o aviso **Som diferente**, e ele não toca em Reaplicar. Nos dois casos, o cartão mostra **Som do aparelho**: o app não carregou a memória 1, então não diz qual é.
-4. Ele confere pela grade **Áudio**: cada bloco mostra o resumo, e cada tela de função mostra os valores por saída, nas abas. Abre o Avançado onde precisa (ataque e liberação, links).
-5. Para as memórias 2 e 3, ele toca em **…** e, na seção **Do aparelho**, carrega cada uma (estado **Carregando memória do aparelho**). O cartão passa a mostrar "Memória 2 do aparelho (app da Taramps)". Confere de novo como no passo 4.
-6. **Clímax:** cada valor do BGS Controle bate com o app da Taramps nas três memórias do aparelho, inclusive a FILME (memória 3). As memórias do aparelho não mudam: o app só carrega.
+A paridade é só sobre o estado atual do aparelho: este app não carrega memória (decisão do Denis, 29/10/2026).
 
-Variante, guardar um som do aparelho no celular: com um Setup em uso (não em Seguir sem Setup), depois de carregar a memória 2 ele toca em **Salvar** num Ajuste. A regulagem vai para uma memória nova do celular (ver Salvar por camadas).
+1. No app da Taramps, Denis carrega a memória que quer conferir (por exemplo, a FILME, memória 3) e anota os valores tela a tela. Ele **não abre a tela Limiter com o Auto ligado**, porque ela reescreve o ataque e a liberação.
+2. Ele fecha o app da Taramps (só cabe uma conexão BLE).
+3. Ele abre o BGS Controle, que conecta, relê tudo (84 parâmetros) e confere com a memória ativa do Casa 2.1. Se o corte, o atraso, a fase ou a rota não batem (ou não há memória), sobe a tela **Setup em dúvida**, com os 4 canais mutados; ele toca em **Seguir sem Setup**, e o app desmuta sem aplicar nada. Se só o ganho ou o EQ diferem, o app entra direto, com o aviso **Som diferente**, e ele não toca em Reaplicar. Nos dois casos, o cartão mostra **Som do aparelho**: o app não diz qual memória do aparelho está tocando.
+4. Ele confere pela grade **Áudio**: cada bloco mostra o resumo, e cada tela de função mostra os valores por saída, nas abas. Abre o Avançado onde precisa (ataque e liberação, links).
+5. Para conferir outra memória, ele fecha o BGS Controle, carrega a memória no app da Taramps, anota, fecha o app da Taramps e conecta de novo o BGS Controle, que relê tudo. Confere como no passo 4.
+6. **Clímax:** cada valor do BGS Controle bate com o que o app da Taramps mostra do som atual. As memórias do aparelho não mudam: este app não carrega nem salva memória do aparelho.
+
+Variante, guardar um som do aparelho no celular: depois de carregar a memória pelo app da Taramps e conectar este app, com um Setup em uso (não em Seguir sem Setup) e o som do aparelho mantido, ele toca em **Salvar** num Ajuste. A regulagem vai para uma memória nova do celular (ver Salvar por camadas).
 
 Falha: o BGS Controle não conecta → vale o estado **App da Taramps conectado**.
 
@@ -571,7 +573,7 @@ Segue `porta-de-comandos.md`, `chaves-de-acesso.md` e a regra 5 de `failure-mode
 - **Pareamento único** por código de 6 dígitos mostrado no app. Só a rede local. A senha do processador nunca passa pela porta.
 - **A IA passa pelas mesmas chaves do Denis** e nunca liga ou desliga uma chave.
 - **Continuar a cada 3 ajustes:** depois de 3 ajustes seguidos da IA sem um toque do Denis, o próximo espera **Continuar** na tela. Isso impede a IA de trocar o som inteiro ajuste por ajuste (decisão do Denis, 29/10/2026).
-- **Risco pede confirmação na tela:** reset de fábrica, reset de áudio, troca de senha, gerador, aplicar memória do celular, carregar memória do aparelho, remote out. Salvar e renomear memórias do aparelho não existem neste app, nem para a IA.
+- **Risco pede confirmação na tela:** reset de fábrica, reset de áudio, troca de senha, gerador, aplicar memória do celular, remote out. Salvar, renomear e carregar memórias do aparelho não existem neste app, nem para a IA.
 - **A IA não salva** (decisão do Denis, 23/10). A porta não tem comando de salvar. Ao terminar, a IA diz "Pronto, não salvei."; guardar é o Salvar do Denis.
 - **A dúvida bloqueia a IA:** com a tela Setup em dúvida aberta, a porta recusa os comandos da IA até o Denis escolher.
 - **Tudo visível:** quando a IA começa, o app abre a **IA ativa**; cada mudança aparece em até 1 s no painel ao vivo e vai para o Histórico.
@@ -591,15 +593,14 @@ O Denis conhece o app da Taramps ([`imports/referencia-taramps-audio.png`](impor
 | Áudio (grade 2 × 5) | **Áudio**, a mesma grade, na mesma ordem: Roteamento, EQ 15 bandas, EQ de entrada, Crossover, Alinhamento, Fase, Limitador, Nível das saídas, EQ de saída, Gerador |
 | Player | **Player**, com a playlist da memória do celular em uso |
 | Engrenagem (Salvar/Carregar memórias e presets, resets, nome, senha) | **Engrenagem → Configurações**: Setups [ASSUMPTION], Memórias, Presets no celular, Aparelho, Chaves, IA pela rede, Histórico; resets em Avançado |
-| Memórias 1–3 do aparelho: carregar | "…" › **Do aparelho**, ou Configurações › Memórias › Do aparelho: só **Carregar** |
-| Memórias 1–3 do aparelho: salvar e renomear | **Continuam só no app da Taramps.** O BGS Controle não salva nem renomeia memórias do aparelho. |
+| Memórias 1–3 do aparelho: salvar, renomear e carregar | **Continuam só no app da Taramps.** Elas não aparecem no BGS Controle (decisão do Denis, 29/10/2026). Ao conectar depois, o BGS Controle relê o aparelho. |
 | Salvar (barra) | Botão **Salvar** no pé dos ajustes: guarda no celular, cada mudança na camada dona dela (ver Salvar por camadas) |
 | MASTER na memória | MASTER na memória do celular, como no app da Taramps |
 | Volt. (barra) | Faixa de monitoração na Mesa e Configurações › Aparelho › Voltímetro e clip |
-| Deslizar uma memória carrega ou exporta | Botões escritos (Aplicar, Carregar, Renomear, Apagar); nada acontece por deslizar |
+| Deslizar uma memória carrega ou exporta | Botões escritos (Aplicar, Renomear, Apagar); nada acontece por deslizar |
 | Abrir o Limiter em Auto reescreve ataque e liberação | Abrir uma tela nunca escreve |
 | Presets `.trps` | Não são lidos. O preset do BGS Controle é só o EQ de 15 bandas. **Exportar**, na linha de Presets, grava o preset próprio como arquivo JSON (não `.trps`). |
-| Um som feito no app da Taramps e guardado numa memória do aparelho | Vira memória do celular (decisão do Denis, 23/10): carregar a memória ("…" › **Do aparelho**) e tocar em **Salvar** (ver Salvar por camadas, terceira linha). Ao conectar depois de usar o app da Taramps, o app confere com a memória ativa: se corte, atraso, fase ou rota mudaram, abre a tela Setup em dúvida; se só ganho, limitador ou EQ mudaram, entra com o aviso "Som diferente". As memórias do aparelho são intocáveis: este app só carrega. [ASSUMPTION] Na dúvida, o caminho é Escolher o Setup e depois carregar a memória do aparelho; o som que não foi guardado numa memória do aparelho não é trazido. |
+| Um som feito no app da Taramps e guardado numa memória do aparelho | Vira memória do celular (decisão do Denis, 23/10): carregar a memória no app da Taramps, fechar o app da Taramps, conectar o BGS Controle e tocar em **Salvar** (ver Salvar por camadas, terceira linha). Ao conectar depois de usar o app da Taramps, o app confere com a memória ativa: se corte, atraso, fase ou rota mudaram, abre a tela Setup em dúvida; se só ganho, limitador ou EQ mudaram, entra com o aviso "Som diferente". As memórias do aparelho são intocáveis e não aparecem neste app (decisão do Denis, 29/10/2026). [NOTE FOR UX] Sem o carregar, um som do app da Taramps com corte, atraso, fase ou rota diferentes da memória ativa cai na dúvida, e Escolher o Setup aplica a memória ativa por cima dele. Num Setup sem memórias, Escolher desmuta sem aplicar, e o som fica. Falta o Denis decidir como esse som entra num Setup que já tem memória. |
 
 ## Inspiration & Anti-patterns
 

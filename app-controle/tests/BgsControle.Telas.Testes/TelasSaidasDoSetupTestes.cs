@@ -351,16 +351,16 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
     }
 
     [Fact]
-    public async Task Uma_tela_de_funcao_criada_antes_de_carregar_a_memoria_2_mostra_o_nome_dela_depois()
+    public async Task Uma_tela_de_funcao_criada_antes_de_trocar_de_memoria_mostra_o_nome_da_nova_depois()
     {
         await _b.Conectar();
         var fase = _t.Audio.Tela(FuncaoAudio.Fase);
         Assert.Equal("FILME", fase.Subtitulo);
 
-        await _b.Rodar(_t.Botoes.LinhasAparelho[1].Tocar.ExecutarAsync());
+        Assert.True((await _b.Setups!.CriarMemoriaAsync("NOITE")).Ok); // a memória nova fica em uso
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal(_b.Memorias.Nome(1), fase.Subtitulo);
+        Assert.Equal("NOITE", fase.Subtitulo);
     }
 
     // ----------------------------------------------------------------- lacunas da tentativa 1

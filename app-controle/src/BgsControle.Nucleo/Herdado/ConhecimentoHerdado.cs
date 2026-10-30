@@ -263,7 +263,7 @@ public static class ConhecimentoHerdado
         ]),
         new("As 3 memórias do aparelho",
         [
-            "O app só lê os nomes e carrega estas memórias; quem salva e renomeia é o app da Taramps. Elas são intocáveis e não são referência para as memórias novas do celular (decisão do Denis, 29/10/2026).",
+            "As memórias do processador não aparecem no app (decisão do Denis, 29/10/2026): o app não lê os nomes nem carrega; quem salva, renomeia e carrega é o app da Taramps. Elas são intocáveis e não são referência para as memórias novas do celular.",
             "Memória 1, SPL (salva em 20/10): o máximo seguro de cada falante pelo BT a 100 %. JBL +6 com passa-alta LR24 em 200 Hz e limitador −7 (ataque 5 ms); sub +2,6 com passa-baixa LR24 em 200 Hz e limitador −9 (ataque 10 ms); EQ plano. Medido: 17,7 V nas JBL e 27,5 V no sub.",
             "Memória 2, MUSICA ORIG: ainda é a versão antiga (ganhos −5/−10, limitadores −11/−6). Precisa ser refeita, e esse é o teste 1 do sinal de sucesso.",
             "Memória 3: a versão definitiva de 18/10 (leitura 2026-10-18_2145). Atrasos L 0, R 100 cm, sub 80 cm; ganhos L +10, R +7, sub +6; limitadores −15 / −18 / −12, liberação de 200 ms.",
@@ -273,7 +273,7 @@ public static class ConhecimentoHerdado
         [
             "O app nasce sem memórias e sem presets do celular (decisão do Denis, 29/10/2026): as calibrações de antes estavam mal feitas, e tudo começa do zero.",
             "Cada memória do celular guarda toda a regulagem, com o valor final, e lembra um preset de 15 bandas.",
-            "Para comparar com o app da Taramps, o app carrega a memória do aparelho.",
+            "Para comparar com o app da Taramps, os dois olham o estado atual do aparelho; este app não carrega memória do aparelho.",
         ]),
         new("Presets",
         [

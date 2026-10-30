@@ -1,7 +1,6 @@
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Protocolo;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
@@ -79,7 +78,6 @@ public sealed class ComandosAparelho
     private readonly CopiaAntes _copia;
     private readonly ICofreSenha _cofre;
     private readonly LogBle _log;
-    private readonly GerenteMemorias? _memorias;
     private readonly GeradorSinal? _gerador;
     private readonly EnvioComResposta _envio;
     private readonly TimeSpan _prazoResposta;
@@ -92,7 +90,6 @@ public sealed class ComandosAparelho
         CopiaAntes copia,
         ICofreSenha cofre,
         LogBle log,
-        GerenteMemorias? memorias = null,
         GeradorSinal? gerador = null,
         TemposEscrita? tempos = null,
         TimeProvider? relogio = null,
@@ -104,7 +101,6 @@ public sealed class ComandosAparelho
         _copia = copia;
         _cofre = cofre;
         _log = log;
-        _memorias = memorias;
         _gerador = gerador;
         _envio = new EnvioComResposta(sessao, tempos, relogio);
         _prazoResposta = prazoResposta ?? PrazoRespostaPadrao;
@@ -120,8 +116,8 @@ public sealed class ComandosAparelho
 
     /// <summary>
     /// Por que um comando de aparelho inteiro (resets, senha, nome) não pode sair agora, fora a
-    /// trava da sessão e a leitura: uma operação de memória anda ou ficou pela metade, o gerador
-    /// pode estar ligado, outro comando de aparelho anda. Null = pode. Não envia nada.
+    /// trava da sessão e a leitura: uma operação de vários parâmetros anda ou ficou pela metade, o
+    /// gerador pode estar ligado, outro comando de aparelho anda. Null = pode. Não envia nada.
     /// </summary>
     public string? MotivoBloqueio() => BloqueioDeFora() ?? (Ocupado ? MsgOcupado : null);
 
@@ -130,8 +126,6 @@ public sealed class ComandosAparelho
     {
         if (_copia.MotivoBloqueio() is { } copia)
             return copia;
-        if (_memorias?.Ocupado == true)
-            return GerenteMemorias.MsgOcupado;
         if (_gerador is { } g && (g.TalvezLigado || g.Estado != EstadoGerador.Desligado))
             return MsgGeradorEmUso;
         return null;
@@ -377,7 +371,7 @@ public sealed class ComandosAparelho
 
     /// <summary>
     /// As condições do envio, fora o próprio comando que anda: conexão, trava, leitura e (no
-    /// aparelho inteiro) a cópia, as memórias e o gerador. Conferidas antes e de novo com a porta.
+    /// aparelho inteiro) a cópia e o gerador. Conferidas antes e de novo com a porta.
     /// </summary>
     private ResultadoAparelho? Impedimento(string quadro, bool aparelhoInteiro)
     {

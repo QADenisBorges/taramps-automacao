@@ -119,12 +119,12 @@ public sealed class ConexaoViewModelTestes
         Assert.Equal("AB12", _cofre.Senha);
 
         Assert.Equal("84 de 84", _vm.PlacarMarco1);
-        Assert.Equal("Extras: 14 de 15", _vm.PlacarExtras); // o voltímetro responde "ERRO 0"
+        Assert.Equal("Extras: 11 de 12", _vm.PlacarExtras); // o voltímetro responde "ERRO 0"
         Assert.StartsWith("Leitura completa.", _vm.ResumoLeitura);
         Assert.True(_vm.MostrarLeitura);
         Assert.True(_vm.PodeLerDeNovo);
         Assert.Contains("MARCO 1 · 84 de 84", _vm.ListaLeitura);
-        Assert.Contains("231 nome da memória 1 · — · \"SPL\" · 231#SPL", _vm.ListaLeitura);
+        Assert.DoesNotContain("nome da memória", _vm.ListaLeitura); // os nomes 231–233 não são lidos (29/10/2026)
         Assert.Contains("ÓRFÃOS · 1", _vm.ListaLeitura);
 
         // O retrato salvo pelo IArquivosApp.
@@ -132,7 +132,7 @@ public sealed class ConexaoViewModelTestes
         var raiz = json.RootElement;
         Assert.Equal("completo", raiz.GetProperty("status").GetString());
         Assert.Equal("R003", raiz.GetProperty("firmware").GetString());
-        Assert.Equal(84 + 14, raiz.GetProperty("lidos").GetArrayLength());
+        Assert.Equal(84 + 11, raiz.GetProperty("lidos").GetArrayLength());
         Assert.Equal("ERRO 0", raiz.GetProperty("orfaos")[0].GetString());
 
         // Só a senha e as consultas do catálogo, na ordem: nenhuma escrita.

@@ -25,12 +25,12 @@ internal sealed class Telas11 : IDisposable
         Setup = b.CriarSetupViewModel();
         Memorias = b.CriarMemoriasViewModel(Salvar);
         Link = b.CriarLinkViewModel();
-        Botoes = new BotoesMemoriaViewModel(setups, b.Memorias, Memorias, b.Sessao, b.Tela, b.Relogio);
+        Botoes = new BotoesMemoriaViewModel(setups, Memorias, b.Sessao, b.Tela, b.Relogio);
         Presets = new PresetsViewModel(b.Presets, setups, b.Copia, b.Sessao, b.Chaves, b.Estado, b.Tela, b.Relogio, Exportar);
         Monitoracao = new MonitoracaoViewModel(b.Monitor, b.Tela, b.Relogio, setups, Nav);
-        Inicio = new InicioViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio, Presets);
-        Mesa = new MesaViewModel(setups, b.Memorias, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio, Monitoracao);
-        Audio = new AudioViewModel(b.Fabrica, setups, b.Memorias, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
+        Inicio = new InicioViewModel(setups, b.Sessao, b.Estado, b.Link, Conexao, Setup, Memorias, Botoes, Nav, b.Tela, b.Relogio, Presets);
+        Mesa = new MesaViewModel(setups, b.Sessao, b.Estado, b.Link, b.Fabrica, Botoes, Nav, b.Tela, b.Relogio, Monitoracao);
+        Audio = new AudioViewModel(b.Fabrica, setups, b.Sessao, b.Estado, b.Link, Link, Salvar, Nav, b.Tela, b.Relogio, b.Chaves, b.Gerador);
         Gerador = b.CriarGeradorViewModel();
         Aparelho = b.CriarAparelhoViewModel();
         Player = new Player(b.Playlists, setups, Reprodutor, b.Log);
@@ -307,9 +307,9 @@ public sealed class TelasParte2Testes : IDisposable
     public async Task Sem_memoria_do_celular_nao_ha_aviso_do_topo_nem_Tocar()
     {
         _b.Simulador.Definir(Catalogo.CodigoBluetoothAudio, null, "0");
-        await Conectar();
-        var r = _b.Memorias.CarregarAsync(0);
-        await _b.Rodar(r);
+        _b.Simulador.Definir("050", 2, "0.0"); // o atraso do Sub difere da FILME: dúvida
+        await _b.Conectar();
+        await _b.Rodar(_b.Setups!.SeguirSemSetupAsync()); // sem Setup: nenhuma memória do celular em uso
         await Apoio.Esperar(() => _t.Player.Memoria is null);
         await _b.Tela.EsvaziarAsync();
 

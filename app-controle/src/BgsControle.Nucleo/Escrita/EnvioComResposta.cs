@@ -8,8 +8,7 @@ namespace BgsControle.Nucleo.Escrita;
 /// sessão sai de Conectado, todas acabam sem resposta. Não pega a exclusão de leitura e escrita
 /// da sessão: quem precisa dela (uma escrita com a sua confirmação) pega antes.
 /// <para>
-/// O mesmo modelo do envio com espera do <see cref="Memorias.GerenteMemorias"/>, em classe
-/// própria: o gerador usa agora, os comandos de aparelho inteiro (história 7b) depois.
+/// Em classe própria: o gerador usa agora, os comandos de aparelho inteiro (história 7b) depois.
 /// </para>
 /// </summary>
 public sealed class EnvioComResposta

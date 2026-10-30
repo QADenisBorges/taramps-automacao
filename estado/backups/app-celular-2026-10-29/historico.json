@@ -1,0 +1,554 @@
+{
+  "formato": 1,
+  "entradas": [
+    {
+      "hora": "2026-10-24T17:00:21.1257911-03:00",
+      "origem": "Tela",
+      "tipo": "CarregarMemoria",
+      "codigo": "241",
+      "valor": "2",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:13:02.4318096-03:00",
+      "origem": "Tela",
+      "tipo": "CarregarMemoria",
+      "codigo": "241",
+      "valor": "2",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:14:13.2202074-03:00",
+      "origem": "Tela",
+      "tipo": "CarregarMemoria",
+      "codigo": "241",
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:13.6079417-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "081",
+      "indice": 0,
+      "valor": "10.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:13.7405546-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "081",
+      "indice": 1,
+      "valor": "7.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:13.8746155-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "081",
+      "indice": 2,
+      "valor": "6.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:14.0579516-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "081",
+      "indice": 3,
+      "valor": "6.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:14.1928901-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "060",
+      "indice": 2,
+      "valor": "180",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:15.3161117-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "060",
+      "indice": 3,
+      "valor": "180",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:16.4891084-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "040",
+      "indice": 0,
+      "valor": "150",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:16.6657207-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "040",
+      "indice": 1,
+      "valor": "150",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:16.8027423-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "041",
+      "indice": 2,
+      "valor": "150",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:16.9367637-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "041",
+      "indice": 3,
+      "valor": "150",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:17.0701508-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "050",
+      "indice": 1,
+      "valor": "100.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:17.3406721-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "050",
+      "indice": 2,
+      "valor": "80.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:17.6076791-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "050",
+      "indice": 3,
+      "valor": "80.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:17.8799358-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "071",
+      "indice": 0,
+      "valor": "-15.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.0180397-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "071",
+      "indice": 1,
+      "valor": "-18.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.2454671-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "071",
+      "indice": 2,
+      "valor": "-12.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.3720023-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "071",
+      "indice": 3,
+      "valor": "-12.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.4653930-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "072",
+      "indice": 0,
+      "valor": "50.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.6030233-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "072",
+      "indice": 1,
+      "valor": "50.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.7358976-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "072",
+      "indice": 2,
+      "valor": "50.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:18.9172509-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "072",
+      "indice": 3,
+      "valor": "50.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.0514714-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "090",
+      "indice": 0,
+      "valor": "2000",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.1831171-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "090",
+      "indice": 1,
+      "valor": "2000",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.3226988-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "090",
+      "indice": 2,
+      "valor": "45",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.4609314-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "090",
+      "indice": 3,
+      "valor": "45",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.5922656-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "091",
+      "indice": 0,
+      "valor": "2.5",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.7242002-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "091",
+      "indice": 1,
+      "valor": "2.5",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.8620234-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "091",
+      "indice": 2,
+      "valor": "3.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:19.9976434-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "091",
+      "indice": 3,
+      "valor": "3.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.2207558-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "092",
+      "indice": 2,
+      "valor": "0.7",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.3574102-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "092",
+      "indice": 3,
+      "valor": "0.7",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.4917027-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 4,
+      "valor": "1.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.6283969-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 6,
+      "valor": "-1.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.7622520-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 11,
+      "valor": "-1.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:20.8991745-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 12,
+      "valor": "-2.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:21.0333503-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 13,
+      "valor": "2.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:15:21.1683034-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "020",
+      "indice": 14,
+      "valor": "2.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T17:32:08.4881060-03:00",
+      "origem": "Tela",
+      "tipo": "CarregarMemoria",
+      "codigo": "241",
+      "valor": "2",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:36.1392721-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 0,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:36.2680722-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 1,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:36.7212216-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 2,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:36.9059112-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 3,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:43.6037028-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 0,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:43.6927546-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 1,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:43.9663593-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 2,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:06:44.1018594-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 3,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T18:08:20.8502728-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "080",
+      "valor": "0.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:01:30.0135537-03:00",
+      "origem": "Ia",
+      "tipo": "AjusteAudio",
+      "codigo": "080",
+      "valor": "-3.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:01:44.8922482-03:00",
+      "origem": "Ia",
+      "tipo": "AjusteAudio",
+      "codigo": "080",
+      "valor": "0.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:18.9673762-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "080",
+      "valor": "-1.3",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:19.3655566-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "080",
+      "valor": "0.0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:33.1356350-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 0,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:33.2707899-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 1,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:33.4059519-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 2,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:16:33.5886178-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 3,
+      "valor": "1",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:17:31.4574015-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 0,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:17:31.5898181-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 1,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:17:31.7226465-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 2,
+      "valor": "0",
+      "enviado": true
+    },
+    {
+      "hora": "2026-10-24T19:17:31.8594192-03:00",
+      "origem": "Tela",
+      "tipo": "AjusteAudio",
+      "codigo": "100",
+      "indice": 3,
+      "valor": "0",
+      "enviado": true
+    }
+  ]
+}

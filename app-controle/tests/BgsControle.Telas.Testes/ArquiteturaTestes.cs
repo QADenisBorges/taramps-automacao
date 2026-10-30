@@ -101,6 +101,30 @@ public sealed class ArquiteturaTestes
         Assert.Contains("{Binding ErroNomeMemoria}", escolha, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Decisão do Denis (29/10/2026): "As memórias do processador não devem aparecer no app". Nenhuma
+    /// tela nem controle tem a seção DO APARELHO, o Carregar ou a memória do aparelho.
+    /// </summary>
+    [Fact]
+    public void Nenhuma_tela_mostra_as_memorias_do_aparelho()
+    {
+        var xamls = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj"))
+            .ToArray();
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "MemoriasPage.xaml");
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "ListaMemoriasView.xaml");
+
+        foreach (var f in xamls)
+        {
+            // Só os atributos (os comentários podem citar a decisão).
+            var atributos = XDocument.Load(f).Descendants().SelectMany(e => e.Attributes()).Select(a => a.Value).ToArray();
+            // O rótulo da seção, exato ("LEITURA DO APARELHO", da tela Conexão, é outra coisa).
+            Assert.DoesNotContain(atributos, a => a is "DO APARELHO" or "Do aparelho");
+            foreach (var texto in new[] { "Carregar", "LinhasAparelho", "DoAparelho", "CartaoMemoriaAparelho", "LembreteAparelho" })
+                Assert.DoesNotContain(atributos, a => a.Contains(texto, StringComparison.Ordinal));
+        }
+    }
+
     [Fact]
     public void O_csproj_do_App_nao_referencia_o_simulador()
     {

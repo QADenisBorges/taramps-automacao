@@ -1,7 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Seguranca;
 
 namespace BgsControle.Telas;
@@ -43,7 +42,6 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias? _memorias;
     private readonly Dictionary<string, string> _campos = [];
     private readonly HashSet<string> _escritos = [];
 
@@ -64,8 +62,7 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
         EstadoAparelho estado,
         CopiaAntes copia,
         IDespachante despachante,
-        TimeProvider relogio,
-        GerenteMemorias? memorias = null)
+        TimeProvider relogio)
         : base(despachante, relogio)
     {
         _gerador = gerador;
@@ -73,7 +70,6 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
         _chaves = chaves;
         _estado = estado;
         _copia = copia;
-        _memorias = memorias;
         Velocidades = VelocidadeP.Opcoes!.Where(o => o.Key > 0).Select(o => new OpcaoValor(o.Value, o.Key, null)).ToList();
 
         Tocar = new Comando(TocarAsync);
@@ -89,8 +85,6 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
         _copia.Mudou += AoMudarAlgo;
-        if (_memorias is not null)
-            _memorias.Mudou += AoMudarAlgo;
         _estado.Recarregou += AoRecarregar;
         _estado.Mudou += AoMudarValor;
         Semear();
@@ -237,7 +231,7 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
                 return ControleParametroViewModel.MsgLendo;
             if (!_estado.Pronto)
                 return ControleParametroViewModel.MsgNaoLeu;
-            if (_copia.MotivoBloqueio() is not null || _memorias?.Ocupado == true)
+            if (_copia.MotivoBloqueio() is not null)
                 return MemoriasViewModel.MsgEmAndamento;
             if (_agindo || _gerador.Estado != EstadoGerador.Desligado || _gerador.TalvezLigado)
                 return MsgEmUso;
@@ -513,8 +507,6 @@ public sealed class GeradorViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudarAlgo;
         _chaves.Mudou -= AoMudarChave;
         _copia.Mudou -= AoMudarAlgo;
-        if (_memorias is not null)
-            _memorias.Mudou -= AoMudarAlgo;
         _estado.Recarregou -= AoRecarregar;
         _estado.Mudou -= AoMudarValor;
     }

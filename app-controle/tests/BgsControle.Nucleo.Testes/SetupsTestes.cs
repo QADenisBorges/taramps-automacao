@@ -1,7 +1,6 @@
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
@@ -49,7 +48,6 @@ public sealed partial class SetupsTestes : IDisposable
     private readonly TextoMemoria _guardadoModelos = new();
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
-    private readonly GerenteMemorias _memorias;
     private readonly GerentePresets _presets;
     private readonly GerentePlaylists _playlists;
     private readonly BaseModelos _modelos;
@@ -86,24 +84,22 @@ public sealed partial class SetupsTestes : IDisposable
         _escritor = new Escritor(_sessao, _estado, _log, relogio: _relogio);
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, _guardadoCopia, _log, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, _guardadoLink, _log);
-        _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
         _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, _guardadoPresets, _log, _relogio);
         _playlists = new GerentePlaylists(_guardadoPlaylists, _log);
         _modelos = new BaseModelos(_guardadoModelos, _log, _relogio);
-        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _memorias, _presets, _playlists, _chaves,
+        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _presets, _playlists, _chaves,
             _guardadoSetups, _guardadoMudo, _log, _relogio, _modelos);
     }
 
     /// <summary>O app sem nenhum arquivo: a primeira abertura.</summary>
     private static SetupsTestes SemArquivos(string? playlists = null) => new(null, null, playlists);
 
-    /// <summary>Critério de aceite: nenhum quadro <c>*240*</c> ou <c>*23N*</c> chega ao simulador, em nenhum teste.</summary>
+    /// <summary>Critério de aceite: nenhum quadro <c>*240*</c>, <c>*241*</c> ou <c>*23N*</c> chega ao simulador, em nenhum teste.</summary>
     public void Dispose()
     {
-        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*240*", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
+        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*24", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
         Assert.All(_simulador.Escritas, e =>
-            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null, e));
+            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null, e));
     }
 
     // ----------------------------------------------------------------- apoio
@@ -408,8 +404,6 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Equal(Casa, marca.IdSetup);
         Assert.Equal(["0", "0", "0", "0"], marca.MuteAnterior);
         Assert.False(_link.Ligado(ParCanais.Saidas34)); // sem Setup em uso, os links ficam desligados
-        var carregar = await _memorias.CarregarAsync(0);
-        Assert.Equal(GerenteSetups.MsgDuvida, carregar.Motivo);
     }
 
     [Fact]
@@ -834,10 +828,11 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Criar_memoria_com_uma_memoria_do_aparelho_em_uso_pede_a_folha_do_Salvar()
+    public async Task Criar_memoria_com_o_som_do_aparelho_em_uso_pede_a_folha_do_Salvar()
     {
+        _simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: som diferente, o som do aparelho
         await Conectar();
-        Assert.True((await Rodar(_memorias.CarregarAsync(1))).Ok);
+        Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
 
         var r = await _setups.CriarMemoriaAsync("NOVA");
 
@@ -1008,36 +1003,17 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.DoesNotContain(_setups.Dados.Memorias, m => m.Nome == "ESTRADA");
     }
 
-    // ----------------------------------------------------------------- memória do aparelho
-
-    [Fact]
-    public async Task Carregar_memoria_do_aparelho_fica_em_uso_sem_mudar_o_Setup_e_ao_reconectar_vira_som_do_aparelho()
-    {
-        _simulador.DefinirMemoria(1, "081", 0, "-5.0");
-        await Conectar();
-
-        var r = await Rodar(_memorias.CarregarAsync(1));
-
-        Assert.True(r.Ok, r.Mensagem);
-        Assert.Equal(SomEmUso.DoAparelho(1), _setups.EmUso);
-        Assert.Equal(Casa, _setups.SetupEmUso!.Id);
-
-        await Reconectar();
-
-        Assert.Equal(EstadoConferencia.SomDiferente, _setups.Estado); // só o ganho difere da FILME
-        Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
-    }
+    // ----------------------------------------------------------------- operação pela metade
 
     [Fact]
     public async Task O_mudo_da_duvida_passa_mesmo_com_uma_operacao_pela_metade()
     {
-        _simulador.DefinirMemoria(1, "050", 2, "60.0");
         await Conectar();
-        _simulador.CairDepoisDaEscrita = _simulador.Escritas.Count + 1; // cai logo depois do *241*1*
-
-        var r = await Rodar(_memorias.CarregarAsync(1));
-        Assert.False(r.Ok);
-        Assert.Equal("*241*1*", _simulador.Escritas[^1]);
+        // Uma operação de vários parâmetros guardou a marca e parou (a conexão caiu no meio dela).
+        Assert.True((await _copia.IniciarAsync(new OperacaoPendente("teste", "x", "Operação de teste"))).Ok);
+        _copia.Interromper();
+        await _sessao.DesconectarAsync();
+        _simulador.Definir("050", 2, "60.0"); // o atraso do Sub mudou fora do app: dúvida
 
         await Conectar();
         await AndarAte(() => _copia.PelaMetade is not null);
@@ -1083,17 +1059,16 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Salvar_com_memoria_do_aparelho_pede_o_nome_e_guarda_a_regulagem_lida_numa_memoria_nova()
+    public async Task Salvar_com_o_som_do_aparelho_pede_o_nome_e_guarda_a_regulagem_lida_numa_memoria_nova()
     {
-        _simulador.DefinirMemoria(1, "050", 2, "60.0");
-        _simulador.DefinirMemoria(1, "081", 0, "-5.0");
+        _simulador.Definir("081", 0, "-5.0"); // só o ganho difere da FILME: o som do aparelho
         await Conectar();
-        Assert.True((await Rodar(_memorias.CarregarAsync(1))).Ok);
+        Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
         var inicio = _simulador.Escritas.Count;
 
         var folha = _setups.PrepararSalvar();
 
-        Assert.Null(folha.Trava); // com memória do aparelho, o Salvar nunca trava por "nada mudou"
+        Assert.Null(folha.Trava); // com o som do aparelho, o Salvar nunca trava por "nada mudou"
         Assert.True(folha.PedeNome);
         Assert.Equal(["Regulagem → memória nova", "15 bandas → preset Cinema"], folha.Linhas.Select(l => l.Titulo));
         Assert.False(folha.PedeNomePreset); // as bandas são as do Cinema: lembra ele, sem pergunta
@@ -1104,9 +1079,8 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Equal("Salvo: regulagem na MUSICA ORIG.", r.Mensagem);
         var nova = _setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
         Assert.Equal("-5.0", Valor(nova.Regulagem, "081", 0));
-        Assert.Equal("60.0", Valor(nova.Regulagem, "050", 2));
         Assert.Equal(Cinema, nova.IdPreset);
-        Assert.Equal("80.0", Valor(_setups.Memoria(Filme)!.Regulagem, "050", 2)); // a FILME não mudou
+        Assert.Equal("+10.0", Valor(_setups.Memoria(Filme)!.Regulagem, "081", 0)); // a FILME não mudou
         Assert.Equal(SomEmUso.DoCelular(nova.Id), _setups.EmUso);
         Assert.Equal(EstadoConferencia.Confere, _setups.Estado);
         Assert.Equal(inicio, _simulador.Escritas.Count); // o Salvar não manda nada pelo BLE
@@ -1564,7 +1538,7 @@ public sealed partial class SetupsTestes : IDisposable
     // ----------------------------------------------------------------- o cenário inteiro
 
     [Fact]
-    public async Task Conectar_duvida_escolher_criar_aplicar_salvar_e_carregar_sem_nenhum_240_nem_23N()
+    public async Task Conectar_duvida_escolher_criar_aplicar_e_salvar_sem_nenhum_240_241_nem_23N()
     {
         await EntrarNaDuvida();
         Assert.True((await Rodar(_setups.EscolherAsync(Casa))).Ok);
@@ -1573,14 +1547,11 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.True((await Rodar(_setups.AplicarAsync(Filme))).Ok);
         Assert.True((await Rodar(_escritor.EscreverAsync(Atraso, 0, 1.0m))).Ok);
         Assert.True((await _setups.SalvarAsync(null)).Ok);
-        Assert.True((await Rodar(_memorias.CarregarAsync(2))).Ok);
-        Assert.True((await Rodar(_setups.SalvarAsync("DO APARELHO"))).Ok);
         Assert.True((await Rodar(_setups.TrocarAsync())).Ok);
         Assert.True((await Rodar(_setups.DesistirAsync())).Ok);
 
-        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*240*", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
-        Assert.Contains("*241*2*", _simulador.Escritas);
-        Assert.Equal(3, _setups.MemoriasDe(Casa).Count);
+        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*24", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
+        Assert.Equal(2, _setups.MemoriasDe(Casa).Count);
     }
 
     // ----------------------------------------------------------------- 8d: o preset lembrado e as 15 bandas
@@ -1748,9 +1719,10 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Salvar_uma_memoria_nova_com_bandas_diferentes_de_todos_pede_o_nome_do_preset_novo()
     {
-        _simulador.DefinirMemoria(1, "020", 0, "+6.0");
+        _simulador.Definir("020", 0, "+6.0");
+        _simulador.Definir("081", 0, "+4.0"); // o ganho também difere da FILME: o som do aparelho
         await Conectar();
-        Assert.True((await Rodar(_memorias.CarregarAsync(1))).Ok);
+        Assert.Equal(SomEmUso.SomDoAparelho, _setups.EmUso);
 
         var folha = _setups.PrepararSalvar();
 
@@ -1771,7 +1743,7 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task O_preset_em_uso_e_o_ultimo_aplicado_sem_memoria_do_celular_e_nenhum_depois_de_carregar_ou_cair()
+    public async Task O_preset_em_uso_e_o_ultimo_aplicado_sem_memoria_do_celular_e_nenhum_depois_de_cair()
     {
         using var t = SemArquivos();
         await t.Conectar();
@@ -1783,9 +1755,6 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("ESTRADA"))).Ok);
 
         Assert.Equal(rock.Id, t._setups.MemoriasDe(Casa).Single().IdPreset);
-        Assert.True((await t.Rodar(t._memorias.CarregarAsync(0))).Ok);
-        Assert.Null(t._setups.IdPresetEmUso);
-        Assert.True((await t.Rodar(t._presets.AplicarAsync(rock.Id))).Ok);
         Assert.Equal(rock.Id, t._setups.IdPresetEmUso);
         await t._sessao.DesconectarAsync();
         Assert.Null(t._setups.IdPresetEmUso);
@@ -1894,8 +1863,9 @@ public sealed partial class SetupsTestes : IDisposable
     public async Task Adocao_pelo_Salvar_a_memoria_nova_MUSICA_ORIG_recebe_as_2_faixas_e_a_pendente_sai()
     {
         using var t = ComFilme(PlaylistsAntigas);
+        t._simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: o som do aparelho vai para uma memória nova
         await t.Conectar();
-        Assert.True((await t.Rodar(t._memorias.CarregarAsync(1))).Ok);
+        Assert.Equal(SomEmUso.SomDoAparelho, t._setups.EmUso);
 
         var r = await t._setups.SalvarAsync("MUSICA ORIG");
 

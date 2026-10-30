@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
@@ -43,9 +42,7 @@ public sealed class PresetsTestes : IDisposable
     private readonly TextoMemoria _guardadoPresets = new();
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
-    private readonly GerenteMemorias _memorias;
     private GerentePresets _presets;
-    private bool _liberaMemoria;
 
     private static Parametro Ganho => Catalogo.ParametroDe("081")!;
     private static Parametro Eq => Catalogo.ParametroDe("020")!;
@@ -63,7 +60,6 @@ public sealed class PresetsTestes : IDisposable
         _escritor = new Escritor(_sessao, _estado, _log, relogio: _relogio);
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, _guardadoCopia, _log, _relogio);
         _link = new LinkCanais(_sessao, _estado, _escritor, _guardadoLink, _log);
-        _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
         _presets = NovoGerente(_guardadoPresets);
     }
 
@@ -72,13 +68,11 @@ public sealed class PresetsTestes : IDisposable
 
     /// <summary>
     /// Critério de aceite: em qualquer teste, só chegaram ao simulador a senha, as leituras do
-    /// catálogo e as escritas de áudio. Comando de memória (240, 241, 23N) é recusado, a não ser no
-    /// teste que o libera de propósito (<see cref="_liberaMemoria"/>).
+    /// catálogo e as escritas de áudio. Nenhum comando de memória do aparelho (240, 241, 23N).
     /// </summary>
     public void Dispose() =>
         Assert.All(_simulador.Escritas, e =>
-            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || (_liberaMemoria && Catalogo.ComandoDeMemoria(e) is not null), e));
+            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null, e));
 
     private async Task Conectar()
     {
@@ -1039,11 +1033,9 @@ public sealed class PresetsTestes : IDisposable
 
         var escrita = await Rodar(_escritor.EscreverAsync(Ganho, 0, -1.0m));
         var aplicar = await Rodar(_presets.AplicarAsync(a.Id));
-        var carregar = await Rodar(_memorias.CarregarAsync(0));
 
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, escrita.Motivo);
         Assert.Equal(CopiaAntes.MsgPelaMetadePendente, aplicar.Motivo);
-        Assert.Equal(CopiaAntes.MsgPelaMetadePendente, carregar.Motivo);
         Assert.Equal(inicio, _simulador.Escritas.Count);
     }
 
@@ -1142,7 +1134,7 @@ public sealed class PresetsTestes : IDisposable
         var r = await Rodar(_presets.AplicarAsync(a.Id));
 
         Assert.False(r.Ok);
-        Assert.Equal(GerenteMemorias.MsgLeituraParou, r.Motivo);
+        Assert.Equal(CopiaAntes.MsgLeituraParou, r.Motivo);
         Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
         Assert.NotNull(_copia.PelaMetade);
         Assert.Equal(GerentePresets.TipoAplicar, _copia.PelaMetade!.Tipo);
@@ -1189,16 +1181,13 @@ public sealed class PresetsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_durante_uma_operacao_de_memoria_e_recusado_e_nenhuma_escrita_de_audio_sai()
+    public async Task Aplicar_durante_outra_operacao_e_recusado_e_nenhuma_escrita_de_audio_sai()
     {
-        _liberaMemoria = true; // o único teste que deixa o 241 passar
         await Conectar();
         var cinema = await CriarCinema();
         await Mudar3(); // o espelho difere do Cinema: haveria o que escrever
-        _simulador.Silenciar.Add("*241*2*"); // o 241 sai, mas o ack não vem: o carregar fica preso
-        var carga = _memorias.CarregarAsync(2);
-        await AndarAte(() => _simulador.Escritas.Contains("*241*2*"));
-        Assert.False(carga.IsCompleted);
+        // Outra operação de vários parâmetros anda (guardou a cópia e a marca e ainda não terminou).
+        Assert.True((await _copia.IniciarAsync(new OperacaoPendente("teste", "x", "Operação de teste"))).Ok);
         var inicio = _simulador.Escritas.Count;
 
         var r = await _presets.AplicarAsync(cinema.Id);
@@ -1207,7 +1196,7 @@ public sealed class PresetsTestes : IDisposable
         Assert.Equal(CopiaAntes.MsgOutraOperacao, r.Motivo);
         Assert.Empty(AudioDesde(inicio));
         Assert.Equal(inicio, _simulador.Escritas.Count);
-        await Rodar(carga); // o carregar acaba depois do prazo do ack
+        await _copia.ConcluirAsync();
     }
 
     [Fact]

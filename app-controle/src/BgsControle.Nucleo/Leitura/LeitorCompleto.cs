@@ -274,7 +274,7 @@ public sealed class LeitorCompleto
             return null; // eco do envio
 
         if (p.Extra && p.Escopo == Escopo.Global)
-            return string.Join("#", q.Segmentos); // #231## = nome vazio: ""
+            return string.Join("#", q.Segmentos); // os segmentos como vieram (#CCC## = vazio: "")
 
         if (p.Escopo == Escopo.Global)
             return q.Segmentos.Count == 1 ? q.Segmentos[0] : null;

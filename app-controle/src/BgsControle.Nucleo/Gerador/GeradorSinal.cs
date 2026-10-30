@@ -1,6 +1,5 @@
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
@@ -111,7 +110,6 @@ public sealed class GeradorSinal
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias? _memorias;
     private readonly LogBle _log;
     private readonly EnvioComResposta _envio;
     private readonly TemposGerador _tempos;
@@ -141,7 +139,6 @@ public sealed class GeradorSinal
         LeituraAutomatica leitura,
         CopiaAntes copia,
         LogBle log,
-        GerenteMemorias? memorias = null,
         TemposEscrita? tempos = null,
         TemposGerador? temposGerador = null,
         TimeProvider? relogio = null)
@@ -149,7 +146,6 @@ public sealed class GeradorSinal
         _sessao = sessao;
         _estado = estado;
         _copia = copia;
-        _memorias = memorias;
         _log = log;
         _relogio = relogio ?? TimeProvider.System;
         _tempos = temposGerador ?? TemposGerador.Padrao;
@@ -470,8 +466,6 @@ public sealed class GeradorSinal
             return Escritor.MsgSemLeitura;
         if (_copia.MotivoBloqueio() is { } bloqueio)
             return bloqueio;
-        if (_memorias?.Ocupado == true)
-            return GerenteMemorias.MsgOcupado;
         return null;
     }
 

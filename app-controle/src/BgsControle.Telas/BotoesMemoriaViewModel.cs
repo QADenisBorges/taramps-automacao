@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -82,7 +81,7 @@ public sealed class LinhaMemoriaViewModel
 
     public string Nome { get; }
 
-    /// <summary>"Preset: Cinema", "Memória 2 do aparelho", ou null.</summary>
+    /// <summary>"Preset: Cinema", ou null.</summary>
     public string? Detalhe { get; }
 
     /// <summary>A que está em uso fica em branco.</summary>
@@ -91,28 +90,24 @@ public sealed class LinhaMemoriaViewModel
     /// <summary>Sem Setup, as memórias do celular ficam travadas (nome apagado).</summary>
     public bool Travada { get; }
 
-    /// <summary>Aplica (celular) ou carrega (aparelho) e fecha a lista.</summary>
+    /// <summary>Aplica e fecha a lista.</summary>
     public Comando Tocar { get; }
 }
 
 /// <summary>
 /// Os 3 botões de memória do Início e da Mesa e a lista "…" (EXPERIENCE, Component Patterns › Memória):
 /// as 3 memórias do celular usadas por último no Setup em uso, que não mudam de lugar, e o "…", que
-/// abre a lista com as memórias do celular do Setup e a seção "Do aparelho" com as 3 do processador.
-/// Tocar aplica (celular) ou carrega (aparelho), sem confirmação, pelas travas da tela Memórias
+/// abre a lista com as memórias do celular do Setup. As memórias do processador não aparecem
+/// (decisão do Denis, 29/10/2026). Tocar aplica, sem confirmação, pelas travas da tela Memórias
 /// (<see cref="MemoriasViewModel"/>). Sem Setup, as memórias do celular ficam travadas com a frase.
 /// </summary>
 public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
 {
-    public const string RotuloAparelho = "DO APARELHO";
-
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly MemoriasViewModel _tela;
     private readonly Sessao _sessao;
 
     private IReadOnlyList<LinhaMemoriaViewModel> _celular = [];
-    private IReadOnlyList<LinhaMemoriaViewModel> _aparelho = [];
     private bool _listaAberta;
     private string? _mensagem;
     private string? _aplicando;
@@ -120,7 +115,6 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
 
     public BotoesMemoriaViewModel(
         GerenteSetups setups,
-        GerenteMemorias memorias,
         MemoriasViewModel tela,
         Sessao sessao,
         IDespachante despachante,
@@ -128,7 +122,6 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         : base(despachante, relogio)
     {
         _setups = setups;
-        _memorias = memorias;
         _tela = tela;
         _sessao = sessao;
         Botoes = Enumerable.Range(0, GerenteSetups.QuantosBotoes).Select(v => new BotaoMemoriaViewModel(v, this, despachante, relogio)).ToArray();
@@ -140,7 +133,6 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         FecharLista = new Comando(() => ListaAberta = false);
 
         _setups.Mudou += AoMudar;
-        _memorias.Mudou += AoMudar;
         _sessao.Mudou += AoMudar;
         _tela.PropertyChanged += AoMudarTela;
         Atualizar();
@@ -171,7 +163,7 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>"Aplicando a FILME" (ou "Carregando a memória 2 do aparelho") até a releitura; os valores esmaecem.</summary>
+    /// <summary>"Aplicando a FILME" até a releitura; os valores esmaecem.</summary>
     public string? Aplicando
     {
         get => _aplicando;
@@ -208,13 +200,10 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
     /// <summary>As memórias do celular do Setup em uso, na ordem em que foram criadas.</summary>
     public IReadOnlyList<LinhaMemoriaViewModel> LinhasCelular => _celular;
 
-    /// <summary>"Do aparelho": as 3 memórias do processador pelos nomes lidos.</summary>
-    public IReadOnlyList<LinhaMemoriaViewModel> LinhasAparelho => _aparelho;
-
     /// <summary>"Memórias do Casa 2.1", ou null sem Setup.</summary>
     public string? TituloCelular => _tela.TituloCelular;
 
-    // ------------------------------------------------------------------ aplicar e carregar
+    // ------------------------------------------------------------------ aplicar
 
     /// <summary>Aplica a memória do celular: sem confirmação, pelas travas da tela Memórias.</summary>
     public async Task AplicarAsync(string id)
@@ -234,30 +223,6 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
         try
         {
             await _tela.AplicarAsync(id);
-        }
-        finally
-        {
-            _agindo = false;
-            Fim();
-        }
-    }
-
-    /// <summary>Carrega a memória do aparelho (0 a 2): sem confirmação, pelas travas da tela Memórias.</summary>
-    public async Task CarregarAsync(int indice)
-    {
-        if (_agindo)
-            return; // um segundo toque com o primeiro rodando não faz nada
-        if (_tela.MotivoTravaCarregar is { } motivo)
-        {
-            Mensagem = motivo;
-            return;
-        }
-        ListaAberta = false;
-        Aplicando = $"Carregando a memória {indice + 1} do aparelho";
-        _agindo = true;
-        try
-        {
-            await _tela.CarregarAsync(indice);
         }
         finally
         {
@@ -305,17 +270,8 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
                 _setups.PresetDe(m) is { } p ? MemoriasViewModel.TextoPresetDe(p.Nome) : null,
                 m.Id == emUso, travado, () => AplicarAsync(m.Id)))
             .ToArray();
-        _aparelho = Enumerable.Range(0, Catalogo.Memorias)
-            .Select(n => new LinhaMemoriaViewModel(
-                _memorias.Nome(n) is { Length: > 0 } nome ? nome : MemoriasViewModel.SemNome,
-                $"Memória {n + 1} do aparelho",
-                uso.Tipo == TipoSomEmUso.MemoriaAparelho && uso.MemoriaAparelho == n,
-                false,
-                () => CarregarAsync(n)))
-            .ToArray();
 
         Avisar(nameof(LinhasCelular));
-        Avisar(nameof(LinhasAparelho));
         Avisar(nameof(TituloCelular));
         Avisar(nameof(MotivoTravaCelular));
         Avisar(nameof(TravadoCelular));
@@ -324,7 +280,6 @@ public sealed class BotoesMemoriaViewModel : TelaBase, IDisposable
     public void Dispose()
     {
         _setups.Mudou -= AoMudar;
-        _memorias.Mudou -= AoMudar;
         _sessao.Mudou -= AoMudar;
         _tela.PropertyChanged -= AoMudarTela;
     }

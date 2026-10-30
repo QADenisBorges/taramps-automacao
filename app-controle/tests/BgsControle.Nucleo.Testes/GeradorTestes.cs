@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Simulador;
@@ -51,7 +50,6 @@ public sealed class GeradorTestes : IDisposable
     private readonly EstadoAparelho _estado;
     private readonly Escritor _escritor;
     private readonly CopiaAntes _copia;
-    private readonly GerenteMemorias _memorias;
     private readonly GeradorSinal _gerador;
     private volatile bool _alarmeVisto;
 
@@ -67,8 +65,7 @@ public sealed class GeradorTestes : IDisposable
         _estado = new EstadoAparelho(_sessao, _leitura);
         _escritor = new Escritor(_sessao, _estado, _log, relogio: _relogio);
         _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
-        _memorias = new GerenteMemorias(_sessao, _estado, _leitura, _copia, _log, relogio: _relogio);
-        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, _memorias, Escrita, TemposDoGerador, _relogio);
+        _gerador = new GeradorSinal(_sessao, _estado, _leitura, _copia, _log, Escrita, TemposDoGerador, _relogio);
         _gerador.Mudou += () =>
         {
             if (_gerador.Alarme)

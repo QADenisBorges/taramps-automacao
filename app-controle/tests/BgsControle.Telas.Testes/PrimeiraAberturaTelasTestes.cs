@@ -59,9 +59,8 @@ public sealed class PrimeiraAberturaTelasTestes : IDisposable
         Assert.Equal("Nenhuma memória", _t.Inicio.NomeMemoria);
         Assert.True(_t.Inicio.MostrarCriarMemoria);
 
-        // A lista "…": sem memórias do celular, só a seção "Do aparelho".
+        // A lista "…": sem memórias do celular, vazia (as memórias do processador não aparecem).
         Assert.Empty(_t.Botoes.LinhasCelular);
-        Assert.Equal(3, _t.Botoes.LinhasAparelho.Count);
         Assert.Equal("Criar memória do som atual", InicioViewModel.TextoCriarMemoria);
         Assert.Null(_t.Inicio.NomePreset); // sem chip
 

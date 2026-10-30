@@ -6,7 +6,7 @@ Protocolo: `protocolo/MAPA.md`.
 
 Nesta versão (até a história 5) o app **procura, conecta, autentica, mostra o firmware e lê o
 aparelho inteiro**: logo depois da senha aceita, faz a leitura completa (84 consultas do Marco 1
-e 15 extras) e mostra o placar ("84 de 84") e a lista de valores. A história 4 trouxe as telas
+e 12 extras; até 29/10/2026 eram 15, com os nomes 231–233) e mostra o placar ("84 de 84") e a lista de valores. A história 4 trouxe as telas
 testáveis sem MAUI e o processador simulado dos testes.
 
 Desde a história 5, o núcleo **escreve os ajustes de áudio do MAPA §4** (só eles), pelo
@@ -57,6 +57,21 @@ conexão ele confere a calibração com a do último Setup usado: se não bate, 
 Setup); a porta da IA recusa todo POST até lá. Aplicar memória, escolher Setup e o "Manter a
 calibração" do Salvar passam pela cópia antes (chave "Aplicar memória do celular"). Os
 ViewModels são o `SetupViewModel`, o `MemoriasViewModel` e o `SalvarViewModel`.
+
+Desde 29/10/2026, **as memórias do processador não aparecem no app** (decisão do Denis). O app
+não carrega nem lê os nomes: a trava recusa também o `*241*` em qualquer forma, como o 240 e o
+23N ("comando não liberado nesta versão do app"), antes de qualquer envio BLE; o motivo
+"comando de memória fora do formato" saiu. A leitura completa não pergunta mais os nomes 231–233
+(12 extras). A chave "Carregar memória do aparelho" saiu (ficam 10 chaves); o id
+`carregar-memoria` de um `chaves-de-acesso.json` antigo é ignorado ao ler. A porta da IA perdeu o
+`POST /memoria/carregar` (caminho desconhecido, 404), e o `GET /estado` perdeu o objeto
+`memorias`; as memórias do celular continuam em `setup`. Saíram a seção "Do aparelho" da tela
+Memórias e da lista dos botões de memória, o estado "Memória N do aparelho" no Início e na Mesa e
+a frase "Carregar a memória N" do Histórico (entradas antigas `CarregarMemoria` do
+`historico.json` são descartadas ao ler). Fica o "Som do aparelho": o som atual não bate com
+nenhuma memória do celular. O `GerenteMemorias` saiu do núcleo. Uma marca `carregar-memoria` antiga na `CopiaAntes` ainda mostra
+"aplicado pela metade", mas só Voltar à cópia funciona; Terminar diz "O app não sabe refazer esta
+operação.". O simulador dos testes continua imitando o 241 e os nomes, porque é o aparelho.
 
 ## Projetos
 

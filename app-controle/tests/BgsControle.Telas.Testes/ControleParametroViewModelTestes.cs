@@ -4,7 +4,6 @@ using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
@@ -68,12 +67,11 @@ internal sealed class Bancada
         Estado = new EstadoAparelho(Sessao, Leitura);
         Escritor = new Escritor(Sessao, Estado, Log, relogio: Relogio);
         Fabrica = new FabricaControles(Sessao, Chaves, Estado, Escritor, Tela, Relogio);
-        // História 6: a cópia antes, o link e as memórias, guardados pelos arquivos falsos.
+        // História 6: a cópia antes e o link, guardados pelos arquivos falsos.
         Copia = new CopiaAntes(Sessao, Estado, Escritor, Leitura,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoCopia), Log, Relogio);
         Link = new LinkCanais(Sessao, Estado, Escritor,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoLink), Log);
-        Memorias = new GerenteMemorias(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
         // História 8: os presets no celular, guardados nos arquivos falsos.
         Presets = new GerentePresets(Sessao, Estado, Escritor, Leitura, Copia,
             new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoPresets), Log, Relogio);
@@ -83,15 +81,15 @@ internal sealed class Bancada
         {
             // História 10c: a base de modelos, como no MauiProgram (o modelo que se completa na folha).
             Modelos = new BaseModelos(new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoModelos), Log, Relogio);
-            Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Memorias, Presets, Playlists, Chaves,
+            Setups = new GerenteSetups(Sessao, Estado, Escritor, Leitura, Copia, Link, Presets, Playlists, Chaves,
                 new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetups),
                 new RepositorioTextoArquivos(Arquivos, RepositorioTextoArquivos.ArquivoSetupMudo), Log, Relogio, modelos: Modelos);
         }
         // História 7a: o gerador, criado antes da primeira conexão (a regra 2 confere o 202 em cada leitura).
-        Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, Memorias, relogio: Relogio);
+        Gerador = new GeradorSinal(Sessao, Estado, Leitura, Copia, Log, relogio: Relogio);
         // História 7b: a monitoração e os comandos de aparelho.
         Monitor = new MonitorAparelho(Sessao, Leitura, Relogio);
-        Comandos = new ComandosAparelho(Sessao, Estado, Leitura, Copia, Cofre, Log, Memorias, Gerador, relogio: Relogio);
+        Comandos = new ComandosAparelho(Sessao, Estado, Leitura, Copia, Cofre, Log, Gerador, relogio: Relogio);
     }
 
     public CofreMemoria Cofre { get; } = new() { Senha = "AB12" };
@@ -110,15 +108,14 @@ internal sealed class Bancada
 
     public MonitoracaoViewModel CriarMonitoracaoViewModel() => new(Monitor, Tela, Relogio);
 
-    public AparelhoViewModel CriarAparelhoViewModel() => new(Comandos, Sessao, Chaves, Estado, Copia, Tela, Relogio, Memorias, Gerador);
+    public AparelhoViewModel CriarAparelhoViewModel() => new(Comandos, Sessao, Chaves, Estado, Copia, Tela, Relogio, Gerador);
 
     public GeradorSinal Gerador { get; }
 
-    public GeradorViewModel CriarGeradorViewModel() => new(Gerador, Sessao, Chaves, Estado, Copia, Tela, Relogio, Memorias);
+    public GeradorViewModel CriarGeradorViewModel() => new(Gerador, Sessao, Chaves, Estado, Copia, Tela, Relogio);
 
     public CopiaAntes Copia { get; }
     public LinkCanais Link { get; }
-    public GerenteMemorias Memorias { get; }
 
     /// <summary>Os Setups (só com <c>setups: true</c>).</summary>
     public GerenteSetups? Setups { get; }
@@ -131,7 +128,7 @@ internal sealed class Bancada
     public SetupViewModel CriarSetupViewModel() => new(Setups!, Sessao, Tela, Relogio);
 
     public MemoriasViewModel CriarMemoriasViewModel(SalvarViewModel? salvar = null) =>
-        new(Setups!, Memorias, Copia, Sessao, Chaves, Estado, salvar ?? CriarSalvarViewModel(), Tela, Relogio);
+        new(Setups!, Copia, Sessao, Chaves, Estado, salvar ?? CriarSalvarViewModel(), Tela, Relogio);
 
     public LinkViewModel CriarLinkViewModel() => new(Link, Tela, Relogio);
 
@@ -208,16 +205,16 @@ internal sealed class Bancada
         Simulador.Escritas.Count(e => e.StartsWith(prefixo, StringComparison.Ordinal));
 
     /// <summary>
-    /// Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo, o
-    /// 241 e o <c>*202*0*</c> (o gerador desliga por segurança quando uma leitura não traz o 202:
-    /// história 7a, regra 2). Nenhum 240 nem 23N (história 8c).
+    /// Critério de aceite: só a senha, as leituras do catálogo, as escritas de áudio do catálogo e o
+    /// <c>*202*0*</c> (o gerador desliga por segurança quando uma leitura não traz o 202: história
+    /// 7a, regra 2). Nenhum 240, 241 nem 23N (história 8c e decisão do Denis de 29/10/2026).
     /// </summary>
     public void ConferirSoAudio()
     {
-        Assert.DoesNotContain(Simulador.Escritas, e => e.StartsWith("*240*", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
+        Assert.DoesNotContain(Simulador.Escritas, e => e.StartsWith("*24", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
         Assert.All(Simulador.Escritas, e =>
             Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
-                        || Catalogo.ComandoDeMemoria(e) is not null || e == Catalogo.DesligarGerador, e));
+                        || e == Catalogo.DesligarGerador, e));
     }
 }
 

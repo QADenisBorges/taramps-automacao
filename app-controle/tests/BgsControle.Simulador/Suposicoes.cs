@@ -42,7 +42,7 @@ public static class Suposicoes
     /// <summary>Id → o que se supõe. A mesma lista, com o mesmo texto, está em <c>SUPOSICOES.md</c>.</summary>
     public static IReadOnlyDictionary<string, string> Todas { get; } = new Dictionary<string, string>
     {
-        [Ack241] = "O ack de `*241*n*` (carregar) é `#241#n#`, no mesmo prazo do 240 (~1,17 s). O do 240 foi medido (acima).",
+        [Ack241] = "Fora de uso: o app não envia mais o 241 (decisão do Denis, 29/10/2026). O ack de `*241*n*` (carregar) é `#241#n#`, no mesmo prazo do 240 (~1,17 s). O do 240 foi medido (acima).",
         [ConteudoMemoria] = "Uma memória guarda os 84 valores do Marco 1 e o ganho (200) e a frequência (201) do tom fixo (medido); não guarda o 202, o 210–213, o 251 e o 252 (não medido: eram iguais nas memórias carregadas).",
         [MemoriasIniciais] = "O conteúdo inicial das 3 memórias é igual ao estado semeado.",
         [Eco251252] = "O 251 e o 252 respondem com o eco no formato de leitura (`#252#v#`). (O nome `*23N*nome*` não ecoa: medido, acima.)",
@@ -57,9 +57,9 @@ public static class Suposicoes
         [QuedaAposErro] = "A senha certa dentro da janela cancela a queda de 29 s; um segundo `ERRO` não reinicia o prazo.",
         [VoltimetroCrlf] = "O órfão `ERRO 0` do voltímetro chega com `\\r\\n`.",
         [ClipEspontaneo] = "O clip espontâneo (`#150#bits#`) tem o formato da leitura; o período e o gatilho não foram medidos.",
-        [MemoriaNome] = "O nome da memória é lido em `#23N#` (resposta `23N#NOME`), e a memória 1 é o `n` 0 do 241 e o nome 231 (a 2 é `n` 1 e 232; a 3 é `n` 2 e 233). O app não escreve o nome (história 8c).",
+        [MemoriaNome] = "O nome da memória é lido em `#23N#` (resposta `23N#NOME`), e a memória 1 é o `n` 0 do 241 e o nome 231 (a 2 é `n` 1 e 232; a 3 é `n` 2 e 233). O app não escreve nem lê o nome (história 8c e decisão do Denis de 29/10/2026).",
         [RegraNomes] = "A regra de nomes da Taramps (de 1 a 12 caracteres, A–Z, 0–9, espaço e `_`, em maiúsculas) vale para o nome do produto (`*002*NOME*`), como valia para as memórias no app da Taramps.",
-        [CarregarSemNomes] = "Carregar (`*241*n*`) troca os 84 valores do Marco 1 e não mexe nos nomes 23N; o nome é do aparelho, não da memória.",
+        [CarregarSemNomes] = "Fora de uso: o app não envia mais o 241 nem lê os nomes 23N (decisão do Denis, 29/10/2026). Carregar (`*241*n*`) troca os 84 valores do Marco 1 e não mexe nos nomes 23N; o nome é do aparelho, não da memória.",
         [LinkParametros] = "O link copia e repete os parâmetros de canal do Marco 1 menos o roteamento, como o app da Taramps (`BVM:16189`); o comportamento na tela é conferido na história 10.",
         [SenhaErradaDesautentica] = "Com a sessão já autenticada, uma senha errada recebe a mesma resposta da certa e a sessão continua (medido; era a suposição contrária).",
         [FilaUnica] = "As respostas com atraso saem de uma fila única, na ordem em que foram geradas: cada uma espera o seu atraso e a anterior (um eco de 85 ms seguido de uma leitura de 25 ms chega antes dela).",

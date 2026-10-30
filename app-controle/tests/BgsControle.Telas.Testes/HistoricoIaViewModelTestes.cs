@@ -137,7 +137,6 @@ public sealed class HistoricoIaViewModelTestes : IDisposable
     [InlineData(TipoComando.AjusteAudio, "100", 3, "1", "Mute · saída 4 · mutado")]
     [InlineData(TipoComando.Gerador, "202", null, "0", "Gerador · desligado")]
     [InlineData(TipoComando.Gerador, "201", null, "1000", "Gerador frequência · 1000 Hz")]
-    [InlineData(TipoComando.CarregarMemoria, "241", null, "2", "Carregar a memória 3")]
     [InlineData(TipoComando.SalvarMemoria, "240", null, "0", "Salvar na memória 1")]
     [InlineData(TipoComando.NomearMemoria, "232", null, "MUSICA ORIG", "Nome da memória 2 · MUSICA ORIG")]
     [InlineData(TipoComando.RemoteOut, "252", null, "0", "Remote out · desligado")]
@@ -153,7 +152,6 @@ public sealed class HistoricoIaViewModelTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("*241*2*", "Carregar a memória 3")] // o 240 e o 23N não saem do app desde a história 8c
     [InlineData("*252*1*", "Remote out · ligado")]
     [InlineData("*252*0*", "Remote out · desligado")]
     [InlineData("*251*1*", "Bluetooth de áudio · ligado")]
@@ -181,6 +179,17 @@ public sealed class HistoricoIaViewModelTestes : IDisposable
         Assert.NotEqual(TipoComando.Desconhecido, comando.Tipo);
         var e = new EntradaHistorico(DateTimeOffset.UnixEpoch, OrigemComando.Tela, comando.Tipo, comando.Endereco, comando.Valor, true, null);
         Assert.Equal(frase, FraseComando.De(e));
+    }
+
+    /// <summary>O 240, o 241 e o 23N não saem do app (história 8c e decisão do Denis de 29/10/2026): o 241 é desconhecido.</summary>
+    [Fact]
+    public void O_241_vira_comando_desconhecido_com_o_codigo()
+    {
+        var comando = ComandoNaPorta.Ler("*241*2*")!;
+        var e = new EntradaHistorico(DateTimeOffset.UnixEpoch, OrigemComando.Tela, comando.Tipo, comando.Endereco, comando.Valor, false, Sessao.MotivoNaoLiberado);
+
+        Assert.Equal(TipoComando.Desconhecido, comando.Tipo);
+        Assert.Equal("Comando desconhecido · 241", FraseComando.De(e));
     }
 
     [Fact]

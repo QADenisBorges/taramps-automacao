@@ -80,13 +80,12 @@ public sealed class SalvarViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Com_memoria_do_aparelho_o_confirmar_trava_ate_dar_o_nome_e_a_regulagem_vai_para_uma_memoria_nova()
+    public async Task Com_o_som_do_aparelho_o_confirmar_trava_ate_dar_o_nome_e_a_regulagem_vai_para_uma_memoria_nova()
     {
-        _b.Simulador.DefinirMemoria(1, "050", 2, "60.0");
+        _b.Simulador.Definir("081", 0, "-5.0"); // só o ganho difere da FILME: o som do aparelho
         await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(1));
         await _b.Tela.EsvaziarAsync();
-        Assert.True(_vm.PodeSalvar); // com memória do aparelho, nunca trava por "nada mudou"
+        Assert.True(_vm.PodeSalvar); // com o som do aparelho, nunca trava por "nada mudou"
 
         await _vm.Abrir.ExecutarAsync();
 
@@ -106,15 +105,16 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.Equal("Salvo: regulagem na MUSICA ORIG.", _vm.Mensagem);
         Assert.Equal(antes, _b.Simulador.Escritas.Count); // o Salvar não manda nada pelo BLE
         var nova = Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG");
-        Assert.Equal("60.0", Valor(nova, "050", 2));
+        Assert.Equal("-5.0", Valor(nova, "081", 0));
         Assert.Equal(CenarioFilme.IdPreset, nova.IdPreset);
     }
 
     [Fact]
     public async Task Nome_repetido_a_folha_fica_aberta_com_o_erro()
     {
+        _b.Simulador.Definir("081", 0, "+4.0"); // o som do aparelho: a regulagem vai para uma memória nova
         await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(0));
+        await _b.Tela.EsvaziarAsync();
         await _vm.Abrir.ExecutarAsync();
         _vm.NomeMemoria = "filme";
 
@@ -243,9 +243,9 @@ public sealed class SalvarViewModelTestes : IDisposable
     [Fact]
     public async Task Memoria_nova_com_bandas_diferentes_de_todos_pede_os_dois_nomes()
     {
-        _b.Simulador.DefinirMemoria(1, "020", 0, "+6.0");
+        _b.Simulador.Definir("020", 0, "+6.0");
+        _b.Simulador.Definir("081", 0, "+4.0"); // o ganho também difere da FILME: o som do aparelho
         await _b.Conectar();
-        await _b.Rodar(_b.Memorias.CarregarAsync(1));
         await _b.Tela.EsvaziarAsync();
 
         await _vm.Abrir.ExecutarAsync();

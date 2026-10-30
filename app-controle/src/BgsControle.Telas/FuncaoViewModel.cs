@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -124,7 +123,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
 
     private readonly FabricaControles _fabrica;
     private readonly GerenteSetups _setups;
-    private readonly GerenteMemorias _memorias;
     private readonly Sessao _sessao;
     private readonly EstadoAparelho _estado;
     private readonly LinkCanais _link;
@@ -139,7 +137,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
         FuncaoAudio funcao,
         FabricaControles fabrica,
         GerenteSetups setups,
-        GerenteMemorias memorias,
         Sessao sessao,
         EstadoAparelho estado,
         LinkCanais link,
@@ -153,7 +150,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
         Funcao = funcao;
         _fabrica = fabrica;
         _setups = setups;
-        _memorias = memorias;
         _sessao = sessao;
         _estado = estado;
         _link = link;
@@ -173,7 +169,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
         _link.Mudou += AoMudarLink;
         _setups.Mudou += AoMudar;
         _sessao.Mudou += AoMudar;
-        _memorias.Mudou += AoMudar; // o subtítulo diz o nome lido de uma memória do aparelho
         EscolherSaida(_abas.FirstOrDefault()?.Canal ?? 0);
     }
 
@@ -183,7 +178,7 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
     public string Titulo => AudioViewModel.Titulo(Funcao);
 
     /// <summary>A memória em uso ("FILME", "Som do aparelho", o nome lido de uma memória do aparelho), ou "Sem conexão".</summary>
-    public string Subtitulo => SomEmUsoTexto.De(_setups, _memorias, _sessao).Nome ?? ControleParametroViewModel.MsgSemConexao;
+    public string Subtitulo => SomEmUsoTexto.De(_setups, _sessao).Nome ?? ControleParametroViewModel.MsgSemConexao;
 
     /// <summary>A função é por saída: uma aba por saída do Setup em uso.</summary>
     public bool TemAbas => Funcao is not (FuncaoAudio.Eq15Bandas or FuncaoAudio.EqEntrada or FuncaoAudio.Gerador);
@@ -380,7 +375,6 @@ public sealed class FuncaoViewModel : TelaBase, IDisposable
         _link.Mudou -= AoMudarLink;
         _setups.Mudou -= AoMudar;
         _sessao.Mudou -= AoMudar;
-        _memorias.Mudou -= AoMudar;
         foreach (var (vista, avancado) in _porCanal.Values)
         {
             foreach (var i in vista.Concat(avancado))

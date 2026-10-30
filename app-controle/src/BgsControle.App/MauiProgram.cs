@@ -7,7 +7,6 @@ using BgsControle.Nucleo.Enlace;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Memorias;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
@@ -97,12 +96,6 @@ public static class MauiProgram
             sp.GetRequiredService<Escritor>(),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoLink),
             sp.GetRequiredService<LogBle>()));
-        builder.Services.AddSingleton(sp => new GerenteMemorias(
-            sp.GetRequiredService<Sessao>(),
-            sp.GetRequiredService<EstadoAparelho>(),
-            sp.GetRequiredService<LeituraAutomatica>(),
-            sp.GetRequiredService<CopiaAntes>(),
-            sp.GetRequiredService<LogBle>()));
 
         // História 8 e 8d: os presets de 15 bandas no celular (criar no Salvar, aplicar, renomear, apagar), com
         // o aplicar pela cópia antes, e as playlists por memória do celular (playlists.json). Antes dos
@@ -140,7 +133,6 @@ public static class MauiProgram
             sp.GetRequiredService<LeituraAutomatica>(),
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<LinkCanais>(),
-            sp.GetRequiredService<GerenteMemorias>(),
             sp.GetRequiredService<GerentePresets>(),
             sp.GetRequiredService<GerentePlaylists>(),
             sp.GetRequiredService<IChaves>(),
@@ -156,8 +148,7 @@ public static class MauiProgram
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<LeituraAutomatica>(),
             sp.GetRequiredService<CopiaAntes>(),
-            sp.GetRequiredService<LogBle>(),
-            sp.GetRequiredService<GerenteMemorias>()));
+            sp.GetRequiredService<LogBle>()));
 
         // História 11: o reprodutor real (o MediaPlayer do Android) e o Player, que toca a playlist da memória do
         // celular em uso (e segue tocando na queda do BLE, decisão do Denis de 24/10/2026).
@@ -183,8 +174,7 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<ICofreSenha>(),
             sp.GetRequiredService<LogBle>(),
-            sp.GetRequiredService<GerenteMemorias>(),
-            sp.GetRequiredService<GeradorSinal>()));
+            gerador: sp.GetRequiredService<GeradorSinal>()));
 
         builder.Services.AddSingleton<ConexaoViewModel>();
         // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do conhecimento herdado, do gerador, da monitoração e
@@ -207,8 +197,7 @@ public static class MauiProgram
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<IDespachante>(),
-            sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<GerenteMemorias>()));
+            sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
             sp.GetRequiredService<MonitorAparelho>(),
             sp.GetRequiredService<IDespachante>(),
@@ -223,7 +212,6 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredService<GerenteMemorias>(),
             sp.GetRequiredService<GeradorSinal>()));
 
         // História 10: a casca e as telas (Início, Mesa, Áudio, telas de função, Ajuste da saída, Setup em dúvida,
@@ -263,7 +251,6 @@ public static class MauiProgram
             new RedeLocal(),
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<Escritor>(),
-            sp.GetRequiredService<GerenteMemorias>(),
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<GeradorSinal>(),
             sp.GetRequiredService<ComandosAparelho>(),
@@ -333,7 +320,7 @@ public static class MauiProgram
         app.Services.GetRequiredService<EstadoAparelho>();
         app.Services.GetRequiredService<Escritor>();
         app.Services.GetRequiredService<LinkCanais>();
-        app.Services.GetRequiredService<GerenteMemorias>(); // cria a CopiaAntes e registra as memórias nela
+        app.Services.GetRequiredService<CopiaAntes>(); // a retomada do "aplicado pela metade" vê a primeira leitura
         // Os presets cedo: o tipo "aplicar-preset" precisa estar registrado na CopiaAntes antes da primeira leitura.
         app.Services.GetRequiredService<GerentePresets>();
         // Os Setups cedo (com os presets e as playlists): a conferência roda na primeira leitura de cada
