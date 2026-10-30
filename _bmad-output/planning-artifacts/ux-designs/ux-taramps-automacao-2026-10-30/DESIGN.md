@@ -189,6 +189,13 @@ motion:
   center-button-pulse: 1.4s ease-in-out
   roda-auto-return: 5s
   reduced-motion-opening: 0.5s fade
+  load-finish-spinner-close: 0.3s ease (arco ciano fecha o anel inteiro com brilho; arco rosa some em 0.25s)
+  load-finish-screen-out: 0.3s ease (só opacidade; o cabeçalho fica parado)
+  load-finish-screen-in: 0.38s cubic-bezier(.2,.7,.2,1) (só opacidade; o movimento fica na Roda e nos blocos)
+  load-finish-stagger: 0.06s por bloco (dica, faixa da IA, player, chips), subindo 10px
+  load-finish-roda-in: 0.5s cubic-bezier(.2,.7,.2,1) (de escala .82)
+  load-finish-applied-flash: 0.6s ease (brilho ciano rápido na Roda ao fechar a aplicação)
+  reduced-motion-load-finish: 0.2s fade, sem escala nem sequência
 components:
   app-bar:
     background: '{colors.bg}'

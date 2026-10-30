@@ -18,7 +18,26 @@
   /* Celular */
   .phone { position:relative; width:360px; max-width:100%; height:740px; border-radius:44px; border:9px solid #2A2A2E; background:#000; overflow:hidden; color:#fff; flex:none; user-select:none; }
   .screen { position:absolute; inset:0; display:none; flex-direction:column; }
-  .screen.on { display:flex; }
+  .screen.on, .screen.leaving { display:flex; }
+  /* Transição do fim do carregamento: o spinner fecha (300 ms), a tela sai (300 ms) e a nova entra (380 ms), com os blocos em sequência (60 ms) */
+  .screen.leaving { z-index:2; animation:sai-tela .3s ease forwards; pointer-events:none; }
+  .screen.entering { animation:entra-tela .38s cubic-bezier(.2,.7,.2,1) both; }
+  .screen.entering .stg { animation:sobe-bloco .42s cubic-bezier(.2,.7,.2,1) both; }
+  .screen.entering .stg:nth-child(2) { animation-delay:.06s } .screen.entering .stg:nth-child(3) { animation-delay:.12s }
+  .screen.entering .stg:nth-child(4) { animation-delay:.18s } .screen.entering .stg:nth-child(5) { animation-delay:.24s }
+  .screen.entering .dialwrap { animation:roda-entra .5s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes sai-tela { to { opacity:0 } }
+  @keyframes entra-tela { from { opacity:0 } }
+  @keyframes sobe-bloco { from { opacity:0; transform:translateY(10px) } }
+  @keyframes roda-entra { from { opacity:0; transform:scale(.82) } }
+  .dual.done .a1, .dual.done .a2 { animation-play-state:paused; }
+  .dual .a1 { transition:stroke-dasharray .3s ease, filter .3s; }
+  .dual .a2 { transition:opacity .25s; }
+  .dual.done .a1 { stroke-dasharray:264 0; filter:drop-shadow(0 0 8px #3FD0FF); }
+  .dual.done .a2 { opacity:0; }
+  .full.leaving { display:flex; animation:sai-tela .35s ease forwards; }
+  .dialwrap.flash svg { animation:clarao .6s ease; }
+  @keyframes clarao { 30% { filter:drop-shadow(0 0 14px #3FD0FF88) } }
   .sb { display:flex; justify-content:space-between; padding:10px 22px 2px; font-size:11.5px; color:#8a8a90; flex:none; }
   .hdr { display:flex; align-items:center; gap:8px; padding:8px 18px 8px; flex:none; }
   .hdr svg { width:24px; height:24px; }
@@ -188,6 +207,7 @@
     .rings .p { animation-duration:6s; }
     .dual .a1 { animation-duration:2.2s; } .dual .a2 { animation-duration:3s; }
     .tap.pulse { animation:none; stroke-opacity:1; }
+    .screen.leaving, .screen.entering, .screen.entering .stg, .screen.entering .dialwrap, .full.leaving { animation-duration:.2s !important; animation-name:fade !important; animation-delay:0s !important; }
   }
 </style>
 </head>
@@ -259,10 +279,10 @@
         <!-- Som -->
         <div class="tab on" id="tab-som">
           <div class="dialwrap" id="dialwrap" role="slider" tabindex="0" aria-label="Roda de memórias. Use as setas para escolher e Enter para aplicar"><svg id="dial" viewBox="0 0 290 290"></svg></div>
-          <div class="dhint" id="dhint">Gire para escolher · toque no centro para aplicar</div>
-          <div id="iaslot"></div>
-          <div class="player" id="player"><div class="cv"></div><div class="t"><b id="trk"></b><small id="trkSub"></small></div><button class="pl" id="playBtn" aria-label="Tocar ou pausar">⏸</button></div>
-          <div class="chips"><button class="chip" id="presetChip">Preset: Ação ›</button><button class="chip" id="iaChip"><i></i><span>IA pareada · parada</span></button><button class="chip" id="newMem">+ Nova memória</button></div>
+          <div class="dhint stg" id="dhint">Gire para escolher · toque no centro para aplicar</div>
+          <div id="iaslot" class="stg"></div>
+          <div class="player stg" id="player"><div class="cv"></div><div class="t"><b id="trk"></b><small id="trkSub"></small></div><button class="pl" id="playBtn" aria-label="Tocar ou pausar">⏸</button></div>
+          <div class="chips stg"><button class="chip" id="presetChip">Preset: Ação ›</button><button class="chip" id="iaChip"><i></i><span>IA pareada · parada</span></button><button class="chip" id="newMem">+ Nova memória</button></div>
         </div>
         <!-- IA -->
         <div class="tab" id="tab-ia">
@@ -372,7 +392,18 @@
   const tick = () => { const d = new Date(); document.querySelectorAll(".clock").forEach(c => c.textContent = d.toTimeString().slice(0, 5)); };
   tick(); setInterval(tick, 20000);
 
-  function show(id) { document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id)); }
+  function show(id, smooth = true) {
+    const cur = document.querySelector(".screen.on"), next = $(id);
+    if (cur === next) return;
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("on", "leaving", "entering"));
+    if (cur && smooth) { cur.classList.add("leaving"); setTimeout(() => cur.classList.remove("leaving"), 320); }
+    next.classList.add("on"); if (smooth) { next.classList.add("entering"); setTimeout(() => next.classList.remove("entering"), 700); }
+  }
+  // o spinner fecha num anel inteiro e só então a tela troca
+  function finish(svg, then) {
+    svg.classList.add("done");
+    setTimeout(() => { then(); setTimeout(() => svg.classList.remove("done"), 400); }, 320);
+  }
   function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 2600); }
   function sheet(html, { lock = false } = {}) { $("sheet").innerHTML = '<div class="grab"></div>' + html; $("sheet").classList.add("on"); $("scrim").classList.add("on"); $("scrim").onclick = lock ? null : closeSheet; }
   function closeSheet() { $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); }
@@ -409,7 +440,10 @@
   // ---------- Conectando ----------
   function conectar() {
     clearAll(); show("conectando");
-    later(() => { show("app"); goTab("som"); if ($("simDuvida").checked) duvida(); else { st.mode = "ok"; render(); toast("Conectado. O aparelho bate com a FILME do Casa 2.1."); } }, 2600);
+    later(() => finish(document.querySelector("#conectando .dual"), () => {
+      goTab("som"); st.mode = $("simDuvida").checked ? "duvida" : "ok"; render(); show("app");
+      if (st.mode === "duvida") later(duvidaSheet, 450); else later(() => toast("Conectado. O aparelho bate com a FILME do Casa 2.1."), 450);
+    }), 2600);
   }
   $("cancelConn").onclick = busca;
 
@@ -533,12 +567,14 @@
   function aplicar(i, verb = "Aplicando", after) {
     $("applyVerb").textContent = verb; $("applyName").textContent = MEMS[i].nome;
     $("applying").classList.add("on");
-    later(() => {
-      $("applying").classList.remove("on");
+    later(() => finish(document.querySelector("#applying .dual"), () => {
+      const f = $("applying"); f.classList.add("leaving"); f.classList.remove("on");
+      setTimeout(() => f.classList.remove("leaving"), 360);
+      $("dialwrap").classList.remove("flash"); void $("dialwrap").offsetWidth; $("dialwrap").classList.add("flash");
       st.playing = i; st.pos = Math.round(st.pos); if (selIdx() !== i) st.pos = i;
       st.preset = MEMS[i].preset; st.playingAudio = true; render();
       toast(after || `${MEMS[i].nome} aplicada.${MEMS[i].preset ? " Preset " + MEMS[i].preset + " de volta." : ""}`);
-    }, 2300);
+    }), 2300);
   }
 
   // memórias (segurar o centro)
@@ -583,7 +619,6 @@
   document.querySelectorAll("#nav button").forEach(b => b.onclick = () => goTab(b.dataset.tab));
 
   // ---------- Setup em dúvida ----------
-  function duvida() { st.mode = "duvida"; st.ia = false; render(); duvidaSheet(); }
   function duvidaSheet() {
     sheet(`<div class="mute">🔇 Som mudo até você escolher</div>
       <p>O aparelho não bate com a FILME do Casa 2.1:</p><ul class="diff"><li>Corte do Sub: 80 Hz na FILME, 120 Hz no aparelho</li><li>Atraso da JBL L: 72 cm na FILME, 0 cm no aparelho</li></ul>
