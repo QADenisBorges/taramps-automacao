@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Abertura</title>
+<style>
+  /* Abertura escolhida: Neon + Glitch versão B (aura fica) e, no final, o rosa passa suavemente a azul.
+     Linha do tempo (ciclo de 5 s):
+       0–0,5 s   círculo pisca e firma (camadas ciano #00F0FF e rosa #FF2BD6 a ±9 px, borradas 1,2 px)
+       0,5–1,1 s onda pisca e acende, com brilho ciano
+       1,1–1,7 s camadas se aproximam até ±3,5 px (aura) e o brilho baixa
+       1,8–2,6 s nome sai do desfoque (BGS, depois SOUND)
+       1,9–3,1 s rosa vira azul (#3FD0FF); 2,4–3,5 s a aura encolhe para dentro do símbolo e some, sem borrão
+       3,5 s     fica exatamente a logo parada; 4,6–5 s some (só na demonstração) */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; --cy:#00F0FF; --mg:#FF2BD6; --T:5s; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; }
+  .row { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; align-items:flex-start; }
+  .phone { position:relative; width:280px; height:560px; border-radius:38px; border:8px solid #2A2A2E; background:#000; overflow:hidden; }
+  .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; animation:out var(--T) infinite both; }
+  @keyframes out { 0%,93% { opacity:1 } 100% { opacity:0 } }
+  .stage * { animation-duration:var(--T); animation-iteration-count:infinite; animation-fill-mode:both; }
+  .stage.parado, .stage.parado * { animation-play-state:paused; }
+  .box { position:relative; width:120px; height:120px; }
+  .box > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .ring { fill:none; stroke:#fff; stroke-opacity:.35; stroke-width:3; }
+  .wave { fill:none; stroke:var(--a); stroke-width:6; stroke-linecap:round; stroke-linejoin:round; }
+  .wm { display:flex; flex-direction:column; align-items:center; line-height:1; color:#fff; font-size:38px; }
+  .wm b { font-weight:900; letter-spacing:-.02em; }
+  .wm span { font-weight:500; font-size:.37em; letter-spacing:.62em; margin:.4em -.62em 0 0; }
+  .side { flex:1 1 240px; max-width:320px; }
+  .side h2 { font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--mut); margin-bottom:10px; font-weight:600; }
+  .side ol { padding-left:18px; color:var(--tx); font-size:14px; line-height:1.55; }
+  .side li { margin-bottom:6px; }
+  .side li small { color:var(--mut); display:block; font-size:12px; }
+  .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  button { background:none; border:1px solid var(--line); color:var(--tx); border-radius:999px; padding:7px 14px; font:inherit; font-size:12.5px; cursor:pointer; }
+  button:hover { border-color:var(--mut); }
+
+  /* Nome (opção 6) */
+  .wm b, .wm span { animation-name:nome; animation-timing-function:cubic-bezier(.2,.7,.2,1); }
+  .wm span { animation-delay:.25s; }
+  @keyframes nome { 0%,36% { opacity:0; filter:blur(10px); transform:scale(1.15) } 52%,100% { opacity:1; filter:blur(0); transform:none } }
+
+  /* Piscar do neon */
+  .ring { animation-name:pisca-ring; animation-timing-function:steps(1,end); }
+  .wave { animation-name:pisca-wave; animation-timing-function:steps(1,end); }
+  @keyframes pisca-ring { 0% { opacity:0 } 3% { opacity:1 } 4% { opacity:0 } 7% { opacity:1 } 8% { opacity:.2 } 9%,100% { opacity:1 } }
+  @keyframes pisca-wave { 0%,10% { opacity:0 } 12% { opacity:1 } 13% { opacity:0 } 16% { opacity:.8 } 17% { opacity:0 } 19% { opacity:1 } 21% { opacity:.3 } 22%,100% { opacity:1 } }
+  .main { animation-name:brilho; animation-timing-function:ease; }
+  @keyframes brilho { 0%,22% { filter:drop-shadow(0 0 6px #3FD0FF) drop-shadow(0 0 16px #3FD0FF) } 36%,100% { filter:drop-shadow(0 0 0 #3FD0FF) } }
+
+  /* Camadas da aura: a cor vem de "color", que é o que muda no final */
+  .cy, .mg { mix-blend-mode:screen; }
+  .cy * , .mg * { stroke:currentColor !important; }
+  .cy .ring, .mg .ring { stroke-opacity:1; stroke-width:4; }
+  .cy .wave, .mg .wave { stroke-width:7; }
+  .cy { animation-name:cyPos,cyCor; animation-timing-function:ease,ease-in-out; }
+  .mg { animation-name:mgPos,mgCor; animation-timing-function:ease,ease-in-out; }
+  @keyframes cyPos { 0% { transform:translateX(-9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(-7px); filter:blur(1.2px); opacity:1 } 34%,48% { transform:translateX(-3.5px); filter:blur(1px); opacity:.9 } 70%,100% { transform:none; filter:blur(0); opacity:0 } }
+  @keyframes mgPos { 0% { transform:translateX(9px); filter:blur(1.2px); opacity:1 } 22% { transform:translateX(7px); filter:blur(1.2px); opacity:1 } 34%,48% { transform:translateX(3.5px); filter:blur(1px); opacity:.9 } 70%,100% { transform:none; filter:blur(0); opacity:0 } }
+  @keyframes cyCor { 0%,38% { color:#00F0FF } 62%,100% { color:#3FD0FF } }
+  @keyframes mgCor { 0%,38% { color:#FF2BD6 } 62%,100% { color:#3FD0FF } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BGS Sound · Abertura escolhida</h1>
+  <p class="sub">Neon com glitch, versão B: a aura azul e rosa fica e, no final, o rosa passa devagar a azul e a aura se recolhe para dentro do símbolo. Termina igual à logo parada, nítida.</p>
+  <div class="row">
+    <div class="phone"><div class="stage" id="stage">
+      <div class="box">
+        <svg class="cy" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+        <svg class="mg" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+        <svg class="main" viewBox="0 0 100 100"><circle class="ring" cx="50" cy="50" r="42"/><path class="wave" d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50"/></svg>
+      </div>
+      <div class="wm"><b>BGS</b><span>SOUND</span></div>
+    </div></div>
+    <div class="side">
+      <h2>O que acontece</h2>
+      <ol>
+        <li>O círculo pisca e firma, com o azul e o rosa separados e borrados.<small>0 a 0,5 s</small></li>
+        <li>A onda pisca e acende, com brilho.<small>0,5 a 1,1 s</small></li>
+        <li>O azul e o rosa se aproximam e viram uma aura fina em volta.<small>1,1 a 1,7 s</small></li>
+        <li>BGS SOUND sai do desfoque.<small>1,8 a 2,6 s</small></li>
+        <li>O rosa passa devagar a azul.<small>1,9 a 3,1 s</small></li>
+        <li>A aura se recolhe para dentro do símbolo e some, sem borrão. Fica a logo nítida, igual à do app.<small>2,4 a 3,5 s</small></li>
+      </ol>
+      <div class="btns">
+        <button type="button" id="rep">Repetir</button>
+        <button type="button" id="pause">Pausar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById("rep").addEventListener("click", () => {
+    const st = document.getElementById("stage"); st.replaceWith(st.cloneNode(true));
+    document.getElementById("pause").textContent = "Pausar";
+  });
+  document.getElementById("pause").addEventListener("click", e => {
+    const st = document.getElementById("stage"), p = st.classList.toggle("parado");
+    e.target.textContent = p ? "Continuar" : "Pausar";
+  });
+</script>
+</body>
+</html>

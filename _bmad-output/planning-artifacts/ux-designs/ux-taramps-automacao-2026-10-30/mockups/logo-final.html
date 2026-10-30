@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGS Sound · Logo</title>
+<style>
+  /* Logo escolhida: Onda (opção 2) + nome Empilhado (formato 1). Ciano #3FD0FF; círculo em branco/preto a 35%. */
+  :root { --pg:#141416; --tx:#F2F2F4; --mut:#9A9AA2; --line:#2A2A2E; --a:#3FD0FF; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--pg); color:var(--tx); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding:24px 16px 64px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  h1 { font-size:22px; }
+  .sub { color:var(--mut); font-size:14px; margin:6px 0 24px; line-height:1.5; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--mut); margin:28px 0 10px; font-weight:600; }
+  .row { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); }
+  .box { border-radius:16px; min-height:200px; display:flex; align-items:center; justify-content:center; padding:24px; border:1px solid var(--line); }
+  .dark { background:#000; color:#fff; }
+  .light { background:#fff; color:#111; }
+
+  .lock { display:flex; align-items:center; gap:.42em; font-size:44px; }
+  .lock svg { width:1.5em; height:1.5em; flex:none; }
+  .wm { display:flex; flex-direction:column; line-height:1; }
+  .wm b { font-weight:900; font-size:1em; letter-spacing:-.02em; }
+  .wm span { font-weight:500; font-size:.37em; letter-spacing:.62em; margin-top:.4em; }
+
+  .icons { display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap; }
+  .icons figure { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .icons figcaption { font-size:11px; color:var(--mut); }
+  .tile { position:relative; background:#06141A; color:#fff; border-radius:23%; }
+  .tile.round { border-radius:50%; }
+  .tile svg { position:absolute; left:14%; top:14%; width:72%; height:72%; }
+
+  .phones { display:flex; gap:24px; flex-wrap:wrap; }
+  .phone { width:260px; height:520px; border-radius:36px; border:8px solid #2A2A2E; background:#000; color:#fff; overflow:hidden; display:flex; flex-direction:column; }
+  .phone .splash { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+  .phone .splash svg { width:96px; height:96px; }
+  .phone .splash .wm { align-items:center; font-size:34px; }
+  .phone .splash .wm span { margin-right:-.62em; }
+  .appbar { display:flex; align-items:center; gap:8px; padding:14px 16px; border-bottom:1px solid #1C1C1E; }
+  .appbar svg { width:26px; height:26px; }
+  .appbar .wm { flex-direction:row; align-items:baseline; gap:.45em; font-size:17px; }
+  .appbar .wm span { font-size:.62em; letter-spacing:.32em; margin:0; }
+  .appbar .gear { margin-left:auto; color:#666; font-size:18px; }
+  .phone .body { flex:1; padding:16px; color:#555; font-size:12px; }
+
+  .home { background:linear-gradient(160deg,#2b3a55,#11151f); width:260px; height:200px; border-radius:20px; padding:20px; display:grid; grid-template-columns:repeat(4,1fr); gap:14px 8px; align-content:start; }
+  .home figure { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .home figcaption { font-size:9px; color:#fff; }
+  .home .other { width:44px; height:44px; border-radius:23%; background:#ffffff22; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="onda" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="3" opacity=".35"/>
+      <path d="M14 50 Q20 20 27 50 Q34 78 41 50 Q48 30 55 50 Q62 66 69 50 Q75 41 81 50 Q84 54 87 50" fill="none" stroke="#3FD0FF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>BGS Sound · Logo escolhida</h1>
+  <p class="sub">Símbolo Onda (opção 2) com o nome Empilhado (formato 1). Aqui ela aparece em todos os lugares onde vai ser usada, para você conferir antes de seguirmos.</p>
+
+  <h2>Logo completa</h2>
+  <div class="row">
+    <div class="box dark"><div class="lock"><svg><use href="#onda"/></svg><div class="wm"><b>BGS</b><span>SOUND</span></div></div></div>
+    <div class="box light"><div class="lock"><svg><use href="#onda"/></svg><div class="wm"><b>BGS</b><span>SOUND</span></div></div></div>
+  </div>
+
+  <h2>Ícone do app</h2>
+  <div class="row">
+    <div class="box dark" style="justify-content:flex-start">
+      <div class="icons">
+        <figure><div class="tile" style="width:128px;height:128px"><svg><use href="#onda"/></svg></div><figcaption>loja / grande</figcaption></figure>
+        <figure><div class="tile" style="width:56px;height:56px"><svg><use href="#onda"/></svg></div><figcaption>tela inicial</figcaption></figure>
+        <figure><div class="tile round" style="width:56px;height:56px"><svg><use href="#onda"/></svg></div><figcaption>redondo</figcaption></figure>
+        <figure><div class="tile" style="width:24px;height:24px"><svg><use href="#onda"/></svg></div><figcaption>notificação</figcaption></figure>
+      </div>
+    </div>
+    <div class="box" style="background:#000">
+      <div class="home">
+        <figure><div class="other"></div><figcaption>Câmera</figcaption></figure>
+        <figure><div class="tile" style="width:44px;height:44px"><svg><use href="#onda"/></svg></div><figcaption>BGS Sound</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Taramps</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Spotify</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Fotos</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Agenda</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Música</figcaption></figure>
+        <figure><div class="other"></div><figcaption>Ajustes</figcaption></figure>
+      </div>
+    </div>
+  </div>
+
+  <h2>Dentro do app</h2>
+  <div class="phones">
+    <div class="phone"><div class="splash"><svg><use href="#onda"/></svg><div class="wm"><b>BGS</b><span>SOUND</span></div></div></div>
+    <div class="phone">
+      <div class="appbar"><svg><use href="#onda"/></svg><div class="wm"><b>BGS</b><span>SOUND</span></div><span class="gear">⚙</span></div>
+      <div class="body">O resto da tela ainda vai ser desenhado.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

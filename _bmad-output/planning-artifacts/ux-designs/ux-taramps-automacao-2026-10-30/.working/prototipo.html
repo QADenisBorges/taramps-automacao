@@ -125,6 +125,10 @@
   .dialwrap { position:relative; width:290px; height:290px; margin:2px auto 0; flex:none; touch-action:none; }
   .dialwrap svg { width:100%; height:100%; overflow:visible; }
   .dialwrap.locked { opacity:.35; filter:saturate(.3); pointer-events:none; }
+  /* área de toque do preset (o desenho fica no SVG): 160 × 48 px, maior que a pílula */
+  .presetbtn { position:absolute; left:65px; top:151px; width:160px; height:48px; border:0; border-radius:24px; background:transparent; z-index:2; touch-action:manipulation; }
+  .presetbtn:active { background:#3FD0FF22; }
+  .presetbtn[hidden] { display:none; }
   .tap { transition:opacity .25s; }
   .tap.pulse { animation:pulsa 1.4s ease-in-out infinite; }
   @keyframes pulsa { 0%,100% { stroke-opacity:.45 } 50% { stroke-opacity:1 } }
@@ -278,11 +282,11 @@
       <div class="tabarea">
         <!-- Som -->
         <div class="tab on" id="tab-som">
-          <div class="dialwrap" id="dialwrap" role="slider" tabindex="0" aria-label="Roda de memórias. Use as setas para escolher e Enter para aplicar"><svg id="dial" viewBox="0 0 290 290"></svg></div>
+          <div class="dialwrap" id="dialwrap" role="slider" tabindex="0" aria-label="Roda de memórias. Use as setas para escolher e Enter para aplicar"><svg id="dial" viewBox="0 0 290 290"></svg><button class="presetbtn" id="presetBtn" aria-label="Trocar o preset"></button></div>
           <div class="dhint stg" id="dhint">Gire para escolher · toque no centro para aplicar</div>
           <div id="iaslot" class="stg"></div>
           <div class="player stg" id="player"><div class="cv"></div><div class="t"><b id="trk"></b><small id="trkSub"></small></div><button class="pl" id="playBtn" aria-label="Tocar ou pausar">⏸</button></div>
-          <div class="chips stg"><button class="chip" id="presetChip">Preset: Ação ›</button><button class="chip" id="iaChip"><i></i><span>IA pareada · parada</span></button><button class="chip" id="newMem">+ Nova memória</button></div>
+          <div class="chips stg"><button class="chip" id="iaChip"><i></i><span>IA pareada · parada</span></button><button class="chip" id="newMem">+ Nova memória</button></div>
         </div>
         <!-- IA -->
         <div class="tab" id="tab-ia">
@@ -347,7 +351,7 @@
 
     <!-- Camadas -->
     <div class="full" id="applying" role="status"><svg class="dual" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="a1" cx="50" cy="50" r="42"/><circle class="a2" cx="50" cy="50" r="34"/></svg>
-      <small id="applyVerb">Aplicando</small><b id="applyName">MÚSICA HIGH</b><span class="note">Mantenha o celular perto do processador</span></div>
+      <small id="applyVerb">Aplicando</small><b id="applyName">MÚSICA HIGH</b><span id="applyPreset" style="font-size:13px;color:#7fd9f5"></span><span class="note">Mantenha o celular perto do processador</span></div>
     <div class="scrim" id="scrim"></div>
     <div class="sheet" id="sheet"></div>
     <div class="toast" id="toast"></div>
@@ -356,7 +360,8 @@
   <aside class="panel">
     <h2>Simular</h2>
     <p>O que no app real vem do aparelho ou da IA.</p>
-    <label><input type="checkbox" id="simDuvida"> Na próxima conexão, o aparelho não bate (Setup em dúvida)</label>
+    <label><input type="checkbox" id="simLeve"> Na próxima conexão, só ganho/EQ diferem (o app reaplica sozinho)</label>
+    <label><input type="checkbox" id="simDuvida"> Na próxima conexão, corte/atraso não batem (Setup em dúvida)</label>
     <button class="pb" id="simIA">A IA começa a trabalhar</button>
     <button class="pb" id="simDrop">Cai a conexão Bluetooth</button>
     <button class="pb" id="simRestart">Reiniciar o app (abertura)</button>
@@ -368,7 +373,7 @@
       <li>Na Roda, gire até a MÚSICA HIGH e solte. Espere 5 s sem tocar: ela volta.</li>
       <li>Gire de novo e toque no centro: a tela toda aplica.</li>
       <li>Segure o centro: abre a lista de memórias.</li>
-      <li>Toque no Preset e troque.</li>
+      <li>Toque no preset (o nome abaixo da memória, ex.: "Ação ›") e troque.</li>
       <li>Simule a IA, depois a dúvida, depois a queda.</li>
     </ol>
   </aside>
@@ -441,8 +446,10 @@
   function conectar() {
     clearAll(); show("conectando");
     later(() => finish(document.querySelector("#conectando .dual"), () => {
-      goTab("som"); st.mode = $("simDuvida").checked ? "duvida" : "ok"; render(); show("app");
-      if (st.mode === "duvida") later(duvidaSheet, 450); else later(() => toast("Conectado. O aparelho bate com a FILME do Casa 2.1."), 450);
+      goTab("som"); st.mode = $("simDuvida").checked ? "duvida" : "ok"; st.pos = st.playing; render(); show("app");
+      if (st.mode === "duvida") later(duvidaSheet, 450);
+      else if ($("simLeve").checked) later(() => aplicar(st.playing, "Reaplicando", `${MEMS[st.playing].nome} e o preset ${MEMS[st.playing].preset} de volta no aparelho.`), 450);
+      else later(() => toast(`Conectado. ${MEMS[st.playing].nome}${st.preset ? " e o preset " + st.preset : ""} em uso.`), 450);
     }), 2600);
   }
   $("cancelConn").onclick = busca;
@@ -481,6 +488,11 @@
     else if (st.ia) { big = MEMS[st.playing].nome; small = st.iaPaused ? "IA pausada" : "a IA está ajustando"; }
     else if (chosenDiff) { small = "toque para aplicar"; }
     const fs = big.length > 11 ? 19 : big.length > 8 ? 22 : 28;
+    // preset logo abaixo do nome: o em uso (toque abre a lista) ou o último da escolhida (aplica junto)
+    let presetTxt = "";
+    const pn = x => x || "Sem preset";
+    if (st.mode === "ok") presetTxt = chosenDiff ? pn(MEMS[sel].preset) : `${pn(st.preset)} ›`;
+    const pw = presetTxt.length * 6.6 + 22;
     $("dial").innerHTML = `<defs>${defs}</defs>
       <circle cx="${C}" cy="${C}" r="${R}" fill="#07090b" stroke="#ffffff1f" stroke-width="2"/>
       <circle cx="${C}" cy="${C}" r="${R - 32}" fill="none" stroke="#ffffff0d"/>
@@ -488,11 +500,14 @@
       <path d="${arcPath(0, 22, R)}" fill="none" stroke="${arcCol}" stroke-width="4" stroke-linecap="round" filter="url(#brilho)"/>
       ${labels}
       <circle class="tap${chosenDiff ? " pulse" : ""}" cx="${C}" cy="${C}" r="80" fill="${chosenDiff ? "#3FD0FF10" : "transparent"}" stroke="#3FD0FF" stroke-width="2" opacity="${chosenDiff ? 1 : 0}"/>
-      <use href="#onda" x="${C - 29}" y="${C - 70}" width="58" height="58"/>
-      <text x="${C}" y="${C + 22}" text-anchor="middle" font-size="${fs}" font-weight="900" letter-spacing="1.5" fill="#fff">${big}</text>
-      <text x="${C}" y="${C + 43}" text-anchor="middle" font-size="11.5" fill="${smallCol}">${small}</text>
-      ${locked ? `<text x="${C}" y="${C + 64}" text-anchor="middle" font-size="16">🔒</text>` : ""}`;
+      <use href="#onda" x="${C - 27}" y="${C - 74}" width="54" height="54"/>
+      <text x="${C}" y="${C + 10}" text-anchor="middle" font-size="${fs}" font-weight="900" letter-spacing="1.5" fill="#fff">${big}</text>
+      ${presetTxt ? `<g opacity="${locked ? .5 : 1}"><rect x="${C - pw / 2}" y="${C + 20}" width="${pw}" height="22" rx="11" fill="#3FD0FF1a" stroke="#3FD0FF55"/>
+        <text x="${C}" y="${C + 35}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#3FD0FF">${presetTxt}</text></g>` : ""}
+      <text x="${C}" y="${C + 62}" text-anchor="middle" font-size="11.5" fill="${smallCol}">${small}</text>
+      ${locked ? `<text x="${C}" y="${C + 82}" text-anchor="middle" font-size="15">🔒</text>` : ""}`;
     $("dialwrap").classList.toggle("locked", locked);
+    $("presetBtn").hidden = !(st.mode === "ok" && !st.ia && !chosenDiff);
     $("dialwrap").setAttribute("aria-valuetext", `${MEMS[sel].nome}${chosenDiff ? ", toque para aplicar" : ", tocando"}`);
     $("dhint").textContent = st.mode === "off" ? "O aparelho segue tocando o que já tinha"
       : st.mode === "duvida" ? "" : st.ia ? "Os controles voltam com PARAR IA"
@@ -500,7 +515,6 @@
     const m = MEMS[st.playing];
     $("trk").textContent = m.trk; $("trkSub").textContent = m.sub;
     $("playBtn").textContent = st.playingAudio ? "⏸" : "▶";
-    $("presetChip").textContent = `Preset: ${st.preset || "nenhum"} ›`;
     const pill = $("setupPill");
     pill.className = "setup" + (st.mode === "duvida" ? " warn" : st.mode === "off" ? " off" : "");
     pill.querySelector("span").textContent = st.mode === "duvida" ? "Setup em dúvida" : st.mode === "off" ? "Sem conexão" : "Casa 2.1 ›";
@@ -513,12 +527,12 @@
   // arrastar a roda
   let drag = null, revertT = null, pressT = null, moved = false;
   const wrap = $("dialwrap");
-  const angleOf = e => { const r = wrap.getBoundingClientRect(); const x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2; return { a: Math.atan2(x, -y) * 180 / Math.PI, d: Math.hypot(x, y) / (r.width / 290) }; };
+  const angleOf = e => { const r = wrap.getBoundingClientRect(), k = r.width / 290; const x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2; return { a: Math.atan2(x, -y) * 180 / Math.PI, d: Math.hypot(x, y) / k, ux: x / k, uy: y / k }; };
   wrap.addEventListener("pointerdown", e => {
     if (st.mode !== "ok" || st.ia) return;
-    const { a, d } = angleOf(e);
+    const { a, d, ux, uy } = angleOf(e);
     wrap.setPointerCapture(e.pointerId); moved = false;
-    drag = { last: a, center: d < 80, x: e.clientX, y: e.clientY };
+    drag = { last: a, center: d < 80, onPreset: Math.abs(ux) < 62 && uy > 18 && uy < 46, x: e.clientX, y: e.clientY };
     clearTimeout(revertT);
     if (drag.center) pressT = setTimeout(() => { drag = null; memorias(); }, 600);
   });
@@ -533,8 +547,10 @@
   const end = () => {
     clearTimeout(pressT);
     if (!drag) return;
-    const wasCenter = drag.center && !moved; drag = null;
-    if (moved) snap(); else if (wasCenter) tapCenter();
+    const wasCenter = drag.center && !moved, onPreset = drag.onPreset; drag = null;
+    if (moved) snap();
+    else if (wasCenter && onPreset && selIdx() === st.playing) openPresets();
+    else if (wasCenter) tapCenter();
   };
   wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
   wrap.addEventListener("keydown", e => {
@@ -566,6 +582,7 @@
   }
   function aplicar(i, verb = "Aplicando", after) {
     $("applyVerb").textContent = verb; $("applyName").textContent = MEMS[i].nome;
+    $("applyPreset").textContent = MEMS[i].preset || "Sem preset";
     $("applying").classList.add("on");
     later(() => finish(document.querySelector("#applying .dual"), () => {
       const f = $("applying"); f.classList.add("leaving"); f.classList.remove("on");
@@ -573,7 +590,7 @@
       $("dialwrap").classList.remove("flash"); void $("dialwrap").offsetWidth; $("dialwrap").classList.add("flash");
       st.playing = i; st.pos = Math.round(st.pos); if (selIdx() !== i) st.pos = i;
       st.preset = MEMS[i].preset; st.playingAudio = true; render();
-      toast(after || `${MEMS[i].nome} aplicada.${MEMS[i].preset ? " Preset " + MEMS[i].preset + " de volta." : ""}`);
+      toast(after || `${MEMS[i].nome} aplicada${MEMS[i].preset ? ", com o preset " + MEMS[i].preset : ""}.`);
     }), 2300);
   }
 
@@ -596,13 +613,15 @@
   }
 
   // preset, player, nova memória
-  $("presetChip").onclick = () => {
+  ["pointerdown", "pointerup", "touchstart"].forEach(ev => $("presetBtn").addEventListener(ev, e => e.stopPropagation()));
+  $("presetBtn").addEventListener("click", e => { e.stopPropagation(); openPresets(); });
+  function openPresets() {
     sheet(`<h3>Preset (15 bandas)</h3><p>Vai por cima da ${MEMS[st.playing].nome}. Troca na hora, sem confirmação.</p>` +
       [...PRESETS, null].map(p => `<button class="opt${p === st.preset ? " on" : ""}" data-p="${p ?? ""}">${p ?? "Nenhum preset"}<span class="r">${p === st.preset ? "em uso" : ""}</span></button>`).join("") +
       `<button class="btn" id="closeP">Fechar</button>`);
     $("closeP").onclick = closeSheet;
-    document.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { st.preset = b.dataset.p || null; closeSheet(); render(); toast(st.preset ? `Preset ${st.preset} aplicado.` : "Sem preset: só a memória."); });
-  };
+    document.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { st.preset = MEMS[st.playing].preset = b.dataset.p || null; closeSheet(); render(); toast(st.preset ? `Preset ${st.preset} aplicado.` : "Sem preset: só a memória."); });
+  }
   $("playBtn").onclick = () => { st.playingAudio = !st.playingAudio; render(); };
   $("newMem").onclick = () => toast("Fora deste protótipo: a memória nova nasce do som atual.");
   $("saveBtn").onclick = () => toast("Fora deste protótipo: o Salvar reparte entre memória e preset.");
