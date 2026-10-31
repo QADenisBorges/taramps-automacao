@@ -272,7 +272,7 @@
 # a interface não mostra a IA (sem aba IA, PARAR IA, faixa nem Histórico; a porta
 # continua por baixo), a diferença leve ao conectar reaplica sozinha, e a criação
 # da memória por perguntas entra no POC (CAP-18, só o lado do app).
-# Ordem: 9c → 12b → 9d → 10d → 12c.
+# Ordem (replanejada em 30/10): 9c → 9d → 10d → 8g → 13a–13g → Agente → 12b → 12c → 12d.
 - id: "9c"
   title: Porta sem rosto e reaplicar sozinho
   description: >-
@@ -289,23 +289,7 @@
     seções 4.2 a 4.4; porta-de-comandos.md, chaves-de-acesso.md e a regra 5
     de failure-modes.md. Nada do núcleo da porta é desfeito. Um teste
     garante que nenhum texto de tela contém "IA". Tudo contra o
-    ProcessadorSimulado. Vem antes de a 12b continuar.
-- id: "12b"
-  title: Telas e aparelho inteiro no aparelho real
-  description: >-
-    Cada tela no A52 contra o aparelho: ajustes, Sub do Casa 2.1 escrevendo
-    no CH3 e no CH4 juntos, link, Setups, esquema do Casa 2.1, memórias,
-    presets, Player com áudio, gerador, voltímetro, clip, remote out,
-    Bluetooth, nome do produto e chaves; as suposições que sobraram.
-  done_checkpoint: true
-  invoke_dev_with: >-
-    Gerador só com o RCA dos módulos desconectado, e fechar o app com o tom
-    tocando (deferred-work). Voltímetro contra o VC830L, com foto. Reset de
-    fábrica, reset de áudio e troca de senha só na recusa. As pendências
-    "no aparelho" das histórias 4 a 11 que são de tela. Conferir no aparelho
-    a conferência nova (muta com corte diferente, reaplica sozinho com
-    ganho diferente; proposta de 30/10), o link que sai sozinho do bridge e o app começando sem
-    memórias; as 3 memórias do processador continuam como estavam.
+    ProcessadorSimulado.
 - id: "9d"
   title: Porta nos dois sentidos para a criação da memória
   description: >-
@@ -338,6 +322,129 @@
     Questões em aberto 12 (nome), 14 (✕ no resumo e no Salvar), 15
     (animação desligada), 18 (erro no meio; regra 6 de failure-modes), 20 e
     21 (TalkBack e Voltar). Depende da 9d.
+# Plano de 30/10/2026: o app nasce zerado (decisão do Denis) e entra o Rendimento
+# (spec própria em _bmad-output/specs/spec-rendimento/). Todas rodam contra o
+# ProcessadorSimulado; a conferência no aparelho fica na 12d, no fim.
+- id: "8g"
+  title: App nasce zerado
+  description: >-
+    O app abre como numa primeira instalação: sem o Setup Casa 2.1, sem
+    equipamentos, fichas, base de modelos, notas das memórias do aparelho
+    nem preferências; fica só o protocolo (CAP-6, CAP-16).
+  invoke_dev_with: >-
+    Decisão do Denis de 30/10/2026 (memlog de spec-rendimento e da spec do
+    app; conhecimento-herdado.md atualizado). Sem migração que apague
+    dados: a 12b reinstala o app limpo. Os testes podem usar as fichas
+    reais como dados de teste. [ASSUMPTION] A primeira conexão, sem
+    nenhum Setup, cai na folha da dúvida (criar Setup do aparelho ou
+    seguir sem Setup).
+- id: "13a"
+  title: Limite físico e cerca
+  description: >-
+    Limite de cada saída pelo térmico, pela excursão (caixa selada e
+    dutada, os três casos de dado faltando) e pelo ceifamento do módulo,
+    com a conta e o selo; a cerca do limitador na tela e na porta
+    (spec-rendimento CAP-1, CAP-2).
+  invoke_dev_with: >-
+    _bmad-output/specs/spec-rendimento/SPEC.md e limites-e-niveis.md.
+    Modelo da excursão: memoria-spl.md §12.2 e §13.2 e os scripts
+    calculo_excursao_jbl.py e calculo_excursao_sub.py em
+    _bmad-output/regulagem/ (consulta). Conferir com os números do
+    exemplo, dentro de 0,2 dB. A cerca vale para o nível em uso; sem
+    nível, usa o teto do Baixo ao Alto. Sem telas.
+- id: "13b"
+  title: Calibração guiada da saída
+  description: >-
+    Ganho do módulo pelo gerador e nível do Bluetooth pelo tom de 0 dBFS
+    do player, digitados do multímetro e guardados no Setup como
+    "medido"; a regra da saída sem calibração (spec-rendimento CAP-3).
+  invoke_dev_with: >-
+    limites-e-niveis.md, seção "Sem calibração", e telas-rendimento.md,
+    "Calibração guiada". Reusa o GeradorSinal, a chave do gerador e as
+    regras 1 e 2 de failure-modes.md. O tom de 0 dBFS é gerado pelo app.
+    Núcleo e ViewModel testados contra o ProcessadorSimulado; a tela é da
+    13g.
+- id: "13c"
+  title: Níveis Baixo a Máximo
+  description: >-
+    Cadeia da memória e do preset simulada em frequência para o pior caso
+    a 0 dBFS; nível por memória, master por combinação memória + preset,
+    refeito na hora a cada mudança; folha de risco do Máximo
+    (spec-rendimento CAP-4).
+  invoke_dev_with: >-
+    limites-e-niveis.md, seções "Níveis" e "Revalidação". O nível e os
+    masters por preset são da memória do celular (setups.json ganha
+    formato novo, com migração). Testado contra o ProcessadorSimulado.
+- id: "13d"
+  title: Análise da playlist e teto do Extra
+  description: >-
+    Análise digital das faixas pela cadeia simulada no tempo, por saída
+    (picos, trechos fortes e média); teto do Extra por preset, "quem está
+    pesando" e música nova analisada antes de tocar (spec-rendimento
+    CAP-5).
+  invoke_dev_with: >-
+    A análise roda no núcleo sobre PCM; a decodificação dos arquivos fica
+    atrás de uma interface do Android, com dublê nos testes (faixas
+    sintéticas com picos conhecidos). Referência do método:
+    _bmad-output/regulagem/playlist/analisar.py (consulta).
+- id: "13e"
+  title: Teste a seco, fiscal do clip e exclusividade
+  description: >-
+    Teste a seco com o módulo desligado e os trechos fortes; clip como
+    fiscal no uso; "revalidar"; outro player muta e pausa; volume do
+    celular travado (spec-rendimento CAP-6, CAP-8).
+  invoke_dev_with: >-
+    limites-e-niveis.md, seções "Teste a seco" e "Fiscal no uso do
+    Extra". O simulador passa a emitir o clip (150) por nível de sinal,
+    marcado como suposição. Detectar outro player e travar o volume ficam
+    atrás de interfaces, com dublês. Estado seguro numa falha: módulo
+    desligado ou mudo no aparelho.
+- id: "13f"
+  title: Extra térmico
+  description: >-
+    Campos térmicos na ficha do alto-falante, temperatura ambiente do
+    Setup, modelo de duas constantes com a média da análise, corte na
+    temperatura máxima e descanso com o 251 desligado e o mute 100 até a
+    temperatura ambiente (spec-rendimento CAP-7).
+  invoke_dev_with: >-
+    limites-e-niveis.md, "Extra térmico". Sem dados térmicos, o Extra não
+    aparece; com dado só digitado, leva o selo "estimado". Conferir com a
+    solução analítica do modelo, dentro de 5 %.
+- id: "13g"
+  title: Telas do Rendimento
+  description: >-
+    XAML das telas de telas-rendimento.md: limite da saída, recusa da
+    cerca, calibração guiada, nível da memória, aviso do Máximo,
+    otimizar, teste a seco, quem está pesando, Extra ao vivo, revalidar e
+    outro player.
+  invoke_dev_with: >-
+    DESIGN.md e EXPERIENCE.md de
+    planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-30. Os
+    [ASSUMPTION] de telas-rendimento.md ficam explícitos para a conferência
+    na 12d. Nenhuma tela com a palavra "IA". Sem celular no adb, a
+    conferência visual fica pendente.
+# Aqui entram as histórias do Agente da memória (spec própria), antes da 12b.
+# Plano de 30/10/2026 (planning-artifacts/planejamento-final-2026-10-30.md): o
+# teste no aparelho fica todo no fim. Entre a 10d e a 12b entram as histórias do
+# Rendimento e depois as do Agente da memória, rodando contra o ProcessadorSimulado.
+- id: "12b"
+  title: Telas e aparelho inteiro no aparelho real
+  description: >-
+    Cada tela no A52 contra o aparelho: ajustes, Sub do Casa 2.1 escrevendo
+    no CH3 e no CH4 juntos, link, Setups, esquema do Casa 2.1, memórias,
+    presets, Player com áudio, gerador, voltímetro, clip, remote out,
+    Bluetooth, nome do produto e chaves; as suposições que sobraram.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Gerador só com o RCA dos módulos desconectado, e fechar o app com o tom
+    tocando (deferred-work). Voltímetro contra o VC830L, com foto. Reset de
+    fábrica, reset de áudio e troca de senha só na recusa. As pendências
+    "no aparelho" das histórias 4 a 11 que são de tela. Conferir no aparelho
+    a conferência nova (muta com corte diferente, reaplica sozinho com
+    ganho diferente; proposta de 30/10), o link que sai sozinho do bridge e o app começando sem
+    memórias; as 3 memórias do processador continuam como estavam. O app
+    entra reinstalado limpo (8g): o Denis cadastra o Setup, os
+    equipamentos e as fichas do zero no celular antes de conferir as telas.
 - id: "12c"
   title: Porta da IA no Wi-Fi e testes 1, 2 e 4
   description: >-
@@ -354,11 +461,21 @@
   invoke_dev_with: >-
     Testes 1, 2 e 4 do sinal de sucesso do SPEC. Item IA1 da 9b (a porta
     inerte no app real).
-# Depois da 12: spec própria do Rendimento (níveis Baixo a Extra, análise da
-# playlist, teste a seco, teto por preset), a partir de
-# _bmad-output/forge/teste-de-playlist/forged-idea.md.
-# Depois do Rendimento: spec própria do Agente da memória, só o cérebro
-# (perguntas adaptativas, escuta "1 ou 2", diagnóstico da queixa, serviço que
-# acorda o agente, skills, aprendizado e ouvintes simulados; a porta nos dois
-# sentidos e as telas entraram na 9d e na 10d em 30/10), a partir de
-# _bmad-output/forge/montagem-do-setup/forged-idea.md.
+- id: "12d"
+  title: Rendimento no aparelho
+  description: >-
+    No A52 com o PRO 2.4BT, com o Setup cadastrado do zero pelo Denis:
+    calibração contra o VC830L, ordem EQ/limitador, nível do Bluetooth do
+    player do app, 150, 111 e 251, teste a seco real, fiscal do clip,
+    outro player e volume travado.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Sinal de sucesso 2 e Assumptions de spec-rendimento/SPEC.md e os
+    [ASSUMPTION] de telas-rendimento.md. Teste a seco e calibração com os
+    alto-falantes desligados do módulo; toda medida com a foto do VC830L.
+    As 3 memórias do processador continuam como estavam.
+# Plano de 30/10/2026: o Rendimento (8g e 13a–13g, spec em
+# _bmad-output/specs/spec-rendimento/) e depois as histórias do Agente da
+# memória, só o cérebro (spec a partir de
+# _bmad-output/forge/montagem-do-setup/forged-idea.md), entram entre a 10d e a
+# 12b. A 12b, a 12c e a 12d, com o celular e o processador, ficam no fim.

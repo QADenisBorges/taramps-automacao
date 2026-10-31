@@ -2,6 +2,8 @@
 
 Fica com os POCs só o conhecimento. Os arquivos citados aqui são a fonte, e o código dos protótipos não é reaproveitado.
 
+**Desde 30/10/2026 o app não embute nada deste arquivo** (decisão do Denis: o app nasce zerado, como numa primeira instalação, e ele cadastra tudo; CAP-6). O que segue é referência para quem desenvolve e testa: o protocolo, os cuidados com o app da Taramps e o sistema do Denis como dado de teste.
+
 ## Protocolo
 - `protocolo/MAPA.md` (catálogo, formato `*cod*canal*valor*` e `#cod#canal#`, senha, comandos de aparelho inteiro, link de canais, limiter em dB) e `protocolo/APK.md` (conversões).
 - As lacunas do MAPA §8 continuam abertas. A primeira leitura real deu 84 de 84 em ~13 s, com o firmware R003 (MAPA §9).
