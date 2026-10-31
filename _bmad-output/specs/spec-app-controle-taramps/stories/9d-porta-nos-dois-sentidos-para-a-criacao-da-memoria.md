@@ -248,3 +248,7 @@ Status: done
 - O APK não foi gerado: restaurar o `BgsFerramentas` antes da 12b e da 12c.
 - A criação pela porta não foi testada no aparelho (história 12c).
 - O cliente precisa manter a tarefa até o fim, como está na ajuda.
+- **31/10, depois das ferramentas reinstaladas:**
+  - O JDK 17.0.20.1 da Microsoft foi extraído em `%LOCALAPPDATA%\BgsFerramentas`, com o SHA-256 conferido.
+  - O Android SDK foi instalado pelo `InstallAndroidDependencies`.
+  - `dotnet build app-controle/src/BgsControle.App -f net10.0-android -c Debug` saiu com 0 erros e 0 avisos, e o APK foi gerado com a 9d.
