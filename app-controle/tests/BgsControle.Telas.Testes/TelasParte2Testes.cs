@@ -455,7 +455,7 @@ public sealed class TelasParte2Testes : IDisposable
         await Apoio.Esperar(() => _t.Gerador.Alarme);
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal((false, false, true), _t.Nav.Camadas);
+        Assert.Equal((false, false, false, true), _t.Nav.Camadas);
         Assert.True(_t.Casca.AlarmePorCima);
 
         // Uma leitura com o 202 = 0 tira o alarme.
@@ -464,7 +464,7 @@ public sealed class TelasParte2Testes : IDisposable
         await Apoio.Esperar(() => !_t.Gerador.Alarme);
         await _b.Tela.EsvaziarAsync();
 
-        Assert.Equal((false, false, false), _t.Nav.Camadas);
+        Assert.Equal((false, false, false, false), _t.Nav.Camadas);
         Assert.False(_t.Casca.AlarmePorCima);
     }
 
@@ -517,9 +517,9 @@ public sealed class TelasParte2Testes : IDisposable
         await Conectar();
 
         Assert.Contains(("REAPLICANDO", "FILME", "Cinema", "Mantenha o celular perto do processador."), vistos);
-        Assert.Contains("camadas:False:True:False", _t.Nav.Pedidos);
+        Assert.Contains("camadas:False:False:True:False", _t.Nav.Pedidos);
         Assert.False(reaplicando.Ativa);
-        Assert.Equal((false, false, false), _t.Nav.Camadas); // a tela fechou
+        Assert.Equal((false, false, false, false), _t.Nav.Camadas); // a tela fechou
         Assert.False(casca.ReaplicandoPorCima);
         Assert.Equal("+10.0", _b.Simulador.Valor("081", 0));
         Assert.Equal("FILME", _t.Inicio.NomeMemoria);
@@ -543,7 +543,7 @@ public sealed class TelasParte2Testes : IDisposable
         Assert.Equal("Troca todo o som de uma vez.", _t.FolhaRisco.Risco);
         Assert.Equal(("Confirmar", "Cancelar"), (_t.FolhaRisco.TextoConfirmar, _t.FolhaRisco.TextoCancelar));
         Assert.Equal("Sem resposta em 60 s, o pedido é recusado.", _t.FolhaRisco.TextoPrazo);
-        Assert.Equal((true, false, false), _t.Nav.Camadas);
+        Assert.Equal((false, true, false, false), _t.Nav.Camadas);
         Assert.True(_t.Casca.FolhaRiscoPorCima);
 
         await _b.Andar(TimeSpan.FromSeconds(15), passoMs: 100);
@@ -555,7 +555,7 @@ public sealed class TelasParte2Testes : IDisposable
         await _b.Tela.EsvaziarAsync();
         Assert.False(_t.FolhaRisco.FolhaAberta);
         Assert.Null(_t.FolhaRisco.TextoPrazo);
-        Assert.Equal((false, false, false), _t.Nav.Camadas);
+        Assert.Equal((false, false, false, false), _t.Nav.Camadas);
     }
 
     [Fact]
@@ -565,7 +565,7 @@ public sealed class TelasParte2Testes : IDisposable
         _t.Casca.SincronizarCamadas(forcar: true);
         Assert.True(_b.Uso!.IniciarTarefa("ajustando o EQ da FILME").Ok);
         await _b.Tela.EsvaziarAsync();
-        Assert.Equal((false, false, false), _t.Nav.Camadas); // sem faixa nem tela da IA
+        Assert.Equal((false, false, false, false), _t.Nav.Camadas); // sem faixa nem tela da IA
 
         var ganho = _t.Mesa.Canal(Sub)!.Ganho;
         ganho.AbrirCampo();
@@ -577,7 +577,7 @@ public sealed class TelasParte2Testes : IDisposable
         Assert.Null(ganho.Aviso);
         Assert.Equal(EstadoIa.Pausada, _b.Uso.Estado);
         Assert.Equal("+5.0", _b.Simulador.Valor("081", 2));
-        Assert.Equal((false, false, false), _t.Nav.Camadas);
+        Assert.Equal((false, false, false, false), _t.Nav.Camadas);
     }
 
     // ----------------------------------------------------------------- Configurações

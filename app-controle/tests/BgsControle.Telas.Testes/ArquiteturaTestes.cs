@@ -154,6 +154,7 @@ public sealed class ArquiteturaTestes
         Assert.Contains(xamls, f => Path.GetFileName(f) == "ConfiguracoesPage.xaml");
         Assert.Contains(xamls, f => Path.GetFileName(f) == "FolhaRiscoPage.xaml");
         Assert.Contains(xamls, f => Path.GetFileName(f) == "ReaplicandoPage.xaml");
+        Assert.Contains(xamls, f => Path.GetFileName(f) == "CriacaoPage.xaml");
         Assert.DoesNotContain(xamls, f => Path.GetFileName(f) is "IaAtivaPage.xaml" or "IaPelaRedePage.xaml" or "HistoricoPage.xaml"
             or "ConfirmacaoIaPage.xaml");
         foreach (var f in xamls)
@@ -181,9 +182,13 @@ public sealed class ArquiteturaTestes
         using var porta = new PortaComandos(b.Sessao, b.Chaves, b.Uso!, b.Historico!, pareamento, telas.Pedidos, new RedeFalsa(), b.Estado,
             b.Escritor, b.Setups!, b.Gerador, b.Comandos, b.Monitor, b.Log, b.Relogio, 0);
         using var controle = new ControlePelaRedeViewModel(porta, telas.Chaves, b.Tela, b.Relogio);
-        var configuracoes = new ConfiguracoesViewModel(telas.Nav, b.Tela, b.Relogio, telas.Aparelho, controle);
+        var preferencias = new PreferenciasApp(new RepositorioTextoArquivos(b.ArquivosUso, RepositorioTextoArquivos.ArquivoPreferencias));
+        var configuracoes = new ConfiguracoesViewModel(telas.Nav, b.Tela, b.Relogio, telas.Aparelho, controle, preferencias);
+        // História 10d: a criação da memória em tela toda.
+        using var criacao = new BgsControle.Nucleo.Setups.CriacaoMemoria(b.Sessao, b.Estado, b.Escritor, b.Copia, b.Setups!, b.Uso!, b.Log);
+        using var telaCriacao = new CriacaoMemoriaViewModel(criacao, b.Tela, b.Relogio, b.Setups, telas.FolhaRisco, preferencias);
         var modelos = typeof(Telas11).GetProperties().Select(p => p.GetValue(telas)).OfType<TelaBase>()
-            .Concat([controle, configuracoes, controle.Linha])
+            .Concat([controle, configuracoes, controle.Linha, telaCriacao])
             .Concat(telas.Chaves.Itens)
             .ToArray();
         Assert.Contains(modelos, m => m is FolhaRiscoViewModel);

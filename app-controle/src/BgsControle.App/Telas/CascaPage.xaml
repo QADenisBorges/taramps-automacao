@@ -122,5 +122,8 @@
         <c:FolhaView Aberta="{Binding Inicio.Presets.FolhaAberta}" Fechar="{Binding Inicio.Presets.FecharFolha}">
             <c:PresetsFolhaView BindingContext="{Binding Inicio.Presets}" />
         </c:FolhaView>
+
+        <!-- O aviso rápido (história 10d): "Memória MUSICA ORIG criada no Casa 2.1." por 2,6 s ao fechar a criação. -->
+        <c:AvisoRapidoView Texto="{Binding AvisoRapido}" />
     </Grid>
 </ContentPage>

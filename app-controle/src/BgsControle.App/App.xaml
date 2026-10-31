@@ -46,6 +46,35 @@
             <Color x:Key="ia-texto">#D6C6F5</Color>
             <Color x:Key="ia-halo">#40C495FF</Color>
 
+            <!-- Criação da memória (história 10d): os tokens do DESIGN.md do BGS Sound (30/10) que faltavam, pelos nomes
+                 de lá. As transparências derivadas levam o nome do token e a opacidade. -->
+            <Color x:Key="bg">#000000</Color>
+            <Color x:Key="surface-1">#111114</Color>
+            <Color x:Key="surface-2">#1C1C20</Color>
+            <Color x:Key="surface-sheet">#141418</Color>
+            <Color x:Key="border-sheet">#2A2A30</Color>
+            <Color x:Key="text-primary">#F2F2F4</Color>
+            <Color x:Key="text-chip">#CFCFD4</Color>
+            <Color x:Key="text-secondary">#9A9AA2</Color>
+            <Color x:Key="text-nav-inactive">#77777D</Color>
+            <Color x:Key="brand">#3FD0FF</Color>
+            <Color x:Key="on-brand">#00131A</Color>
+            <Color x:Key="accent-pink">#FF2BD6</Color>
+            <Color x:Key="connected">#34D399</Color>
+            <Color x:Key="on-connected">#00140C</Color>
+            <Color x:Key="overlay-glow">#0B2230</Color>
+            <Color x:Key="stage-floor">#03070A</Color>
+            <Color x:Key="channel-done">#16394A</Color>
+            <Color x:Key="sheet-grab">#3A3A40</Color>
+            <!-- Ciano a 12 % (resposta acesa), a 6 % (linha do refino), a 35 % (horizonte) e a 45 % (brilho). -->
+            <Color x:Key="brand-12">#1F3FD0FF</Color>
+            <Color x:Key="brand-06">#0F3FD0FF</Color>
+            <Color x:Key="brand-35">#593FD0FF</Color>
+            <Color x:Key="brand-45">#733FD0FF</Color>
+            <!-- Preto a 90 % (o Aplicando sobre o palco) e branco a 8 % (a trilha do anel). -->
+            <Color x:Key="scrim-aplicando">#E6000000</Color>
+            <Color x:Key="ring-track">#14FFFFFF</Color>
+
             <!-- ============================================================ alvos de toque (DESIGN, spacing) -->
             <x:Double x:Key="alvo-min">44</x:Double>
             <x:Double x:Key="alvo-lista">52</x:Double>
@@ -204,6 +233,81 @@
                 <Setter Property="TextColor" Value="{StaticResource apoio}" />
             </Style>
 
+            <!-- Criação da memória (história 10d; DESIGN do BGS Sound, typography). -->
+            <Style x:Key="tipo-flow-title" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-flow-subtitle" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="10.5" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-question" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="LineHeight" Value="1.25" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+            <Style x:Key="tipo-answer" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+                <Setter Property="VerticalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-creation-phrase" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="24" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="LineHeight" Value="1.25" />
+                <Setter Property="CharacterSpacing" Value="0.24" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-creation-value" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="VerticalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-summary-item" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+            <Style x:Key="tipo-summary-reason" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="LineHeight" Value="1.35" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+            </Style>
+            <Style x:Key="tipo-aplicando-label" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="17" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="CharacterSpacing" Value="3" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+                <Setter Property="Shadow">
+                    <Shadow Brush="{StaticResource brand-45}" Radius="12" Opacity="1" Offset="0,0" />
+                </Setter>
+            </Style>
+            <Style x:Key="tipo-aplicando-name" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="CharacterSpacing" Value="0.8" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+                <Setter Property="HorizontalTextAlignment" Value="Center" />
+            </Style>
+            <Style x:Key="tipo-sheet-title" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="r:Tipo.Peso" Value="800" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+            <Style x:Key="tipo-body" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="LineHeight" Value="1.45" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+            </Style>
+
             <!-- ============================================================ botões (DESIGN, components) -->
             <Style x:Key="botao-base" TargetType="Button">
                 <Setter Property="r:Tipo.Peso" Value="800" />
@@ -305,6 +409,39 @@
                 <Setter Property="CornerRadius" Value="14" />
                 <Setter Property="FontSize" Value="20" />
                 <Setter Property="r:Tipo.Peso" Value="400" />
+            </Style>
+
+            <!-- Criação da memória (história 10d): button-flow-primary e button-flow-secondary (52 px, raio 14), os
+                 botões da barra do fluxo (48 × 48) e o chip "+ Nova memória". -->
+            <Style x:Key="botao-fluxo" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="52" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="BackgroundColor" Value="{StaticResource brand}" />
+                <Setter Property="TextColor" Value="{StaticResource on-brand}" />
+            </Style>
+            <Style x:Key="botao-fluxo-secundario" TargetType="Button" BasedOn="{StaticResource botao-fluxo}">
+                <Setter Property="BackgroundColor" Value="{StaticResource surface-2}" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+            </Style>
+            <Style x:Key="botao-barra-fluxo" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="WidthRequest" Value="48" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="400" />
+            </Style>
+            <Style x:Key="chip-bgs" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="CornerRadius" Value="22" />
+                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="BackgroundColor" Value="{StaticResource surface-2}" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
             </Style>
 
             <!-- ============================================================ superfícies -->

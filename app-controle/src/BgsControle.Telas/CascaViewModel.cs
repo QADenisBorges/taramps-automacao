@@ -28,10 +28,15 @@ public enum PontoStatus
 /// troca, e a folha "Aplicado pela metade" ao reconectar com a marca. Acima delas, as camadas que sobem
 /// sozinhas: a folha de risco do app (um pedido de risco pela porta, ou o Continuar), a tela toda
 /// "REAPLICANDO" da conferência ao conectar e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador.
+/// História 10d: a criação da memória em tela toda, logo abaixo da folha de risco, e o aviso rápido de 2,6 s
+/// ("Memória MUSICA ORIG criada no Casa 2.1.") quando ela fecha.
 /// Nenhuma tela mostra a IA (decisão do Denis, 30/10/2026).
 /// </summary>
 public sealed class CascaViewModel : TelaBase, IDisposable
 {
+    /// <summary>Quanto o aviso rápido fica no pé (DESIGN, motion.toast).</summary>
+    public static readonly TimeSpan TempoAviso = TimeSpan.FromSeconds(2.6);
+
     private readonly Sessao _sessao;
     private readonly SetupViewModel _setup;
     private readonly MemoriasViewModel _memorias;
@@ -42,7 +47,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private readonly FabricaControles _fabrica;
     private readonly FolhaRiscoViewModel? _folhaRisco;
     private readonly GeradorViewModel? _gerador;
-    private (bool FolhaRisco, bool Reaplicando, bool Alarme)? _camadas;
+    private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme)? _camadas;
+    private string? _avisoRapido;
+    private ITimer? _prazoAviso;
 
     public CascaViewModel(
         Sessao sessao,
@@ -60,9 +67,11 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         PlayerViewModel? player = null,
         FolhaRiscoViewModel? folhaRisco = null,
         GeradorViewModel? gerador = null,
-        ReaplicandoViewModel? reaplicando = null)
+        ReaplicandoViewModel? reaplicando = null,
+        CriacaoMemoriaViewModel? criacao = null)
         : base(despachante, relogio)
     {
+        Criacao = criacao;
         Player = player;
         _folhaRisco = folhaRisco;
         _gerador = gerador;
@@ -92,7 +101,12 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             Reaplicando.PropertyChanged += AoMudarCamadas;
         if (_gerador is not null)
             _gerador.PropertyChanged += AoMudarCamadas;
+        if (Criacao is not null)
+            Criacao.PropertyChanged += AoMudarCriacao;
     }
+
+    /// <summary>A criação da memória em tela toda (história 10d), ou null.</summary>
+    public CriacaoMemoriaViewModel? Criacao { get; }
 
     /// <summary>Os destinos da barra (cada um guarda o próprio estado).</summary>
     public InicioViewModel Inicio { get; }
@@ -205,6 +219,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         Avisar(nameof(PelaMetadePorCima));
     }
 
+    /// <summary>A criação da memória está por cima (abaixo da folha de risco).</summary>
+    public bool CriacaoPorCima => _camadas?.Criacao == true;
+
     /// <summary>A folha de risco do app está por cima (um pedido de risco pela porta, ou o Continuar).</summary>
     public bool FolhaRiscoPorCima => _camadas?.FolhaRisco == true;
 
@@ -216,16 +233,17 @@ public sealed class CascaViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// Confere as camadas e pede à navegação quando mudam (ou sempre, com <paramref name="forcar"/>). A
-    /// ordem, de baixo para cima: a folha de risco, o "REAPLICANDO" e o alarme do gerador; todas ficam
-    /// acima da escolha do Setup e da folha pela metade.
+    /// ordem, de baixo para cima: a criação da memória, a folha de risco, o "REAPLICANDO" e o alarme do
+    /// gerador; todas ficam acima da escolha do Setup e da folha pela metade.
     /// </summary>
     public void SincronizarCamadas(bool forcar = false)
     {
-        var agora = (_folhaRisco?.FolhaAberta == true, Reaplicando?.Ativa == true, _gerador?.Alarme == true);
+        var agora = (Criacao?.Aberta == true, _folhaRisco?.FolhaAberta == true, Reaplicando?.Ativa == true, _gerador?.Alarme == true);
         if (_camadas == agora && !forcar)
             return;
         _camadas = agora;
-        _nav.MostrarCamadas(agora.Item1, agora.Item2, agora.Item3);
+        _nav.MostrarCamadas(agora.Item1, agora.Item2, agora.Item3, agora.Item4);
+        Avisar(nameof(CriacaoPorCima));
         Avisar(nameof(FolhaRiscoPorCima));
         Avisar(nameof(ReaplicandoPorCima));
         Avisar(nameof(AlarmePorCima));
@@ -235,6 +253,46 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     {
         if (e.PropertyName is nameof(FolhaRiscoViewModel.FolhaAberta) or nameof(ReaplicandoViewModel.Ativa) or nameof(GeradorViewModel.Alarme))
             SincronizarCamadas();
+    }
+
+    // ------------------------------------------------------------------ aviso rápido (história 10d)
+
+    /// <summary>O aviso rápido no pé ("Memória MUSICA ORIG criada no Casa 2.1."), por 2,6 s; ou null.</summary>
+    public string? AvisoRapido
+    {
+        get => _avisoRapido;
+        private set
+        {
+            if (_avisoRapido == value)
+                return;
+            _avisoRapido = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>Mostra o aviso por <see cref="TempoAviso"/>; um aviso novo recomeça a conta.</summary>
+    public void MostrarAviso(string texto)
+    {
+        _prazoAviso?.Dispose();
+        AvisoRapido = texto;
+        ITimer? prazo = null;
+        prazo = Relogio.CreateTimer(_ => NaTela(() =>
+        {
+            if (!ReferenceEquals(_prazoAviso, prazo))
+                return;
+            _prazoAviso?.Dispose();
+            _prazoAviso = null;
+            AvisoRapido = null;
+        }), null, TempoAviso, Timeout.InfiniteTimeSpan);
+        _prazoAviso = prazo;
+    }
+
+    private void AoMudarCriacao(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CriacaoMemoriaViewModel.Aberta))
+            SincronizarCamadas();
+        else if (e.PropertyName == nameof(CriacaoMemoriaViewModel.AvisoFinal) && Criacao?.AvisoFinal is { Length: > 0 } aviso)
+            MostrarAviso(aviso);
     }
 
     private void AoMudarTelas(object? sender, PropertyChangedEventArgs e)
@@ -263,5 +321,8 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             Reaplicando.PropertyChanged -= AoMudarCamadas;
         if (_gerador is not null)
             _gerador.PropertyChanged -= AoMudarCamadas;
+        if (Criacao is not null)
+            Criacao.PropertyChanged -= AoMudarCriacao;
+        _prazoAviso?.Dispose();
     }
 }

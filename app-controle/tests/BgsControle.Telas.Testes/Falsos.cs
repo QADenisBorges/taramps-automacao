@@ -146,13 +146,13 @@ internal sealed class NavegacaoFalsa : INavegacao
     public void AbrirMonitoracao() => Pedidos.Add("monitoracao");
     public void AbrirChaves() => Pedidos.Add("chaves");
 
-    /// <summary>O último pedido das camadas: (folha de risco, "REAPLICANDO", alarme do gerador).</summary>
-    public (bool FolhaRisco, bool Reaplicando, bool Alarme)? Camadas { get; private set; }
+    /// <summary>O último pedido das camadas: (criação da memória, folha de risco, "REAPLICANDO", alarme do gerador).</summary>
+    public (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme)? Camadas { get; private set; }
 
-    public void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador)
+    public void MostrarCamadas(bool criacao, bool folhaRisco, bool reaplicando, bool alarmeGerador)
     {
-        Camadas = (folhaRisco, reaplicando, alarmeGerador);
-        Pedidos.Add($"camadas:{folhaRisco}:{reaplicando}:{alarmeGerador}");
+        Camadas = (criacao, folhaRisco, reaplicando, alarmeGerador);
+        Pedidos.Add($"camadas:{criacao}:{folhaRisco}:{reaplicando}:{alarmeGerador}");
     }
 
     public void MostrarPorCima(bool escolhaSetup, bool pelaMetade)

@@ -93,6 +93,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     public const string TextoEmUso = "EM USO";
     public const string TextoNenhuma = "Nenhuma memória";
     public const string TextoCriar = "Criar memória do som atual";
+    public const string TextoNovaMemoria = "+ Nova memória";
     public const string AvisoApagar = "A memória e a playlist dela somem.";
     public const string TextoCancelar = "Cancelar";
     public const string TituloPelaMetade = "Aplicado pela metade";
@@ -110,6 +111,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     private readonly IChaves _chaves;
     private readonly EstadoAparelho _estado;
     private readonly SalvarViewModel _salvar;
+    private readonly CriacaoMemoria? _criacao;
 
     private IReadOnlyList<CartaoMemoriaCelularViewModel> _cartoes = [];
     private string? _mensagem;
@@ -130,10 +132,12 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         EstadoAparelho estado,
         SalvarViewModel salvar,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        CriacaoMemoria? criacao = null)
         : base(despachante, relogio)
     {
         _setups = setups;
+        _criacao = criacao;
         _copia = copia;
         _sessao = sessao;
         _chaves = chaves;
@@ -150,12 +154,15 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         Reaplicar = new Comando(ReaplicarAsync);
         Terminar = new Comando(TerminarAsync);
         VoltarACopia = new Comando(VoltarAsync);
+        NovaMemoria = new Comando(PedirNovaMemoria);
 
         _setups.Mudou += AoMudarAlgo;
         _copia.Mudou += AoMudarAlgo;
         _sessao.Mudou += AoMudarAlgo;
         _chaves.Mudou += AoMudarChave;
         _estado.Recarregou += AoMudarAlgo;
+        if (_criacao is not null)
+            _criacao.Mudou += AoMudarAlgo;
         Atualizar();
     }
 
@@ -225,6 +232,26 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     public bool PodeAplicar => MotivoTravaAplicar is null;
     public bool PodeCriar => MotivoTravaCriar is null;
 
+    /// <summary>
+    /// Por que "+ Nova memória" está travado, ou null: sem Setup em uso, na dúvida, no só leitura ou com uma
+    /// criação já aberta (história 10d).
+    /// </summary>
+    public string? MotivoTravaNovaMemoria
+    {
+        get
+        {
+            if (MotivoTravaCelular is { } celular)
+                return celular;
+            if (_sessao.Estado == EstadoSessao.Conectado && _sessao.SoLeitura)
+                return ControleParametroViewModel.MsgSoLeitura;
+            if (_criacao is { Aberta: true })
+                return CriacaoMemoria.MsgJaAberta;
+            return null;
+        }
+    }
+
+    public bool PodeNovaMemoria => _criacao is not null && MotivoTravaNovaMemoria is null;
+
     private string? MotivoTravaAparelho(Chave chave)
     {
         if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
@@ -274,6 +301,27 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
             return;
         }
         await Agir(async () => (await _setups.ReaplicarAsync()).Mensagem);
+    }
+
+    // ------------------------------------------------------------------ + Nova memória (história 10d)
+
+    /// <summary>
+    /// "+ Nova memória": pede a criação (o evento <c>criacao-pedida</c> na porta). A tela não abre a criação; ela
+    /// aparece quando o cliente pareado abre. Travado, nada sai e o motivo aparece.
+    /// </summary>
+    public Comando NovaMemoria { get; }
+
+    private void PedirNovaMemoria()
+    {
+        if (_criacao is null)
+            return;
+        if (MotivoTravaNovaMemoria is { } motivo)
+        {
+            Mensagem = motivo;
+            return;
+        }
+        var r = _criacao.Pedir();
+        Mensagem = r.Ok ? null : r.Mensagem ?? r.Motivo;
     }
 
     // ------------------------------------------------------------------ criar memória do som atual
@@ -617,6 +665,8 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         Avisar(nameof(MotivoTravaCriar));
         Avisar(nameof(PodeAplicar));
         Avisar(nameof(PodeCriar));
+        Avisar(nameof(MotivoTravaNovaMemoria));
+        Avisar(nameof(PodeNovaMemoria));
         Avisar(nameof(Ocupado));
         Avisar(nameof(PelaMetade));
         Avisar(nameof(TextoPelaMetade));
@@ -631,5 +681,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         _sessao.Mudou -= AoMudarAlgo;
         _chaves.Mudou -= AoMudarChave;
         _estado.Recarregou -= AoMudarAlgo;
+        if (_criacao is not null)
+            _criacao.Mudou -= AoMudarAlgo;
     }
 }

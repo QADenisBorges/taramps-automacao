@@ -314,22 +314,36 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
 /// a chave "Controle pela rede" com o código embaixo, Senha › e Voltímetro e clip ›), ACESSO (Chaves de
 /// acesso) e o Avançado recolhido, com o reset de áudio e o reset de fábrica. O grupo Aparelho é o
 /// <see cref="AparelhoViewModel"/>; a chave da porta, o <see cref="ControlePelaRedeViewModel"/>. A tela
-/// IA pela rede e o Histórico saíram (decisão do Denis, 30/10/2026): o histórico é lido pela porta.
+/// IA pela rede e o Histórico saíram (decisão do Denis, 30/10/2026): o histórico é lido pela porta. Do app: a
+/// chave "Animação ao criar o som" (<see cref="PreferenciasApp"/>, história 10d), no par Desl./Lig.
 /// </summary>
 public sealed class ConfiguracoesViewModel : TelaBase
 {
+    public const string TituloAnimacaoTexto = "Animação ao criar o som";
+    public const string DescricaoAnimacaoTexto =
+        "Mostra cada ajuste na tela, um por vez, enquanto a memória é montada. Desligada, aparece só o \"Aplicando\".";
+    public const string MsgNaoGuardouPreferencia = "Não consegui guardar a escolha. Tente de novo.";
+
+    private readonly PreferenciasApp? _preferencias;
     private bool _avancadoAberto;
+    private string? _erroAnimacao;
 
     public ConfiguracoesViewModel(
         INavegacao nav,
         IDespachante despachante,
         TimeProvider relogio,
         AparelhoViewModel? aparelho = null,
-        ControlePelaRedeViewModel? controlePelaRede = null)
+        ControlePelaRedeViewModel? controlePelaRede = null,
+        PreferenciasApp? preferencias = null)
         : base(despachante, relogio)
     {
         Aparelho = aparelho;
         ControlePelaRede = controlePelaRede;
+        _preferencias = preferencias;
+        LigarAnimacao = new Comando(() => DefinirAnimacaoAsync(true));
+        DesligarAnimacao = new Comando(() => DefinirAnimacaoAsync(false));
+        if (_preferencias is not null)
+            _preferencias.Mudou += () => NaTela(AvisarAnimacao);
         AbrirSetups = new Comando(nav.AbrirSetups);
         AbrirMemorias = new Comando(nav.AbrirMemorias);
         AbrirPresets = new Comando(nav.AbrirPresets);
@@ -386,4 +400,54 @@ public sealed class ConfiguracoesViewModel : TelaBase
     public Comando AlternarAvancado { get; }
 
     public Comando Voltar { get; }
+
+    // ------------------------------------------------------------------ do app (história 10d)
+
+    /// <summary>A linha "Animação ao criar o som" existe (com as preferências do app).</summary>
+    public bool ComPreferencias => _preferencias is not null;
+
+    public string TituloAnimacao => TituloAnimacaoTexto;
+
+    public string DescricaoAnimacao => DescricaoAnimacaoTexto;
+
+    /// <summary>A animação está ligada (o padrão).</summary>
+    public bool AnimacaoLigada => _preferencias?.AnimacaoCriacao ?? true;
+
+    /// <summary>"Ligada" ou "Desligada" (o TalkBack do par).</summary>
+    public string TextoEstadoAnimacao => AnimacaoLigada ? "Ligada" : "Desligada";
+
+    /// <summary>Não conseguiu guardar a escolha, ou null.</summary>
+    public string? ErroAnimacao
+    {
+        get => _erroAnimacao;
+        private set
+        {
+            if (_erroAnimacao == value)
+                return;
+            _erroAnimacao = value;
+            Avisar();
+        }
+    }
+
+    public Comando LigarAnimacao { get; }
+
+    public Comando DesligarAnimacao { get; }
+
+    private async Task DefinirAnimacaoAsync(bool ligada)
+    {
+        if (_preferencias is null)
+            return;
+        var ok = await _preferencias.DefinirAnimacaoCriacaoAsync(ligada);
+        NaTela(() =>
+        {
+            ErroAnimacao = ok ? null : MsgNaoGuardouPreferencia;
+            AvisarAnimacao();
+        });
+    }
+
+    private void AvisarAnimacao()
+    {
+        Avisar(nameof(AnimacaoLigada));
+        Avisar(nameof(TextoEstadoAnimacao));
+    }
 }

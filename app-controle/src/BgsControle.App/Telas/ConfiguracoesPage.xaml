@@ -246,6 +246,40 @@
                         </VerticalStackLayout>
                     </Border>
 
+                    <!-- DO APP (história 10d): a chave "Animação ao criar o som", no par Desl./Lig., com a explicação
+                         do UX embaixo. Vem ligada e fica guardada em preferencias-app.json. -->
+                    <Label Style="{StaticResource tipo-rotulo}" Text="DO APP" Margin="0,8,0,0" IsVisible="{Binding ComPreferencias}" />
+                    <Border Style="{StaticResource cartao}" Padding="0" IsVisible="{Binding ComPreferencias}">
+                        <VerticalStackLayout>
+                            <Grid Style="{StaticResource linha}" ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding TituloAnimacao}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoAnimacao}" />
+                                </VerticalStackLayout>
+                                <HorizontalStackLayout Grid.Column="1" VerticalOptions="Center" SemanticProperties.Description="{Binding TextoEstadoAnimacao}">
+                                    <Button Style="{StaticResource par}" Text="Desl." Command="{Binding DesligarAnimacao}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding AnimacaoLigada}" Value="False">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Button Style="{StaticResource par}" Text="Lig." Command="{Binding LigarAnimacao}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding AnimacaoLigada}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource texto}" />
+                                                <Setter Property="TextColor" Value="{StaticResource sobre-escolhido}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                </HorizontalStackLayout>
+                            </Grid>
+                            <Label Style="{StaticResource tipo-texto-erro}" Margin="16,0,16,8" Text="{Binding ErroAnimacao}"
+                                   IsVisible="{Binding ErroAnimacao, Converter={StaticResource TemTexto}}" />
+                        </VerticalStackLayout>
+                    </Border>
+
                     <!-- ACESSO -->
                     <Label Style="{StaticResource tipo-rotulo}" Text="ACESSO" Margin="0,8,0,0" />
                     <Border Style="{StaticResource cartao}" Padding="0">

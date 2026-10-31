@@ -21,6 +21,10 @@ namespace BgsControle.App;
 /// metade, a folha de risco do app, a tela toda "REAPLICANDO" e a faixa "DESLIGUE O MÓDULO AGORA". As três
 /// últimas ficam acima de tudo. A IA não aparece em nenhuma tela (decisão do Denis, 30/10/2026).
 /// </para>
+/// <para>
+/// História 10d: a criação da memória em tela toda entra como camada, logo abaixo da folha de risco (que continua
+/// por cima dela durante a criação).
+/// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
 {
@@ -28,7 +32,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private readonly Dictionary<FuncaoAudio, FuncaoPage> _funcoes = [];
     private readonly SemaphoreSlim _porCima = new(1, 1);
     private (bool Setup, bool Metade) _pedido;
-    private (bool FolhaRisco, bool Reaplicando, bool Alarme) _camadas;
+    private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme) _camadas;
     private (string Nome, Func<Page> Criar)? _esperando;
 
     private static INavigation? Navegacao => Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation;
@@ -109,10 +113,10 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
         Reconciliar();
     }
 
-    /// <summary>As camadas acima das outras: a folha de risco, o "REAPLICANDO" e o alarme do gerador.</summary>
-    public void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador)
+    /// <summary>As camadas acima das outras: a criação da memória, a folha de risco, o "REAPLICANDO" e o alarme do gerador.</summary>
+    public void MostrarCamadas(bool criacao, bool folhaRisco, bool reaplicando, bool alarmeGerador)
     {
-        _camadas = (folhaRisco, reaplicando, alarmeGerador);
+        _camadas = (criacao, folhaRisco, reaplicando, alarmeGerador);
         Reconciliar();
     }
 
@@ -127,12 +131,14 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                 if (Navegacao is not { } nav)
                     return;
                 var (setup, metade) = _pedido;
-                var (folhaRisco, reaplicando, alarme) = _camadas;
+                var (criacao, folhaRisco, reaplicando, alarme) = _camadas;
                 var queremos = new List<Page>();
                 if (setup)
                     queremos.Add(servicos.GetRequiredService<SetupEscolhaPage>());
                 if (metade)
                     queremos.Add(servicos.GetRequiredService<PelaMetadePage>());
+                if (criacao)
+                    queremos.Add(servicos.GetRequiredService<CriacaoPage>());
                 if (folhaRisco)
                     queremos.Add(servicos.GetRequiredService<FolhaRiscoPage>());
                 if (reaplicando)

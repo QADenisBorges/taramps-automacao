@@ -73,8 +73,9 @@ public sealed record ComoFicouCriacao(int Rodada, IReadOnlyList<string> Resposta
 }
 
 /// <summary>
-/// Um evento da criação para a porta (<c>GET /eventos</c>): <c>criacao-resposta</c>, <c>criacao-como-ficou</c>,
-/// <c>criacao-salva</c>, <c>criacao-cancelada</c> e <c>criacao-interrompida</c>. Só os campos do tipo vêm preenchidos.
+/// Um evento da criação para a porta (<c>GET /eventos</c>): <c>criacao-pedida</c>, <c>criacao-resposta</c>,
+/// <c>criacao-como-ficou</c>, <c>criacao-salva</c>, <c>criacao-cancelada</c> e <c>criacao-interrompida</c>. Só os
+/// campos do tipo vêm preenchidos.
 /// </summary>
 public sealed record EventoCriacao(
     string Tipo,
@@ -149,6 +150,9 @@ public sealed class CriacaoMemoria : IDisposable
     public const string EventoSalva = "criacao-salva";
     public const string EventoCancelada = "criacao-cancelada";
     public const string EventoInterrompida = "criacao-interrompida";
+
+    /// <summary>O toque no "+ Nova memória" (história 10d): a criação está fechada e o usuário quer uma nova.</summary>
+    public const string EventoPedida = "criacao-pedida";
 
     public const int MinimoRespostas = 3;
     public const int MaximoRespostas = 4;
@@ -367,6 +371,25 @@ public sealed class CriacaoMemoria : IDisposable
         }
     }
 
+    // ------------------------------------------------------------------ pedir
+
+    /// <summary>
+    /// O toque no "+ Nova memória" (história 10d): com a criação fechada, emite <see cref="EventoPedida"/> para a
+    /// porta. A tela não abre a criação: quem abre é o cliente pareado (<c>POST /criacao/abrir</c>). A espera, o
+    /// prazo e o aviso da chave desligada são das histórias 14b e 14c.
+    /// </summary>
+    public ResultadoCriacao Pedir()
+    {
+        lock (_trava)
+        {
+            if (_etapa != EtapaCriacao.Fechada)
+                return ResultadoCriacao.Falha(MsgJaAberta);
+        }
+        _log.Evento("criação: nova memória pedida na tela");
+        Emitir(new EventoCriacao(EventoPedida));
+        return ResultadoCriacao.Feito();
+    }
+
     // ------------------------------------------------------------------ abrir
 
     /// <summary>
@@ -492,6 +515,53 @@ public sealed class CriacaoMemoria : IDisposable
             }
         }
         _log.Evento($"criação: resposta à pergunta {respondida.Numero}");
+        Emitir(new EventoCriacao(EventoResposta, Numero: respondida.Numero, Texto: respondida.Resposta, DoOutro: respondida.DoOutro));
+        Notificar();
+        return ResultadoCriacao.Feito();
+    }
+
+    /// <summary>
+    /// O ‹ (história 10d): responde de novo, com o toque numa resposta (0 = a primeira), a pergunta
+    /// <paramref name="numero"/>, já respondida, ainda nas perguntas. A mesma resposta não muda nada (a tela só
+    /// avança). Uma resposta diferente tira as perguntas depois dela e vai à porta como <c>criacao-resposta</c>
+    /// com o número dela.
+    /// </summary>
+    public ResultadoCriacao ResponderDeNovo(int numero, int indice) => ResponderDeNovo(numero, p =>
+        indice >= 0 && indice < p.Respostas.Count ? (p.Respostas[indice], false) : null);
+
+    /// <summary>O ‹ com o "Outro…": responde de novo a pergunta <paramref name="numero"/> com o texto; vazio não responde.</summary>
+    public ResultadoCriacao ResponderDeNovo(int numero, string? textoOutro)
+    {
+        var limpo = textoOutro?.Trim();
+        if (string.IsNullOrEmpty(limpo))
+            return ResultadoCriacao.Falha(MsgOutroVazio);
+        return ResponderDeNovo(numero, _ => (limpo, true));
+    }
+
+    private ResultadoCriacao ResponderDeNovo(int numero, Func<PerguntaCriacao, (string Texto, bool DoOutro)?> escolher)
+    {
+        PerguntaCriacao respondida;
+        lock (_trava)
+        {
+            if (_etapa != EtapaCriacao.Perguntas)
+                return ResultadoCriacao.Falha(_etapa == EtapaCriacao.Fechada ? MsgFechada : MsgSemPergunta);
+            var i = _perguntas.FindIndex(p => p.Numero == numero);
+            if (i < 0 || !_perguntas[i].Respondida)
+                return ResultadoCriacao.Falha(MsgSemPergunta);
+            var antes = _perguntas[i];
+            if (escolher(antes) is not { } escolha)
+                return ResultadoCriacao.Falha(MsgSemPergunta);
+            if (escolha.Texto == antes.Resposta && escolha.DoOutro == antes.DoOutro)
+                return ResultadoCriacao.Feito(); // a mesma resposta: nada muda
+            respondida = antes with { Resposta = escolha.Texto, DoOutro = escolha.DoOutro };
+            _perguntas = [.. _perguntas.Take(i), respondida];
+            if (respondida.Ultima)
+            {
+                _etapa = EtapaCriacao.Ajustando;
+                _rodada = 1;
+            }
+        }
+        _log.Evento($"criação: resposta à pergunta {respondida.Numero} de novo");
         Emitir(new EventoCriacao(EventoResposta, Numero: respondida.Numero, Texto: respondida.Resposta, DoOutro: respondida.DoOutro));
         Notificar();
         return ResultadoCriacao.Feito();

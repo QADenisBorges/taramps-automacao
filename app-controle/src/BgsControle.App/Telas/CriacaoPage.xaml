@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A criação da memória em tela toda (história 10d; EXPERIENCE, "Criação da memória"; DESIGN, creation-stage,
+    applying-overlay, setup-schematic; mock criacao-memoria-ia.html), no visual do BGS Sound, sem abas. Sobe como
+    camada da casca, logo abaixo da folha de risco, quando a criação abre pela porta. A fase visual vem do
+    CriacaoMemoriaViewModel (Fase); a página só anima e devolve os sinais (PalcoMostrou, PassagemTerminou,
+    AvancarCanal, AplicandoTerminou). De baixo para cima: o palco (brilho, chão, horizonte, o anel grande e apagado e
+    a frase com a linha do valor), a barra do fluxo e as telas (perguntas, resumo, "Como ficou?", Salvar), o
+    Aplicando (véu, os anéis de neon da passagem, o esquema de ligação e o bloco APLICANDO) e a folha de cancelar.
+    Nenhum texto fala de quem manda as perguntas.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             xmlns:r="clr-namespace:BgsControle.App.Recursos"
+             x:Class="BgsControle.App.Telas.CriacaoPage"
+             x:DataType="telas:CriacaoMemoriaViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource bg}">
+    <ContentPage.Resources>
+        <Style x:Key="resposta" TargetType="Border">
+            <Setter Property="MinimumHeightRequest" Value="56" />
+            <Setter Property="BackgroundColor" Value="{StaticResource surface-1}" />
+            <Setter Property="StrokeThickness" Value="0" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+            <Setter Property="Padding" Value="18,0" />
+        </Style>
+        <Style x:Key="campo-fluxo" TargetType="Border">
+            <Setter Property="HeightRequest" Value="56" />
+            <Setter Property="BackgroundColor" Value="{StaticResource bg}" />
+            <Setter Property="Stroke" Value="{StaticResource brand}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+            <Setter Property="Padding" Value="16,0" />
+        </Style>
+        <Style x:Key="entrada-fluxo" TargetType="Entry">
+            <Setter Property="BackgroundColor" Value="Transparent" />
+            <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            <Setter Property="PlaceholderColor" Value="{StaticResource text-secondary}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="r:Tipo.Peso" Value="600" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid x:Name="Raiz">
+
+        <!-- ============================================================ o palco -->
+        <AbsoluteLayout x:Name="Palco" IsVisible="False" InputTransparent="True">
+            <BoxView x:Name="Brilho" AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" Color="Transparent">
+                <BoxView.Background>
+                    <RadialGradientBrush Center="0.5,0.34" Radius="0.6">
+                        <GradientStop Color="{StaticResource overlay-glow}" Offset="0" />
+                        <GradientStop Color="Transparent" Offset="0.7" />
+                    </RadialGradientBrush>
+                </BoxView.Background>
+            </BoxView>
+            <BoxView x:Name="Chao" Color="Transparent">
+                <BoxView.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="{StaticResource stage-floor}" Offset="0" />
+                        <GradientStop Color="{StaticResource bg}" Offset="0.6" />
+                    </LinearGradientBrush>
+                </BoxView.Background>
+            </BoxView>
+            <BoxView x:Name="Horizonte" Color="Transparent">
+                <BoxView.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="Transparent" Offset="0" />
+                        <GradientStop Color="{StaticResource brand-35}" Offset="0.5" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </LinearGradientBrush>
+                </BoxView.Background>
+                <BoxView.Shadow>
+                    <Shadow Brush="{StaticResource brand-35}" Radius="14" Opacity="0.5" Offset="0,0" />
+                </BoxView.Shadow>
+            </BoxView>
+            <c:AnelDuploView x:Name="AnelChao" Traco="2.5" Opacity="0.35" />
+            <!-- A frase (24/800; a última palavra em ciano) e, numa linha embaixo, a barrinha, o antes riscado, a
+                 seta e o valor relido. Os textos vêm do AjusteDoPalco, postos pela página a cada ajuste. -->
+            <VerticalStackLayout x:Name="Frase" Spacing="8" Opacity="0">
+                <Label x:Name="TextoFrase" Style="{StaticResource tipo-creation-phrase}" />
+                <HorizontalStackLayout x:Name="LinhaValor" Spacing="7" HorizontalOptions="Center">
+                    <Grid WidthRequest="54" HeightRequest="5" VerticalOptions="Center">
+                        <BoxView Color="{StaticResource surface-2}" CornerRadius="3" />
+                        <BoxView x:Name="Preenchimento" HorizontalOptions="Start" CornerRadius="3" WidthRequest="0" Color="Transparent">
+                            <BoxView.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="{StaticResource channel-done}" Offset="0" />
+                                    <GradientStop Color="{StaticResource brand}" Offset="1" />
+                                </LinearGradientBrush>
+                            </BoxView.Background>
+                            <BoxView.Shadow>
+                                <Shadow Brush="{StaticResource brand-45}" Radius="8" Opacity="1" Offset="0,0" />
+                            </BoxView.Shadow>
+                        </BoxView>
+                    </Grid>
+                    <Label x:Name="Antes" Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource text-secondary}" r:Tipo.Peso="500" />
+                    <Label x:Name="Seta" Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource text-nav-inactive}" Text="→" Opacity="0" />
+                    <Label x:Name="Novo" Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource brand}" r:Tipo.Peso="800" Opacity="0" />
+                </HorizontalStackLayout>
+                <Label x:Name="NotaValor" Style="{StaticResource tipo-body}" TextColor="{StaticResource apoio}" HorizontalTextAlignment="Center" IsVisible="False" />
+            </VerticalStackLayout>
+        </AbsoluteLayout>
+
+        <!-- ============================================================ a barra do fluxo e as telas -->
+        <Grid RowDefinitions="52,*">
+            <Grid ColumnDefinitions="48,*,48" Padding="8,2,8,0">
+                <Button Style="{StaticResource botao-barra-fluxo}" Text="‹" FontSize="28" Command="{Binding Anterior}" IsVisible="{Binding PodeVoltar}"
+                        SemanticProperties.Description="{x:Static telas:CriacaoMemoriaViewModel.DescricaoVoltar}" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                    <Label Style="{StaticResource tipo-flow-title}" Text="{Binding TituloBarra}" SemanticProperties.HeadingLevel="Level1" />
+                    <Label Style="{StaticResource tipo-flow-subtitle}" Text="{Binding SubtituloBarra}"
+                           IsVisible="{Binding SubtituloBarra, Converter={StaticResource TemTexto}}" />
+                </VerticalStackLayout>
+                <Button Grid.Column="2" Style="{StaticResource botao-barra-fluxo}" Text="✕" Command="{Binding Fechar}" IsVisible="{Binding PodeFechar}"
+                        SemanticProperties.Description="{x:Static telas:CriacaoMemoriaViewModel.DescricaoCancelar}" />
+            </Grid>
+
+            <Grid Grid.Row="1" Padding="16,0,16,14">
+
+                <!-- Uma pergunta por tela (e o "Como ficou?"): tocar numa resposta já responde e avança. -->
+                <ScrollView IsVisible="{Binding ComRespostas}">
+                    <VerticalStackLayout x:Name="BlocoPergunta" Spacing="10" Padding="0,22,0,8">
+                        <Label Style="{StaticResource tipo-question}" Text="{Binding TextoPergunta}" Margin="0,0,0,4"
+                               IsVisible="{Binding FasePerguntas}" SemanticProperties.HeadingLevel="Level2" />
+                        <Label Style="{StaticResource tipo-question}" Text="{Binding TituloComoFicou}" Margin="0,0,0,4"
+                               IsVisible="{Binding FaseComoFicou}" SemanticProperties.HeadingLevel="Level2" />
+                        <Label Style="{StaticResource tipo-body}" Text="{Binding TextoEspera}"
+                               IsVisible="{Binding TextoEspera, Converter={StaticResource TemTexto}}" />
+                        <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Opcoes}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="telas:OpcaoCriacao">
+                                    <Border Style="{StaticResource resposta}">
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" Binding="{Binding Marcada}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource brand-12}" />
+                                                <Setter Property="Stroke" Value="{StaticResource brand}" />
+                                                <Setter Property="StrokeThickness" Value="1.5" />
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <Label Style="{StaticResource tipo-answer}" Text="{Binding Texto}">
+                                                <Label.Triggers>
+                                                    <DataTrigger TargetType="Label" Binding="{Binding Marcada}" Value="True">
+                                                        <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                                    </DataTrigger>
+                                                </Label.Triggers>
+                                            </Label>
+                                            <Label Grid.Column="1" Text="›" FontSize="18" TextColor="{StaticResource text-nav-inactive}" VerticalTextAlignment="Center" />
+                                        </Grid>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="AoTocarResposta" />
+                                        </Border.GestureRecognizers>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                        <!-- "Outro…": contorno cinza; a resposta escrita aparece no lugar dele ao voltar com ‹. -->
+                        <Border Style="{StaticResource resposta}" BackgroundColor="Transparent" Stroke="{StaticResource border-sheet}" StrokeThickness="1"
+                                IsVisible="{Binding CampoOutroAberto, Converter={StaticResource Inverso}}">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding OutroMarcado}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource brand-12}" />
+                                    <Setter Property="Stroke" Value="{StaticResource brand}" />
+                                    <Setter Property="StrokeThickness" Value="1.5" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <Label Style="{StaticResource tipo-answer}" TextColor="{StaticResource text-secondary}" Text="{Binding TextoBotaoOutro}">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding OutroMarcado}" Value="True">
+                                            <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                                <Label Grid.Column="1" Text="›" FontSize="18" TextColor="{StaticResource text-nav-inactive}" VerticalTextAlignment="Center" />
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding AbrirOutro}" />
+                            </Border.GestureRecognizers>
+                        </Border>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding CampoOutroAberto}">
+                            <Border Style="{StaticResource campo-fluxo}">
+                                <Entry x:Name="CampoOutro" Style="{StaticResource entrada-fluxo}" Text="{Binding TextoDoOutro}"
+                                       Placeholder="{x:Static telas:CriacaoMemoriaViewModel.TextoCampoOutro}"
+                                       ReturnType="Done" ReturnCommand="{Binding ResponderOutro}" />
+                            </Border>
+                            <Button Grid.Column="1" Style="{StaticResource botao-fluxo}" HeightRequest="56" Padding="18,0"
+                                    Text="{x:Static telas:CriacaoMemoriaViewModel.TextoOkBotao}" Command="{Binding ResponderOutro}" />
+                        </Grid>
+                        <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding Aviso}"
+                               IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <!-- O resumo: "Pronto. Ouça um pouco.", a lista com ✓, o valor e o motivo, e "Avaliar o som". -->
+                <Grid RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding FaseResumo}">
+                    <ScrollView>
+                        <VerticalStackLayout Spacing="8" Padding="0,18,0,8">
+                            <Label Style="{StaticResource tipo-question}" Text="{Binding TituloResumo}" SemanticProperties.HeadingLevel="Level2" />
+                            <Label Style="{StaticResource tipo-body}" Text="{Binding TextoResumo}" Margin="0,-2,0,8" />
+                            <Border BackgroundColor="{StaticResource surface-1}" StrokeThickness="0" StrokeShape="RoundRectangle 14">
+                                <VerticalStackLayout x:Name="ListaResumo" BindableLayout.ItemsSource="{Binding LinhasResumo}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate x:DataType="telas:LinhaCriacao">
+                                            <Grid ColumnDefinitions="22,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="2" Padding="14,10">
+                                                <Grid.Triggers>
+                                                    <DataTrigger TargetType="Grid" Binding="{Binding Destaque}" Value="True">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource brand-06}" />
+                                                    </DataTrigger>
+                                                </Grid.Triggers>
+                                                <Border Grid.RowSpan="2" WidthRequest="20" HeightRequest="20" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                                        BackgroundColor="{StaticResource connected}" VerticalOptions="Center">
+                                                    <Label Text="✓" FontSize="12" r:Tipo.Peso="900" TextColor="{StaticResource on-connected}"
+                                                           HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                                                </Border>
+                                                <Label Grid.Column="1" Style="{StaticResource tipo-summary-item}" Text="{Binding Rotulo}" />
+                                                <Label Grid.Column="2" Style="{StaticResource tipo-summary-item}" TextColor="{StaticResource brand}" Text="{Binding Valor}" />
+                                                <Label Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource tipo-summary-reason}" Text="{Binding Motivo}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </VerticalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    <Button Grid.Row="1" Style="{StaticResource botao-fluxo}" Text="{Binding TextoAvaliar}" Command="{Binding Avaliar}" />
+                </Grid>
+
+                <!-- O Salvar: o nome só existe aqui; nada é salvo sem o toque em Salvar. -->
+                <Grid RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding FaseSalvar}">
+                    <ScrollView>
+                        <VerticalStackLayout Spacing="10" Padding="0,22,0,8">
+                            <Label Style="{StaticResource tipo-question}" Text="{Binding TituloSalvar}" SemanticProperties.HeadingLevel="Level2" />
+                            <Label Style="{StaticResource tipo-body}" FontSize="12.5" Text="{Binding ExplicaSalvar}" Margin="0,-6,0,8" />
+                            <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding RotuloNome}" />
+                            <Border Style="{StaticResource campo-fluxo}">
+                                <Entry x:Name="CampoNome" Style="{StaticResource entrada-fluxo}" Text="{Binding NomeMemoria}" MaxLength="24"
+                                       Placeholder="MUSICA ORIG" ReturnType="Done" ReturnCommand="{Binding Salvar}"
+                                       SemanticProperties.Description="{Binding RotuloNome}" />
+                            </Border>
+                            <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding ErroNome}"
+                                   IsVisible="{Binding ErroNome, Converter={StaticResource TemTexto}}" />
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    <VerticalStackLayout Grid.Row="1" Spacing="8">
+                        <Grid>
+                            <Button Style="{StaticResource botao-fluxo}" Text="{Binding TextoSalvar}" Command="{Binding Salvar}" />
+                            <c:AnelDuploView WidthRequest="18" HeightRequest="18" HorizontalOptions="Start" VerticalOptions="Center" Margin="18,0,0,0"
+                                             IsVisible="{Binding Salvando}" />
+                        </Grid>
+                        <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoAjustarMais}" Command="{Binding AjustarMais}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- ============================================================ o Aplicando (e a passagem) -->
+        <AbsoluteLayout x:Name="Aplicando" IsVisible="False">
+            <BoxView x:Name="VeuAplicando" AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" Color="{StaticResource scrim-aplicando}" />
+            <c:EsquemaLigacaoView x:Name="EsquemaVista" Esquema="{Binding Esquema}" Estados="{Binding EstadosCanais}"
+                                  SemanticProperties.Description="{Binding DescricaoEsquema}" />
+            <c:AnelNeonView x:Name="NeonCiano" Token="brand" Opacity="0" />
+            <c:AnelNeonView x:Name="NeonRosa" Token="accent-pink" Opacity="0" />
+            <Label x:Name="RotuloAplicando" Style="{StaticResource tipo-aplicando-label}" Text="{Binding TextoAplicando}" />
+            <c:AnelDuploView x:Name="AnelAplicando" SemanticProperties.Description="{Binding TextoDescricaoAnel}" />
+            <Label x:Name="NomeAplicando" Style="{StaticResource tipo-aplicando-name}" Text="{Binding NomeAplicando}" />
+        </AbsoluteLayout>
+
+        <!-- ============================================================ cancelar a criação -->
+        <c:FolhaView Aberta="{Binding FolhaCancelarAberta}" Fechar="{Binding ContinuarCriando}">
+            <VerticalStackLayout Spacing="10">
+                <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding TituloFolhaCancelar}" />
+                <Label Style="{StaticResource tipo-body}" FontSize="12.5" TextColor="{StaticResource text-chip}" Text="{Binding TextoFolhaCancelar}" />
+                <Button Style="{StaticResource botao-fluxo}" Text="{Binding TextoCancelarEVoltar}" Command="{Binding CancelarEVoltar}" />
+                <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoContinuarCriando}" Command="{Binding ContinuarCriando}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentPage>

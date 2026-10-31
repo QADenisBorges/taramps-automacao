@@ -841,6 +841,94 @@ public sealed class CriacaoTestes : IDisposable
         Assert.DoesNotContain("senha", texto, StringComparison.OrdinalIgnoreCase);
     }
 
+    // ----------------------------------------------------------------- história 10d: o ‹ e o pedido
+
+    [Fact]
+    public async Task O_voltar_com_outra_resposta_tira_as_perguntas_seguintes_e_a_porta_le_so_ate_ela()
+    {
+        var chave = await Aberta();
+        Assert.Equal(200, (await Pergunta(chave, ultima: false)).Status);
+        Assert.True(_criacao.Responder(0).Ok);
+        Assert.Equal(200, (await Pergunta(chave, ultima: false, texto: "Que volume?", respostas: """["Baixo","Médio","Alto"]""")).Status);
+        Assert.True(_criacao.Responder(1).Ok);
+        Assert.Equal(2, EventosDaCriacao(CriacaoMemoria.EventoResposta).Count);
+
+        // A mesma resposta: nada muda e nada vai à porta.
+        Assert.True(_criacao.ResponderDeNovo(1, 0).Ok);
+        Assert.Equal(2, _criacao.Perguntas.Count);
+        Assert.Equal(2, EventosDaCriacao(CriacaoMemoria.EventoResposta).Count);
+
+        // Outra resposta na 1ª: a 2ª sai e a porta recebe a resposta nº 1 de novo.
+        Assert.True(_criacao.ResponderDeNovo(1, 2).Ok);
+        var e = EventosDaCriacao(CriacaoMemoria.EventoResposta)[^1].Criacao!;
+        Assert.Equal((1, "Jogo", false), (e.Numero, e.Texto, e.DoOutro));
+        var criacao = Json(await Pedir("GET", "/criacao", chave: chave));
+        var perguntas = criacao.GetProperty("perguntas").EnumerateArray().ToArray();
+        var p = Assert.Single(perguntas);
+        Assert.Equal(1, p.GetProperty("numero").GetInt32());
+        Assert.Equal("Jogo", p.GetProperty("resposta").GetString());
+        Assert.Equal("perguntas", criacao.GetProperty("etapa").GetString());
+        Assert.Null(_criacao.PerguntaAtual); // a tela espera a próxima
+
+        // A próxima volta a ser a nº 2; o "Outro…" também responde de novo.
+        Assert.Equal(200, (await Pergunta(chave, ultima: true, texto: "Onde você senta?")).Status);
+        Assert.Equal(2, _criacao.PerguntaAtual!.Numero);
+        Assert.True(_criacao.ResponderDeNovo(1, "No pufe").Ok);
+        Assert.Single(_criacao.Perguntas);
+        Assert.True(_criacao.Perguntas[0].DoOutro);
+        Assert.Equal(EtapaCriacao.Perguntas, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task O_voltar_so_vale_numa_pergunta_ja_respondida_e_nas_perguntas()
+    {
+        var chave = await Aberta();
+        Assert.Equal(200, (await Pergunta(chave, ultima: false)).Status);
+
+        Assert.Equal(CriacaoMemoria.MsgSemPergunta, _criacao.ResponderDeNovo(1, 0).Motivo); // a da vez é com Responder
+        Assert.Equal(CriacaoMemoria.MsgSemPergunta, _criacao.ResponderDeNovo(5, 0).Motivo);
+        Assert.True(_criacao.Responder(0).Ok);
+        Assert.Equal(CriacaoMemoria.MsgSemPergunta, _criacao.ResponderDeNovo(1, 9).Motivo);
+        Assert.Equal(CriacaoMemoria.MsgOutroVazio, _criacao.ResponderDeNovo(1, "  ").Motivo);
+
+        Assert.Equal(200, (await Pergunta(chave, ultima: true, texto: "Que volume?")).Status);
+        Assert.True(_criacao.Responder(0).Ok);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+        Assert.Equal(CriacaoMemoria.MsgSemPergunta, _criacao.ResponderDeNovo(1, 1).Motivo); // depois da última, não volta
+        Assert.Equal(2, _criacao.Perguntas.Count);
+    }
+
+    [Fact]
+    public async Task Pedir_com_a_criacao_fechada_vai_ao_eventos_como_criacao_pedida_e_aberta_recusa()
+    {
+        var chave = await Pronto();
+
+        Assert.True(_criacao.Pedir().Ok);
+
+        var pedida = Assert.Single(await EventosJson(chave, CriacaoMemoria.EventoPedida));
+        Assert.Equal(CriacaoMemoria.EventoPedida, pedida.GetProperty("tipo").GetString());
+        Assert.False(_criacao.Aberta); // a tela não abre: quem abre é a porta
+
+        Assert.Equal(200, (await Pedir("POST", "/criacao/abrir", null, chave)).Status);
+        var r = _criacao.Pedir();
+        Assert.False(r.Ok);
+        Assert.Equal(CriacaoMemoria.MsgJaAberta, r.Motivo);
+        Assert.Single(EventosDaCriacao(CriacaoMemoria.EventoPedida));
+    }
+
+    [Fact]
+    public async Task A_ajuda_explica_o_pedido_e_o_voltar()
+    {
+        await Conectar();
+        await Parear();
+
+        var texto = Json(await Pedir("GET", "/ajuda")).GetProperty("texto").GetString()!;
+
+        Assert.Contains("criacao-pedida", texto);
+        Assert.Contains("O ‹ do celular volta a uma pergunta já respondida", texto);
+        Assert.Contains("as perguntas depois dela saem", texto);
+    }
+
     // ----------------------------------------------------------------- critério de aceite
 
     [Fact]

@@ -282,10 +282,17 @@ public static class MauiProgram
             sp.GetRequiredService<PedidosConfirmacao>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
+        // História 10d: as preferências do app (a chave "Animação ao criar o som", em preferencias-app.json) e a
+        // criação da memória em tela toda, com o esquema do Setup, a pausa da folha de risco e a animação.
+        builder.Services.AddSingleton(sp => new PreferenciasApp(
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPreferencias)));
         builder.Services.AddSingleton(sp => new CriacaoMemoriaViewModel(
             sp.GetRequiredService<CriacaoMemoria>(),
             sp.GetRequiredService<IDespachante>(),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<FolhaRiscoViewModel>(),
+            sp.GetRequiredService<PreferenciasApp>()));
         builder.Services.AddSingleton(sp => new ReaplicandoViewModel(
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<IDespachante>(),
@@ -298,6 +305,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<FolhaRiscoPage>();
         builder.Services.AddSingleton<ReaplicandoPage>();
         builder.Services.AddSingleton<AlarmeGeradorPage>();
+        builder.Services.AddSingleton<CriacaoPage>();
 
         var app = builder.Build();
         // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.

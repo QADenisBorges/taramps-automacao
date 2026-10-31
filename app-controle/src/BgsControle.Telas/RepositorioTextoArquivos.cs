@@ -32,6 +32,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>O cliente pareado da porta de comandos: o nome, a data e só o SHA-256 da chave.</summary>
     public const string ArquivoPortaIa = "porta-ia.json";
 
+    /// <summary>As preferências do próprio app (a chave "Animação ao criar o som"), história 10d.</summary>
+    public const string ArquivoPreferencias = "preferencias-app.json";
+
     public string Arquivo { get; } = arquivo;
 
     public Task<string?> LerAsync() => arquivos.LerTextoAsync(Arquivo);

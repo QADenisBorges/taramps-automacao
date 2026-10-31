@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     Configurações › Memórias (EXPERIENCE, Cartão de memória; DESIGN, cartao-de-memoria): as memórias do celular
-    do Setup em uso (EM USO, HERDADO, o preset lembrado; Aplicar, Renomear, Apagar) e Criar memória do som atual.
+    do Setup em uso (EM USO, HERDADO, o preset lembrado; Aplicar, Renomear, Apagar), Criar memória do som atual e,
+    junto dele, o chip "+ Nova memória" (história 10d; até a Roda existir): pede a criação com perguntas, que
+    sobe em tela toda quando abre. Travado (sem Setup, na dúvida, só leitura ou com uma criação aberta), apagado e
+    com o motivo. O aviso rápido da casca ("Memória MUSICA ORIG criada no Casa 2.1.") aparece aqui também.
     As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -75,6 +78,17 @@
                             Command="{Binding AbrirCriar}" />
                     <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaCriar}"
                            IsVisible="{Binding MotivoTravaCriar, Converter={StaticResource TemTexto}}" />
+                    <!-- + Nova memória (história 10d): o pedido vai à porta; a criação aparece quando abre. -->
+                    <Button Style="{StaticResource chip-bgs}" HorizontalOptions="Start" Margin="0,6,0,0"
+                            Text="{x:Static telas:MemoriasViewModel.TextoNovaMemoria}" Command="{Binding NovaMemoria}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" Binding="{Binding PodeNovaMemoria}" Value="False">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaNovaMemoria}"
+                           IsVisible="{Binding MotivoTravaNovaMemoria, Converter={StaticResource TemTexto}}" />
                 </VerticalStackLayout>
             </ScrollView>
         </Grid>
@@ -119,5 +133,8 @@
 
         <!-- A folha do Salvar (Criar memória com o som do aparelho em uso). -->
         <c:SalvarFolhaView x:Name="FolhaSalvar" />
+
+        <!-- O aviso rápido da casca (2,6 s), ao fechar a criação. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" />
     </Grid>
 </ContentPage>

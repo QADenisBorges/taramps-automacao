@@ -9,6 +9,7 @@ using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
+using BgsControle.Telas.Esquema;
 
 namespace BgsControle.Telas.Testes;
 
@@ -138,16 +139,20 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         }
     }
 
-    private void SemIa()
+    private void SemIa(CriacaoMemoriaViewModel? vm = null)
     {
+        vm ??= _vm;
         foreach (var p in typeof(CriacaoMemoriaViewModel).GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            var valor = p.GetValue(_vm);
+            var valor = p.GetValue(vm);
             var textos = valor switch
             {
                 string s => [s],
                 IEnumerable<string> lista => lista.ToArray(),
-                IEnumerable<LinhaCriacao> linhas => linhas.SelectMany(l => new[] { l.Rotulo, l.Antes, l.Valor, l.Frase, l.Linha }).ToArray(),
+                IEnumerable<LinhaCriacao> linhas => linhas.SelectMany(l => new[] { l.Rotulo, l.Antes, l.Valor, l.Frase, l.Linha, l.Motivo }).ToArray(),
+                IEnumerable<OpcaoCriacao> opcoes => opcoes.Select(o => o.Texto).ToArray(),
+                AjustePalco a => [a.Frase, a.Antes, a.Valor, a.Anuncio, a.Nota ?? ""],
+                BgsControle.Telas.Esquema.EsquemaLigacao e => [e.Descricao, .. e.Equipamentos.Select(x => x.Nome)],
                 _ => Array.Empty<string>(),
             };
             foreach (var t in textos)
@@ -454,5 +459,576 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         var tipos = Json(await Pedir("GET", "/eventos?desde=0", chave: chave)).GetProperty("eventos").EnumerateArray()
             .Select(e => e.GetProperty("tipo").GetString()!).Where(t => t.StartsWith("criacao-", StringComparison.Ordinal)).ToArray();
         Assert.Equal([CriacaoMemoria.EventoResposta, CriacaoMemoria.EventoResposta, CriacaoMemoria.EventoComoFicou, CriacaoMemoria.EventoSalva], tipos);
+    }
+
+    // ----------------------------------------------------------------- história 10d: apoio das fases
+
+    /// <summary>Roda na thread da tela (como a página chama os sinais) e devolve o resultado.</summary>
+    private async Task<T> NaTela<T>(Func<T> f)
+    {
+        var feito = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _b.Tela.Executar(() =>
+        {
+            try
+            {
+                feito.SetResult(f());
+            }
+            catch (Exception e)
+            {
+                feito.SetException(e);
+            }
+        });
+        return await feito.Task;
+    }
+
+    /// <summary>Um ViewModel com as preferências (a animação) e a folha de risco, como no app.</summary>
+    private async Task<CriacaoMemoriaViewModel> Outro(bool animacao = true, FolhaRiscoViewModel? folha = null, bool reduzido = false)
+    {
+        var arquivos = new ArquivosFalso();
+        if (!animacao)
+            arquivos.Semear(RepositorioTextoArquivos.ArquivoPreferencias, PreferenciasApp.ParaJson(false));
+        var preferencias = new PreferenciasApp(new RepositorioTextoArquivos(arquivos, RepositorioTextoArquivos.ArquivoPreferencias));
+        await preferencias.Carregada;
+        return new CriacaoMemoriaViewModel(_criacao, _b.Tela, _b.Relogio, _b.Setups, folha, preferencias) { MovimentoReduzido = reduzido };
+    }
+
+    /// <summary>A página no palco, na passagem e no Aplicando: cada sinal até o resumo. Devolve as frases mostradas.</summary>
+    private async Task<List<string>> AteOResumo(CriacaoMemoriaViewModel vm)
+    {
+        var frases = new List<string>();
+        while (vm.Fase == FaseCriacao.Palco && vm.AjusteDoPalco is { } a)
+        {
+            frases.Add(a.Frase);
+            Assert.True(await NaTela(vm.PalcoMostrou));
+        }
+        Assert.Equal(FaseCriacao.Passagem, vm.Fase);
+        Assert.True(await NaTela(vm.PassagemTerminou));
+        Assert.Equal(FaseCriacao.Aplicando, vm.Fase);
+        while (await NaTela(vm.AvancarCanal))
+        {
+        }
+        Assert.True(await NaTela(vm.AplicandoTerminou));
+        return frases;
+    }
+
+    private EventoPorta[] EventosDoTipo(string tipo) => _porta.Eventos().Where(e => e.Tipo == tipo).ToArray();
+
+    // ----------------------------------------------------------------- história 10d: matriz
+
+    [Fact]
+    public async Task Abrir_a_camada_entra_nas_perguntas_com_Nova_memoria_e_Casa_21()
+    {
+        Assert.Equal(FaseCriacao.Fechada, _vm.Fase);
+
+        await Aberta();
+
+        Assert.True(_vm.Aberta);
+        Assert.Equal(FaseCriacao.Perguntas, _vm.Fase);
+        Assert.Equal("Nova memória", _vm.TituloBarra);
+        Assert.Equal("Casa 2.1", _vm.SubtituloBarra);
+        Assert.False(_vm.PodeVoltar); // o ‹ só da 2ª pergunta em diante
+        Assert.True(_vm.PodeFechar);
+        SemIa();
+    }
+
+    [Fact]
+    public async Task Voltar_com_outra_resposta_tira_a_pergunta_2_e_a_tela_espera_a_proxima()
+    {
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await Pergunta(chave, ultima: false, texto: "Que volume?", respostas: """["Baixo","Médio","Alto"]""");
+        Assert.True(_vm.PodeVoltar);
+        await _vm.Opcoes[1].Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.False(_vm.TemPergunta); // esperando a 3ª
+        Assert.True(_vm.PodeVoltar);
+
+        // ‹ duas vezes: a 2ª e a 1ª, cada uma com a resposta dada marcada.
+        await _vm.Anterior.ExecutarAsync();
+        Assert.Equal(2, _vm.NumeroPergunta);
+        Assert.True(_vm.Voltando);
+        Assert.Equal([false, true, false], _vm.Opcoes.Select(o => o.Marcada));
+        await _vm.Anterior.ExecutarAsync();
+        Assert.Equal(1, _vm.NumeroPergunta);
+        Assert.False(_vm.PodeVoltar);
+        Assert.Equal([true, false, false], _vm.Opcoes.Select(o => o.Marcada));
+
+        // A mesma resposta só avança na tela, sem evento.
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        Assert.Equal(2, _vm.NumeroPergunta);
+        Assert.False(_vm.Voltando);
+        Assert.Equal(2, EventosDoTipo(CriacaoMemoria.EventoResposta).Length);
+
+        // Outra resposta na 1ª: a 2ª sai, a porta recebe a nº 1 de novo e a tela espera a próxima.
+        await _vm.Anterior.ExecutarAsync();
+        await _vm.Opcoes[2].Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.False(_vm.TemPergunta);
+        Assert.Equal(CriacaoMemoriaViewModel.TextoEsperandoPergunta, _vm.TextoEspera);
+        var e = EventosDoTipo(CriacaoMemoria.EventoResposta)[^1].Criacao!;
+        Assert.Equal((1, "Jogo"), (e.Numero, e.Texto));
+        var perguntas = Json(await Pedir("GET", "/criacao", chave: chave)).GetProperty("perguntas").EnumerateArray().ToArray();
+        Assert.Equal("Jogo", Assert.Single(perguntas).GetProperty("resposta").GetString());
+
+        // O "Outro…" escrito aparece no lugar dele ao voltar.
+        await Pergunta(chave, ultima: false, texto: "Onde você senta?");
+        await _vm.AbrirOutro.ExecutarAsync();
+        Assert.True(_vm.CampoOutroAberto);
+        _vm.TextoDoOutro = "No pufe";
+        await _vm.ResponderOutro.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        await _vm.Anterior.ExecutarAsync();
+        Assert.Equal(2, _vm.NumeroPergunta);
+        Assert.Equal("No pufe", _vm.TextoBotaoOutro);
+        Assert.True(_vm.OutroMarcado);
+        Assert.All(_vm.Opcoes, o => Assert.False(o.Marcada));
+        await _vm.AbrirOutro.ExecutarAsync();
+        Assert.Equal("No pufe", _vm.TextoDoOutro);
+    }
+
+    [Fact]
+    public async Task Palco_a_frente_3_ajustes_e_o_resumo_a_fase_espera_os_sinais_da_pagina()
+    {
+        var chave = await Autorizada();
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+        Assert.Null(_vm.AjusteDoPalco); // o anel gira: a fila está vazia e a etapa ainda é Ajustando
+        Assert.False(await NaTela(_vm.PalcoMostrou));
+
+        await Ajuste(chave, frase: "Definindo o corte das JBL");
+        Assert.Equal("Definindo o corte das JBL", _vm.AjusteDoPalco!.Frase);
+        Assert.True(await NaTela(_vm.PalcoMostrou));
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase); // nenhum na fila e a etapa ainda é Ajustando: espera
+        Assert.Null(_vm.AjusteDoPalco);
+
+        await Ajuste(chave, codigo: "081", indice: 0, valor: 8.0m, frase: "Ajustando o grave");
+        await Ajuste(chave, codigo: "080", indice: null, valor: -3.0m, frase: "Protegendo os canais");
+        await Ajuste(chave, codigo: "081", indice: 1, valor: 7.0m, frase: "Encaixando o Sub");
+        await Resumo(chave);
+        Assert.Equal(EtapaCriacao.Resumo, _vm.Etapa);
+
+        // O núcleo está no resumo, mas a tela mostra cada ajuste antes.
+        var a = _vm.AjusteDoPalco!;
+        Assert.Equal(("Ajustando o", "grave"), (a.Inicio, a.Chave));
+        Assert.Equal("+8,0 dB", a.Valor);
+        Assert.Equal($"Ajustando o grave: de {a.Antes} para +8,0 dB", _vm.AnuncioPalco);
+        Assert.Null(a.Nota);
+        Assert.InRange(a.PosicaoValor, 0, 1);
+        Assert.False(await NaTela(_vm.PassagemTerminou)); // fora de hora: nada muda
+        Assert.False(await NaTela(_vm.AplicandoTerminou));
+
+        Assert.True(await NaTela(_vm.PalcoMostrou));
+        Assert.Equal("Protegendo os canais", _vm.AjusteDoPalco!.Frase);
+        Assert.True(await NaTela(_vm.PalcoMostrou));
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+        Assert.Equal("Encaixando o Sub", _vm.AjusteDoPalco!.Frase);
+        Assert.True(await NaTela(_vm.PalcoMostrou));
+        Assert.Equal(FaseCriacao.Passagem, _vm.Fase);
+        Assert.False(_vm.PodeFechar);
+
+        Assert.True(await NaTela(_vm.PassagemTerminou));
+        Assert.Equal(FaseCriacao.Aplicando, _vm.Fase);
+        Assert.All(_vm.EstadosCanais, c => Assert.Equal(EstadoCanal.AindaNao, c));
+        Assert.True(await NaTela(_vm.AvancarCanal));
+        Assert.Equal([EstadoCanal.Aceso, EstadoCanal.AindaNao, EstadoCanal.AindaNao, EstadoCanal.AindaNao], _vm.EstadosCanais);
+        Assert.True(await NaTela(_vm.AvancarCanal));
+        Assert.Equal([EstadoCanal.Gravado, EstadoCanal.Aceso, EstadoCanal.AindaNao, EstadoCanal.AindaNao], _vm.EstadosCanais);
+        Assert.True(await NaTela(_vm.AvancarCanal));
+        Assert.True(await NaTela(_vm.AvancarCanal));
+        Assert.Equal([EstadoCanal.Gravado, EstadoCanal.Gravado, EstadoCanal.Gravado, EstadoCanal.Aceso], _vm.EstadosCanais);
+        Assert.False(await NaTela(_vm.AvancarCanal));
+        Assert.All(_vm.EstadosCanais, c => Assert.Equal(EstadoCanal.Gravado, c));
+        Assert.Equal(FaseCriacao.Aplicando, _vm.Fase);
+
+        Assert.True(await NaTela(_vm.AplicandoTerminou));
+        Assert.Equal(FaseCriacao.Resumo, _vm.Fase);
+        Assert.Equal("4 ajustes no aparelho, todos relidos.", _vm.TextoResumo);
+        Assert.Contains(_vm.LinhasResumo, l => l.Motivo == "A resposta pediu.");
+        SemIa();
+    }
+
+    [Fact]
+    public async Task Sem_animacao_o_Aplicando_vem_desde_o_comeco_cada_canal_acende_com_o_ajuste_e_o_resumo_entra_na_hora()
+    {
+        using var vm = await Outro(animacao: false);
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: true);
+        Assert.True(_criacao.Responder(0).Ok);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(vm.AnimacaoLigada);
+        Assert.False(vm.ComAnimacao);
+        Assert.Equal(FaseCriacao.Aplicando, vm.Fase);
+        Assert.All(vm.EstadosCanais, c => Assert.Equal(EstadoCanal.AindaNao, c));
+
+        await Ajuste(chave, codigo: "081", indice: 2, valor: 2.0m); // o Sub: CH3 e CH4, com o link
+        Assert.Null(vm.AjusteDoPalco);
+        Assert.Equal([EstadoCanal.AindaNao, EstadoCanal.AindaNao, EstadoCanal.Aceso, EstadoCanal.Aceso], vm.EstadosCanais);
+        await Ajuste(chave, codigo: "081", indice: 0, valor: 8.0m);
+        Assert.Equal([EstadoCanal.Aceso, EstadoCanal.AindaNao, EstadoCanal.Gravado, EstadoCanal.Gravado], vm.EstadosCanais);
+        await Ajuste(chave, codigo: "080", indice: null, valor: -3.0m); // global: todos
+        Assert.All(vm.EstadosCanais, c => Assert.Equal(EstadoCanal.Aceso, c));
+
+        await Resumo(chave);
+        Assert.Equal(FaseCriacao.Resumo, vm.Fase); // sem mínimo de 0,7 s por canal
+        Assert.Equal("3 ajustes no aparelho, todos relidos.", vm.TextoResumo);
+    }
+
+    [Fact]
+    public async Task Com_o_movimento_reduzido_tambem_nao_ha_palco_nem_passagem()
+    {
+        using var vm = await Outro(reduzido: true);
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: true);
+        Assert.True(_criacao.Responder(0).Ok);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(vm.AnimacaoLigada);
+        Assert.False(vm.ComAnimacao);
+        Assert.Equal(FaseCriacao.Aplicando, vm.Fase);
+        await Ajuste(chave);
+        await Resumo(chave);
+        Assert.Equal(FaseCriacao.Resumo, vm.Fase);
+    }
+
+    [Fact]
+    public async Task Refino_o_palco_mostra_so_a_rodada_2_e_o_resumo_destaca_a_linha_da_rodada()
+    {
+        var chave = await Autorizada();
+        await Ajuste(chave, frase: "Ajustando o grave");
+        await Ajuste(chave, codigo: "081", indice: 0, valor: 8.0m, frase: "Definindo o corte das JBL");
+        await Resumo(chave);
+        Assert.Equal(["Ajustando o grave", "Definindo o corte das JBL"], await AteOResumo(_vm));
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(FaseCriacao.ComoFicou, _vm.Fase);
+        Assert.Equal("tocando agora", _vm.SubtituloBarra);
+        Assert.Equal(["Ótimo, pode salvar", "Quero mais impacto", "Os graves embolaram"], _vm.Opcoes.Select(o => o.Texto));
+        Assert.True(_vm.PodeFechar);
+
+        await _vm.Opcoes[1].Tocar.ExecutarAsync(); // "Quero mais impacto"
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+        Assert.Null(_vm.AjusteDoPalco);
+        await Ajuste(chave, valor: 3.5m, frase: "Reforçando o grave");
+        await Resumo(chave);
+
+        Assert.Equal(["Reforçando o grave"], await AteOResumo(_vm));
+        Assert.Equal(FaseCriacao.Resumo, _vm.Fase);
+        Assert.Equal("Mudou 1 ajuste, em destaque. O resto ficou igual.", _vm.TextoResumo);
+        Assert.Equal([true, false], _vm.LinhasResumo.Select(l => l.Destaque));
+        Assert.Equal("Reforçando o grave", _vm.LinhasResumo[0].Frase);
+    }
+
+    [Fact]
+    public async Task Releitura_diferente_o_palco_mostra_o_valor_relido_e_O_aparelho_ficou_com_outro_valor()
+    {
+        var chave = await Autorizada();
+        _b.Simulador.EcosDiferentes["*081*2*2.0*"] = "#081#2#1.5#";
+
+        await Ajuste(chave);
+
+        var a = _vm.AjusteDoPalco!;
+        Assert.Equal("+1,5 dB", a.Valor);
+        Assert.True(a.OutroValor);
+        Assert.Equal("O aparelho ficou com outro valor.", a.Nota);
+        var linha = Assert.Single(_vm.AjustesDaRodada);
+        Assert.True(linha.Diferente);
+        Assert.Equal("+2,0 dB", linha.Pedido);
+        Assert.Equal("+1,5 dB", linha.Valor);
+        Assert.Equal(409, (await Pedir("POST", "/criacao/resumo", null, chave)).Status); // a regra da 9d
+        _b.Simulador.EcosDiferentes.Clear();
+    }
+
+    [Fact]
+    public async Task Folha_de_risco_no_palco_pausa_e_Confirmar_retoma()
+    {
+        using var folha = new FolhaRiscoViewModel(_confirmacoes, _b.Tela, _b.Relogio);
+        using var vm = await Outro(folha: folha);
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: true);
+        Assert.True(_criacao.Responder(0).Ok);
+        await Ajuste(chave);
+        Assert.NotNull(vm.AjusteDoPalco);
+
+        var pedido = _confirmacoes.PedirAsync(new PedidoConfirmacao("Ligar o gerador?", "Um tom forte pode queimar o tweeter ou o sub"));
+        await Apoio.Esperar(() => _confirmacoes.Atual is not null);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.True(vm.Pausado);
+        Assert.False(await NaTela(vm.PalcoMostrou)); // o palco não anda
+        Assert.Equal(FaseCriacao.Palco, vm.Fase);
+        Assert.NotNull(vm.AjusteDoPalco);
+
+        await folha.Confirmar.ExecutarAsync();
+        Assert.Equal(DecisaoConfirmacao.Confirmou, await pedido);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(vm.Pausado);
+        Assert.True(await NaTela(vm.PalcoMostrou));
+        Assert.True(vm.Aberta);
+    }
+
+    [Fact]
+    public async Task Queda_do_BLE_no_palco_fecha_a_camada_e_fica_aplicado_pela_metade()
+    {
+        var chave = await Autorizada();
+        await Ajuste(chave);
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+
+        _b.Simulador.Derrubar();
+        await Apoio.Esperar(() => !_criacao.Aberta);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(_vm.Aberta);
+        Assert.Equal(FaseCriacao.Fechada, _vm.Fase);
+        Assert.Null(_vm.AjusteDoPalco);
+        Assert.Null(_vm.AvisoFinal); // a folha "Aplicado pela metade" é quem fala
+        Assert.Equal(CriacaoMemoria.EtapaAjustes, _b.Copia.Ultima?.Operacao?.Etapa);
+    }
+
+    [Fact]
+    public async Task Salvar_fecha_a_camada_e_a_casca_mostra_Memoria_criada_por_2_6_s()
+    {
+        using var t = new Telas11(_b);
+        using var casca = new CascaViewModel(_b.Sessao, t.Conexao, t.Setup, t.Memorias, t.Inicio, t.Mesa, t.Audio, t.Salvar, _b.Fabrica, t.Nav,
+            _b.Tela, _b.Relogio, t.PlayerTela, t.FolhaRisco, t.Gerador, t.Reaplicando, _vm);
+        var chave = await Autorizada();
+        Assert.True(casca.CriacaoPorCima);
+        Assert.Equal((true, false, false, false), t.Nav.Camadas);
+        await Ajuste(chave);
+        await Resumo(chave);
+        await AteOResumo(_vm);
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _vm.Opcoes[0].Tocar.ExecutarAsync(); // "Ótimo, pode salvar"
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(FaseCriacao.Salvar, _vm.Fase);
+        Assert.Equal("Salvar no Casa 2.1?", _vm.TituloSalvar);
+        Assert.Equal("Guarda toda a regulagem que está tocando agora.", _vm.ExplicaSalvar);
+        Assert.Equal("Nome da memória", _vm.RotuloNome);
+        Assert.Equal("Salvar", _vm.TextoSalvar);
+        Assert.False(_vm.PodeFechar);
+
+        _vm.NomeMemoria = "";
+        await _vm.Salvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.NotNull(_vm.ErroNome);
+        Assert.Equal(FaseCriacao.Salvar, _vm.Fase);
+        Assert.Null(casca.AvisoRapido);
+
+        _vm.NomeMemoria = "MUSICA ORIG";
+        await _vm.Salvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(_vm.Aberta);
+        Assert.False(casca.CriacaoPorCima);
+        Assert.Equal((false, false, false, false), t.Nav.Camadas);
+        Assert.Equal("Memória MUSICA ORIG criada no Casa 2.1.", casca.AvisoRapido);
+        await _b.Andar(TimeSpan.FromSeconds(2.5), passoMs: 100);
+        Assert.NotNull(casca.AvisoRapido);
+        await _b.Andar(TimeSpan.FromSeconds(0.2), passoMs: 100);
+        Assert.Null(casca.AvisoRapido);
+    }
+
+    [Fact]
+    public async Task Cancelar_e_voltar_avisa_Nova_memoria_cancelada()
+    {
+        var chave = await Aberta();
+        var avisos = new List<string?>();
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CriacaoMemoriaViewModel.AvisoFinal))
+                avisos.Add(_vm.AvisoFinal);
+        };
+        await Pergunta(chave, ultima: false);
+
+        await _vm.Fechar.ExecutarAsync();
+        await _b.Rodar(_vm.CancelarEVoltar.ExecutarAsync());
+
+        Assert.False(_vm.Aberta);
+        Assert.Equal([CriacaoMemoria.MsgCancelada], avisos);
+    }
+
+    [Fact]
+    public async Task Tecla_Voltar_do_Android_em_cada_fase()
+    {
+        Assert.False(_vm.Voltar()); // fechada: o Android segue
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+
+        // Na 1ª pergunta, o ✕; com a folha aberta, "Continuar criando".
+        Assert.True(_vm.Voltar());
+        Assert.True(_vm.FolhaCancelarAberta);
+        Assert.True(_vm.Voltar());
+        Assert.False(_vm.FolhaCancelarAberta);
+        Assert.True(_vm.Aberta);
+
+        // Da 2ª em diante, o ‹.
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await Pergunta(chave, ultima: true, texto: "Que volume?");
+        Assert.True(_vm.Voltar());
+        Assert.Equal(1, _vm.NumeroPergunta);
+        Assert.False(_vm.FolhaCancelarAberta);
+        await _vm.Opcoes[0].Tocar.ExecutarAsync(); // a mesma: volta à 2ª
+        Assert.Equal(2, _vm.NumeroPergunta);
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        // Palco, passagem, Aplicando e resumo: nada acontece.
+        await Ajuste(chave);
+        Assert.True(_vm.Voltar());
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+        Assert.False(_vm.FolhaCancelarAberta);
+        await Resumo(chave);
+        Assert.True(await NaTela(_vm.PalcoMostrou));
+        Assert.Equal(FaseCriacao.Passagem, _vm.Fase);
+        Assert.True(_vm.Voltar());
+        Assert.Equal(FaseCriacao.Passagem, _vm.Fase);
+        Assert.True(await NaTela(_vm.PassagemTerminou));
+        Assert.True(_vm.Voltar());
+        Assert.Equal(FaseCriacao.Aplicando, _vm.Fase);
+        while (await NaTela(_vm.AvancarCanal))
+        {
+        }
+        Assert.True(await NaTela(_vm.AplicandoTerminou));
+        Assert.True(_vm.Voltar());
+        Assert.Equal(FaseCriacao.Resumo, _vm.Fase);
+        Assert.False(_vm.FolhaCancelarAberta);
+
+        // "Como ficou?": o ✕. Salvar: "Ajustar mais".
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        Assert.True(_vm.Voltar());
+        Assert.True(_vm.FolhaCancelarAberta);
+        Assert.True(_vm.Voltar());
+        Assert.False(_vm.FolhaCancelarAberta);
+        await _vm.PodeSalvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(FaseCriacao.Salvar, _vm.Fase);
+        Assert.True(_vm.Voltar());
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(FaseCriacao.ComoFicou, _vm.Fase);
+    }
+
+    // ----------------------------------------------------------------- história 10d: "+ Nova memória"
+
+    private MemoriasViewModel Memorias() =>
+        new(_b.Setups!, _b.Copia, _b.Sessao, _b.Chaves, _b.Estado, _b.CriarSalvarViewModel(), _b.Tela, _b.Relogio, _criacao);
+
+    [Fact]
+    public async Task Nova_memoria_com_Setup_em_uso_vai_ao_eventos_e_trava_com_a_criacao_aberta()
+    {
+        using var memorias = Memorias();
+        var chave = await Pronto();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("+ Nova memória", MemoriasViewModel.TextoNovaMemoria);
+        Assert.True(memorias.PodeNovaMemoria);
+        Assert.Null(memorias.MotivoTravaNovaMemoria);
+
+        await memorias.NovaMemoria.ExecutarAsync();
+
+        Assert.Null(memorias.Mensagem);
+        var eventos = Json(await Pedir("GET", "/eventos?desde=0", chave: chave)).GetProperty("eventos").EnumerateArray()
+            .Where(e => e.GetProperty("tipo").GetString() == CriacaoMemoria.EventoPedida).ToArray();
+        Assert.Single(eventos);
+        Assert.False(_vm.Aberta); // a tela não abre a criação
+
+        Assert.Equal(200, (await Pedir("POST", "/criacao/abrir", null, chave)).Status);
+        await _b.Tela.EsvaziarAsync();
+        Assert.False(memorias.PodeNovaMemoria);
+        Assert.Equal(CriacaoMemoria.MsgJaAberta, memorias.MotivoTravaNovaMemoria);
+        await memorias.NovaMemoria.ExecutarAsync();
+        Assert.Equal(CriacaoMemoria.MsgJaAberta, memorias.Mensagem);
+        Assert.Single(EventosDoTipo(CriacaoMemoria.EventoPedida));
+    }
+
+    [Fact]
+    public async Task Nova_memoria_travada_sem_Setup_em_uso()
+    {
+        using var memorias = Memorias();
+        _b.Simulador.Definir("050", 2, "0.0");
+        await _b.Conectar();
+        await _b.Rodar(_b.Setups!.SeguirSemSetupAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(memorias.PodeNovaMemoria);
+        Assert.Equal(GerenteSetups.MsgSemSetup, memorias.MotivoTravaNovaMemoria);
+        await memorias.NovaMemoria.ExecutarAsync();
+        Assert.Equal(GerenteSetups.MsgSemSetup, memorias.Mensagem);
+        Assert.Empty(EventosDoTipo(CriacaoMemoria.EventoPedida));
+    }
+
+    [Fact]
+    public async Task Nova_memoria_travada_na_duvida()
+    {
+        using var memorias = Memorias();
+        _b.Simulador.Definir("050", 2, "0.0"); // o atraso do Sub difere da FILME: dúvida
+        await _b.Conectar();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(memorias.PodeNovaMemoria);
+        Assert.Equal(GerenteSetups.MsgDuvida, memorias.MotivoTravaNovaMemoria);
+        await memorias.NovaMemoria.ExecutarAsync();
+        Assert.Empty(EventosDoTipo(CriacaoMemoria.EventoPedida));
+    }
+
+    [Fact]
+    public async Task Nova_memoria_travada_no_so_leitura()
+    {
+        using var memorias = Memorias();
+        _b.Simulador.Firmware = "R004";
+        await _b.Conectar();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(memorias.PodeNovaMemoria);
+        Assert.NotNull(memorias.MotivoTravaNovaMemoria);
+        await memorias.NovaMemoria.ExecutarAsync();
+        Assert.Empty(EventosDoTipo(CriacaoMemoria.EventoPedida));
+    }
+
+    // ----------------------------------------------------------------- história 10d: critério de aceite
+
+    [Fact]
+    public async Task Criacao_de_ponta_a_ponta_as_fases_seguem_a_ordem_e_o_Salvar_fecha_com_o_aviso()
+    {
+        using var t = new Telas11(_b);
+        using var casca = new CascaViewModel(_b.Sessao, t.Conexao, t.Setup, t.Memorias, t.Inicio, t.Mesa, t.Audio, t.Salvar, _b.Fabrica, t.Nav,
+            _b.Tela, _b.Relogio, t.PlayerTela, t.FolhaRisco, t.Gerador, t.Reaplicando, _vm);
+        var fases = new List<FaseCriacao>();
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CriacaoMemoriaViewModel.Fase) && (fases.Count == 0 || fases[^1] != _vm.Fase))
+                fases.Add(_vm.Fase);
+        };
+
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await Pergunta(chave, ultima: true, texto: "Que volume?", respostas: """["Baixo","Médio","Alto"]""");
+        await _vm.Opcoes[2].Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        await Ajuste(chave, codigo: "081", indice: 2, valor: 2.0m, frase: "Encaixando o Sub");
+        await Ajuste(chave, codigo: "081", indice: 0, valor: 8.0m, frase: "Ajustando o grave");
+        await Ajuste(chave, codigo: "080", indice: null, valor: -3.0m, frase: "Protegendo os canais");
+        await Resumo(chave);
+
+        var palco = await AteOResumo(_vm);
+        Assert.Equal(["Encaixando o Sub", "Ajustando o grave", "Protegendo os canais"], palco); // um por ajuste
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _vm.PodeSalvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        _vm.NomeMemoria = "MUSICA ORIG";
+        await _vm.Salvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal([FaseCriacao.Perguntas, FaseCriacao.Palco, FaseCriacao.Passagem, FaseCriacao.Aplicando, FaseCriacao.Resumo,
+            FaseCriacao.ComoFicou, FaseCriacao.Salvar, FaseCriacao.Fechada], fases);
+        Assert.False(casca.CriacaoPorCima);
+        Assert.Equal(GerenteSetups.MsgCriada("MUSICA ORIG", "Casa 2.1"), casca.AvisoRapido);
+        Assert.Equal("MUSICA ORIG", _b.Setups!.MemoriaEmUso!.Nome);
     }
 }

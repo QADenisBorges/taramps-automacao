@@ -100,10 +100,11 @@ public interface INavegacao
 
     /// <summary>
     /// As camadas que sobem sozinhas, também por cima de tudo, acima da escolha do Setup e da folha pela
-    /// metade: a folha de risco do app, a tela toda "REAPLICANDO" e, no topo, a faixa "DESLIGUE O MÓDULO
-    /// AGORA" do gerador. Mostra as que valem e tira as outras.
+    /// metade: a criação da memória em tela toda (história 10d), a folha de risco do app (por cima da criação),
+    /// a tela toda "REAPLICANDO" e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador. Mostra as que valem
+    /// e tira as outras.
     /// </summary>
-    void MostrarCamadas(bool folhaRisco, bool reaplicando, bool alarmeGerador);
+    void MostrarCamadas(bool criacao, bool folhaRisco, bool reaplicando, bool alarmeGerador);
 
     /// <summary>‹ numa tela cheia.</summary>
     void Voltar();
