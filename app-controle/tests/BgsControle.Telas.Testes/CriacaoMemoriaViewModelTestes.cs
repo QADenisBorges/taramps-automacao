@@ -984,8 +984,9 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
 
         Assert.False(memorias.PodeNovaMemoria);
-        Assert.NotNull(memorias.MotivoTravaNovaMemoria);
+        Assert.Equal(ControleParametroViewModel.MsgSoLeitura, memorias.MotivoTravaNovaMemoria);
         await memorias.NovaMemoria.ExecutarAsync();
+        Assert.Equal(ControleParametroViewModel.MsgSoLeitura, memorias.Mensagem);
         Assert.Empty(EventosDoTipo(CriacaoMemoria.EventoPedida));
     }
 
@@ -1030,5 +1031,180 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         Assert.False(casca.CriacaoPorCima);
         Assert.Equal(GerenteSetups.MsgCriada("MUSICA ORIG", "Casa 2.1"), casca.AvisoRapido);
         Assert.Equal("MUSICA ORIG", _b.Setups!.MemoriaEmUso!.Nome);
+    }
+
+    // ----------------------------------------------------------------- história 10d: revisão
+
+    [Theory]
+    [InlineData("081", "-45.0", 0.0)] // ganho no mínimo
+    [InlineData("081", "-15.0", 0.5)] // no meio da faixa (−45 a +15)
+    [InlineData("081", "+15.0", 1.0)] // no máximo
+    [InlineData("040", "80", 0.270190)] // corte em 80 Hz, na escala logarítmica de 10 a 22 000 Hz
+    [InlineData("042", "8", 0.533333)] // a opção 8 de 0 a 15
+    [InlineData("042", "0", 0.0)] // o filtro OFF (a primeira opção)
+    [InlineData("071", "0.5", 0.0)] // o limitador OFF (valor especial)
+    [InlineData("071", "-24.0", 0.5)]
+    public void Posicao_na_barra_pela_faixa_do_parametro(string codigo, string noFio, double esperado)
+    {
+        Assert.Equal(esperado, CriacaoMemoriaViewModel.PosicaoNaBarra(codigo, noFio), 5);
+    }
+
+    [Fact]
+    public async Task Ajuste_confirmado_so_pela_releitura_mostra_O_aparelho_ficou_com_outro_valor()
+    {
+        var chave = await Autorizada();
+        _b.Simulador.Silenciar.Add("*081*2*2.0*"); // sem eco: o valor vem da releitura
+
+        await Ajuste(chave, frase: "Ajustando o grave.");
+
+        var a = _vm.AjusteDoPalco!;
+        Assert.True(a.OutroValor);
+        Assert.Equal("O aparelho ficou com outro valor.", a.Nota);
+        Assert.Equal("+2,0 dB", a.Valor);
+        Assert.Equal(CriacaoMemoriaViewModel.PosicaoNaBarra("081", "+6.0"), a.PosicaoAntes, 5); // a saída 3 nasce em +6,0 dB
+        Assert.Equal(51.0 / 60, a.PosicaoAntes, 5);
+        Assert.Equal(47.0 / 60, a.PosicaoValor, 5);
+        // A pontuação final não vai para a palavra-chave nem para o anúncio.
+        Assert.Equal(("Ajustando o", "grave"), (a.Inicio, a.Chave));
+        Assert.StartsWith("Ajustando o grave: de ", a.Anuncio);
+        _b.Simulador.Silenciar.Clear();
+    }
+
+    [Fact]
+    public async Task Cancelar_com_a_volta_falhando_avisa_que_o_som_nao_voltou_todo()
+    {
+        using var t = new Telas11(_b);
+        using var casca = new CascaViewModel(_b.Sessao, t.Conexao, t.Setup, t.Memorias, t.Inicio, t.Mesa, t.Audio, t.Salvar, _b.Fabrica, t.Nav,
+            _b.Tela, _b.Relogio, t.PlayerTela, t.FolhaRisco, t.Gerador, t.Reaplicando, _vm);
+        var chave = await Autorizada();
+        await Ajuste(chave); // 081 da saída 3: +6,0 → +2,0
+        await Resumo(chave);
+        await AteOResumo(_vm);
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        _b.Simulador.EcosDiferentes["*081*2*6.0*"] = "#081#2#5.0#"; // a volta não confere
+
+        await _vm.Fechar.ExecutarAsync();
+        await _b.Rodar(_vm.CancelarEVoltar.ExecutarAsync());
+
+        var e = EventosDoTipo(CriacaoMemoria.EventoCancelada).Single().Criacao!;
+        Assert.False(e.Voltou);
+        Assert.Equal(CriacaoMemoria.MsgNaoVoltou(e.Motivo!), _vm.AvisoFinal);
+        Assert.Equal(_vm.AvisoFinal, casca.AvisoRapido);
+        Assert.False(_vm.Aberta);
+        _b.Simulador.EcosDiferentes.Clear();
+    }
+
+    [Fact]
+    public async Task Tecla_Voltar_com_o_Outro_aberto_fecha_o_campo_e_nao_abre_a_folha()
+    {
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+
+        await _vm.AbrirOutro.ExecutarAsync();
+        Assert.True(_vm.Voltar());
+        Assert.False(_vm.CampoOutroAberto);
+        Assert.False(_vm.FolhaCancelarAberta); // na 1ª pergunta também não
+        Assert.Equal(1, _vm.NumeroPergunta);
+
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await Pergunta(chave, ultima: false, texto: "Que volume?");
+        await _vm.AbrirOutro.ExecutarAsync();
+        Assert.True(_vm.Voltar());
+        Assert.False(_vm.CampoOutroAberto);
+        Assert.Equal(2, _vm.NumeroPergunta); // continua na 2ª
+        Assert.False(_vm.FolhaCancelarAberta);
+    }
+
+    [Fact]
+    public async Task Toque_atrasado_numa_resposta_de_outra_pergunta_nao_responde_e_a_marca_apaga()
+    {
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+        await _vm.Opcoes[0].Tocar.ExecutarAsync();
+        await Pergunta(chave, ultima: false, texto: "Que volume?");
+        var daSegunda = _vm.Opcoes[2];
+        daSegunda.Acender();
+
+        await _vm.Anterior.ExecutarAsync(); // o ‹ dentro dos 0,18 s
+        Assert.Equal(1, _vm.NumeroPergunta);
+        await daSegunda.Tocar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(daSegunda.Marcada);
+        Assert.Equal(1, _vm.NumeroPergunta);
+        Assert.Single(EventosDoTipo(CriacaoMemoria.EventoResposta)); // só a 1ª resposta foi à porta
+        Assert.Equal("Música", _criacao.Perguntas[0].Resposta);
+        Assert.Equal(2, _criacao.Perguntas.Count);
+    }
+
+    [Fact]
+    public async Task Salvando_o_botao_mostra_Salvando_e_Voltar_e_Ajustar_mais_nao_mexem()
+    {
+        var chave = await Autorizada();
+        await Ajuste(chave);
+        await Resumo(chave);
+        await AteOResumo(_vm);
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _vm.PodeSalvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        var textos = new List<string>();
+        var voltou = new List<bool>();
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(CriacaoMemoriaViewModel.TextoSalvar))
+                return;
+            textos.Add(_vm.TextoSalvar);
+            if (_vm.Salvando)
+            {
+                voltou.Add(_vm.Voltar());
+                _vm.AjustarMais.ExecutarAsync().GetAwaiter().GetResult();
+                Assert.Equal(EtapaCriacao.Salvar, _criacao.Etapa); // o núcleo não volta ao "Como ficou?"
+            }
+        };
+
+        _vm.NomeMemoria = "MUSICA ORIG";
+        await _vm.Salvar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(["Salvando", "Salvar"], textos);
+        Assert.Equal([true], voltou);
+        Assert.False(_vm.Aberta);
+        Assert.Equal("MUSICA ORIG", _b.Setups!.MemoriaEmUso!.Nome);
+    }
+
+    [Fact]
+    public async Task Cancelada_pela_folha_de_risco_avisa_Nova_memoria_cancelada()
+    {
+        var chave = await Autorizada();
+        Assert.True((await _b.Chaves.DefinirAsync(Chave.Gerador, true, OrigemComando.Tela)).Ok);
+        await Ajuste(chave);
+        using var folha = new FolhaRiscoViewModel(_confirmacoes, _b.Tela, _b.Relogio);
+        var tom = _porta.AtenderAsync(PedidoPorta.De("POST", "/gerador/tom", Casa, """{"hz":1000,"db":-30.0}""", chave));
+        await Apoio.Esperar(() => _confirmacoes.Atual is not null);
+        await _b.Tela.EsvaziarAsync();
+
+        await folha.Cancelar.ExecutarAsync();
+        await _b.Rodar(tom);
+
+        Assert.False(_vm.Aberta);
+        Assert.Equal(CriacaoMemoria.PorFolha, EventosDoTipo(CriacaoMemoria.EventoCancelada).Single().Criacao!.Por);
+        Assert.Equal(CriacaoMemoria.MsgCancelada, _vm.AvisoFinal);
+    }
+
+    [Fact]
+    public async Task Cancelada_pela_porta_avisa_Nova_memoria_cancelada()
+    {
+        var chave = await Aberta();
+        await Pergunta(chave, ultima: false);
+
+        Assert.Equal(200, (await Pedir("POST", "/criacao/cancelar", null, chave)).Status);
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(_vm.Aberta);
+        Assert.Equal(CriacaoMemoria.PorPorta, EventosDoTipo(CriacaoMemoria.EventoCancelada).Single().Criacao!.Por);
+        Assert.Equal(CriacaoMemoria.MsgCancelada, _vm.AvisoFinal);
     }
 }

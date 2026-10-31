@@ -23,12 +23,13 @@ public sealed record PortaLigacao(int Canal, double Y)
     public string Rotulo => $"CH{Canal + 1}";
 }
 
-/// <summary>Um equipamento do esquema plano (84 × 20), com os canais que o alimentam.</summary>
+/// <summary>Um equipamento do esquema plano (84 × 20; com muitos, a caixa baixa para caber), com os canais que o alimentam.</summary>
 /// <param name="Y">O topo da caixa, no viewBox.</param>
-public sealed record EquipamentoLigacao(string Nome, IReadOnlyList<int> Canais, double Y)
+/// <param name="Altura">A altura da caixa: 20, ou menos quando o passo entre elas é menor.</param>
+public sealed record EquipamentoLigacao(string Nome, IReadOnlyList<int> Canais, double Y, double Altura = EsquemaLigacao.AlturaEquipamento)
 {
     /// <summary>O meio da caixa, onde o fio chega.</summary>
-    public double MeioY => Y + EsquemaLigacao.AlturaEquipamento / 2;
+    public double MeioY => Y + Altura / 2;
 }
 
 /// <summary>Um fio curvo da porta do canal até o equipamento que ele alimenta.</summary>
@@ -152,10 +153,13 @@ public sealed class EsquemaLigacao
         }
         var n = escolhidos.Count;
         var passo = n == 0 ? 0 : AreaEquipamentosAltura / n;
+        // Com 10 ou mais, o passo fica menor que 20: a caixa baixa para não encostar na vizinha.
+        var altura = Math.Min(AlturaEquipamento, passo - 2);
         var equipamentos = escolhidos.Select((e, i) => new EquipamentoLigacao(
                 e.Nome,
                 Enumerable.Range(0, Ligacoes.CanaisProcessador).Where(c => porCanal[c].Any(x => x.Id == e.Id)).ToArray(),
-                AreaEquipamentosY + i * passo + passo / 2 - AlturaEquipamento / 2))
+                AreaEquipamentosY + i * passo + passo / 2 - altura / 2,
+                altura))
             .ToArray();
         var fios = equipamentos.SelectMany(e => e.Canais.Select(c => new FioLigacao(c, PortaY(c), e.MeioY))).ToArray();
         var (link12, link34) = Ligacoes.Links(lista);

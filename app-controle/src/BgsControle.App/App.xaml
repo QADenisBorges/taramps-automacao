@@ -73,6 +73,8 @@
             <Color x:Key="brand-45">#733FD0FF</Color>
             <!-- Preto a 90 % (o Aplicando sobre o palco) e branco a 8 % (a trilha do anel). -->
             <Color x:Key="scrim-aplicando">#E6000000</Color>
+            <!-- Preto a 60 % (o véu atrás da folha, DESIGN sheet.scrim). -->
+            <Color x:Key="scrim-sheet">#99000000</Color>
             <Color x:Key="ring-track">#14FFFFFF</Color>
 
             <!-- ============================================================ alvos de toque (DESIGN, spacing) -->

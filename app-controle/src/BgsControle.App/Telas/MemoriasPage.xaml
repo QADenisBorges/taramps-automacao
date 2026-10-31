@@ -135,6 +135,6 @@
         <c:SalvarFolhaView x:Name="FolhaSalvar" />
 
         <!-- O aviso rápido da casca (2,6 s), ao fechar a criação. -->
-        <c:AvisoRapidoView x:Name="AvisoRapido" />
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
     </Grid>
 </ContentPage>

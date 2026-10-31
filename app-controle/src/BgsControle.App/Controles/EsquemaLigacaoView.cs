@@ -137,7 +137,7 @@ public sealed class EsquemaLigacaoView : GraphicsView, IDrawable
         foreach (var q in e.Equipamentos)
         {
             var (cor, brilho) = Tom(q.Canais);
-            var caixa = Caixa(EsquemaLigacao.EquipamentoX, q.Y, EsquemaLigacao.LarguraEquipamento, EsquemaLigacao.AlturaEquipamento);
+            var caixa = Caixa(EsquemaLigacao.EquipamentoX, q.Y, EsquemaLigacao.LarguraEquipamento, q.Altura);
             canvas.FillColor = Cores.De("surface-1");
             canvas.FillRoundedRectangle(caixa, 6 * escala);
             Brilhar(canvas, cor, brilho, 5 * escala);
@@ -146,9 +146,31 @@ public sealed class EsquemaLigacaoView : GraphicsView, IDrawable
             canvas.DrawRoundedRectangle(caixa, 6 * escala);
             canvas.SetShadow(SizeF.Zero, 0, null);
             canvas.FontColor = Cores.De("text-chip");
-            canvas.FontSize = 9 * escala;
-            canvas.DrawString(q.Nome, caixa, HorizontalAlignment.Center, VerticalAlignment.Center);
+            DesenharNome(canvas, q.Nome, caixa, escala);
         }
+    }
+
+    /// <summary>
+    /// O nome dentro da caixa: 9 px (menos numa caixa baixa); se não cabe na largura, a letra desce até 7 px e depois
+    /// o nome é cortado com "…". Nunca sai da caixa.
+    /// </summary>
+    private static void DesenharNome(ICanvas canvas, string nome, RectF caixa, float escala)
+    {
+        var largura = caixa.Width - 6 * escala;
+        var tamanho = Math.Min(9 * escala, caixa.Height * 0.6f);
+        var minimo = Math.Min(7 * escala, tamanho);
+        float Medir(string texto, float t) => canvas.GetStringSize(texto, Microsoft.Maui.Graphics.Font.Default, t).Width;
+        while (tamanho > minimo && Medir(nome, tamanho) > largura)
+            tamanho -= 0.5f * escala;
+        var texto = nome;
+        if (Medir(texto, tamanho) > largura)
+        {
+            while (texto.Length > 1 && Medir(texto + "…", tamanho) > largura)
+                texto = texto[..^1].TrimEnd();
+            texto += "…";
+        }
+        canvas.FontSize = tamanho;
+        canvas.DrawString(texto, caixa, HorizontalAlignment.Center, VerticalAlignment.Center);
     }
 
     private static void Brilhar(ICanvas canvas, Color cor, float brilho, float raio)

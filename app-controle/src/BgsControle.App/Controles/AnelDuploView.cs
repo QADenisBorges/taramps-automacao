@@ -56,10 +56,21 @@ public sealed class AnelDuploView : GraphicsView, IDrawable
                 _rodando = false;
                 return false;
             }
-            if (IsVisible && Opacity > 0)
+            if (NaTela())
                 Invalidate();
             return true;
         });
+    }
+
+    /// <summary>O anel e todos os de cima estão visíveis, com opacidade (a camada escondida não redesenha a 60 quadros).</summary>
+    private bool NaTela()
+    {
+        for (Element? e = this; e is not null; e = e.Parent)
+        {
+            if (e is VisualElement v && (!v.IsVisible || v.Opacity <= 0))
+                return false;
+        }
+        return true;
     }
 
     public void Draw(ICanvas canvas, RectF r)

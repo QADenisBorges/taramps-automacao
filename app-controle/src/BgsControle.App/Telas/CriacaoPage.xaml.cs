@@ -52,8 +52,15 @@ public partial class CriacaoPage : ContentPage
         _vm.MovimentoReduzido = reduzido;
         AnelChao.Lento = reduzido;
         AnelAplicando.Lento = reduzido;
-        _faseVista = FaseCriacao.Fechada;
+        // O OnAppearing volta quando uma camada de cima (a folha de risco, o REAPLICANDO, o alarme) sai: a fase que
+        // já anda não recomeça; só sincroniza se a tela ficou para trás.
         AplicarFase(_vm.Fase);
+        // A entrada da pergunta pode ter rodado com a página fora da tela: ela fica no lugar final.
+        if (!this.AnimationIsRunning("pergunta"))
+        {
+            BlocoPergunta.Opacity = 1;
+            BlocoPergunta.TranslationX = 0;
+        }
     }
 
     protected override bool OnBackButtonPressed() => _vm.Voltar() || base.OnBackButtonPressed();
@@ -72,6 +79,9 @@ public partial class CriacaoPage : ContentPage
                     if (_perguntaVista is not null)
                         _ = EntrarPerguntaAsync(_vm.Voltando);
                 }
+                break;
+            case nameof(CriacaoMemoriaViewModel.FolhaCancelarAberta):
+                _ = MostrarFolhaCancelarAsync(_vm.FolhaCancelarAberta);
                 break;
             case nameof(CriacaoMemoriaViewModel.CampoOutroAberto):
                 if (_vm.CampoOutroAberto)
@@ -110,10 +120,20 @@ public partial class CriacaoPage : ContentPage
                 _ = RodarPassagemAsync(v);
                 break;
             case FaseCriacao.Aplicando:
-                if (antes == FaseCriacao.Passagem && _vm.ComAnimacao)
-                    _ = RodarAplicandoAsync(v);
-                else
+                if (!_vm.ComAnimacao)
+                {
                     _ = EntrarAplicandoAsync();
+                }
+                else
+                {
+                    // Vindo da passagem, o Aplicando já está no lugar; senão (a tela ficou para trás), monta já.
+                    if (antes != FaseCriacao.Passagem)
+                    {
+                        PrepararAplicando();
+                        Aplicando.Opacity = 1;
+                    }
+                    _ = RodarAplicandoAsync(v);
+                }
                 break;
             case FaseCriacao.Resumo:
                 _ = EntrarResumoAsync(v, antes);
@@ -154,7 +174,7 @@ public partial class CriacaoPage : ContentPage
         {
             opcao.Acender();
             await Task.Delay(180);
-            await opcao.Tocar.ExecutarAsync();
+            await opcao.Tocar.ExecutarAsync(); // se não passou, a opção apaga sozinha
         }
         finally
         {
@@ -377,12 +397,24 @@ public partial class CriacaoPage : ContentPage
         if (v != _versao)
             return;
         await Task.WhenAll(Aplicando.FadeToAsync(0, 300, Easing.SinInOut), Palco.FadeToAsync(0, 300, Easing.SinInOut));
-        if (v == _versao)
-            _vm.AplicandoTerminou();
+        // A folha de risco pode subir no meio da saída: espera a resposta e tenta de novo.
+        while (v == _versao && !_vm.AplicandoTerminou())
+        {
+            await Task.Delay(100);
+            await EsperarSemPausaAsync(v);
+        }
     }
 
     /// <summary>Sem a animação (ou com o movimento reduzido): o Aplicando entra num fade de 0,3 s, já no lugar; os canais seguem os ajustes relidos.</summary>
     private async Task EntrarAplicandoAsync()
+    {
+        PrepararAplicando();
+        Aplicando.Opacity = 0;
+        await Aplicando.FadeToAsync(1, 300, Easing.SinInOut);
+    }
+
+    /// <summary>O Aplicando no lugar final: o véu, o esquema, APLICANDO, o anel (traço 6) e o nome; sem os anéis de neon.</summary>
+    private void PrepararAplicando()
     {
         var g = Geometria();
         Palco.IsVisible = true;
@@ -401,8 +433,6 @@ public partial class CriacaoPage : ContentPage
         AnelAplicando.Traco = 6;
         PosicionarAplicando(g);
         AbsoluteLayout.SetLayoutBounds(AnelAplicando, g.Medio);
-        Aplicando.Opacity = 0;
-        await Aplicando.FadeToAsync(1, 300, Easing.SinInOut);
     }
 
     private async Task EntrarResumoAsync(int v, FaseCriacao antes)
@@ -482,6 +512,18 @@ public partial class CriacaoPage : ContentPage
             return;
         }
         _ = Animar("horizonte", t => Por(atual + (y - atual) * t), 500, Curvas.Suave);
+    }
+
+    // ------------------------------------------------------------------ a folha de cancelar
+
+    /// <summary>A folha sobe do pé (0,18 s) sobre o véu; fecha sem movimento.</summary>
+    private async Task MostrarFolhaCancelarAsync(bool aberta)
+    {
+        FolhaCancelar.IsVisible = aberta;
+        if (!aberta)
+            return;
+        CorpoFolhaCancelar.TranslationY = 400;
+        await CorpoFolhaCancelar.TranslateToAsync(0, 0, 180, Easing.CubicOut);
     }
 
     // ------------------------------------------------------------------ apoio

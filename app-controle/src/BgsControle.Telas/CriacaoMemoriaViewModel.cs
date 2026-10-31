@@ -69,14 +69,21 @@ public sealed record AjustePalco(string Frase, string Inicio, string Chave, stri
 /// <summary>Uma resposta da pergunta ou do "Como ficou?": o texto, se está marcada e o toque.</summary>
 public sealed class OpcaoCriacao : TelaBase
 {
+    private readonly bool _marcadaAntes;
     private bool _marcada;
 
-    internal OpcaoCriacao(string texto, bool marcada, Func<Task> tocar, IDespachante despachante, TimeProvider relogio)
+    /// <param name="tocar">Responde; devolve false se a resposta não passou (a pergunta mudou, ou o núcleo recusou).</param>
+    internal OpcaoCriacao(string texto, bool marcada, Func<Task<bool>> tocar, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Texto = texto;
         _marcada = marcada;
-        Tocar = new Comando(tocar);
+        _marcadaAntes = marcada;
+        Tocar = new Comando(async () =>
+        {
+            if (!await tocar())
+                Apagar();
+        });
     }
 
     public string Texto { get; }
@@ -97,7 +104,10 @@ public sealed class OpcaoCriacao : TelaBase
     /// <summary>A resposta acende (a página espera 0,18 s e então chama <see cref="Tocar"/>).</summary>
     public void Acender() => Marcada = true;
 
-    /// <summary>Responde e avança.</summary>
+    /// <summary>A resposta não passou: volta a marca de antes (a resposta dada, ao voltar com ‹; senão, apagada).</summary>
+    public void Apagar() => Marcada = _marcadaAntes;
+
+    /// <summary>Responde e avança; se a resposta não passa, a marca volta.</summary>
     public Comando Tocar { get; }
 }
 
@@ -148,6 +158,9 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     public const string DescricaoCancelar = "Cancelar";
     public const string DescricaoAnel = "Aplicando";
 
+    /// <summary>O tamanho máximo do nome da memória (a regra do núcleo).</summary>
+    public const int TamanhoMaximoNome = BgsControle.Nucleo.Presets.GerentePresets.TamanhoMaximoNome;
+
     /// <summary>"Salvar no Casa 2.1?" (sem Setup: "Salvar a memória?").</summary>
     public static string TituloSalvarDe(string? setup) => setup is null ? "Salvar a memória?" : $"Salvar no {setup}?";
 
@@ -196,6 +209,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     }
 
     private readonly CriacaoMemoria _criacao;
+    private readonly object _trava = new();
     private readonly GerenteSetups? _setups;
     private readonly FolhaRiscoViewModel? _folhaRisco;
     private readonly PreferenciasApp? _preferencias;
@@ -247,7 +261,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         AbrirOutro = new Comando(AoAbrirOutro);
         Avaliar = new Comando(() => Mostrar(_criacao.AvaliarSom()));
         PodeSalvar = new Comando(() => Mostrar(_criacao.PodeSalvar()));
-        AjustarMais = new Comando(() => Mostrar(_criacao.AjustarMais()));
+        AjustarMais = new Comando(AoAjustarMais);
         Salvar = new Comando(SalvarAsync);
         Fechar = new Comando(AbrirFolhaCancelar);
         Anterior = new Comando(VoltarPergunta);
@@ -560,6 +574,12 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// </summary>
     public bool PalcoMostrou()
     {
+        lock (_trava)
+            return PalcoMostrouSemTrava();
+    }
+
+    private bool PalcoMostrouSemTrava()
+    {
         if (_fase != FaseCriacao.Palco || _ajusteDoPalco is null || Pausado)
             return false;
         _ajusteDoPalco = null;
@@ -569,6 +589,12 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
 
     /// <summary>A passagem terminou: entra o Aplicando, com todos os canais apagados.</summary>
     public bool PassagemTerminou()
+    {
+        lock (_trava)
+            return PassagemTerminouSemTrava();
+    }
+
+    private bool PassagemTerminouSemTrava()
     {
         if (_fase != FaseCriacao.Passagem || Pausado)
             return false;
@@ -584,6 +610,12 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// </summary>
     public bool AvancarCanal()
     {
+        lock (_trava)
+            return AvancarCanalSemTrava();
+    }
+
+    private bool AvancarCanalSemTrava()
+    {
         if (_fase != FaseCriacao.Aplicando || !_comAnimacao || Pausado || _canalAtual >= _canais.Length)
             return false;
         if (_canalAtual >= 0)
@@ -598,6 +630,12 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
 
     /// <summary>O Aplicando terminou (tudo gravado, mais 1 s e a saída): entra o resumo, se o núcleo já está nele.</summary>
     public bool AplicandoTerminou()
+    {
+        lock (_trava)
+            return AplicandoTerminouSemTrava();
+    }
+
+    private bool AplicandoTerminouSemTrava()
     {
         if (_fase != FaseCriacao.Aplicando || Pausado)
             return false;
@@ -674,7 +712,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
                 AbrirFolhaCancelar();
                 break;
             case FaseCriacao.Salvar:
-                Mostrar(_criacao.AjustarMais());
+                AoAjustarMais();
                 break;
         }
         return true;
@@ -703,6 +741,37 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         var proxima = numero + 1;
         _numeroMostrado = _criacao.Perguntas.Any(p => p.Numero == proxima && p.Respondida) ? proxima : null;
         _voltando = false;
+    }
+
+    /// <summary>"Ajustar mais": nada enquanto o Salvar anda (o núcleo não volta ao "Como ficou?" no meio do Salvar).</summary>
+    private void AoAjustarMais()
+    {
+        if (Salvando)
+            return;
+        Mostrar(_criacao.AjustarMais());
+    }
+
+    /// <summary>
+    /// O toque numa resposta da pergunta <paramref name="numero"/>: só vale se ela ainda está na tela (um ‹, a tecla
+    /// Voltar ou uma pergunta nova no meio dos 0,18 s não fazem o toque responder outra pergunta).
+    /// </summary>
+    private bool TocarPergunta(int numero, int indice)
+    {
+        if (_fase != FaseCriacao.Perguntas || _pergunta?.Numero != numero)
+            return false;
+        var r = ResponderNoNucleo(indice);
+        Mostrar(r);
+        return r.Ok;
+    }
+
+    /// <summary>O toque no "Como ficou?" da rodada (null = "Ótimo, pode salvar"): só vale nessa rodada, ainda na tela.</summary>
+    private bool TocarComoFicou(int rodada, int? indice)
+    {
+        if (_fase != FaseCriacao.ComoFicou || _criacao.Rodada != rodada)
+            return false;
+        var r = indice is { } i ? _criacao.ResponderComoFicou(i) : _criacao.PodeSalvar();
+        Mostrar(r);
+        return r.Ok;
     }
 
     private ResultadoCriacao ResponderNoNucleo(int indice)
@@ -842,7 +911,14 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         _ => FaseCriacao.Fechada,
     };
 
+    /// <summary>Uma atualização de cada vez (o aviso do núcleo e um toque ou um sinal podem chegar juntos).</summary>
     private void Atualizar()
+    {
+        lock (_trava)
+            AtualizarSemTrava();
+    }
+
+    private void AtualizarSemTrava()
     {
         if (_descartado)
             return;
@@ -1010,9 +1086,9 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         }
     }
 
-    private void MudarFase(FaseCriacao fase)
+    private void MudarFase(FaseCriacao fase, bool forcar = false)
     {
-        if (_fase == fase)
+        if (_fase == fase && !forcar)
             return;
         _fase = fase;
         if (fase != FaseCriacao.Perguntas)
@@ -1065,8 +1141,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         }
         ApagarCanais();
         // Sem a animação, o Aplicando aparece desde o começo da rodada.
-        _fase = FaseCriacao.Fechada; // força o aviso de MudarFase
-        MudarFase(_comAnimacao ? FaseCriacao.Palco : FaseCriacao.Aplicando);
+        MudarFase(_comAnimacao ? FaseCriacao.Palco : FaseCriacao.Aplicando, forcar: true);
         Avisar(nameof(ComAnimacao));
         Avisar(nameof(AjusteDoPalco));
         Avisar(nameof(AnuncioPalco));
@@ -1103,7 +1178,10 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
 
     private static AjustePalco ParaPalco(AjusteCriacao a)
     {
-        var frase = a.Frase.Trim();
+        // A pontuação final não entra na palavra-chave nem no anúncio ("Ajustando o grave." → "grave").
+        var frase = a.Frase.Trim().TrimEnd('.', '!', '?', '…', ',', ';', ':').TrimEnd();
+        if (frase.Length == 0)
+            frase = a.Frase.Trim();
         var corte = frase.LastIndexOf(' ');
         var inicio = corte < 0 ? "" : frase[..corte];
         var chave = corte < 0 ? frase : frase[(corte + 1)..];
@@ -1119,16 +1197,19 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         if (_fase == FaseCriacao.Perguntas && _pergunta is { } p)
         {
             chave = $"p|{p.Numero}|{p.Texto}|{string.Join("|", p.Respostas)}|{p.Resposta}|{p.DoOutro}";
+            var numero = p.Numero;
             montar = () => p.Respostas
-                .Select((r, i) => new OpcaoCriacao(r, !p.DoOutro && p.Resposta == r, () => Responder.ExecutarAsync(i), Despachante, Relogio))
+                .Select((r, i) => new OpcaoCriacao(r, !p.DoOutro && p.Resposta == r, () => Task.FromResult(TocarPergunta(numero, i)),
+                    Despachante, Relogio))
                 .ToArray();
         }
         else if (_fase == FaseCriacao.ComoFicou)
         {
             var respostas = _respostasComoFicou;
-            chave = $"c|{_criacao.Rodada}|{string.Join("|", respostas)}";
-            montar = () => new[] { new OpcaoCriacao(TextoPodeSalvarBotao, false, PodeSalvar.ExecutarAsync, Despachante, Relogio) }
-                .Concat(respostas.Select((r, i) => new OpcaoCriacao(r, false, () => Responder.ExecutarAsync(i), Despachante, Relogio)))
+            var rodada = _criacao.Rodada;
+            chave = $"c|{rodada}|{string.Join("|", respostas)}";
+            montar = () => new[] { new OpcaoCriacao(TextoPodeSalvarBotao, false, () => Task.FromResult(TocarComoFicou(rodada, null)), Despachante, Relogio) }
+                .Concat(respostas.Select((r, i) => new OpcaoCriacao(r, false, () => Task.FromResult(TocarComoFicou(rodada, i)), Despachante, Relogio)))
                 .ToArray();
         }
         else

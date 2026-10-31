@@ -13,6 +13,9 @@ public sealed class AvisoRapidoView : ContentView
     public static readonly BindableProperty TextoProperty = BindableProperty.Create(
         nameof(Texto), typeof(string), typeof(AvisoRapidoView), null, propertyChanged: (b, _, n) => ((AvisoRapidoView)b).Mostrar(n as string));
 
+    /// <summary>O TalkBack lê o aviso (só um lugar anuncia: a casca; a tela Memórias só mostra).</summary>
+    public static readonly BindableProperty AnunciarProperty = BindableProperty.Create(nameof(Anunciar), typeof(bool), typeof(AvisoRapidoView), true);
+
     private readonly Label _texto;
 
     public AvisoRapidoView()
@@ -38,6 +41,8 @@ public sealed class AvisoRapidoView : ContentView
 
     public string? Texto { get => (string?)GetValue(TextoProperty); set => SetValue(TextoProperty, value); }
 
+    public bool Anunciar { get => (bool)GetValue(AnunciarProperty); set => SetValue(AnunciarProperty, value); }
+
     private async void Mostrar(string? texto)
     {
         if (string.IsNullOrEmpty(texto))
@@ -50,7 +55,8 @@ public sealed class AvisoRapidoView : ContentView
         _texto.Text = texto;
         Opacity = 0;
         IsVisible = true;
-        SemanticScreenReader.Default.Announce(texto);
+        if (Anunciar)
+            SemanticScreenReader.Default.Announce(texto);
         await this.FadeToAsync(1, 200, Easing.CubicOut);
     }
 }

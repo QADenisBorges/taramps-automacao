@@ -78,4 +78,26 @@ public sealed class EsquemaLigacaoTestes
         Assert.True(EsquemaLigacao.Montar([]).Vazio);
         Assert.Equal(4, EsquemaLigacao.Nenhum.Portas.Count);
     }
+
+    [Fact]
+    public void Com_10_ou_mais_equipamentos_as_caixas_baixam_e_nao_se_encostam()
+    {
+        var lista = Enumerable.Range(1, 12)
+            .Select(i => new Equipamento($"c{i}", GrupoEquipamento.AmplificaETocam, "caixa ativa", $"Caixa {i}")
+            {
+                Entradas = [new Entrada(1, Ch((i - 1) % 4 + 1))],
+            })
+            .ToArray();
+
+        var e = EsquemaLigacao.Montar(lista);
+
+        Assert.Equal(12, e.Equipamentos.Count);
+        Assert.All(e.Equipamentos, q => Assert.True(q.Altura < EsquemaLigacao.AlturaEquipamento && q.Altura > 0));
+        for (var i = 1; i < e.Equipamentos.Count; i++)
+            Assert.True(e.Equipamentos[i - 1].Y + e.Equipamentos[i - 1].Altura < e.Equipamentos[i].Y, $"a caixa {i} encosta na {i + 1}");
+        Assert.True(e.Equipamentos[^1].Y + e.Equipamentos[^1].Altura <= EsquemaLigacao.AreaEquipamentosY + EsquemaLigacao.AreaEquipamentosAltura);
+        Assert.All(e.Fios, f => Assert.Contains(e.Equipamentos, q => q.MeioY == f.AteY));
+        // Até 8, a caixa fica com os 20 do mock (com 9, já baixa um pouco para sobrar 2 entre elas).
+        Assert.All(EsquemaLigacao.Montar(lista.Take(8).ToArray()).Equipamentos, q => Assert.Equal(EsquemaLigacao.AlturaEquipamento, q.Altura));
+    }
 }

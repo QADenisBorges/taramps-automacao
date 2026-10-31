@@ -555,11 +555,6 @@ public sealed class CriacaoMemoria : IDisposable
                 return ResultadoCriacao.Feito(); // a mesma resposta: nada muda
             respondida = antes with { Resposta = escolha.Texto, DoOutro = escolha.DoOutro };
             _perguntas = [.. _perguntas.Take(i), respondida];
-            if (respondida.Ultima)
-            {
-                _etapa = EtapaCriacao.Ajustando;
-                _rodada = 1;
-            }
         }
         _log.Evento($"criação: resposta à pergunta {respondida.Numero} de novo");
         Emitir(new EventoCriacao(EventoResposta, Numero: respondida.Numero, Texto: respondida.Resposta, DoOutro: respondida.DoOutro));

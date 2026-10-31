@@ -237,8 +237,9 @@
                             <Label Style="{StaticResource tipo-body}" FontSize="12.5" Text="{Binding ExplicaSalvar}" Margin="0,-6,0,8" />
                             <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding RotuloNome}" />
                             <Border Style="{StaticResource campo-fluxo}">
-                                <Entry x:Name="CampoNome" Style="{StaticResource entrada-fluxo}" Text="{Binding NomeMemoria}" MaxLength="24"
-                                       Placeholder="MUSICA ORIG" ReturnType="Done" ReturnCommand="{Binding Salvar}"
+                                <Entry x:Name="CampoNome" Style="{StaticResource entrada-fluxo}" Text="{Binding NomeMemoria}"
+                                       MaxLength="{x:Static telas:CriacaoMemoriaViewModel.TamanhoMaximoNome}"
+                                       ReturnType="Done" ReturnCommand="{Binding Salvar}"
                                        SemanticProperties.Description="{Binding RotuloNome}" />
                             </Border>
                             <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding ErroNome}"
@@ -269,14 +270,29 @@
             <Label x:Name="NomeAplicando" Style="{StaticResource tipo-aplicando-name}" Text="{Binding NomeAplicando}" />
         </AbsoluteLayout>
 
-        <!-- ============================================================ cancelar a criação -->
-        <c:FolhaView Aberta="{Binding FolhaCancelarAberta}" Fechar="{Binding ContinuarCriando}">
-            <VerticalStackLayout Spacing="10">
-                <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding TituloFolhaCancelar}" />
-                <Label Style="{StaticResource tipo-body}" FontSize="12.5" TextColor="{StaticResource text-chip}" Text="{Binding TextoFolhaCancelar}" />
-                <Button Style="{StaticResource botao-fluxo}" Text="{Binding TextoCancelarEVoltar}" Command="{Binding CancelarEVoltar}" />
-                <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoContinuarCriando}" Command="{Binding ContinuarCriando}" />
-            </VerticalStackLayout>
-        </c:FolhaView>
+        <!-- ============================================================ cancelar a criação
+             A folha no visual do BGS Sound (DESIGN, sheet): {colors.surface-sheet}, fio {colors.border-sheet} em cima,
+             cantos de 22 só em cima, pegador de 36 × 4 e véu preto a 60 %. Os fios dos lados e de baixo ficam fora da
+             tela. Tocar no véu é "Continuar criando". -->
+        <Grid x:Name="FolhaCancelar" IsVisible="False">
+            <BoxView Color="{StaticResource scrim-sheet}">
+                <BoxView.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ContinuarCriando}" />
+                </BoxView.GestureRecognizers>
+            </BoxView>
+            <Border x:Name="CorpoFolhaCancelar" VerticalOptions="End" Margin="-1,0,-1,-1" Padding="16,12,16,18"
+                    BackgroundColor="{StaticResource surface-sheet}" Stroke="{StaticResource border-sheet}" StrokeThickness="1">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22,22,0,0" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="9">
+                    <BoxView WidthRequest="36" HeightRequest="4" CornerRadius="2" Color="{StaticResource sheet-grab}" HorizontalOptions="Center" />
+                    <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding TituloFolhaCancelar}" SemanticProperties.HeadingLevel="Level2" />
+                    <Label Style="{StaticResource tipo-body}" FontSize="12.5" TextColor="{StaticResource text-chip}" Text="{Binding TextoFolhaCancelar}" />
+                    <Button Style="{StaticResource botao-fluxo}" Text="{Binding TextoCancelarEVoltar}" Command="{Binding CancelarEVoltar}" />
+                    <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoContinuarCriando}" Command="{Binding ContinuarCriando}" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>

@@ -5,7 +5,7 @@ created: '2026-10-31'
 baseline_revision: 'f93f7763d6f045997ee5e5c9ad0af3ec8c3d9ac1'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-30/EXPERIENCE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-30/DESIGN.md'
@@ -209,6 +209,50 @@ Os caminhos são relativos a `app-controle/`.
 
 ## Review Triage Log
 
+### 2026-10-31 — Review pass
+- verdicts: 40 findings — high 2, medium 5, low 30, false 3, maybe-false 0
+- findings:
+  - `[false]` `[reject]` Intent: o "+ Nova memória" só pede, não abre a criação — a spec decidiu assim, com base em `lado-do-app.md` e na divisão com a 14b/14c ("Abrir a criação pela tela" está no Never).
+  - `[low]` `[reject]` Intent: o Aplicando animado acende CH1 a CH4 em sequência, depois da releitura, e CH3/CH4 não acendem juntos — é o tempo que a spec pede (0,7 s por canal, de CH1 a CH4); o Sub fica aceso enquanto qualquer um dos dois canais dele está aceso.
+  - `[false]` `[reject]` Intent: "Nova memória" no lugar do nome no Aplicando e no Salvar — decisão da questão 12 na spec (o nome só existe no Salvar).
+  - `[low]` `[patch]` Intent: a folha de cancelar da criação usa o visual antigo do `FolhaView`, e a intenção põe as telas da criação no visual BGS Sound — grupo N: a folha ganhou os tokens do DESIGN só na `CriacaoPage`.
+  - `[low]` `[reject]` Intent: a regra 6 reaproveita a `PelaMetadePage` sem tela nova — a própria regra 6 manda valer a regra 3 ("aplicado pela metade"), e a spec escolheu isso na matriz (Queda).
+  - `[low]` `[reject]` Intent: o TalkBack e a tecla Voltar só são testados no ViewModel — a parte da plataforma só se confere no aparelho (12c), como diz a Verification.
+  - `[low]` `[patch]` Verification gap: `PosicaoNaBarra` só é conferida entre 0 e 1 — grupo K: `[Theory]` com as posições exatas de cada ramo.
+  - `[low]` `[patch]` Verification gap: a nota "O aparelho ficou com outro valor." com `SemEco` não tem teste — grupo K.
+  - `[low]` `[patch]` Verification gap: o aviso `MsgNaoVoltou` do cancelar que não volta não tem teste — grupo K.
+  - `[low]` `[patch]` Verification gap: a tecla Voltar com o campo do "Outro…" aberto não tem teste — grupo K.
+  - `[low]` `[patch]` Verification gap (outro): o ramo `Ultima` do `ResponderDeNovo` nunca roda — grupo J: apagado.
+  - `[high]` `[patch]` Blind: o `OnAppearing` reinicia a fase depois que uma camada modal fecha, e o Aplicando animado fica preso — grupo A: o `OnAppearing` só sincroniza uma fase diferente, e o Aplicando escolhe pelo `ComAnimacao`.
+  - `[medium]` `[patch]` Blind: um toque numa resposta seguido de ‹ em menos de 0,18 s responde a pergunta errada — grupo C: o toque fica preso ao número da pergunta em que a resposta foi montada.
+  - `[low]` `[patch]` Blind: o Salvar não trava o "Ajustar mais" nem a tecla Voltar — grupo D: nada acontece enquanto salva, com teste do "Salvando".
+  - `[low]` `[patch]` Blind: o aviso rápido é anunciado duas vezes no TalkBack — grupo E: só a casca anuncia.
+  - `[low]` `[patch]` Blind: o anel duplo redesenha a 60 fps escondido — grupo F: só redesenha com ele e os pais visíveis. O `RenderEffect` por quadro fica (só durante a animação do Foco).
+  - `[low]` `[reject]` Blind: as gravações das preferências não são em série — exige dois toques antes de uma gravação local terminar, e o conserto acrescenta uma trava.
+  - `[low]` `[reject]` Blind: o "+ Nova memória" não trava desconectado e não dá retorno — a lista de travas é a da spec; a espera e o retorno são da 14b/14c.
+  - `[low]` `[patch]` Blind: o esquema sobrepõe as caixas com 10 equipamentos ou mais — grupo G: a altura fica limitada ao passo, com teste.
+  - `[low]` `[patch]` Blind: um nome longo sai da caixa do esquema ("Protech Light 8\"", do Setup real) — grupo H: o nome fica preso à caixa.
+  - `[low]` `[patch]` Blind: a resposta recusada fica acesa — grupo I: a opção apaga quando a resposta falha.
+  - `[low]` `[patch]` Blind: o teste do só leitura não confere a mensagem — grupo K: confere `MsgSoLeitura`.
+  - `[low]` `[patch]` Blind: o `AvisoFinal` do cancelar pela folha de risco e pela porta não tem teste — grupo K.
+  - `[low]` `[reject]` Blind: o `Pedir` desconectado não tem teste — o comportamento desconectado não está na spec.
+  - `[low]` `[patch]` Blind: o "Salvando" e a trava do Salvar não têm teste — grupo D.
+  - `[low]` `[reject]` Blind: a volta à página não tem teste e não está nos riscos da spec — o conserto do grupo A fecha o defeito, e o teste só existe no aparelho; mudar a Verification seria editar a spec.
+  - `[low]` `[patch]` Blind: o ramo morto do `ResponderDeNovo` — grupo J.
+  - `[low]` `[patch]` Blind: a pontuação no fim da frase entra na palavra-chave e no anúncio — grupo L: a pontuação final sai.
+  - `[false]` `[reject]` Blind: o `Estados?[p.Canal]` do `EsquemaLigacaoView` não confere o tamanho — os `EstadosCanais` têm sempre 4 itens (`_canais` é `new EstadoCanal[4]`), e `Canal` vai de 0 a 3.
+  - `[low]` `[patch]` Blind: `MaxLength="24"` e o placeholder fixo "MUSICA ORIG" no campo do nome (caso fixo) — grupo M: usa a constante do núcleo e um placeholder sem caso.
+  - `[high]` `[patch]` Edge: uma camada modal que fecha no Aplicando animado deixa a criação presa — grupo A.
+  - `[medium]` `[patch]` Edge: a folha de risco que abre na saída de 0,3 s do Aplicando deixa a tela em branco e presa — grupo B: espera sem pausa e tenta o `AplicandoTerminou` de novo.
+  - `[low]` `[patch]` Edge: a tecla Voltar no Salvar enquanto salva — grupo D.
+  - `[low]` `[reject]` Edge: Desl. e Lig. rápidos nas preferências — igual à linha do Blind acima.
+  - `[low]` `[patch]` Edge: o aviso rápido anunciado duas vezes — grupo E.
+  - `[low]` `[patch]` Edge: a resposta recusada fica acesa — grupo I.
+  - `[medium]` `[patch]` Edge: as respostas refeitas durante os 180 ms respondem pelo índice velho — grupo C.
+  - `[low]` `[patch]` Edge: as caixas se sobrepõem com 10 equipamentos ou mais — grupo G.
+  - `[medium]` `[patch]` Edge (alegação): depois da folha de risco, o palco recomeça o ajuste e o anuncia de novo — grupo A.
+  - `[medium]` `[patch]` Edge (alegação): a criação fica presa no Aplicando — grupo A (mesma causa do primeiro achado do Edge).
+
 ## Design Notes
 
 - **Por que a fase visual é separada da etapa do núcleo:** a porta manda os ajustes no ritmo dela e o núcleo escreve na hora. "A animação tem prioridade sobre a velocidade" quer dizer que a tela nunca encurta: ela anda atrás do núcleo e só mostra o resumo quando o palco e o Aplicando terminaram. Cada ajuste já foi relido quando a frase dele aparece, o que vale a CAP-18 ("relido antes de o Aplicando terminar").
@@ -225,3 +269,86 @@ Os caminhos são relativos a `app-controle/`.
 
 **Manual checks (if no CLI):**
 - As animações, o desfoque, o TalkBack e a tecla Voltar só aparecem no aparelho (história 12c); sem celular, registrar que não foram vistos.
+
+## Auto Run Result
+
+Status: done
+
+**O que entrou.** As telas da criação da memória (CAP-18), numa camada em tela toda ligada à criação da 9d:
+- perguntas com ‹ e ✕ e o "Outro…";
+- o palco com o Foco, o valor numa linha e o anel apagado no chão;
+- a passagem Pião e cambalhota;
+- o Aplicando com o esquema de ligação plano do Setup;
+- o resumo, o "Como ficou?" e o Salvar com o nome;
+- a folha de cancelar no visual BGS e a folha de risco por cima da criação.
+
+A ordem das fases visuais fica no ViewModel (`FaseCriacao`): a tela anda atrás do núcleo e nunca encurta. Junto entraram:
+- o ‹ no núcleo (`ResponderDeNovo`);
+- o chip "+ Nova memória", que emite `criacao-pedida`;
+- a chave "Animação ao criar o som", gravada em `preferencias-app.json`;
+- o aviso rápido de 2,6 s na casca.
+
+As questões 12, 14, 15, 18, 20 e 21 foram resolvidas na spec.
+
+**Arquivos** (em `app-controle/`):
+- Núcleo:
+  - `Setups/CriacaoMemoria.cs`: `ResponderDeNovo` e `Pedir`;
+  - `Porta/PortaComandos.cs`: a ajuda.
+- Telas:
+  - `CriacaoMemoriaViewModel.cs`: as fases, a fila do palco, os canais, o ‹, a tecla Voltar, o TalkBack e o Salvar;
+  - `Esquema/EsquemaLigacao.cs` (novo): o esquema plano;
+  - `PreferenciasApp.cs` (novo): a chave;
+  - `MemoriasViewModel.cs`: o chip e a trava;
+  - `SetupsViewModel.cs`: a linha da chave nas Configurações;
+  - `CascaViewModel.cs` e `Abstracoes.cs`: a camada e o aviso rápido;
+  - `RepositorioTextoArquivos.cs`.
+- App:
+  - `Telas/CriacaoPage.xaml(.cs)` (nova): as telas e as animações;
+  - controles `AnelDuploView`, `AnelNeonView`, `EsquemaLigacaoView`, `AvisoRapidoView` e `Curvas`;
+  - `Platforms/Android/EfeitosAndroid.cs`: o desfoque e o movimento reduzido;
+  - `App.xaml`: os tokens;
+  - `NavegacaoMaui.cs`, `MauiProgram.cs`, `MemoriasPage`, `ConfiguracoesPage` e `CascaPage`.
+- Testes:
+  - `CriacaoTestes`, `CriacaoMemoriaViewModelTestes`, `EsquemaLigacaoTestes` (novo), `PreferenciasAppTestes` (novo), `ArquiteturaTestes`, `Falsos` e `TelasParte2Testes`.
+
+**Revisão.** 40 achados: 2 high, 5 medium, 30 low e 3 false.
+- **Patches (14 grupos):**
+  - **A (high):** o `OnAppearing` não reinicia mais a fase quando uma camada fecha. Antes, o Aplicando ficava preso e o palco repetia o anúncio.
+  - **B:** a saída do Aplicando com a folha de risco aberta.
+  - **C:** o toque fica preso à pergunta em que a resposta foi montada.
+  - **D:** o Salvar trava o "Ajustar mais" e a tecla Voltar.
+  - **E:** o aviso rápido é anunciado uma vez só.
+  - **F:** o anel só redesenha quando está visível.
+  - **G e H:** as caixas e os nomes do esquema cabem com muitos equipamentos e com nomes longos.
+  - **I:** a resposta recusada apaga.
+  - **J:** o ramo morto do `ResponderDeNovo` saiu.
+  - **K:** testes da posição na barra, do sem eco, do `MsgNaoVoltou`, do Voltar com o campo aberto, do só leitura e do aviso do cancelar pela folha e pela porta.
+  - **L:** a pontuação final da frase sai.
+  - **M:** o nome usa o tamanho do núcleo, sem placeholder fixo.
+  - **N:** a folha de cancelar segue o visual BGS.
+- **Junto com os patches:** o implementador pôs a atualização do ViewModel e os sinais da página sob uma trava. Isso tirou uma corrida que fazia dois testes falharem às vezes.
+- **Nada diferido.**
+- **Rejeitados, com o motivo no Review Triage Log:**
+  - o chip só pede;
+  - o tempo do Aplicando;
+  - o nome "Nova memória";
+  - a regra 6 com a `PelaMetadePage`;
+  - o TalkBack e o Voltar só no ViewModel;
+  - a gravação das preferências fora de série;
+  - o chip desconectado;
+  - o `Pedir` desconectado sem teste;
+  - a volta à página sem teste;
+  - o índice dos estados (false).
+
+**Revisão de acompanhamento: recomendada.** Os patches foram 1 high e 3 medium (grupos B e C, e o grupo A também trazia as alegações medium). O risco que ninguém conferiu é a página real: as animações, o `OnAppearing` depois de uma camada modal, a ordem das camadas no `NavegacaoMaui` e a trava nova no ViewModel. Os testes não rodam nada disso, e só o aparelho mostra.
+
+**Verificação:**
+- `dotnet test` Núcleo: 1055 de 1055.
+- `dotnet test` Telas: 465 de 465.
+- `dotnet build` do App para `net10.0-android` (Debug): 0 erros e 0 avisos.
+- A auditoria da matriz deu pelo menos um teste por linha, e todos rodaram.
+- Nada foi visto num celular.
+
+**Riscos que ficam:**
+- Os tempos, a perspectiva da passagem, o desfoque (Android 12 ou mais novo), o TalkBack e a tecla Voltar só se conferem no aparelho (12c).
+- O "+ Nova memória" só manda o evento: sem cliente, o toque não mostra nada até a 14b e a 14c.
