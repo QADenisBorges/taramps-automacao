@@ -82,7 +82,7 @@ public sealed class CartaoMemoriaCelularViewModel : TelaBase
 
 /// <summary>
 /// A tela Memórias (Configurações › Memórias, EXPERIENCE): os cartões das memórias do celular do
-/// Setup em uso (Aplicar, Renomear, Apagar; selo EM USO e HERDADO) e "Criar memória do som atual" (que
+/// Setup em uso (Aplicar, Renomear, Apagar; selo EM USO) e "Criar memória do som atual" (que
 /// abre a folha do Salvar quando o som em uso não é de uma memória do celular). As memórias do
 /// processador não aparecem (decisão do Denis, 29/10/2026). Sem Setup, as memórias do celular ficam
 /// travadas com "Escolha um Setup para usar as memórias do celular.". Depois de uma queda no meio de

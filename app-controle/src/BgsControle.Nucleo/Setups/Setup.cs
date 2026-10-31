@@ -8,23 +8,61 @@ namespace BgsControle.Nucleo.Setups;
 /// sai sozinho das ligações (<see cref="Ligacoes.Links"/>). Criar, renomear e apagar (e mexer nos
 /// equipamentos) não mandam nada ao aparelho.
 /// </summary>
-/// <param name="Id">Único e estável (o herdado tem o id fixo do código).</param>
-/// <param name="Nome">De 1 a 24 caracteres (a regra dos presets), sem repetir entre os Setups.</param>
+/// <param name="Id">Único e estável.</param>
+/// <param name="Nome">De 1 a 24 caracteres (a regra dos presets, e também o ponto), sem repetir entre os Setups.</param>
 /// <param name="Quando">Quando o Setup foi criado.</param>
-/// <param name="Herdado">Vem dos protótipos (CAP-6): não se apaga.</param>
-/// <param name="Nota">A nota herdada, quando há.</param>
+/// <param name="Ambiente">Onde o Setup está (CAP-16): um dado físico, opcional; null = não informado (não há padrão).</param>
 public sealed record Setup(
     string Id,
     string Nome,
     DateTimeOffset Quando,
-    bool Herdado = false,
-    string? Nota = null)
+    AmbienteSetup? Ambiente = null)
 {
     /// <summary>
     /// Os equipamentos e as ligações (o modelo de ligação de <see cref="Ligacoes"/>), na ordem de
     /// criação. A lista é sempre válida (<see cref="Ligacoes.Validar"/>).
     /// </summary>
     public IReadOnlyList<Equipamento> Equipamentos { get; init; } = [];
+}
+
+/// <summary>Onde o Setup está (CAP-16): um dado físico do Setup, que o Agente usa. Opcional, sem padrão.</summary>
+public enum AmbienteSetup
+{
+    Sala,
+    Carro,
+    ArLivre,
+    Outro,
+}
+
+/// <summary>Os ambientes do Setup: a ordem da tela, os rótulos e os nomes do JSON.</summary>
+public static class Ambientes
+{
+    /// <summary>Os ambientes, na ordem da tela.</summary>
+    public static IReadOnlyList<AmbienteSetup> Todos { get; } = [AmbienteSetup.Sala, AmbienteSetup.Carro, AmbienteSetup.ArLivre, AmbienteSetup.Outro];
+
+    /// <summary>"Sala", "Carro", "Ao ar livre" ou "Outro".</summary>
+    public static string Rotulo(AmbienteSetup ambiente) => ambiente switch
+    {
+        AmbienteSetup.Sala => "Sala",
+        AmbienteSetup.Carro => "Carro",
+        AmbienteSetup.ArLivre => "Ao ar livre",
+        AmbienteSetup.Outro => "Outro",
+        _ => throw new ArgumentOutOfRangeException(nameof(ambiente), ambiente, "Ambiente desconhecido."),
+    };
+
+    /// <summary>O nome no JSON (<c>setups.json</c> e <c>GET /estado</c>): <c>sala</c>, <c>carro</c>, <c>ar-livre</c> ou <c>outro</c>.</summary>
+    public static string Nome(AmbienteSetup ambiente) => ambiente switch
+    {
+        AmbienteSetup.Sala => "sala",
+        AmbienteSetup.Carro => "carro",
+        AmbienteSetup.ArLivre => "ar-livre",
+        AmbienteSetup.Outro => "outro",
+        _ => throw new ArgumentOutOfRangeException(nameof(ambiente), ambiente, "Ambiente desconhecido."),
+    };
+
+    /// <summary>O ambiente pelo nome do JSON; um texto que não vale (ou ausente) fica null.</summary>
+    public static AmbienteSetup? De(string? nome) =>
+        Todos.Cast<AmbienteSetup?>().FirstOrDefault(a => Nome(a!.Value) == nome);
 }
 
 /// <summary>Como terminou uma operação de equipamento. <see cref="Mensagem"/> é a frase para a tela.</summary>

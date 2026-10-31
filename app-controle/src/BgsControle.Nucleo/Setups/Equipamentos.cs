@@ -310,7 +310,7 @@ public sealed record Equipamento(
     /// <summary>Só no alto-falante passivo: onde ele está ligado (null = em nada).</summary>
     public LigacaoAltoFalante? Ligado { get; init; }
 
-    /// <summary>Uma nota (a do herdado), ou null.</summary>
+    /// <summary>Uma nota, ou null.</summary>
     public string? Nota { get; init; }
 
     /// <summary>O modelo para a tela: "genérico" quando não se sabe.</summary>

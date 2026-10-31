@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
@@ -11,7 +10,7 @@ using BgsControle.Simulador;
 namespace BgsControle.Nucleo.Testes;
 
 /// <summary>
-/// As histórias 8, 8d e 8f no núcleo, contra o processador simulado: o conhecimento herdado (CAP-6) e os
+/// As histórias 8, 8d e 8f no núcleo, contra o processador simulado: os
 /// presets de 15 bandas do celular (CAP-5): o app nasce sem presets (29/10/2026); criar, atualizar,
 /// renomear, apagar (com a trava do preset lembrado), o <c>presets.json</c> no formato 3 (os formatos 1
 /// e 2 começam do zero), e o aplicar só das bandas.
@@ -167,13 +166,12 @@ public sealed class PresetsTestes : IDisposable
         return _simulador.EstadoMarco1();
     }
 
-    // ----------------------------------------------------------------- conhecimento herdado
+    // ----------------------------------------------------------------- primeira abertura
 
     [Fact]
     public void Primeira_abertura_nenhum_preset_sem_arquivo_nenhum()
     {
         Assert.Empty(_presets.Presets);
-        Assert.Empty(ConhecimentoHerdado.Presets);
         Assert.Empty(_presets.Proprios);
         Assert.Equal(0, _guardadoPresets.Gravacoes);
         Assert.Empty(_simulador.Escritas);
@@ -194,10 +192,10 @@ public sealed class PresetsTestes : IDisposable
     }
 
     [Fact]
-    public void A_leitura_de_18_10_inteira_fica_com_os_84_valores_para_o_simulador_e_a_paridade()
+    public void A_leitura_de_18_10_inteira_fica_na_fixture_com_os_84_valores_para_o_simulador_e_a_paridade()
     {
-        Assert.Equal(Catalogo.TotalMarco1, ConhecimentoHerdado.LeituraFilme.Count);
-        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(ConhecimentoHerdado.LeituraFilme));
+        Assert.Equal(Catalogo.TotalMarco1, CasaDoDenis.LeituraFilme.Count);
+        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(CasaDoDenis.LeituraFilme));
     }
 
     [Fact]
@@ -210,51 +208,6 @@ public sealed class PresetsTestes : IDisposable
         Assert.Equal(["NOITE"], _presets.Presets.Select(p => p.Nome));
         var guardados = GerentePresets.DeJson(_guardadoPresets.Texto!);
         Assert.Equal(["NOITE"], guardados.Select(p => p.Nome));
-    }
-
-    [Theory]
-    [InlineData(1, "SPL", "máximo seguro")]
-    [InlineData(2, "MUSICA ORIG", "precisa ser refeita")]
-    [InlineData(3, "FILME", "definitiva")]
-    public void As_notas_das_3_memorias_vem_pela_posicao(int numero, string nomeNoPrototipo, string trecho)
-    {
-        var nota = ConhecimentoHerdado.NotaMemoria(numero)!;
-
-        Assert.Equal(numero, nota.Numero);
-        Assert.Equal(nomeNoPrototipo, nota.NomeNoPrototipo);
-        Assert.Contains(trecho, nota.Texto);
-        Assert.DoesNotContain("preset herdado FILME", nota.Texto);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(4)]
-    [InlineData(-1)]
-    public void Fora_das_3_memorias_nao_ha_nota(int numero) => Assert.Null(ConhecimentoHerdado.NotaMemoria(numero));
-
-    [Fact]
-    public void As_secoes_de_texto_estao_todas_em_portugues_e_os_limites_do_guardiao_sao_provisorios()
-    {
-        var secoes = ConhecimentoHerdado.Secoes;
-
-        Assert.Equal(
-            ["Protocolo", "O sistema do Denis", "Os equipamentos do Casa 2.1", "As 3 memórias do aparelho", "Memórias e presets do celular", "Presets", "Preferências e método", "Cuidados com o app da Taramps", "Situação registrada"],
-            secoes.Select(s => s.Titulo));
-        Assert.All(secoes, s => Assert.NotEmpty(s.Linhas));
-        var presets = string.Join(' ', secoes.Single(s => s.Titulo == "Presets").Linhas);
-        Assert.Contains("15 bandas", presets);
-        Assert.Contains("Não há preset herdado", presets);
-        Assert.DoesNotContain("Cinema", presets);
-        Assert.Contains("DIALOGO", presets);
-        Assert.Contains("NOITE", presets);
-        Assert.Contains("cifrados", presets);
-        Assert.DoesNotContain("preset FILME", string.Join(' ', secoes.SelectMany(s => s.Linhas)));
-        var sistema = string.Join(' ', secoes.Single(s => s.Titulo == "O sistema do Denis").Linhas);
-        Assert.Contains("provisórios", sistema);
-        Assert.Contains("quem decide os valores é o Denis", sistema);
-        var cuidados = string.Join(' ', secoes.Single(s => s.Titulo == "Cuidados com o app da Taramps").Linhas);
-        Assert.Contains("Deslizar uma memória", cuidados);
-        Assert.Contains("Limiter", cuidados);
     }
 
     // ----------------------------------------------------------------- criar
@@ -910,7 +863,7 @@ public sealed class PresetsTestes : IDisposable
 
         Assert.True(r.Ok, r.Mensagem);
         Assert.Equal("Preset Cinema aplicado.", r.Mensagem);
-        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(ConhecimentoHerdado.LeituraFilme)); // o aparelho volta à leitura inteira
+        Assert.Equal(Linhas(_simulador.EstadoMarco1()), Linhas(CasaDoDenis.LeituraFilme)); // o aparelho volta à leitura inteira
         Assert.Null(_copia.PelaMetade);
     }
 

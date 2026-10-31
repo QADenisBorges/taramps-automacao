@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Telas.Esquema;
 
@@ -30,7 +30,7 @@ public sealed class EsquemaTestes : IDisposable
         Assert.Empty(_b.Tela.Erros);
     }
 
-    private const string Casa = ConhecimentoHerdado.IdSetupCasa;
+    private const string Casa = CasaDoDenis.IdSetupCasa;
 
     private async Task MostrarCasa()
     {
@@ -89,11 +89,11 @@ public sealed class EsquemaTestes : IDisposable
     [Fact]
     public void Casa_2_1_processador_modulo_com_os_quatro_canais_e_as_JBL_e_o_Sub_nas_saidas_e_no_bridge()
     {
-        var cena = CenaSetup.Montar(ConhecimentoHerdado.EquipamentosCasa);
+        var cena = CenaSetup.Montar(CasaDoDenis.EquipamentosCasa);
 
         Assert.Equal(["Processador", "Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], cena.Pecas.Select(p => p.Nome));
         var processador = cena.Processador;
-        var modulo = cena.Peca(ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = cena.Peca(CasaDoDenis.IdModuloCasa)!;
         var jblL = cena.PecaPorNome("JBL L")!;
         var jblR = cena.PecaPorNome("JBL R")!;
         var sub = cena.PecaPorNome("Sub")!;
@@ -293,7 +293,7 @@ public sealed class EsquemaTestes : IDisposable
     [Fact]
     public void Em_qualquer_angulo_e_aproximacao_o_centro_projetado_de_cada_peca_acerta_a_peca()
     {
-        foreach (var cena in new[] { CenaSetup.Montar(ConhecimentoHerdado.EquipamentosCasa), CenaSetup.Montar(Grande()) })
+        foreach (var cena in new[] { CenaSetup.Montar(CasaDoDenis.EquipamentosCasa), CenaSetup.Montar(Grande()) })
         {
             for (var angulo = -45.0; angulo <= 45.0; angulo += 5)
             {
@@ -335,7 +335,7 @@ public sealed class EsquemaTestes : IDisposable
     [Fact]
     public void A_area_tem_280_de_altura_minima_e_um_Setup_com_muitas_fileiras_ganha_altura()
     {
-        var casa = CenaSetup.Montar(ConhecimentoHerdado.EquipamentosCasa);
+        var casa = CenaSetup.Montar(CasaDoDenis.EquipamentosCasa);
         var grande = CenaSetup.Montar(Grande());
 
         Assert.Equal(280, ProjecaoIsometrica.AlturaDesejada(casa, 328));
@@ -390,7 +390,7 @@ public sealed class EsquemaTestes : IDisposable
 
         Assert.True(_lista.FolhaAberta);
         Assert.Equal("Sub", _lista.TituloFolha);
-        Assert.Equal(ConhecimentoHerdado.IdSubCasa, _vm.Selecionada);
+        Assert.Equal(CasaDoDenis.IdSubCasa, _vm.Selecionada);
         await _lista.Cancelar.ExecutarAsync();
 
         _vm.Tocar(2, 2);
@@ -416,9 +416,9 @@ public sealed class EsquemaTestes : IDisposable
         Assert.Equal(EsquemaViewModel.OpacidadeApagada, Op("JBL L"));
         Assert.Equal(EsquemaViewModel.OpacidadeApagada, Op("JBL R"));
         Assert.Equal(1, _vm.Opacidade(cena.Bridges.Single()));
-        Assert.Equal(1, _vm.Opacidade(cena.CabosAte(ConhecimentoHerdado.IdSubCasa).Single()));
-        Assert.Equal(EsquemaViewModel.OpacidadeApagada, _vm.Opacidade(cena.CabosAte(ConhecimentoHerdado.IdJblL).Single()));
-        Assert.Equal([2], cena.CabosAte(ConhecimentoHerdado.IdModuloCasa).Where(c => _vm.Opacidade(c) == 1).Select(c => c.Canal!.Value));
+        Assert.Equal(1, _vm.Opacidade(cena.CabosAte(CasaDoDenis.IdSubCasa).Single()));
+        Assert.Equal(EsquemaViewModel.OpacidadeApagada, _vm.Opacidade(cena.CabosAte(CasaDoDenis.IdJblL).Single()));
+        Assert.Equal([2], cena.CabosAte(CasaDoDenis.IdModuloCasa).Where(c => _vm.Opacidade(c) == 1).Select(c => c.Canal!.Value));
         Assert.Equal(1, _vm.Opacidade(cena.SaidaProcessador(2)));
         Assert.Equal(EsquemaViewModel.OpacidadeApagada, _vm.Opacidade(cena.SaidaProcessador(0)));
 
@@ -445,7 +445,7 @@ public sealed class EsquemaTestes : IDisposable
         Assert.Equal(0, _vm.Destaque);
         var versao = _vm.Versao;
 
-        _lista.AbrirEditar(ConhecimentoHerdado.IdJblR);
+        _lista.AbrirEditar(CasaDoDenis.IdJblR);
         await _lista.Tirar.ExecutarAsync();
         await _b.Rodar(_lista.ConfirmarTirar.ExecutarAsync());
         await _b.Tela.EsvaziarAsync();
@@ -486,7 +486,7 @@ public sealed class EsquemaTestes : IDisposable
     public async Task Setup_sem_equipamentos_mostra_so_o_processador_e_a_frase()
     {
         await MostrarCasa();
-        foreach (var id in new[] { ConhecimentoHerdado.IdJblL, ConhecimentoHerdado.IdJblR, ConhecimentoHerdado.IdSubCasa, ConhecimentoHerdado.IdModuloCasa })
+        foreach (var id in new[] { CasaDoDenis.IdJblL, CasaDoDenis.IdJblR, CasaDoDenis.IdSubCasa, CasaDoDenis.IdModuloCasa })
             Assert.True((await _b.Setups!.TirarEquipamentoAsync(Casa, id)).Ok);
         await _b.Tela.EsvaziarAsync();
 
@@ -513,7 +513,7 @@ public sealed class EsquemaTestes : IDisposable
     [Fact]
     public void A_mais_e_menos_45_graus_as_portas_e_os_rotulos_CH_continuam_aparecendo()
     {
-        var cena = CenaSetup.Montar(ConhecimentoHerdado.EquipamentosCasa);
+        var cena = CenaSetup.Montar(CasaDoDenis.EquipamentosCasa);
         foreach (var angulo in new[] { -45.0, 45.0 })
         {
             var projecao = new ProjecaoIsometrica(cena, 360, 280, angulo, 1);
@@ -531,7 +531,7 @@ public sealed class EsquemaTestes : IDisposable
         var listas = new List<IReadOnlyList<Equipamento>>
         {
             Grande(),
-            ConhecimentoHerdado.EquipamentosCasa,
+            CasaDoDenis.EquipamentosCasa,
             new Equipamento[]
             {
                 // Módulo sem entrada mas com alto-falante; crossover sem entrada que alimenta um módulo.
@@ -707,11 +707,11 @@ public sealed class EsquemaTestes : IDisposable
         var ch3 = _vm.Projecao.Projetar(_vm.Cena.SaidaProcessador(2).Posicao);
         _vm.Tocar(ch3.X, ch3.Y);
 
-        var entradas = _vm.Cena.PortasDe(ConhecimentoHerdado.IdModuloCasa).Where(p => p.Tipo == TipoPorta.Entrada).ToArray();
+        var entradas = _vm.Cena.PortasDe(CasaDoDenis.IdModuloCasa).Where(p => p.Tipo == TipoPorta.Entrada).ToArray();
         Assert.Equal([EsquemaViewModel.OpacidadeApagada, EsquemaViewModel.OpacidadeApagada, 1, EsquemaViewModel.OpacidadeApagada],
             entradas.Select(_vm.Opacidade));
-        Assert.Equal(1, _vm.Opacidade(_vm.Cena.PortasDe(ConhecimentoHerdado.IdSubCasa).Single()));
-        Assert.Equal(EsquemaViewModel.OpacidadeApagada, _vm.Opacidade(_vm.Cena.PortasDe(ConhecimentoHerdado.IdJblL).Single()));
+        Assert.Equal(1, _vm.Opacidade(_vm.Cena.PortasDe(CasaDoDenis.IdSubCasa).Single()));
+        Assert.Equal(EsquemaViewModel.OpacidadeApagada, _vm.Opacidade(_vm.Cena.PortasDe(CasaDoDenis.IdJblL).Single()));
     }
 
     [Fact]
@@ -719,7 +719,7 @@ public sealed class EsquemaTestes : IDisposable
     {
         await MostrarCasa();
         var r = await _b.Setups!.AdicionarEquipamentoAsync(Casa,
-            AltoFalante("x", "shaker", "Shaker", LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4))));
+            AltoFalante("x", "shaker", "Shaker", LigacaoAltoFalante.NoBridge(CasaDoDenis.IdModuloCasa, new Bridge(3, 4))));
         Assert.True(r.Ok, r.Motivo);
         await _b.Tela.EsvaziarAsync();
 

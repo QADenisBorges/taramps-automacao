@@ -22,11 +22,21 @@ public sealed record OpcaoLigado(string Rotulo, LigacaoAltoFalante? Ligado);
 public sealed class EscolhaViewModel
 {
     internal EscolhaViewModel(string rotulo, string? detalhe, bool escolhida, Action escolher)
+        : this(rotulo, detalhe, escolhida, new Comando(escolher))
+    {
+    }
+
+    internal EscolhaViewModel(string rotulo, string? detalhe, bool escolhida, Func<Task> escolher)
+        : this(rotulo, detalhe, escolhida, new Comando(escolher))
+    {
+    }
+
+    private EscolhaViewModel(string rotulo, string? detalhe, bool escolhida, Comando escolher)
     {
         Rotulo = rotulo;
         Detalhe = detalhe;
         Escolhida = escolhida;
-        Escolher = new Comando(escolher);
+        Escolher = escolher;
     }
 
     public string Rotulo { get; }
@@ -36,6 +46,9 @@ public sealed class EscolhaViewModel
     public bool Escolhida { get; }
 
     public Comando Escolher { get; }
+
+    /// <summary>O que o leitor de tela diz da pílula (o rótulo e se está escolhida), ou null (o rótulo basta).</summary>
+    public string? Descricao { get; init; }
 }
 
 /// <summary>Uma linha da lista de equipamentos de um Setup: nome, detalhe, modelo ("genérico"), função e a cor do canal.</summary>
@@ -73,7 +86,7 @@ public sealed class ItemEquipamentoViewModel
     /// <summary>A função acústica que vale ("médio-grave"): a escolhida, ou a sugerida; null para quem não toca (grupos 2 a 4).</summary>
     public string? Funcao { get; }
 
-    /// <summary>A nota (a do herdado), ou null.</summary>
+    /// <summary>A nota, ou null.</summary>
     public string? Nota { get; }
 
     /// <summary>Abre a folha do equipamento.</summary>
@@ -439,8 +452,38 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     /// <summary>As saídas com os nomes da tela (a cor do canal mestre), para a tela Setup.</summary>
     public IReadOnlyList<SaidaTela> SaidasTela => SaidaTela.De(_saidas);
 
-    /// <summary>"HERDADO" no Setup herdado (Casa 2.1), ou null.</summary>
-    public string? Selo => Setup?.Herdado == true ? HerdadoViewModel.TextoSelo : null;
+    /// <summary>
+    /// O ambiente do Setup em pílulas (Sala, Carro, Ao ar livre, Outro), o escolhido em branco. Tocar
+    /// grava (tocar no escolhido deixa sem informar). Sem Setup, nenhuma.
+    /// </summary>
+    public IReadOnlyList<EscolhaViewModel> AmbientesTela => Setup is { } setup
+        ? Ambientes.Todos.Select(a => new EscolhaViewModel(Ambientes.Rotulo(a), null, setup.Ambiente == a,
+            () => EscolherAmbienteAsync(a)) { Descricao = SetupViewModel.DescricaoAmbiente(a, setup.Ambiente == a) }).ToArray()
+        : [];
+
+    /// <summary>
+    /// Toca no ambiente: grava no Setup mostrado (o escolhido de novo fica sem informar), relê e mostra
+    /// a frase ("Casa: Ao ar livre."). Se não gravar, a mensagem diz e o ambiente fica como estava. Um
+    /// toque com outra operação andando não faz nada.
+    /// </summary>
+    public async Task EscolherAmbienteAsync(AmbienteSetup ambiente)
+    {
+        if (Setup is not { } setup || Ocupado)
+            return;
+        _agindo = true;
+        Avisar(nameof(Ocupado));
+        try
+        {
+            var r = await _setups.DefinirAmbienteAsync(setup.Id, setup.Ambiente == ambiente ? null : ambiente);
+            Mensagem = r.Mensagem ?? r.Motivo;
+            Atualizar();
+        }
+        finally
+        {
+            _agindo = false;
+            Avisar(nameof(Ocupado));
+        }
+    }
 
     /// <summary>"Adicione os equipamentos ligados em cada canal." quando o Setup não tem nenhum; sem Setup, o pedido para escolher um.</summary>
     public string? TextoVazio => Setup is null ? MsgSemSetup : _itens.Count == 0 ? TextoVazioSetup : null;
@@ -1279,7 +1322,7 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             AtualizarSugestao();
         }
         Avisar(nameof(Setup));
-        Avisar(nameof(Selo));
+        Avisar(nameof(AmbientesTela));
         Avisar(nameof(SaidasTela));
         Avisar(nameof(Titulo));
         Avisar(nameof(Itens));

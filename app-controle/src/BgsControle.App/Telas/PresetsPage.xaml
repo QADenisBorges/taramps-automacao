@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     Configurações › Presets (EXPERIENCE, Presets no celular; State Patterns › Preset aplicado, Presets vazio, Apagar
-    preset): os presets de 15 bandas, o herdado Cinema primeiro (HERDADO e a nota). Cada um com Aplicar (só as 15
-    bandas, por cima da memória), Renomear (vale no ✓), Apagar (folha; travado no herdado e no lembrado, com o
-    motivo) e Exportar (JSON). O preset novo nasce na folha do Salvar.
+    preset): os presets de 15 bandas (o app nasce sem nenhum). Cada um com Aplicar (só as 15 bandas, por cima da
+    memória), Renomear (vale no ✓), Apagar (folha; travado no lembrado, com o motivo) e Exportar (JSON). O preset novo nasce na folha do Salvar.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"

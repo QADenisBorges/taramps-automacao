@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using BgsControle.Nucleo;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;
@@ -155,7 +154,7 @@ internal sealed class SeletorFalso : ISeletorAudio
 /// <summary>
 /// As histórias 8b e 8d nas telas, contra o processador simulado: o <see cref="PlayerViewModel"/> com o
 /// <see cref="Player"/>, o <see cref="GerentePlaylists"/> e a memória do celular em uso de verdade (o
-/// <see cref="GerenteSetups"/>). Ao conectar, a conferência põe a FILME herdada em uso.
+/// <see cref="GerenteSetups"/>). Ao conectar, a conferência põe a FILME do cenário de teste em uso.
 /// </summary>
 public sealed class PlayerViewModelTestes : IDisposable
 {
@@ -197,7 +196,7 @@ public sealed class PlayerViewModelTestes : IDisposable
 
     private static string Filme => CenarioFilme.IdMemoria;
 
-    /// <summary>Conecta: a conferência põe a FILME herdada (memória do celular) em uso.</summary>
+    /// <summary>Conecta: a conferência põe a FILME do cenário de teste (memória do celular) em uso.</summary>
     private async Task Conectar()
     {
         if (_b.Sessao.Estado != EstadoSessao.Conectado)
@@ -210,7 +209,7 @@ public sealed class PlayerViewModelTestes : IDisposable
     private async Task<string> CriarShow()
     {
         Assert.True((await _b.Setups!.CriarMemoriaAsync("SHOW")).Ok);
-        var id = _b.Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "SHOW").Id;
+        var id = _b.Setups.MemoriasDe(CasaDoDenis.IdSetupCasa).Single(m => m.Nome == "SHOW").Id;
         await Apoio.Esperar(() => _player.Memoria == id);
         await _b.Tela.EsvaziarAsync();
         return id;

@@ -99,7 +99,7 @@ public static class MauiProgram
 
         // História 8 e 8d: os presets de 15 bandas no celular (criar no Salvar, aplicar, renomear, apagar), com
         // o aplicar pela cópia antes, e as playlists por memória do celular (playlists.json). Antes dos
-        // Setups, que os recebem. O conhecimento herdado (CAP-6) vem embutido no núcleo.
+        // Setups, que os recebem. O app nasce zerado (CAP-6): sem Setup, sem modelo, sem memória e sem preset.
         builder.Services.AddSingleton(sp => new GerentePresets(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<EstadoAparelho>(),
@@ -177,7 +177,7 @@ public static class MauiProgram
             gerador: sp.GetRequiredService<GeradorSinal>()));
 
         builder.Services.AddSingleton<ConexaoViewModel>();
-        // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do conhecimento herdado, do gerador, da monitoração e
+        // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do gerador, da monitoração e
         // do aparelho (sem tela nova: o XAML é das histórias 10 e 11). Singletons: assinam eventos do núcleo; transitórios no
         // contêiner raiz vazariam a cada resolução.
         builder.Services.AddSingleton<FabricaControles>();
@@ -189,7 +189,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<MemoriasViewModel>();
         builder.Services.AddSingleton<LinkViewModel>();
         builder.Services.AddSingleton<PresetsViewModel>();
-        builder.Services.AddSingleton<HerdadoViewModel>();
         builder.Services.AddSingleton(sp => new GeradorViewModel(
             sp.GetRequiredService<GeradorSinal>(),
             sp.GetRequiredService<Sessao>(),

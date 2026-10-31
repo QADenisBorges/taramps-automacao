@@ -1,4 +1,4 @@
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas.Testes;
@@ -24,7 +24,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     private async Task MostrarCasa()
     {
         await _b.Conectar();
-        _vm.Mostrar(ConhecimentoHerdado.IdSetupCasa);
+        _vm.Mostrar(CasaDoDenis.IdSetupCasa);
         await _b.Tela.EsvaziarAsync();
     }
 
@@ -90,8 +90,8 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Adicionar_alto_falante_passivo_sem_modulo_no_Setup_nao_tem_opcoes_e_avisa()
     {
         await _b.Setups!.Carregada;
-        var casa = ConhecimentoHerdado.IdSetupCasa;
-        Assert.True((await _b.Setups.TirarEquipamentoAsync(casa, ConhecimentoHerdado.IdModuloCasa)).Ok);
+        var casa = CasaDoDenis.IdSetupCasa;
+        Assert.True((await _b.Setups.TirarEquipamentoAsync(casa, CasaDoDenis.IdModuloCasa)).Ok);
         _vm.Mostrar(casa);
         await _b.Tela.EsvaziarAsync();
 
@@ -138,7 +138,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("Amplifica e toca · CH1", item.Detalhe);
         Assert.Equal("SW 12", item.Modelo);
         Assert.Equal("JBL L + Sub ativo", _vm.Saidas[0].Nome);
-        var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Sub ativo");
+        var guardado = _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Sub ativo");
         Assert.Equal(new DadoTecnico(250.5m, OrigemDado.Digitado), guardado.Dados.PotenciaRms); // a ficha monta o dado digitado
         Assert.Equal(new DadoTecnico(12m, OrigemDado.Digitado), guardado.Dados.Diametro);
         Assert.Null(guardado.Funcao); // vale a sugerida
@@ -196,7 +196,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     {
         await MostrarCasa();
 
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblR);
+        _vm.AbrirEditar(CasaDoDenis.IdJblR);
 
         Assert.Equal("JBL R", _vm.Nome);
         Assert.Equal("JBL 4TRMS80", _vm.Modelo);
@@ -210,7 +210,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
 
         Assert.Equal("JBL R frente guardado.", _vm.Mensagem);
         Assert.Equal("JBL R frente", _vm.Saidas[1].Nome);
-        var guardada = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblR)!;
+        var guardada = _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdJblR)!;
         Assert.Contains("100 Hz", guardada.Nota);
         // Os dados que a folha não mostra ficam, com a origem; o que não mudou também.
         Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Medido, "Medido em 18/10/2026"), guardada.Dados.Re);
@@ -266,7 +266,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
 
         Assert.True(_vm.FolhaAberta);
         Assert.Equal(EquipamentosViewModel.MsgSetupMudou, _vm.Erro);
-        Assert.Equal(4, _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Count);
+        Assert.Equal(4, _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Count);
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Trocar_o_modelo_ao_editar_os_dados_que_ficam_viram_digitados_e_nao_vao_como_oficiais()
     {
         await MostrarCasa();
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblR);
+        _vm.AbrirEditar(CasaDoDenis.IdJblR);
 
         Assert.Equal("oficial ✓", _vm.Dado("fs")!.Selo);
         _vm.Modelo = "Outra JBL";
@@ -296,7 +296,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("digitado", _vm.Dado("re")!.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        var guardada = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblR)!;
+        var guardada = _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdJblR)!;
         Assert.Equal("Outra JBL", guardada.Modelo);
         Assert.Equal(new DadoTecnico(4m, OrigemDado.Digitado), guardada.Dados.Impedancia);
         Assert.Equal(new DadoTecnico(98m, OrigemDado.Digitado), guardada.Dados.Fs);
@@ -307,14 +307,14 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     // ------------------------------------------------------------------ história 10c: a ficha com origem
 
     private static readonly string[] Equipamentos =
-        [ConhecimentoHerdado.IdModuloCasa, ConhecimentoHerdado.IdJblL, ConhecimentoHerdado.IdJblR, ConhecimentoHerdado.IdSubCasa];
+        [CasaDoDenis.IdModuloCasa, CasaDoDenis.IdJblL, CasaDoDenis.IdJblR, CasaDoDenis.IdSubCasa];
 
     [Fact]
     public async Task Ficha_da_JBL_L_mostra_o_selo_de_origem_de_cada_dado()
     {
         await MostrarCasa();
 
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblL);
+        _vm.AbrirEditar(CasaDoDenis.IdJblL);
 
         Assert.Equal([EquipamentosViewModel.SecaoGerais, EquipamentosViewModel.SecaoAltoFalante, EquipamentosViewModel.SecaoCaixa],
             _vm.SecoesDados.Select(s => s.Titulo));
@@ -336,13 +336,13 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Cada_dado_dos_4_equipamentos_herdados_mostra_a_origem_que_o_nucleo_guarda_e_so_oficial_e_medido_tem_o_visto()
+    public async Task Cada_dado_dos_4_equipamentos_da_fixture_mostra_a_origem_que_o_nucleo_guarda_e_so_oficial_e_medido_tem_o_visto()
     {
         await MostrarCasa();
 
         foreach (var id in Equipamentos)
         {
-            var e = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, id)!;
+            var e = _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, id)!;
             _vm.AbrirEditar(id);
             var naTela = _vm.SecoesDados.SelectMany(s => s.Dados).ToDictionary(d => d.Nome);
             foreach (var c in DadosTecnicos.Campos)
@@ -370,12 +370,12 @@ public sealed class EquipamentosViewModelTestes : IDisposable
 
         foreach (var id in Equipamentos)
         {
-            var antes = _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, id)!.Dados;
+            var antes = _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, id)!.Dados;
             _vm.AbrirEditar(id);
             await _vm.Confirmar.ExecutarAsync();
             Assert.False(_vm.FolhaAberta, _vm.Erro);
 
-            var depois = _b.Setups.Equipamento(ConhecimentoHerdado.IdSetupCasa, id)!.Dados;
+            var depois = _b.Setups.Equipamento(CasaDoDenis.IdSetupCasa, id)!.Dados;
             foreach (var c in DadosTecnicos.Campos)
                 Assert.Equal(c.Ler(antes), c.Ler(depois));
             Assert.Equal(antes.TipoCaixa, depois.TipoCaixa);
@@ -405,7 +405,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("digitado", fs.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Woofer");
+        var guardado = _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Woofer");
         Assert.Equal(new DadoTecnico(80m, OrigemDado.Digitado), guardado.Dados.Fs);
     }
 
@@ -413,7 +413,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Mudar_um_dado_vira_digitado_e_voltar_ao_valor_de_antes_volta_a_origem()
     {
         await MostrarCasa();
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblL);
+        _vm.AbrirEditar(CasaDoDenis.IdJblL);
         var fs = _vm.Dado("fs")!;
 
         fs.Texto = "99";
@@ -459,7 +459,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("oficial ✓", fs.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Woofer");
+        var guardado = _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Woofer");
         Assert.Equal(new DadoTecnico(81m, OrigemDado.Oficial, "https://www.exemplo.com/woofer.pdf"), guardado.Dados.Fs);
         Assert.Equal(new DadoTecnico(3.2m, OrigemDado.Digitado), guardado.Dados.Re);
     }
@@ -494,9 +494,9 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("digitado", _vm.Dado("le")!.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Médio-grave");
-        Assert.Equal(ConhecimentoHerdado.FichaJbl.Fs, guardado.Dados.Fs);
-        Assert.Equal(ConhecimentoHerdado.FichaJbl.Qes, guardado.Dados.Qes);
+        var guardado = _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Médio-grave");
+        Assert.Equal(CasaDoDenis.FichaJbl.Fs, guardado.Dados.Fs);
+        Assert.Equal(CasaDoDenis.FichaJbl.Qes, guardado.Dados.Qes);
         Assert.Equal(new DadoTecnico(0.5m, OrigemDado.Digitado), guardado.Dados.Le);
     }
 
@@ -504,7 +504,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Ao_abrir_a_folha_sem_escrever_no_modelo_nao_ha_sugestao_e_o_modulo_da_base_traz_os_canais()
     {
         await MostrarCasa();
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblR);
+        _vm.AbrirEditar(CasaDoDenis.IdJblR);
         Assert.Empty(_vm.SugestoesModelo);
         await _vm.Cancelar.ExecutarAsync();
 
@@ -530,7 +530,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
 
     private async Task Guardar(string id, Func<DadosTecnicos, DadosTecnicos> mudar)
     {
-        var casa = ConhecimentoHerdado.IdSetupCasa;
+        var casa = CasaDoDenis.IdSetupCasa;
         var e = _b.Setups!.Equipamento(casa, id)!;
         Assert.True((await _b.Setups.EditarEquipamentoAsync(casa, e with { Dados = mudar(e.Dados) })).Ok);
         await _b.Tela.EsvaziarAsync();
@@ -550,14 +550,14 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     {
         await MostrarCasa();
         var le = new DadoTecnico(0.0453m, OrigemDado.Oficial, "https://www.exemplo.com/jbl.pdf");
-        await Guardar(ConhecimentoHerdado.IdJblL, d => d with { Le = le });
+        await Guardar(CasaDoDenis.IdJblL, d => d with { Le = le });
 
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblL);
+        _vm.AbrirEditar(CasaDoDenis.IdJblL);
         Assert.Equal("0,0453", _vm.Dado("le")!.Texto);
         Assert.Equal("oficial ✓", _vm.Dado("le")!.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        Assert.Equal(le, _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblL)!.Dados.Le);
+        Assert.Equal(le, _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdJblL)!.Dados.Le);
     }
 
     [Fact]
@@ -584,7 +584,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Escrever_so_a_fonte_nao_trava_a_origem_e_mudar_o_numero_depois_vira_digitado()
     {
         await MostrarCasa();
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblL);
+        _vm.AbrirEditar(CasaDoDenis.IdJblL);
         var fs = _vm.Dado("fs")!;
 
         fs.TextoFonte = "Ficha impressa, página 2";
@@ -626,7 +626,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("digitado", _vm.Dado("fs")!.Selo);
         await _vm.Confirmar.ExecutarAsync();
 
-        var guardado = _b.Setups!.Setup(ConhecimentoHerdado.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Médio-grave");
+        var guardado = _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Médio-grave");
         Assert.Equal(new DadoTecnico(98m, OrigemDado.Digitado), guardado.Dados.Fs);
     }
 
@@ -657,7 +657,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         {
             Dados = new DadosTecnicos { Canais = new DadoTecnico(2m, OrigemDado.Oficial, f), PotenciaCanal = new DadoTecnico(50m, OrigemDado.Oficial, f) },
         }));
-        _vm.AbrirEditar(ConhecimentoHerdado.IdModuloCasa);
+        _vm.AbrirEditar(CasaDoDenis.IdModuloCasa);
 
         _vm.Modelo = "min";
         await Assert.Single(_vm.SugestoesModelo).Escolher.ExecutarAsync();
@@ -674,13 +674,13 @@ public sealed class EquipamentosViewModelTestes : IDisposable
     public async Task Os_canais_guardados_num_equipamento_fora_do_grupo_2_ficam_ao_confirmar_sem_mudar()
     {
         await MostrarCasa();
-        await Guardar(ConhecimentoHerdado.IdJblL, d => d with { Canais = new DadoTecnico(1m, OrigemDado.Digitado) });
+        await Guardar(CasaDoDenis.IdJblL, d => d with { Canais = new DadoTecnico(1m, OrigemDado.Digitado) });
 
-        _vm.AbrirEditar(ConhecimentoHerdado.IdJblL);
+        _vm.AbrirEditar(CasaDoDenis.IdJblL);
         await _vm.Confirmar.ExecutarAsync();
 
         Assert.Equal(new DadoTecnico(1m, OrigemDado.Digitado),
-            _b.Setups!.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdJblL)!.Dados.Canais);
+            _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdJblL)!.Dados.Canais);
     }
 
     [Fact]
@@ -703,7 +703,7 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         await MostrarCasa();
 
         Assert.Null(_vm.Item("Módulo SD800.4 EVO")!.Funcao);
-        _vm.AbrirEditar(ConhecimentoHerdado.IdModuloCasa);
+        _vm.AbrirEditar(CasaDoDenis.IdModuloCasa);
         Assert.False(_vm.MostraFuncao);
         Assert.Empty(_vm.Funcoes);
         Assert.Null(_vm.FuncaoSugerida);

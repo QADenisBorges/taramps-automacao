@@ -1098,6 +1098,8 @@ public sealed class PortaComandos : IDisposable
         var setup = _setups.SetupEmUso;
         w.WriteStartObject("setup");
         w.WriteString("nome", setup?.Nome);
+        // O ambiente do Setup em uso (CAP-16): o nome do JSON, ou null (não informado, ou sem Setup).
+        w.WriteString("ambiente", setup?.Ambiente is { } ambiente ? Ambientes.Nome(ambiente) : null);
         w.WriteBoolean("duvida", _setups.MotivoBloqueioIa is not null);
         w.WriteString("estado", _setups.Estado switch
         {
@@ -1356,7 +1358,7 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos aparece no celular, embaixo da chave Controle pela rede (Configurações, grupo APARELHO). Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.

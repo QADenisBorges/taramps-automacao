@@ -39,21 +39,26 @@ internal sealed class Bancada
     /// em <see cref="Arquivos"/>. Fora disso, nenhuma conferência mexe no mute dos outros testes.
     /// </param>
     /// <param name="filme">
-    /// História 8f: o app nasce sem memórias e sem presets; com <c>true</c> (o padrão), os arquivos sem
-    /// <c>setups.json</c> e <c>presets.json</c> recebem a FILME e o Cinema do <see cref="CenarioFilme"/>.
+    /// Histórias 8f e 8g: o app nasce zerado; com <c>true</c> (o padrão), os arquivos sem
+    /// <c>setups.json</c>, <c>presets.json</c> e <c>modelos.json</c> recebem o Casa 2.1 da fixture
+    /// <see cref="CasaDoDenis"/> com a FILME, o Cinema e os 3 modelos (<see cref="CenarioFilme"/>); com
+    /// <c>false</c>, só o Casa 2.1 sem memórias e os 3 modelos.
     /// </param>
-    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false, bool setups = false, bool filme = true)
+    /// <param name="zerado">História 8g: nenhum arquivo semeado, o app como nasce (nenhum Setup, modelo, memória ou preset).</param>
+    public Bancada(ArquivosFalso? arquivos = null, bool usoCompartilhado = false, bool setups = false, bool filme = true, bool zerado = false)
     {
         // A sessão e o leitor esperam em tempo real e o relógio falso não anda enquanto conectam:
         // a senha e as leituras respondem na hora; os ecos e os acks seguem no relógio falso.
         Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
         Arquivos = arquivos ?? new ArquivosFalso();
-        if (filme)
+        if (!zerado)
         {
             if (Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups) is null)
-                Arquivos.Semear(RepositorioTextoArquivos.ArquivoSetups, CenarioFilme.SetupsJson);
-            if (Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets) is null)
+                Arquivos.Semear(RepositorioTextoArquivos.ArquivoSetups, filme ? CenarioFilme.SetupsJson : CasaDoDenis.SetupsJson);
+            if (filme && Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets) is null)
                 Arquivos.Semear(RepositorioTextoArquivos.ArquivoPresets, CenarioFilme.PresetsJson);
+            if (Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoModelos) is null)
+                Arquivos.Semear(RepositorioTextoArquivos.ArquivoModelos, CenarioFilme.ModelosJson);
         }
         Chaves = new Chaves(new RepositorioChavesArquivos(Arquivos));
         if (usoCompartilhado)

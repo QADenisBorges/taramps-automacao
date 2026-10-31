@@ -1,6 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas.Testes;
@@ -31,8 +31,8 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
     /// <summary>Tira a ligação do CH4 no módulo do Casa 2.1: o bridge fica com sinal num canal só e o link desliga.</summary>
     private async Task TirarCh4DoBridge()
     {
-        var modulo = Setups.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdModuloCasa)!;
-        var r = await Setups.EditarEquipamentoAsync(ConhecimentoHerdado.IdSetupCasa,
+        var modulo = Setups.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdModuloCasa)!;
+        var r = await Setups.EditarEquipamentoAsync(CasaDoDenis.IdSetupCasa,
             modulo with { Entradas = modulo.Entradas.Select(x => x.Numero == 4 ? x with { Fonte = null } : x).ToArray() });
         Assert.True(r.Ok, r.Mensagem);
         await _b.Tela.EsvaziarAsync();
@@ -180,14 +180,15 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
 
         await _t.Setups.Linha("Casa 2.1")!.Abrir.ExecutarAsync();
-        Assert.Equal([$"setup:{ConhecimentoHerdado.IdSetupCasa}"], _t.Nav.Pedidos.Where(p => p.StartsWith("setup:")));
+        Assert.Equal([$"setup:{CasaDoDenis.IdSetupCasa}"], _t.Nav.Pedidos.Where(p => p.StartsWith("setup:")));
 
         using var tela = new EquipamentosViewModel(Setups, _b.Tela, _b.Relogio);
-        tela.Mostrar(ConhecimentoHerdado.IdSetupCasa);
+        tela.Mostrar(CasaDoDenis.IdSetupCasa);
         await _b.Tela.EsvaziarAsync();
 
         Assert.Equal("Casa 2.1", tela.Titulo);
-        Assert.Equal("HERDADO", tela.Selo);
+        Assert.Equal(["Sala", "Carro", "Ao ar livre", "Outro"], tela.AmbientesTela.Select(a => a.Rotulo));
+        Assert.DoesNotContain(tela.AmbientesTela, a => a.Escolhida); // o Casa 2.1 da fixture não tem ambiente
         Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], tela.Itens.Select(i => i.Nome));
         Assert.False(tela.Item("Sub")!.Generico);
         Assert.False(tela.Item("JBL R")!.Generico);
@@ -208,11 +209,73 @@ public sealed class TelasSaidasDoSetupTestes : IDisposable
     }
 
     [Fact]
+    public async Task A_Bancada_com_filme_semeia_o_Casa_da_fixture_a_FILME_o_Cinema_e_os_3_modelos()
+    {
+        await Setups.Carregada;
+        await _b.Modelos!.Carregada;
+        await _b.Presets.Carregada;
+
+        var casa = Assert.Single(Setups.Setups);
+        Assert.Equal(CasaDoDenis.IdSetupCasa, casa.Id);
+        Assert.Equal(CasaDoDenis.EquipamentosCasa.Select(e => e.Id), casa.Equipamentos.Select(e => e.Id));
+        Assert.Equal([CenarioFilme.IdMemoria], Setups.MemoriasDe(casa.Id).Select(m => m.Id));
+        Assert.Equal([CenarioFilme.IdPreset], _b.Presets.Presets.Select(p => p.Id));
+        Assert.Equal(CasaDoDenis.Modelos.Select(m => m.Modelo), _b.Modelos.Modelos.Select(m => m.Modelo));
+    }
+
+    [Fact]
+    public async Task Na_tela_Setup_tocar_Ao_ar_livre_grava_e_rele_o_ambiente_e_tocar_de_novo_deixa_sem_informar()
+    {
+        await _b.Conectar();
+        using var tela = new EquipamentosViewModel(Setups, _b.Tela, _b.Relogio);
+        tela.Mostrar(CasaDoDenis.IdSetupCasa);
+        await _b.Tela.EsvaziarAsync();
+        var antes = _b.Simulador.Escritas.Count;
+
+        await tela.AmbientesTela.Single(a => a.Rotulo == "Ao ar livre").Escolher.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(AmbienteSetup.ArLivre, Setups.Setup(CasaDoDenis.IdSetupCasa)!.Ambiente);
+        Assert.Equal(["Ao ar livre"], tela.AmbientesTela.Where(a => a.Escolhida).Select(a => a.Rotulo));
+        Assert.Equal(GerenteSetups.MsgAmbienteDefinido("Casa 2.1", AmbienteSetup.ArLivre), tela.Mensagem);
+        Assert.Equal("Casa 2.1: Ao ar livre.", tela.Mensagem);
+        Assert.Equal("Ambiente Ao ar livre, escolhido. Toque de novo para deixar sem informar.",
+            tela.AmbientesTela.Single(a => a.Escolhida).Descricao);
+        Assert.Equal("Ambiente Sala, não escolhido.", tela.AmbientesTela.Single(a => a.Rotulo == "Sala").Descricao);
+        Assert.Equal(antes, _b.Simulador.Escritas.Count); // nada vai ao aparelho
+        var relido = GerenteSetups.DeJson(_b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups)!)!;
+        Assert.Equal(AmbienteSetup.ArLivre, relido.Setups.Single(x => x.Id == CasaDoDenis.IdSetupCasa).Ambiente);
+
+        await tela.AmbientesTela.Single(a => a.Rotulo == "Ao ar livre").Escolher.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Null(Setups.Setup(CasaDoDenis.IdSetupCasa)!.Ambiente);
+        Assert.DoesNotContain(tela.AmbientesTela, a => a.Escolhida);
+    }
+
+    [Fact]
+    public async Task Na_tela_Setup_o_ambiente_que_nao_grava_mostra_a_mensagem_e_o_valor_nao_muda()
+    {
+        await _b.Conectar();
+        using var tela = new EquipamentosViewModel(Setups, _b.Tela, _b.Relogio);
+        tela.Mostrar(CasaDoDenis.IdSetupCasa);
+        await _b.Tela.EsvaziarAsync();
+        _b.Arquivos.Falhar = true;
+
+        await tela.AmbientesTela.Single(a => a.Rotulo == "Carro").Escolher.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.Equal(GerenteSetups.MsgNaoGuardou, tela.Mensagem);
+        Assert.Null(Setups.Setup(CasaDoDenis.IdSetupCasa)!.Ambiente);
+        Assert.DoesNotContain(tela.AmbientesTela, a => a.Escolhida);
+    }
+
+    [Fact]
     public async Task Na_folha_as_pilulas_escolhem_e_marcam_a_escolhida()
     {
         await _b.Conectar();
         using var tela = new EquipamentosViewModel(Setups, _b.Tela, _b.Relogio);
-        tela.Mostrar(ConhecimentoHerdado.IdSetupCasa);
+        tela.Mostrar(CasaDoDenis.IdSetupCasa);
 
         await tela.Adicionar.ExecutarAsync();
         var tweeter = tela.CategoriasTela.First(c => c.Rotulo == "tweeter");

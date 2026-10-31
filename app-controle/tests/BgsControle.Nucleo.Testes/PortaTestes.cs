@@ -8,7 +8,6 @@ using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Leitura;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
@@ -497,12 +496,57 @@ public sealed class PortaTestes : IDisposable
         var setup = Json(estado).GetProperty("setup");
         Assert.True(setup.GetProperty("duvida").GetBoolean());
         Assert.Equal(JsonValueKind.Null, setup.GetProperty("nome").ValueKind);
+        Assert.Equal(JsonValueKind.Null, setup.GetProperty("ambiente").ValueKind);
         Assert.Contains(_historico.Entradas, e => e.Origem == OrigemComando.Ia && !e.Enviado && e.Motivo == GerenteSetups.MsgDuvida);
 
         // O parar do gerador nunca é travado, nem pela dúvida.
         var parar = await PedirRodando("POST", "/gerador/parar", null, chave);
         Assert.NotEqual(GerenteSetups.MsgDuvida, Motivo(parar));
         Assert.Equal(200, parar.Status);
+    }
+
+    /// <summary>
+    /// A primeira conexão de um app zerado (história 8g): sem nenhum Setup, a conferência muta e entra na
+    /// dúvida, e a porta recusa todo POST com 409 até a escolha.
+    /// </summary>
+    [Fact]
+    public async Task Sem_nenhum_Setup_a_primeira_conexao_fica_em_duvida_e_a_porta_recusa_com_409()
+    {
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio),
+            new GerentePlaylists(new TextoMemoria(), _log), _chaves, new TextoMemoria(), new TextoMemoria(), _log, _relogio);
+        using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
+        await Conectar();
+        await AndarAte(() => setups.Conferido && !setups.Ocupado);
+        await LigarPorta(porta);
+        var r = await Pedir("POST", "/parear", $$"""{"codigo":"{{porta.Pareamento.Codigo}}","nome":"Claude"}""", porta: porta);
+        var chave = Json(r).GetProperty("chave").GetString()!;
+        Assert.Empty(setups.Setups);
+        Assert.Equal(EstadoConferencia.Duvida, setups.Estado);
+        Assert.True(setups.Mutado);
+
+        var ajuste = await Pedir("POST", "/ajuste", """{"codigo":"081","indice":2,"valor":2.0}""", chave, porta: porta);
+        var estado = Json(await Pedir("GET", "/estado", chave: chave, porta: porta)).GetProperty("setup");
+
+        Assert.Equal(409, ajuste.Status);
+        Assert.Equal(GerenteSetups.MsgDuvida, Motivo(ajuste));
+        Assert.True(estado.GetProperty("duvida").GetBoolean());
+        Assert.Equal("duvida", estado.GetProperty("estado").GetString());
+        Assert.Equal(JsonValueKind.Null, estado.GetProperty("nome").ValueKind);
+        Assert.Equal(JsonValueKind.Null, estado.GetProperty("ambiente").ValueKind);
+    }
+
+    [Fact]
+    public async Task Estado_traz_o_ambiente_do_Setup_em_uso_pelo_nome_do_JSON()
+    {
+        var chave = await Pronto();
+        Assert.Equal(JsonValueKind.Null, Json(await Pedir("GET", "/estado", chave: chave)).GetProperty("setup").GetProperty("ambiente").ValueKind);
+
+        Assert.True((await _setups.DefinirAmbienteAsync(CasaDoDenis.IdSetupCasa, AmbienteSetup.Carro)).Ok);
+        var setup = Json(await Pedir("GET", "/estado", chave: chave)).GetProperty("setup");
+
+        Assert.Equal("Casa 2.1", setup.GetProperty("nome").GetString());
+        Assert.Equal("carro", setup.GetProperty("ambiente").GetString());
     }
 
     /// <summary>Antes de a conferência da conexão terminar, a IA também espera: nada toca antes de conferir o Setup.</summary>
@@ -1322,7 +1366,7 @@ public sealed class PortaTestes : IDisposable
         Assert.True((await Rodar(_setups.CriarSetupAsync("Carro", "ESTRADA"))).Ok);
         var estrada = _setups.MemoriasDe(_setups.SetupEmUso!.Id).Single().Id;
         Assert.True((await Rodar(_setups.TrocarAsync())).Ok);
-        Assert.True((await Rodar(_setups.EscolherAsync(ConhecimentoHerdado.IdSetupCasa))).Ok);
+        Assert.True((await Rodar(_setups.EscolherAsync(CasaDoDenis.IdSetupCasa))).Ok);
         await LigarPorta();
         var chave = await Parear();
         var antes = _simulador.Escritas.Count;

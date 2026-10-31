@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Registro;
 
 namespace BgsControle.Nucleo.Player;
@@ -34,8 +33,8 @@ public sealed record DadosPlaylists(IReadOnlyDictionary<string, IReadOnlyList<Fa
 /// arquivo foi gravado. O app guarda só a URI de cada música; ele não copia o arquivo.
 /// <list type="bullet">
 /// <item><b>Migração</b> do formato 1 (3 listas pela posição da memória do aparelho): cada playlist não
-/// vazia vira uma <see cref="PlaylistPendente"/> com o nome do protótipo daquela posição (SPL,
-/// MUSICA ORIG, FILME); as vazias somem.</item>
+/// vazia vira uma <see cref="PlaylistPendente"/> com o nome "Memória {n}" da posição (1 a 3); as
+/// vazias somem.</item>
 /// <item><b>Adoção</b> (<see cref="AdotarAsync"/>): quem conhece as memórias (o <c>GerenteSetups</c>)
 /// passa a lista delas na ordem de busca; cada pendente vai para a primeira com o mesmo nome (sem
 /// diferença de caixa). Sem memória correspondente, a pendente espera, sem prazo.</item>
@@ -51,6 +50,9 @@ public sealed class GerentePlaylists
 
     /// <summary>No formato antigo, uma lista por memória do aparelho (as 3 posições do protótipo).</summary>
     private const int ListasNoFormatoAntigo = 3;
+
+    /// <summary>O nome da pendente que veio da posição <paramref name="n"/> (1 a 3) do formato antigo: "Memória 2".</summary>
+    public static string NomePendenteAntiga(int n) => $"Memória {n}";
 
     public const string MsgNaoGuardou = "Não consegui guardar a playlist no celular.";
     public const string MsgSemMemoria = "Sem memória do celular, não há playlist.";
@@ -398,7 +400,7 @@ public sealed class GerentePlaylists
 
     /// <summary>
     /// Lê o <c>playlists.json</c>. Formato 2: as playlists por memória e as pendentes. Formato 1: cada
-    /// lista não vazia vira pendente com o nome do protótipo daquela posição. Outro formato, ou outra
+    /// lista não vazia vira pendente com o nome "Memória {n}" da posição. Outro formato, ou outra
     /// forma: nenhuma. Uma faixa sem id, sem URI ou com id repetido é descartada; as outras ficam, na
     /// ordem. Uma playlist sem memória (ou repetida), ou uma pendente sem nome, é descartada.
     /// </summary>
@@ -421,9 +423,9 @@ public sealed class GerentePlaylists
                 if (n >= ListasNoFormatoAntigo)
                     break;
                 var faixas = LerFaixas(lista, ids);
-                var nota = ConhecimentoHerdado.NotaMemoria(++n);
-                if (faixas.Count > 0 && nota is not null)
-                    pendentes.Add(new PlaylistPendente(nota.NomeNoPrototipo, faixas));
+                ++n;
+                if (faixas.Count > 0)
+                    pendentes.Add(new PlaylistPendente(NomePendenteAntiga(n), faixas));
             }
             return new DadosPlaylists(new Dictionary<string, IReadOnlyList<Faixa>>(), pendentes);
         }

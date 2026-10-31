@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
-    Configurações › Setups (EXPERIENCE, Information Architecture): os Setups, o selo HERDADO no Casa 2.1,
-    tocar num Setup abre a tela Setup, Renomear (vale no ✓) e Apagar com a folha. O Setup em uso e o herdado não se apagam e dizem por quê.
+    Configurações › Setups (EXPERIENCE, Information Architecture): os Setups, tocar num Setup abre a tela Setup,
+    Renomear (vale no ✓) e Apagar com a folha. O Setup em uso não se apaga e diz por quê. Sem nenhum Setup, o texto
+    de vazio diz como criar.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -18,7 +19,8 @@
             </Grid>
             <ScrollView Grid.Row="1">
                 <VerticalStackLayout Padding="16,8" Spacing="10">
-                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoLembrete}" />
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding TextoLembrete}" IsVisible="{Binding MostraLembrete}" />
+                    <Label Style="{StaticResource tipo-apoio}" Text="{Binding Vazio}" IsVisible="{Binding Vazio, Converter={StaticResource TemTexto}}" />
                     <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="{Binding Mensagem}"
                            IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
                     <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Linhas}">
@@ -26,27 +28,15 @@
                             <DataTemplate x:DataType="telas:LinhaSetupViewModel">
                                 <Border Style="{StaticResource cartao-grande}">
                                     <VerticalStackLayout Spacing="8">
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                            <!-- Tocar no Setup abre a tela Setup (os equipamentos). -->
-                                            <VerticalStackLayout>
-                                                <Label Style="{StaticResource tipo-memoria-lista}" FontSize="28" Text="{Binding Nome}" />
-                                                <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Detalhe}" />
-                                                <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="Equipamentos ›" />
-                                                <VerticalStackLayout.GestureRecognizers>
-                                                    <TapGestureRecognizer Command="{Binding Abrir}" />
-                                                </VerticalStackLayout.GestureRecognizers>
-                                            </VerticalStackLayout>
-                                            <Border Grid.Column="1" IsVisible="{Binding Herdado}" Stroke="{StaticResource campo-borda}"
-                                                    StrokeThickness="1" StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0"
-                                                    VerticalOptions="Start">
-                                                <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}"
-                                                       VerticalTextAlignment="Center" />
-                                                <Border.GestureRecognizers>
-                                                    <TapGestureRecognizer Command="{Binding AlternarNota}" />
-                                                </Border.GestureRecognizers>
-                                            </Border>
-                                        </Grid>
-                                        <Label Style="{StaticResource tipo-apoio}" Text="{Binding Nota}" IsVisible="{Binding NotaVisivel}" />
+                                        <!-- Tocar no Setup abre a tela Setup (os equipamentos). -->
+                                        <VerticalStackLayout>
+                                            <Label Style="{StaticResource tipo-memoria-lista}" FontSize="28" Text="{Binding Nome}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" Text="{Binding Detalhe}" />
+                                            <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource texto}" Text="Equipamentos ›" />
+                                            <VerticalStackLayout.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding Abrir}" />
+                                            </VerticalStackLayout.GestureRecognizers>
+                                        </VerticalStackLayout>
                                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                             <Button Style="{StaticResource botao-contornado-pequeno}" Text="Renomear" Command="{Binding Renomear}" />
                                             <Button Grid.Column="1" Style="{StaticResource botao-contornado-pequeno}" Text="Apagar" Command="{Binding Apagar}">

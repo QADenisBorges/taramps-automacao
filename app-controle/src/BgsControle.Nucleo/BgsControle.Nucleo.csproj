@@ -8,16 +8,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="BgsControle.Nucleo.Testes" />
-  </ItemGroup>
-
-  <!--
-    A FILME definitiva de 18/10 (conhecimento herdado, CAP-6): as respostas cruas da leitura
-    completa, linkadas sem cópia e lidas pelo ConhecimentoHerdado. O app abre já com ela.
-  -->
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\..\estado\leituras\2026-10-18_2145.json"
-                      Link="Herdado\leitura-2026-10-18_2145.json"
-                      LogicalName="leitura-2026-10-18_2145.json" />
+    <!-- História 8g: a fixture CasaDoDenis lê a leitura de 18/10 com o mesmo casamento do leitor. -->
+    <InternalsVisibleTo Include="BgsControle.Simulador" />
   </ItemGroup>
 
 </Project>

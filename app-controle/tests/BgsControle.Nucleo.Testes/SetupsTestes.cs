@@ -1,5 +1,4 @@
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
@@ -45,7 +44,7 @@ public sealed partial class SetupsTestes : IDisposable
     private readonly TextoMemoria _guardadoMudo;
     private readonly TextoMemoria _guardadoPresets;
     private readonly TextoMemoria _guardadoPlaylists;
-    private readonly TextoMemoria _guardadoModelos = new();
+    private readonly TextoMemoria _guardadoModelos;
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
     private readonly GerentePresets _presets;
@@ -58,18 +57,19 @@ public sealed partial class SetupsTestes : IDisposable
     private static Parametro Atraso => Catalogo.ParametroDe("050")!;
     private static Parametro Banda => Catalogo.ParametroDe("020")!;
 
-    private static string Casa => ConhecimentoHerdado.IdSetupCasa;
+    private static string Casa => CasaDoDenis.IdSetupCasa;
     private static string Filme => CenarioFilme.IdMemoria;
     private static string Cinema => CenarioFilme.IdPreset;
 
-    /// <summary>O Casa 2.1 com a FILME (ativa) e o Cinema guardados.</summary>
-    public SetupsTestes() : this(CenarioFilme.SetupsJson, null, presetsGuardado: CenarioFilme.PresetsJson)
+    /// <summary>O Casa 2.1 da fixture com a FILME (ativa), o Cinema e os 3 modelos guardados.</summary>
+    public SetupsTestes() : this(CenarioFilme.SetupsJson, null, presetsGuardado: CenarioFilme.PresetsJson, modelosGuardado: CenarioFilme.ModelosJson)
     {
     }
 
     private SetupsTestes(string? setupsGuardado, string? mudoGuardado, string? playlistsGuardado = null, string? presetsGuardado = null,
-        string? copiaGuardada = null)
+        string? copiaGuardada = null, string? modelosGuardado = null)
     {
+        _guardadoModelos = new TextoMemoria(modelosGuardado);
         _guardadoCopia = new TextoMemoria(copiaGuardada);
         _guardadoSetups = new TextoMemoria(setupsGuardado);
         _guardadoMudo = new TextoMemoria(mudoGuardado);
@@ -91,8 +91,12 @@ public sealed partial class SetupsTestes : IDisposable
             _guardadoSetups, _guardadoMudo, _log, _relogio, _modelos);
     }
 
-    /// <summary>O app sem nenhum arquivo: a primeira abertura.</summary>
+    /// <summary>O app sem nenhum arquivo: a primeira abertura (o app nasce zerado).</summary>
     private static SetupsTestes SemArquivos(string? playlists = null) => new(null, null, playlists);
+
+    /// <summary>Só o Casa 2.1 da fixture (sem memórias) e os 3 modelos dela guardados.</summary>
+    private static SetupsTestes SoCasa(string? playlists = null) =>
+        new(CasaDoDenis.SetupsJson, null, playlists, modelosGuardado: CasaDoDenis.ModelosJson);
 
     /// <summary>Critério de aceite: nenhum quadro <c>*240*</c>, <c>*241*</c> ou <c>*23N*</c> chega ao simulador, em nenhum teste.</summary>
     public void Dispose()
@@ -209,53 +213,191 @@ public sealed partial class SetupsTestes : IDisposable
     // ----------------------------------------------------------------- a primeira abertura (CAP-6)
 
     [Fact]
-    public async Task Primeira_abertura_sem_arquivos_so_o_Casa_2_1_com_os_4_equipamentos_nenhuma_memoria_nenhum_preset_e_3_modelos()
+    public async Task Primeira_abertura_sem_arquivos_nenhum_Setup_nenhuma_memoria_nenhum_preset_e_nenhum_modelo()
     {
         using var t = SemArquivos();
         await t._setups.Carregada;
         await t._presets.Carregada;
         await t._modelos.Carregada;
 
+        Assert.Empty(t._setups.Setups);
+        Assert.Empty(t._setups.Dados.Memorias);
+        Assert.Null(t._setups.UltimoSetup);
+        Assert.Empty(t._presets.Presets);
+        Assert.Empty(t._modelos.Modelos);
+        Assert.Empty(t._modelos.Sugerir("JBL"));
+        Assert.Equal(0, t._guardadoSetups.Gravacoes);
+        Assert.Equal(0, t._guardadoModelos.Gravacoes);
+    }
+
+    [Fact]
+    public async Task A_fixture_CasaDoDenis_semeia_o_Casa_2_1_com_os_4_equipamentos_as_fichas_com_origem_e_os_3_modelos()
+    {
+        using var t = SoCasa();
+        await t._setups.Carregada;
+        await t._modelos.Carregada;
+
         var casa = Assert.Single(t._setups.Setups);
         Assert.Equal(Casa, casa.Id);
         Assert.Equal("Casa 2.1", casa.Nome);
-        Assert.True(casa.Herdado);
+        Assert.Null(casa.Ambiente);
         Assert.Equal(4, casa.Equipamentos.Count);
         Assert.Empty(t._setups.Dados.Memorias);
-        Assert.Empty(t._presets.Presets);
-        Assert.Empty(ConhecimentoHerdado.Presets);
         Assert.Equal(["JBL 4TRMS80", "Protech Light 8\"", "SD800.4 EVO"], t._modelos.Modelos.Select(m => m.Modelo));
         // As fichas com a origem de cada dado.
-        var jbl = casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblL);
+        var jbl = casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblL);
         Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Medido, "Medido em 18/10/2026"), jbl.Dados.Re);
         Assert.Equal(OrigemDado.Oficial, jbl.Dados.Fs!.Origem);
         Assert.Equal(98m, jbl.Dados.Fs.Valor);
         Assert.True(jbl.Dados.Fs.Verificado);
         Assert.Equal(OrigemDado.Estimado, jbl.Dados.VolumeCaixa!.Origem);
         Assert.False(jbl.Dados.VolumeCaixa.Verificado);
-        var sub = casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdSubCasa);
+        var sub = casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdSubCasa);
         Assert.Equal("Protech Light 8\"", sub.Modelo);
         Assert.Equal(450m, sub.Dados.PotenciaRms!.Valor);
         Assert.Equal("dutada", sub.Dados.TipoCaixa!.Valor);
         Assert.Equal(51m, sub.Dados.Fb!.Valor);
-        var modulo = casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdModuloCasa);
+        var modulo = casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdModuloCasa);
         Assert.Equal("SD800.4 EVO", modulo.Modelo);
         Assert.Equal(new[] { 132m, 23m, 400m, 40m }, new[] { modulo.Dados.PotenciaCanal!.Valor, modulo.Dados.TensaoCeifamentoCanal!.Valor,
             modulo.Dados.PotenciaPonte!.Valor, modulo.Dados.TensaoCeifamentoPonte!.Valor });
         Assert.Equal(OrigemDado.Medido, modulo.Dados.GanhoPonte!.Origem);
-        // Os textos herdados não citam mais a FILME do celular, o Cinema nem o equilíbrio.
-        var textos = ConhecimentoHerdado.Secoes.SelectMany(s => s.Linhas.Prepend(s.Titulo))
-            .Concat(casa.Equipamentos.Select(e => e.Nota ?? "")).Append(casa.Nota ?? "").ToArray();
-        Assert.DoesNotContain(textos, l => l.Contains("Cinema", StringComparison.Ordinal) || l.Contains("quilíbrio", StringComparison.Ordinal));
-        Assert.DoesNotContain(ConhecimentoHerdado.Secoes, s => s.Titulo == "A FILME em três camadas");
-        // A leitura embutida de 18/10 fica, para o simulador e a paridade.
-        Assert.Equal(Catalogo.ConsultasMarco1.Count, ConhecimentoHerdado.LeituraFilme.Count);
+        // A leitura de 18/10 fica na fixture, para o simulador e a paridade.
+        Assert.Equal(Catalogo.ConsultasMarco1.Count, CasaDoDenis.LeituraFilme.Count);
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_sem_nenhum_Setup_muta_os_4_canais_entra_na_duvida_e_bloqueia_a_IA()
+    {
+        using var t = SemArquivos();
+        await t.Conectar();
+
+        Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
+        Assert.True(t._setups.EmEscolha);
+        Assert.Null(t._setups.Referencia);
+        Assert.Empty(t._setups.Diferencas);
+        Assert.True(t.Mutados(true));
+        Assert.True(t._setups.Mutado);
+        Assert.Null(t._setups.Marca!.IdSetup);
+        Assert.Equal(GerenteSetups.MsgDuvida, t._setups.MotivoBloqueioIa);
+        Assert.Null(t._setups.SetupEmUso);
+        Assert.Contains(t._log.Linhas, l => l.Contains("nenhum Setup cadastrado", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_criar_o_Setup_Casa_com_ambiente_Sala_e_a_memoria_SOM_1_desmuta()
+    {
+        using var t = SemArquivos();
+        await t.Conectar();
+        var inicio = t._simulador.Escritas.Count;
+
+        var r = await t.Rodar(t._setups.CriarSetupAsync("Casa", "SOM 1", AmbienteSetup.Sala));
+
+        Assert.True(r.Ok, r.Mensagem);
+        var casa = Assert.Single(t._setups.Setups);
+        Assert.Equal("Casa", casa.Nome);
+        Assert.Equal(AmbienteSetup.Sala, casa.Ambiente);
+        Assert.Empty(casa.Equipamentos);
+        var som = Assert.Single(t._setups.MemoriasDe(casa.Id));
+        Assert.Equal("SOM 1", som.Nome);
+        Assert.Equal(SomEmUso.DoCelular(som.Id), t._setups.EmUso);
+        Assert.Equal(EstadoConferencia.Confere, t._setups.Estado);
+        Assert.Equal(Desmutar, t.AudioDesde(inicio)); // só o desmutar vai ao aparelho
+        Assert.True(t.Mutados(false));
+        Assert.Null(t._setups.MotivoBloqueioIa);
+        Assert.Equal("sala", Ambiente(t._guardadoSetups.Texto!, casa.Id));
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_criar_o_Setup_Casa_2_1_do_zero_o_nome_de_Setup_aceita_o_ponto()
+    {
+        using var t = SemArquivos();
+        await t.Conectar();
+
+        var r = await t.Rodar(t._setups.CriarSetupAsync("Casa 2.1", "SOM 1"));
+
+        Assert.True(r.Ok, r.Mensagem);
+        var casa = Assert.Single(t._setups.Setups);
+        Assert.Equal("Casa 2.1", casa.Nome);
+        Assert.NotEqual(CasaDoDenis.IdSetupCasa, casa.Id); // um Setup novo, sem nada da fixture
+        Assert.Empty(casa.Equipamentos);
+        Assert.Equal("Casa 2.1", GerenteSetups.DeJson(t._guardadoSetups.Texto!)!.Setups.Single().Nome);
+        // A memória e o preset seguem a regra deles: o ponto não vale.
+        Assert.Null(GerenteSetups.NomeValido("SOM 1.0"));
+        Assert.Equal("Casa 2.1", GerenteSetups.NomeSetupValido("  Casa 2.1 "));
+        Assert.Null(GerenteSetups.NomeSetupValido("Casa#2"));
+    }
+
+    [Fact]
+    public async Task Renomear_um_Setup_para_um_nome_com_ponto_vale_e_a_memoria_com_ponto_nao()
+    {
+        await Conectar();
+
+        var r = await _setups.RenomearSetupAsync(Casa, "Sala 2.0");
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal("Sala 2.0", _setups.Setup(Casa)!.Nome);
+        Assert.Equal("Sala 2.0", GerenteSetups.DeJson(_guardadoSetups.Texto!)!.Setups.Single().Nome);
+        Assert.Equal(GerenteSetups.MsgNomeSetupInvalido, (await _setups.RenomearSetupAsync(Casa, "Sala#2")).Motivo);
+        Assert.Equal(GerentePresets.MsgNomeInvalido, (await _setups.RenomearMemoriaAsync(Filme, "FILME 2.0")).Motivo);
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_sem_Setup_com_a_chave_Ajustes_de_audio_desligada_fica_em_duvida_sem_mutar_e_diz_por_que()
+    {
+        using var t = SemArquivos();
+        await t._chaves.Carregada;
+        Assert.True((await t._chaves.DefinirAsync(Chave.AjustesAudio, false, OrigemComando.Tela)).Ok);
+
+        await t.Conectar();
+
+        Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
+        Assert.False(t._setups.Mutado);
+        Assert.Null(t._setups.Marca);
+        Assert.True(t.Mutados(false));
+        Assert.Equal(GerenteSetups.MsgNaoMutou(Sessao.MotivoChaveDesligada), t._setups.MotivoMudo);
+        Assert.Equal(GerenteSetups.MsgDuvida, t._setups.MotivoBloqueioIa);
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_criar_o_Setup_sem_ambiente_cria_com_ambiente_nao_informado()
+    {
+        using var t = SemArquivos();
+        await t.Conectar();
+
+        var r = await t.Rodar(t._setups.CriarSetupAsync("Casa", "SOM 1"));
+
+        Assert.True(r.Ok, r.Mensagem);
+        var casa = Assert.Single(t._setups.Setups);
+        Assert.Null(casa.Ambiente);
+        Assert.Null(Ambiente(t._guardadoSetups.Texto!, casa.Id)); // só é gravado com valor
+    }
+
+    [Fact]
+    public async Task Primeira_conexao_seguir_sem_Setup_desmuta_trava_as_memorias_e_a_proxima_conexao_volta_a_escolha()
+    {
+        using var t = SemArquivos();
+        await t.Conectar();
+
+        var r = await t.Rodar(t._setups.SeguirSemSetupAsync());
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.True(t.Mutados(false));
+        Assert.Equal(EstadoConferencia.Nenhuma, t._setups.Estado);
+        Assert.Null(t._setups.MotivoBloqueioIa);
+        Assert.Equal(GerenteSetups.MsgSemSetup, (await t._setups.CriarMemoriaAsync("X")).Motivo);
+
+        await t.Reconectar();
+
+        Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
+        Assert.True(t.Mutados(true));
+        Assert.Equal(GerenteSetups.MsgDuvida, t._setups.MotivoBloqueioIa);
     }
 
     [Fact]
     public async Task Primeira_conexao_o_Casa_2_1_sem_memoria_muta_e_fica_em_duvida_e_Escolher_desmuta_sem_escrever_nada()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
 
         Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
@@ -284,7 +426,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Escolher_um_Setup_sem_memorias_desmuta_mesmo_com_a_chave_Aplicar_memoria_desligada()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
         Assert.True((await t._chaves.DefinirAsync(Chave.AplicarMemoriaCelular, false, OrigemComando.Tela)).Ok);
 
@@ -297,7 +439,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Conectar_escolher_o_Casa_e_criar_a_FILME_do_som_atual_da_a_memoria_do_cenario_de_teste()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
         Assert.True((await t.Rodar(t._setups.EscolherAsync(Casa))).Ok);
 
@@ -707,7 +849,7 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Theory]
-    [InlineData("casa 2.1", null)] // o ponto não vale (a regra dos presets)
+    [InlineData("casa#2.1", null)]
     [InlineData("", null)]
     [InlineData("nome#ruim", null)]
     [InlineData("vinte e cinco caracteres!", null)]
@@ -722,7 +864,7 @@ public sealed partial class SetupsTestes : IDisposable
 
         Assert.False(r.Ok);
         // História 10c: o nome da memória tem a recusa própria, para a tela pôr o erro embaixo do campo dela.
-        Assert.Equal(memoria is null ? GerentePresets.MsgNomeInvalido : GerenteSetups.MsgNomeMemoria(GerentePresets.MsgNomeInvalido), r.Motivo);
+        Assert.Equal(memoria is null ? GerenteSetups.MsgNomeSetupInvalido : GerenteSetups.MsgNomeMemoria(GerentePresets.MsgNomeInvalido), r.Motivo);
         Assert.Equal(memoria is not null, r.ErroNomeMemoria);
         Assert.Equal(memoria is null, r.ErroNomeSetup);
         Assert.Single(_setups.Setups);
@@ -817,7 +959,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public void O_link_sai_das_ligacoes_CH3_e_CH4_no_bridge_3_4_ligam_o_Link_3_4()
     {
-        var casa = ConhecimentoHerdado.EquipamentosCasa;
+        var casa = CasaDoDenis.EquipamentosCasa;
 
         Assert.Equal((false, true), Ligacoes.Links(casa));
         var saidas = Ligacoes.Saidas(casa);
@@ -856,7 +998,7 @@ public sealed partial class SetupsTestes : IDisposable
         await Conectar();
         Assert.True(_link.Ligado(ParCanais.Saidas34));
         Assert.Equal("Sub", _setups.SaidaDe(3)!.Nome);
-        var modulo = _setups.Equipamento(Casa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = _setups.Equipamento(Casa, CasaDoDenis.IdModuloCasa)!;
         var inicio = _simulador.Escritas.Count;
 
         var r = await _setups.EditarEquipamentoAsync(Casa,
@@ -876,7 +1018,7 @@ public sealed partial class SetupsTestes : IDisposable
     public async Task Religar_o_bridge_com_o_CH3_diferente_do_CH4_avisa_na_hora_que_as_saidas_estao_diferentes()
     {
         await Conectar();
-        var modulo = _setups.Equipamento(Casa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = _setups.Equipamento(Casa, CasaDoDenis.IdModuloCasa)!;
         Assert.True((await _setups.EditarEquipamentoAsync(Casa,
             modulo with { Entradas = modulo.Entradas.Select(x => x.Numero == 4 ? x with { Fonte = null } : x).ToArray() })).Ok);
         Assert.True((await Rodar(_escritor.EscreverAsync(Ganho, 3, -2.0m))).Ok); // sem link: só o CH4
@@ -894,7 +1036,7 @@ public sealed partial class SetupsTestes : IDisposable
     {
         await EntrarNaDuvida();
         Assert.False(_link.Ligado(ParCanais.Saidas34));
-        var modulo = _setups.Equipamento(Casa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = _setups.Equipamento(Casa, CasaDoDenis.IdModuloCasa)!;
 
         Assert.True((await _setups.EditarEquipamentoAsync(Casa, modulo with { Nome = "Módulo" })).Ok);
 
@@ -1012,7 +1154,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Aplicar_uma_memoria_sem_preset_lembrado_nao_mexe_nas_bandas()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
         Assert.True((await t.Rodar(t._setups.EscolherAsync(Casa))).Ok);
         Assert.True((await t.Rodar(t._escritor.EscreverAsync(Ganho, 0, 2.0m))).Ok);
@@ -1082,12 +1224,12 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Apagar_a_memoria_em_uso_o_Setup_em_uso_e_o_Casa_herdado_e_recusado()
+    public async Task Apagar_a_memoria_em_uso_e_o_Setup_em_uso_e_recusado()
     {
         await Conectar();
 
         Assert.Equal(GerenteSetups.MsgMemoriaEmUso, (await _setups.ApagarMemoriaAsync(Filme)).Motivo);
-        Assert.Equal(GerenteSetups.MsgSetupHerdado, (await _setups.ApagarSetupAsync(Casa)).Motivo);
+        Assert.Equal(GerenteSetups.MsgSetupEmUso, (await _setups.ApagarSetupAsync(Casa)).Motivo);
         Assert.Single(_setups.MemoriasDe(Casa));
         Assert.Single(_setups.Setups);
     }
@@ -1229,7 +1371,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Salvar_num_Setup_sem_memorias_cria_a_memoria_com_a_regulagem()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
         Assert.True((await t.Rodar(t._setups.EscolherAsync(Casa))).Ok);
         Assert.True((await t.Rodar(t._escritor.EscreverAsync(Atraso, 2, 30.0m))).Ok);
@@ -1270,7 +1412,7 @@ public sealed partial class SetupsTestes : IDisposable
 
         var outro = reaberto._setups.Dados;
         Assert.Equal(dados.UltimoSetup, outro.UltimoSetup);
-        Assert.Equal(dados.Setups.Select(s => (s.Id, s.Nome, s.Herdado)), outro.Setups.Select(s => (s.Id, s.Nome, s.Herdado)));
+        Assert.Equal(dados.Setups.Select(s => (s.Id, s.Nome, s.Ambiente)), outro.Setups.Select(s => (s.Id, s.Nome, s.Ambiente)));
         Assert.Equal(dados.Setups.SelectMany(s => s.Equipamentos), outro.Setups.SelectMany(s => s.Equipamentos), new EquipamentoIgual());
         Assert.Equal(dados.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.IdPreset)), outro.Memorias.Select(m => (m.Id, m.IdSetup, m.Nome, m.IdPreset)));
         Assert.Equal(dados.Memorias.SelectMany(m => m.Regulagem), outro.Memorias.SelectMany(m => m.Regulagem));
@@ -1281,37 +1423,169 @@ public sealed partial class SetupsTestes : IDisposable
         }
         Assert.Equal(marca!.IdSetup, reaberto._setups.Marca!.IdSetup);
         Assert.Equal(marca.MuteAnterior, reaberto._setups.Marca.MuteAnterior);
-        Assert.Equal(ConhecimentoHerdado.NotaSetupCasa, outro.Setups.Single(s => s.Id == Casa).Nota);
     }
 
     [Fact]
     public void As_fichas_com_origem_e_fonte_sobrevivem_ao_JSON()
     {
-        var dados = GerenteSetups.Herdados();
+        var dados = CasaDoDenis.Dados;
 
         var relido = GerenteSetups.DeJson(GerenteSetups.ParaJson(dados))!;
 
         Assert.Equal(dados.Setups[0].Equipamentos, relido.Setups[0].Equipamentos, new EquipamentoIgual());
-        Assert.Equal(ConhecimentoHerdado.EquipamentosCasa, relido.Setups[0].Equipamentos, new EquipamentoIgual());
+        Assert.Equal(CasaDoDenis.EquipamentosCasa, relido.Setups[0].Equipamentos, new EquipamentoIgual());
     }
 
     [Theory]
     [InlineData("{ isto não é json")]
-    [InlineData("{\"formato\": 3, \"setups\": []}")]
-    [InlineData("{\"formato\": 2, \"setups\": []}")]
     [InlineData("{\"formato\": 4, \"setups\": [{\"id\":\"x\",\"nome\":\"X\"}]}")]
+    [InlineData("{\"formato\": 3, \"setups\": [{\"id\":\"\",\"nome\":\"X\"}]}")]
     [InlineData("{\"formato\": \"um\"}")]
     [InlineData("[]")]
-    public async Task Um_setups_json_estragado_volta_ao_herdado_sem_erro(string json)
+    public async Task Um_setups_json_estragado_volta_ao_vazio_sem_erro_e_registra_no_log(string json)
     {
         using var reaberto = new SetupsTestes(json, "lixo");
         await reaberto._setups.Carregada;
 
         var dados = reaberto._setups.Dados;
-        Assert.Equal([Casa], dados.Setups.Select(s => s.Id));
+        Assert.Empty(dados.Setups);
         Assert.Empty(dados.Memorias);
-        Assert.Equal(Casa, dados.UltimoSetup);
+        Assert.Null(dados.UltimoSetup);
         Assert.Null(reaberto._setups.Marca);
+        Assert.Contains(reaberto._log.Linhas, l => l.Contains("setups.json ilegível: voltei ao vazio", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("{\"formato\": 3, \"setups\": []}")]
+    [InlineData("{\"formato\": 3, \"ultimoSetup\": null, \"setups\": [], \"memorias\": []}")]
+    public async Task Um_setups_json_com_zero_Setups_vale_e_o_app_fica_vazio_sem_log_de_erro(string json)
+    {
+        using var reaberto = new SetupsTestes(json, null);
+        await reaberto._setups.Carregada;
+
+        Assert.Empty(reaberto._setups.Setups);
+        Assert.Null(reaberto._setups.UltimoSetup);
+        Assert.DoesNotContain(reaberto._log.Linhas, l => l.Contains("ilegível", StringComparison.Ordinal));
+        Assert.NotNull(GerenteSetups.DeJson(json));
+    }
+
+    [Fact]
+    public async Task Um_setups_json_com_o_Casa_2_1_carrega_como_Setup_comum_e_pode_ser_renomeado_e_apagado()
+    {
+        var comCarro = CasaDoDenis.Dados with
+        {
+            Setups = [.. CasaDoDenis.Dados.Setups, new Setup("carro", "Carro", DateTimeOffset.UnixEpoch)],
+            UltimoSetup = "carro",
+        };
+        using var t = new SetupsTestes(GerenteSetups.ParaJson(comCarro), null);
+        await t._setups.Carregada;
+
+        var casa = t._setups.Setup(Casa)!;
+        Assert.Equal("Casa 2.1", casa.Nome);
+        Assert.Equal(4, casa.Equipamentos.Count);
+        Assert.Equal(0, t._guardadoSetups.Gravacoes); // nada regravado só por ter o Casa
+
+        Assert.True((await t._setups.RenomearSetupAsync(Casa, "Sala de casa")).Ok);
+        Assert.Equal("Sala de casa", t._setups.Setup(Casa)!.Nome);
+        var r = await t._setups.ApagarSetupAsync(Casa);
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal(["carro"], t._setups.Setups.Select(s => s.Id));
+    }
+
+    [Theory]
+    [InlineData("carro", AmbienteSetup.Carro)]
+    [InlineData("sala", AmbienteSetup.Sala)]
+    [InlineData("ar-livre", AmbienteSetup.ArLivre)]
+    [InlineData("outro", AmbienteSetup.Outro)]
+    [InlineData("lua", null)]
+    [InlineData("Carro", null)]
+    [InlineData(null, null)]
+    public void O_ambiente_no_JSON_le_o_nome_e_um_texto_que_nao_vale_fica_null(string? nome, AmbienteSetup? esperado)
+    {
+        var ambiente = nome is null ? "" : $"\"ambiente\": \"{nome}\", ";
+        var json = $$"""{"formato": 3, "ultimoSetup": "s", "setups": [{"id": "s", "nome": "Casa", {{ambiente}}"quando": "2026-10-31T00:00:00-03:00"}]}""";
+
+        var dados = GerenteSetups.DeJson(json)!;
+
+        Assert.Equal(esperado, dados.Setups.Single().Ambiente);
+    }
+
+    [Fact]
+    public void O_ambiente_so_e_gravado_com_valor_e_sobrevive_ao_JSON_sem_subir_o_formato()
+    {
+        var dados = new DadosSetups(
+            [new Setup("a", "Carro", DateTimeOffset.UnixEpoch, AmbienteSetup.ArLivre), new Setup("b", "Casa", DateTimeOffset.UnixEpoch)],
+            [], null, new Dictionary<string, UsoDoSetup>());
+
+        var json = GerenteSetups.ParaJson(dados);
+
+        Assert.Equal(3, GerenteSetups.FormatoDe(json));
+        Assert.Equal(3, GerenteSetups.Formato);
+        Assert.Equal("ar-livre", Ambiente(json, "a"));
+        Assert.Null(Ambiente(json, "b"));
+        Assert.Equal([AmbienteSetup.ArLivre, (AmbienteSetup?)null], GerenteSetups.DeJson(json)!.Setups.Select(s => s.Ambiente));
+    }
+
+    [Fact]
+    public async Task Definir_o_ambiente_grava_e_rele_e_nao_manda_nada_ao_aparelho()
+    {
+        await Conectar();
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await _setups.DefinirAmbienteAsync(Casa, AmbienteSetup.ArLivre);
+
+        Assert.True(r.Ok, r.Mensagem);
+        Assert.Equal(AmbienteSetup.ArLivre, _setups.Setup(Casa)!.Ambiente);
+        Assert.Equal(inicio, _simulador.Escritas.Count);
+        Assert.Equal("ar-livre", Ambiente(_guardadoSetups.Texto!, Casa));
+        using var reaberto = new SetupsTestes(_guardadoSetups.Texto, null);
+        await reaberto._setups.Carregada;
+        Assert.Equal(AmbienteSetup.ArLivre, reaberto._setups.Setup(Casa)!.Ambiente);
+
+        Assert.True((await _setups.DefinirAmbienteAsync(Casa, null)).Ok);
+        Assert.Null(_setups.Setup(Casa)!.Ambiente);
+        Assert.Null(Ambiente(_guardadoSetups.Texto!, Casa));
+    }
+
+    [Fact]
+    public async Task Um_ambiente_fora_do_enum_e_recusado_ao_criar_e_ao_definir_e_os_rotulos_nao_o_tratam_como_Outro()
+    {
+        var invalido = (AmbienteSetup)99;
+        await EntrarNaDuvida();
+        var gravacoes = _guardadoSetups.Gravacoes;
+
+        Assert.Equal(GerenteSetups.MsgAmbienteInvalido, (await _setups.CriarSetupAsync("Carro", null, invalido)).Motivo);
+        Assert.Equal(GerenteSetups.MsgAmbienteInvalido, (await _setups.DefinirAmbienteAsync(Casa, invalido)).Motivo);
+
+        Assert.Equal(gravacoes, _guardadoSetups.Gravacoes);
+        Assert.Single(_setups.Setups);
+        Assert.Null(_setups.Setup(Casa)!.Ambiente);
+        Assert.Throws<ArgumentOutOfRangeException>(() => Ambientes.Rotulo(invalido));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Ambientes.Nome(invalido));
+        Assert.Equal("Outro", Ambientes.Rotulo(AmbienteSetup.Outro));
+        Assert.Equal("outro", Ambientes.Nome(AmbienteSetup.Outro));
+    }
+
+    [Fact]
+    public async Task Definir_o_ambiente_que_nao_grava_avisa_e_o_valor_nao_muda()
+    {
+        await Conectar();
+        _guardadoSetups.FalharAoGravar = true;
+
+        var r = await _setups.DefinirAmbienteAsync(Casa, AmbienteSetup.Carro);
+
+        Assert.False(r.Ok);
+        Assert.Equal(GerenteSetups.MsgNaoGuardou, r.Motivo);
+        Assert.Null(_setups.Setup(Casa)!.Ambiente);
+    }
+
+    /// <summary>O <c>ambiente</c> do Setup no <c>setups.json</c>, ou null se não foi gravado.</summary>
+    private static string? Ambiente(string json, string idSetup)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var setup = doc.RootElement.GetProperty("setups").EnumerateArray().Single(s => s.GetProperty("id").GetString() == idSetup);
+        return setup.TryGetProperty("ambiente", out var a) ? a.GetString() : null;
     }
 
     // ----------------------------------------------------------------- migração dos formatos 1 e 2
@@ -1392,18 +1666,22 @@ public sealed partial class SetupsTestes : IDisposable
         var caixa = Assert.Single(dados.Setups[1].Equipamentos);
         Assert.Equal(new DadoTecnico(8m, OrigemDado.Digitado), caixa.Dados.Impedancia);
         Assert.Equal(new DadoTecnico(100m, OrigemDado.Digitado), caixa.Dados.PotenciaRms);
-        // O Casa 2.1 herdado: as fichas vêm do herdado; o módulo ganha o nome novo; as ligações ficam.
+        // O Casa 2.1 é um Setup comum: os equipamentos dele ficam como estavam, com os dados digitados;
+        // nada vem de ficha herdada (o app nasce zerado, 8g). As ligações ficam.
         var casa = dados.Setups[0];
-        var modulo = casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdModuloCasa);
-        Assert.Equal(ConhecimentoHerdado.NomeModuloCasa, modulo.Nome);
-        Assert.Equal("SD800.4 EVO", modulo.Modelo);
-        Assert.Equal(OrigemDado.Medido, modulo.Dados.Ganho!.Origem);
+        Assert.Equal("Casa 2.1", casa.Nome);
+        var modulo = casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdModuloCasa);
+        Assert.Equal("Módulo genérico", modulo.Nome);
+        Assert.Null(modulo.Modelo);
+        Assert.Equal(new DadoTecnico(19.6m, OrigemDado.Digitado), modulo.Dados.Ganho);
         Assert.Equal([new Bridge(3, 4)], modulo.Bridges);
-        var jbl = casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblL);
-        Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Medido, "Medido em 18/10/2026"), jbl.Dados.Re);
-        Assert.Equal(LigacaoAltoFalante.NoCanal(ConhecimentoHerdado.IdModuloCasa, 1), jbl.Ligado);
+        var jbl = casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblL);
+        Assert.Null(jbl.Dados.Re);
+        Assert.Equal(new DadoTecnico(3.6m, OrigemDado.Digitado), jbl.Dados.Impedancia);
+        Assert.Equal(LigacaoAltoFalante.NoCanal(CasaDoDenis.IdModuloCasa, 1), jbl.Ligado);
         Assert.Equal("Trocada em 2025.", jbl.Nota); // a nota do usuário fica
-        Assert.Equal(ConhecimentoHerdado.NotaJbl, casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblR).Nota); // a herdada de antes vira a nova
+        Assert.Equal("JBL 4TRMS80, 3,6 Ω, com passa-alta mínimo de 100 Hz a 24 dB/oit (ficha do fabricante).",
+            casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblR).Nota); // a nota guardada fica como estava
         // Os arquivos já saem no formato 3; os presets e as playlists das memórias que sumiram, também.
         Assert.Equal(GerenteSetups.Formato, GerenteSetups.FormatoDe(t._guardadoSetups.Texto!));
         Assert.Equal(GerenteSetups.Formato, GerenteSetups.FormatoDe(GerenteSetups.ParaJson(dados)));
@@ -1445,7 +1723,7 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Migracao_do_formato_1_o_Casa_2_1_ganha_os_equipamentos_do_herdado_e_as_memorias_somem()
+    public async Task Migracao_do_formato_1_o_Casa_2_1_fica_sem_equipamentos_e_as_memorias_somem()
     {
         const string formato1 = """
             {"formato":1,"ultimoSetup":"herdado-setup-casa-2-1","setups":[
@@ -1457,7 +1735,8 @@ public sealed partial class SetupsTestes : IDisposable
         await t._setups.Carregada;
 
         var casa = Assert.Single(t._setups.Setups);
-        Assert.Equal(ConhecimentoHerdado.EquipamentosCasa, casa.Equipamentos, new EquipamentoIgual());
+        Assert.Equal("Casa 2.1", casa.Nome);
+        Assert.Empty(casa.Equipamentos); // nada de equipamentos herdados
         Assert.Empty(t._setups.Dados.Memorias);
         Assert.Equal(GerenteSetups.Formato, GerenteSetups.FormatoDe(t._guardadoSetups.Texto!));
     }
@@ -1527,13 +1806,27 @@ public sealed partial class SetupsTestes : IDisposable
     }
 
     [Fact]
-    public async Task Base_de_modelos_com_o_modelos_json_estragado_fica_com_os_3_herdados()
+    public async Task Base_de_modelos_com_o_modelos_json_estragado_fica_vazia_sem_erro_e_registra_no_log()
     {
-        var estragada = new BaseModelos(new TextoMemoria("{ lixo"), _log, _relogio);
+        var log = new LogBle();
+        var estragada = new BaseModelos(new TextoMemoria("{ lixo"), log, _relogio);
 
         await estragada.Carregada;
 
-        Assert.Equal(["JBL 4TRMS80", "Protech Light 8\"", "SD800.4 EVO"], estragada.Modelos.Select(m => m.Modelo));
+        Assert.Empty(estragada.Modelos);
+        Assert.Contains(log.Linhas, l => l.Contains("modelos.json ilegível", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Base_de_modelos_sem_arquivo_nasce_vazia()
+    {
+        var vazia = new BaseModelos(new TextoMemoria(), _log, _relogio);
+
+        await vazia.Carregada;
+
+        Assert.Empty(vazia.Modelos);
+        Assert.Empty(vazia.Sugerir("JBL"));
+        Assert.Null(vazia.Ficha("JBL 4TRMS80"));
     }
 
     [Fact]
@@ -1541,7 +1834,7 @@ public sealed partial class SetupsTestes : IDisposable
     {
         await _setups.Carregada;
         await _modelos.Carregada;
-        var modulo = _setups.Equipamento(Casa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = _setups.Equipamento(Casa, CasaDoDenis.IdModuloCasa)!;
         Assert.Equal(OrigemDado.Oficial, modulo.Dados.CorrenteAlimentacao!.Origem); // a BOB da casa
 
         Assert.True((await _setups.EditarEquipamentoAsync(Casa, modulo with { Nome = "Módulo" })).Ok);
@@ -1651,8 +1944,8 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public void A_funcao_sugerida_usa_o_corte_da_memoria_ativa_e_sem_memoria_so_a_categoria()
     {
-        var casa = ConhecimentoHerdado.SetupCasa;
-        var caixa = new Equipamento("cx", GrupoEquipamento.AltoFalante, "caixa", "Caixa") { Ligado = LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4)) };
+        var casa = CasaDoDenis.SetupCasa;
+        var caixa = new Equipamento("cx", GrupoEquipamento.AltoFalante, "caixa", "Caixa") { Ligado = LigacaoAltoFalante.NoBridge(CasaDoDenis.IdModuloCasa, new Bridge(3, 4)) };
 
         Assert.Equal(FuncaoAcustica.Sub, GerenteSetups.FuncaoSugerida(casa, CenarioFilme.Memoria, caixa)); // passa-baixa 150 Hz no CH3
         Assert.Equal(FuncaoAcustica.FullRange, GerenteSetups.FuncaoSugerida(casa, null, caixa));
@@ -1735,7 +2028,7 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Contains("*081*0*10.0*", audio);
         Assert.Equal(6, audio.Count(EhBanda));
         var espelho = _estado.Copiar();
-        foreach (var v in ConhecimentoHerdado.LeituraFilme.Where(v => Camadas.De(v.Codigo) != Camada.Fora && v.Codigo != "220"))
+        foreach (var v in CasaDoDenis.LeituraFilme.Where(v => Camadas.De(v.Codigo) != Camada.Fora && v.Codigo != "220"))
             Assert.True(Camadas.Iguais(v, espelho), $"{v.Codigo} {v.Indice}");
         Assert.Equal(Cinema, _setups.IdPresetEmUso);
         Assert.Null(_copia.PelaMetade);
@@ -1869,7 +2162,7 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task O_preset_em_uso_e_o_ultimo_aplicado_sem_memoria_do_celular_e_nenhum_depois_de_cair()
     {
-        using var t = SemArquivos();
+        using var t = SoCasa();
         await t.Conectar();
         Assert.True((await t.Rodar(t._setups.EscolherAsync(Casa))).Ok);
         var rock = await t.CriarRock();
@@ -1925,19 +2218,19 @@ public sealed partial class SetupsTestes : IDisposable
     private static SetupsTestes ComFilme(string? playlists) => new(CenarioFilme.SetupsJson, null, playlists, CenarioFilme.PresetsJson);
 
     [Fact]
-    public async Task O_playlists_json_antigo_a_FILME_adota_as_3_faixas_e_a_MUSICA_ORIG_fica_pendente()
+    public async Task O_playlists_json_antigo_vira_as_pendentes_Memoria_2_e_Memoria_3_e_a_FILME_nao_adota_nada()
     {
         using var t = ComFilme(PlaylistsAntigas);
 
         await t._setups.Carregada;
-        await t.AndarAte(() => t._playlists.Playlist(Filme).Count == 3);
+        await t._playlists.Carregada;
 
-        Assert.Equal(["content://f1", "content://f2", "content://f3"], t._playlists.Playlist(Filme).Select(f => f.Uri));
-        Assert.Equal("MUSICA ORIG", Assert.Single(t._playlists.Pendentes).Nome);
+        Assert.Empty(t._playlists.Playlist(Filme)); // nenhuma nota herdada liga a posição 3 à FILME
+        Assert.Equal(["Memória 2", "Memória 3"], t._playlists.Pendentes.Select(p => p.Nome));
     }
 
     [Fact]
-    public async Task Sem_setups_json_as_playlists_antigas_esperam_e_criar_o_Setup_com_a_memoria_MUSICA_ORIG_adota()
+    public async Task Sem_setups_json_as_playlists_antigas_esperam_e_criar_o_Setup_com_a_memoria_Memoria_2_adota()
     {
         // Sem setups.json não há migração: as pendentes do playlists.json antigo esperam a dona.
         using var t = SemArquivos(PlaylistsAntigas);
@@ -1948,24 +2241,24 @@ public sealed partial class SetupsTestes : IDisposable
         await t.Conectar();
         Assert.Equal(EstadoConferencia.Duvida, t._setups.Estado);
 
-        Assert.True((await t.Rodar(t._setups.CriarSetupAsync("Carro", "MUSICA ORIG"))).Ok);
+        Assert.True((await t.Rodar(t._setups.CriarSetupAsync("Carro", "Memória 2"))).Ok);
 
         var nova = Assert.Single(t._setups.MemoriasDe(t._setups.SetupEmUso!.Id));
         Assert.Equal(["content://o1", "content://o2"], t._playlists.Playlist(nova.Id).Select(f => f.Uri));
-        Assert.Equal("FILME", Assert.Single(t._playlists.Pendentes).Nome);
+        Assert.Equal("Memória 3", Assert.Single(t._playlists.Pendentes).Nome);
     }
 
     [Fact]
-    public async Task Adocao_tardia_criar_a_memoria_MUSICA_ORIG_traz_as_2_faixas_e_a_pendente_sai()
+    public async Task Adocao_tardia_criar_a_memoria_Memoria_2_traz_as_2_faixas_e_a_pendente_sai()
     {
         using var t = ComFilme(PlaylistsAntigas);
         await t.Conectar();
 
-        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("MUSICA ORIG"))).Ok);
+        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("Memória 2"))).Ok);
 
-        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
+        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "Memória 2");
         Assert.Equal(["content://o1", "content://o2"], t._playlists.Playlist(nova.Id).Select(f => f.Uri));
-        Assert.Empty(t._playlists.Pendentes);
+        Assert.Equal("Memória 3", Assert.Single(t._playlists.Pendentes).Nome);
     }
 
     [Fact]
@@ -1977,34 +2270,34 @@ public sealed partial class SetupsTestes : IDisposable
         var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "NOVA");
         Assert.Empty(t._playlists.Playlist(nova.Id));
 
-        Assert.True((await t._setups.RenomearMemoriaAsync(nova.Id, "musica orig")).Ok);
+        Assert.True((await t._setups.RenomearMemoriaAsync(nova.Id, "memória 2")).Ok);
 
         Assert.Equal(2, t._playlists.Playlist(nova.Id).Count);
-        Assert.Empty(t._playlists.Pendentes);
+        Assert.Equal("Memória 3", Assert.Single(t._playlists.Pendentes).Nome);
     }
 
     [Fact]
-    public async Task Adocao_pelo_Salvar_a_memoria_nova_MUSICA_ORIG_recebe_as_2_faixas_e_a_pendente_sai()
+    public async Task Adocao_pelo_Salvar_a_memoria_nova_Memoria_2_recebe_as_2_faixas_e_a_pendente_sai()
     {
         using var t = ComFilme(PlaylistsAntigas);
         t._simulador.Definir("081", 0, "+4.0"); // só o ganho difere da FILME: o som do aparelho vai para uma memória nova
         await t.ConectarSemReaplicar();
         Assert.Equal(SomEmUso.SomDoAparelho, t._setups.EmUso);
 
-        var r = await t._setups.SalvarAsync("MUSICA ORIG");
+        var r = await t._setups.SalvarAsync("Memória 2");
 
         Assert.True(r.Ok, r.Mensagem);
-        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "MUSICA ORIG");
+        var nova = t._setups.MemoriasDe(Casa).Single(m => m.Nome == "Memória 2");
         Assert.Equal(["content://o1", "content://o2"], t._playlists.Playlist(nova.Id).Select(f => f.Uri));
-        Assert.Empty(t._playlists.Pendentes);
+        Assert.Equal("Memória 3", Assert.Single(t._playlists.Pendentes).Nome);
     }
 
     [Fact]
-    public void A_ordem_de_adocao_e_o_Casa_2_1_primeiro_e_depois_os_outros_Setups_e_as_memorias_na_ordem_de_criacao()
+    public void A_ordem_de_adocao_e_a_dos_Setups_e_dentro_de_cada_um_a_das_memorias_sem_privilegio_para_o_Casa_2_1()
     {
-        var casa = ConhecimentoHerdado.SetupCasa;
-        var carro = casa with { Id = "carro", Nome = "Carro", Herdado = false };
-        var sitio = casa with { Id = "sitio", Nome = "Sitio", Herdado = false };
+        var casa = CasaDoDenis.SetupCasa;
+        var carro = casa with { Id = "carro", Nome = "Carro" };
+        var sitio = casa with { Id = "sitio", Nome = "Sitio" };
         MemoriaCelular M(string id, string setup) => new(id, setup, id, DateTimeOffset.UnixEpoch, []);
         var dados = new DadosSetups([carro, casa, sitio],
             [M("carro-1", "carro"), M("casa-1", casa.Id), M("sitio-1", "sitio"), M("casa-2", casa.Id), M("carro-2", "carro")],
@@ -2012,7 +2305,7 @@ public sealed partial class SetupsTestes : IDisposable
 
         var ordem = GerenteSetups.OrdemDeAdocao(dados);
 
-        Assert.Equal(["casa-1", "casa-2", "carro-1", "carro-2", "sitio-1"], ordem.Select(m => m.Id));
+        Assert.Equal(["carro-1", "carro-2", "casa-1", "casa-2", "sitio-1"], ordem.Select(m => m.Id));
     }
 
     [Fact]
@@ -2060,7 +2353,7 @@ public sealed partial class SetupsTestes : IDisposable
 
         await t._setups.Carregada;
 
-        Assert.Empty(t._setups.Dados.Memorias); // voltou ao herdado
+        Assert.Empty(t._setups.Dados.Memorias); // voltou ao vazio
         Assert.Single(t._playlists.Playlist("memoria-de-antes"));
         Assert.Equal(0, t._guardadoPlaylists.Gravacoes);
     }

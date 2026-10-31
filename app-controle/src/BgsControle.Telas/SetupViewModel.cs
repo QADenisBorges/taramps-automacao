@@ -10,15 +10,13 @@ public sealed record LinhaDiferencaViewModel(string Rotulo, string NaMemoria, st
     public string Detalhe => $"{NaMemoria} na {NomeMemoria}, {NoAparelho} no aparelho";
 }
 
-/// <summary>Uma linha da lista de Setups: nome, selo HERDADO, em uso, e o toque que escolhe.</summary>
+/// <summary>Uma linha da lista de Setups: nome, em uso, e o toque que escolhe.</summary>
 public sealed class ItemSetupViewModel
 {
     internal ItemSetupViewModel(Setup setup, bool emUso, SetupViewModel tela)
     {
         Id = setup.Id;
         Nome = setup.Nome;
-        Herdado = setup.Herdado;
-        Nota = setup.Nota;
         EmUso = emUso;
         Escolher = new Comando(() => tela.EscolherAsync(Id));
     }
@@ -26,14 +24,6 @@ public sealed class ItemSetupViewModel
     public string Id { get; }
 
     public string Nome { get; }
-
-    public bool Herdado { get; }
-
-    /// <summary>O selo HERDADO, ou null.</summary>
-    public string? Selo => Herdado ? HerdadoViewModel.TextoSelo : null;
-
-    /// <summary>A nota herdada, ou null.</summary>
-    public string? Nota { get; }
 
     /// <summary>É o último Setup usado (fica em branco na lista).</summary>
     public bool EmUso { get; }
@@ -44,8 +34,8 @@ public sealed class ItemSetupViewModel
 
 /// <summary>
 /// A tela Setup em dúvida e Trocar de Setup (CAP-16, EXPERIENCE "Conectar e Setup"), e o seletor do
-/// cabeçalho ("Setup Casa 2.1 ›"). Na dúvida não há ‹: só se sai por Escolher o Setup, Criar Setup
-/// novo ou Seguir sem Setup. Na troca, ‹ (ou Voltar) desiste: desmuta e não aplica nada. O som fica
+/// cabeçalho ("Setup Casa ›"). Na dúvida não há ‹: só se sai por Escolher o Setup, Criar Setup
+/// novo ou Seguir sem Setup. Sem nenhum Setup (o app nasce zerado), "Escolher o Setup" some. Na troca, ‹ (ou Voltar) desiste: desmuta e não aplica nada. O som fica
 /// mutado no aparelho até a escolha; a lista do que não bate é só leitura.
 /// </summary>
 public sealed class SetupViewModel : TelaBase, IDisposable
@@ -70,13 +60,30 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     public const string TextoCancelar = "Cancelar";
     public const string FraseSemReferencia = "O app não sabe em que Setup o aparelho está.";
 
-    /// <summary>"O Casa 2.1 ainda não tem memória." (sem memória para comparar, a lista some).</summary>
+    /// <summary>A frase da dúvida sem nenhum Setup cadastrado (a primeira conexão).</summary>
+    public const string FraseNenhumSetup = "Nenhum Setup cadastrado. Crie um Setup do aparelho ou siga sem Setup.";
+
+    /// <summary>O rótulo das pílulas do ambiente, na folha do Criar Setup novo e na tela Setup.</summary>
+    public const string RotuloAmbiente = "AMBIENTE";
+
+    /// <summary>A linha embaixo das pílulas do ambiente: é opcional.</summary>
+    public const string LinhaAmbiente = "Opcional. Toque de novo para deixar sem informar.";
+
+    /// <summary>
+    /// O que o leitor de tela diz de uma pílula do ambiente: "Ambiente Sala, escolhido. Toque de novo
+    /// para deixar sem informar." ou "Ambiente Sala, não escolhido.".
+    /// </summary>
+    public static string DescricaoAmbiente(AmbienteSetup ambiente, bool escolhido) => escolhido
+        ? $"Ambiente {Ambientes.Rotulo(ambiente)}, escolhido. Toque de novo para deixar sem informar."
+        : $"Ambiente {Ambientes.Rotulo(ambiente)}, não escolhido.";
+
+    /// <summary>"O Casa ainda não tem memória." (sem memória para comparar, a lista some).</summary>
     public static string FraseSemMemoria(string setup) => $"O {setup} ainda não tem memória.";
 
-    /// <summary>"O aparelho não está como o Casa 2.1 deixou da última vez." (com diferenças).</summary>
+    /// <summary>"O aparelho não está como o Casa deixou da última vez." (com diferenças).</summary>
     public static string FraseComDiferencas(string setup) => $"O aparelho não está como o {setup} deixou da última vez.";
 
-    /// <summary>"O aparelho está no Casa 2.1." (com memória e sem diferença, na troca).</summary>
+    /// <summary>"O aparelho está no Casa." (com memória e sem diferença, na troca).</summary>
     public static string FraseNoSetup(string setup) => $"O aparelho está no {setup}.";
     public const string TextoSeguir = "Seguir sem Setup";
     public const string FraseSeguir = "Desmuta sem aplicar nada. As memórias do celular ficam travadas.";
@@ -93,6 +100,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     private string? _erroNome;
     private string _nomeMemoriaNova = "";
     private string? _erroNomeMemoria;
+    private AmbienteSetup? _ambienteNovo;
     private bool _agindo;
 
     public SetupViewModel(GerenteSetups setups, Sessao sessao, IDespachante despachante, TimeProvider relogio)
@@ -116,6 +124,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
             _criarAberto = true;
             NomeNovo = "";
             NomeMemoriaNova = "";
+            AmbienteNovo = null;
             ErroNome = null;
             ErroNomeMemoria = null;
             Mensagem = null;
@@ -134,7 +143,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
 
     // ------------------------------------------------------------------ seletor do cabeçalho
 
-    /// <summary>"Setup Casa 2.1 ›" ou "Sem Setup ›".</summary>
+    /// <summary>"Setup Casa ›" ou "Sem Setup ›".</summary>
     public string Seletor => _setups.SetupEmUso is { } s ? $"Setup {s.Nome} ›" : $"{SemSetup} ›";
 
     /// <summary>Tocar no seletor com o app conectado: muta e abre "Trocar de Setup".</summary>
@@ -157,9 +166,9 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     };
 
     /// <summary>
-    /// "O Casa 2.1 ainda não tem memória." (o Setup sem memória para comparar), "O aparelho não está como
-    /// o Casa 2.1 deixou da última vez." (com diferenças), ou "O aparelho está no Casa 2.1." (com memória
-    /// e sem diferença).
+    /// "Nenhum Setup cadastrado. …" (nenhum Setup), "O Casa ainda não tem memória." (o Setup sem memória
+    /// para comparar), "O aparelho não está como o Casa deixou da última vez." (com diferenças), ou "O
+    /// aparelho está no Casa." (com memória e sem diferença).
     /// </summary>
     public string? Frase
     {
@@ -168,6 +177,8 @@ public sealed class SetupViewModel : TelaBase, IDisposable
             if (!Aberta)
                 return null;
             var nome = _setups.Referencia?.Nome;
+            if (nome is null && _setups.Setups.Count == 0)
+                return FraseNenhumSetup;
             if (nome is null)
                 return _setups.Estado == EstadoConferencia.Duvida ? FraseSemReferencia : null;
             if (_setups.MemoriaDaReferencia is null)
@@ -218,8 +229,11 @@ public sealed class SetupViewModel : TelaBase, IDisposable
     /// <summary>Há diferenças para listar (senão a lista e o rótulo somem).</summary>
     public bool TemDiferencas => Aberta && _setups.Diferencas.Count > 0;
 
-    /// <summary>Os Setups para escolher, o herdado primeiro.</summary>
+    /// <summary>Os Setups para escolher, na ordem em que foram criados.</summary>
     public IReadOnlyList<ItemSetupViewModel> Setups => _itens;
+
+    /// <summary>"Escolher o Setup" aparece: há algum Setup para escolher.</summary>
+    public bool PodeEscolher => _itens.Count > 0;
 
     public ItemSetupViewModel? Item(string nome) =>
         _itens.FirstOrDefault(i => string.Equals(i.Nome, nome, StringComparison.OrdinalIgnoreCase));
@@ -241,7 +255,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
 
     public Comando FecharLista { get; }
 
-    /// <summary>A última frase ("Setup Casa 2.1 em uso.", "Chave desligada").</summary>
+    /// <summary>A última frase ("Setup Casa em uso.", "Chave desligada").</summary>
     public string? Mensagem
     {
         get => _mensagem;
@@ -330,6 +344,28 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         }
     }
 
+    /// <summary>O ambiente do Setup novo; null = não informado (não há padrão).</summary>
+    public AmbienteSetup? AmbienteNovo
+    {
+        get => _ambienteNovo;
+        set
+        {
+            if (_ambienteNovo == value)
+                return;
+            _ambienteNovo = value;
+            Avisar();
+            Avisar(nameof(AmbientesTela));
+        }
+    }
+
+    /// <summary>
+    /// O ambiente em pílulas (Sala, Carro, Ao ar livre, Outro), o escolhido em branco; tocar no
+    /// escolhido deixa sem informar.
+    /// </summary>
+    public IReadOnlyList<EscolhaViewModel> AmbientesTela =>
+        Ambientes.Todos.Select(a => new EscolhaViewModel(Ambientes.Rotulo(a), null, _ambienteNovo == a,
+            () => AmbienteNovo = _ambienteNovo == a ? null : a) { Descricao = DescricaoAmbiente(a, _ambienteNovo == a) }).ToArray();
+
     public Comando AbrirCriar { get; }
 
     /// <summary>O ✓ dos nomes: cria o Setup com o som do aparelho como a primeira memória dele (vazio = com o nome do Setup) e desmuta.</summary>
@@ -344,7 +380,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         ResultadoSetup? resultado = null;
         await Agir(async () =>
         {
-            resultado = await _setups.CriarSetupAsync(NomeNovo, NomeMemoriaNova);
+            resultado = await _setups.CriarSetupAsync(NomeNovo, NomeMemoriaNova, AmbienteNovo);
             return resultado.Mensagem;
         }, depois: () =>
         {
@@ -367,7 +403,10 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         _erroNome = null;
         _nomeMemoriaNova = "";
         _erroNomeMemoria = null;
+        _ambienteNovo = null;
         Avisar(nameof(CriarAberto));
+        Avisar(nameof(AmbienteNovo));
+        Avisar(nameof(AmbientesTela));
         Avisar(nameof(NomeNovo));
         Avisar(nameof(ErroNome));
         Avisar(nameof(NomeMemoriaNova));
@@ -435,6 +474,7 @@ public sealed class SetupViewModel : TelaBase, IDisposable
         if (!Aberta)
             _listaAberta = false;
         Avisar(nameof(Setups));
+        Avisar(nameof(PodeEscolher));
         Avisar(nameof(Seletor));
         Avisar(nameof(Aberta));
         Avisar(nameof(PodeDesistir));

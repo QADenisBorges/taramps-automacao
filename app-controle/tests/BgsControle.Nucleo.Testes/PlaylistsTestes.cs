@@ -150,7 +150,7 @@ public sealed class PlaylistsTestes
             Assert.Equal(g.Playlist(m), outro.Playlist(m));
         Assert.Equal(["content://musica/6", "content://musica/4", "content://musica/5"], Uris(outro.Playlist(C)));
         var pendente = Assert.Single(outro.Pendentes);
-        Assert.Equal("MUSICA ORIG", pendente.Nome);
+        Assert.Equal("Memória 2", pendente.Nome);
         Assert.Equal(["content://x1", "content://x2"], Uris(pendente.Faixas));
     }
 
@@ -255,14 +255,14 @@ public sealed class PlaylistsTestes
     // ----------------------------------------------------------------- migração e adoção (8d)
 
     [Fact]
-    public async Task Formato_1_cada_lista_nao_vazia_vira_pendente_com_o_nome_do_prototipo_e_as_vazias_somem()
+    public async Task Formato_1_cada_lista_nao_vazia_vira_pendente_Memoria_n_e_as_vazias_somem()
     {
         // Posição 0 vazia, posição 1 com 2 faixas, posição 2 com 3.
         var repo = new TextoMemoria(Formato1([], ["o1", "o2"], ["f1", "f2", "f3"]));
 
         var g = await Novo(repo);
 
-        Assert.Equal(["MUSICA ORIG", "FILME"], g.Pendentes.Select(p => p.Nome));
+        Assert.Equal(["Memória 2", "Memória 3"], g.Pendentes.Select(p => p.Nome));
         Assert.Equal(["content://o1", "content://o2"], Uris(g.Pendentes[0].Faixas));
         Assert.Equal(["content://f1", "content://f2", "content://f3"], Uris(g.Pendentes[1].Faixas));
         Assert.Empty(g.Dados.PorMemoria);
@@ -275,15 +275,15 @@ public sealed class PlaylistsTestes
         var repo = new TextoMemoria(Formato1([], ["o1", "o2"], ["f1", "f2", "f3"]));
         var g = await Novo(repo);
 
-        var adotadas = await g.AdotarAsync([(A, "Musica Alta"), (B, "filme"), (C, "FILME")]);
+        var adotadas = await g.AdotarAsync([(A, "Memória 1A"), (B, "memória 3"), (C, "Memória 3")]);
 
         Assert.Equal(1, adotadas);
         Assert.Equal(["content://f1", "content://f2", "content://f3"], Uris(g.Playlist(B))); // a primeira, B
         Assert.Empty(g.Playlist(C));
-        Assert.Equal("MUSICA ORIG", Assert.Single(g.Pendentes).Nome); // sem correspondente, espera
+        Assert.Equal("Memória 2", Assert.Single(g.Pendentes).Nome); // sem correspondente, espera
         var gravado = GerentePlaylists.DeJson(repo.Texto!);
         Assert.Equal(["content://f1", "content://f2", "content://f3"], Uris(gravado.PorMemoria[B]));
-        Assert.Equal("MUSICA ORIG", Assert.Single(gravado.Pendentes).Nome);
+        Assert.Equal("Memória 2", Assert.Single(gravado.Pendentes).Nome);
         Assert.Contains("\"formato\": 2", repo.Texto!);
     }
 
@@ -292,10 +292,10 @@ public sealed class PlaylistsTestes
     {
         var repo = new TextoMemoria(Formato1([], ["o1", "o2"], []));
         var g = await Novo(repo);
-        Assert.Equal(0, await g.AdotarAsync([(A, "FILME")]));
+        Assert.Equal(0, await g.AdotarAsync([(A, "Memória 3")]));
         Assert.Equal(0, repo.Gravacoes); // nada a adotar: nada gravado
 
-        Assert.Equal(1, await g.AdotarAsync([(A, "FILME"), (B, "MUSICA ORIG")]));
+        Assert.Equal(1, await g.AdotarAsync([(A, "Memória 3"), (B, "Memória 2")]));
 
         Assert.Equal(["content://o1", "content://o2"], Uris(g.Playlist(B)));
         Assert.Empty(g.Pendentes);
@@ -308,7 +308,7 @@ public sealed class PlaylistsTestes
         var g = await Novo(repo);
         await g.AdicionarAsync(A, [Arquivo(1)]);
 
-        await g.AdotarAsync([(A, "FILME")]);
+        await g.AdotarAsync([(A, "Memória 3")]);
 
         Assert.Equal(["content://musica/1", "content://f1"], Uris(g.Playlist(A)));
     }
@@ -320,10 +320,10 @@ public sealed class PlaylistsTestes
         var g = await Novo(repo);
         repo.FalharAoGravar = true;
 
-        Assert.Equal(0, await g.AdotarAsync([(A, "FILME")]));
+        Assert.Equal(0, await g.AdotarAsync([(A, "Memória 3")]));
 
         Assert.Empty(g.Playlist(A));
-        Assert.Equal("FILME", Assert.Single(g.Pendentes).Nome);
+        Assert.Equal("Memória 3", Assert.Single(g.Pendentes).Nome);
     }
 
     [Fact]

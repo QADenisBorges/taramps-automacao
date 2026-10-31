@@ -1,5 +1,4 @@
 using BgsControle.Nucleo;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;
@@ -104,7 +103,7 @@ public sealed class SalvarViewModelTestes : IDisposable
         Assert.False(_vm.Aberta);
         Assert.Equal("Salvo: regulagem na MUSICA ORIG.", _vm.Mensagem);
         Assert.Equal(antes, _b.Simulador.Escritas.Count); // o Salvar não manda nada pelo BLE
-        var nova = Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG");
+        var nova = Setups.MemoriasDe(CasaDoDenis.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG");
         Assert.Equal("-5.0", Valor(nova, "081", 0));
         Assert.Equal(CenarioFilme.IdPreset, nova.IdPreset);
     }
@@ -262,7 +261,7 @@ public sealed class SalvarViewModelTestes : IDisposable
 
         Assert.Equal("Salvo: regulagem na MUSICA ORIG, 15 bandas no preset ORIG EQ.", _vm.Mensagem);
         Assert.Equal(_b.Presets.Proprios.Single(p => p.Nome == "ORIG EQ").Id,
-            Setups.MemoriasDe(ConhecimentoHerdado.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
+            Setups.MemoriasDe(CasaDoDenis.IdSetupCasa).Single(m => m.Nome == "MUSICA ORIG").IdPreset);
     }
 
     [Fact]

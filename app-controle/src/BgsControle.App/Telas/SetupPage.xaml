@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     A tela Setup (EXPERIENCE, Information Architecture e "Equipamentos e saídas"; DESIGN, linha-de-equipamento
-    e folha-de-equipamento): Configurações › Setups › tocar num Setup. O nome com o selo HERDADO, as saídas que
+    e folha-de-equipamento): Configurações › Setups › tocar num Setup. O nome, o ambiente em pílulas (opcional), as saídas que
     o Setup dá (na cor do canal mestre), a lista de equipamentos e "Adicionar equipamento". No alto, o esquema do
     Setup (história 10b; DESIGN, esquema-do-setup), posto pelo código no LugarDoEsquema. A folha de equipamento
     sobe de baixo; nada vai pelo BLE. Na folha (história 10c), o modelo se completa pela base de modelos
@@ -18,7 +18,8 @@
         <!-- Uma pílula de escolha (a escolhida em branco, com o texto preto). -->
         <DataTemplate x:Key="pilula" x:DataType="telas:EscolhaViewModel">
             <Border Margin="0,0,6,6" Padding="12,0" MinimumHeightRequest="44" StrokeShape="RoundRectangle 12"
-                    Stroke="{StaticResource sup-2}" StrokeThickness="1" BackgroundColor="Transparent">
+                    Stroke="{StaticResource sup-2}" StrokeThickness="1" BackgroundColor="Transparent"
+                    SemanticProperties.Description="{Binding Descricao}">
                 <Label Style="{StaticResource tipo-botao-pequeno}" Text="{Binding Rotulo}" VerticalTextAlignment="Center">
                     <Label.Triggers>
                         <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
@@ -40,23 +41,25 @@
 
     <Grid>
         <Grid RowDefinitions="Auto,*">
-            <!-- Cabeçalho de tela cheia: ‹, o nome do Setup e o selo HERDADO. -->
-            <Grid ColumnDefinitions="48,*,Auto" ColumnSpacing="12" Padding="16,8">
+            <!-- Cabeçalho de tela cheia: ‹ e o nome do Setup. -->
+            <Grid ColumnDefinitions="48,*" ColumnSpacing="12" Padding="16,8">
                 <Button Style="{StaticResource botao-voltar}" Clicked="AoVoltar" />
                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
                     <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" />
                     <Label Style="{StaticResource tipo-detalhe}" Text="Setup" />
                 </VerticalStackLayout>
-                <Border Grid.Column="2" IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}" Stroke="{StaticResource campo-borda}"
-                        StrokeThickness="1" StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center">
-                    <Label Style="{StaticResource tipo-rotulo}" TextColor="{StaticResource apoio}" Text="{Binding Selo}" VerticalTextAlignment="Center" />
-                </Border>
             </Grid>
 
             <ScrollView Grid.Row="1">
                 <VerticalStackLayout Padding="16,4,16,24" Spacing="12">
                     <!-- O esquema do Setup (história 10b): a EsquemaView entra aqui pelo código, com 280 de altura mínima. -->
                     <ContentView x:Name="LugarDoEsquema" MinimumHeightRequest="280" />
+
+                    <!-- O ambiente do Setup (opcional): tocar grava; tocar no escolhido deixa sem informar. -->
+                    <Label Style="{StaticResource tipo-rotulo}" Text="{x:Static telas:SetupViewModel.RotuloAmbiente}" />
+                    <FlexLayout Wrap="Wrap" BindableLayout.ItemsSource="{Binding AmbientesTela}" BindableLayout.ItemTemplate="{StaticResource pilula}" />
+                    <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apoio}"
+                           Text="{x:Static telas:SetupViewModel.LinhaAmbiente}" />
 
                     <!-- As saídas que o Setup dá. -->
                     <Label Style="{StaticResource tipo-rotulo}" Text="SAÍDAS" />

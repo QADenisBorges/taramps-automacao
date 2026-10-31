@@ -1,6 +1,5 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Seguranca;

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Setups;
@@ -12,9 +11,9 @@ namespace BgsControle.Nucleo.Presets;
 /// <summary>
 /// Os presets no celular (CAP-5): só o EQ de 15 bandas (<c>020</c>). Criar (das bandas atuais),
 /// atualizar as bandas de um próprio, aplicar, renomear, apagar e exportar. Os próprios ficam em
-/// <c>presets.json</c> nos arquivos privados (formato 3). Não há preset herdado
-/// (<see cref="ConhecimentoHerdado.Presets"/> é vazio, decisão do Denis de 29/10/2026); as travas de
-/// herdado continuam valendo para qualquer preset marcado como herdado.
+/// <c>presets.json</c> nos arquivos privados (formato 3). Não há preset herdado (decisão do Denis de
+/// 29/10/2026; o app nasce zerado, 30/10/2026); as travas de herdado continuam valendo para qualquer
+/// preset marcado como herdado.
 /// <list type="bullet">
 /// <item><b>Criar</b> e <b>atualizar</b> não mandam nada ao aparelho. O preset novo nasce na folha do
 /// Salvar (<see cref="Setups.GerenteSetups"/>).</item>
@@ -176,8 +175,8 @@ public sealed class GerentePresets
         }
     }
 
-    /// <summary>A lista inteira: os herdados primeiro, depois os próprios.</summary>
-    public IReadOnlyList<Preset> Presets => [.. ConhecimentoHerdado.Presets, .. Proprios];
+    /// <summary>A lista inteira: os próprios (não há preset herdado).</summary>
+    public IReadOnlyList<Preset> Presets => Proprios;
 
     /// <summary>O preset (herdado ou próprio) pelo id, ou null.</summary>
     public Preset? Obter(string? id) => id is null ? null : Presets.FirstOrDefault(p => p.Id == id);
@@ -657,8 +656,8 @@ public sealed class GerentePresets
     /// <summary>
     /// Lê o <c>presets.json</c>. Formato 3: cada preset com as bandas que tem (só o <c>020</c>; sem
     /// nenhuma banda, descartado). Os formatos 1 e 2 (de antes de 29/10/2026), outro formato ou outra
-    /// forma: lista vazia. Uma entrada sem id, com nome inválido, com id ou nome repetido (ou o id ou o
-    /// nome de um herdado) é descartada; as outras ficam.
+    /// forma: lista vazia. Uma entrada sem id, com nome inválido ou com id ou nome repetido (o nome sem
+    /// diferença de caixa) é descartada; as outras ficam.
     /// </summary>
     public static IReadOnlyList<Preset> DeJson(string json)
     {
@@ -677,12 +676,12 @@ public sealed class GerentePresets
             if (item.ValueKind != JsonValueKind.Object)
                 continue;
             var id = Texto(item, "id");
-            if (string.IsNullOrEmpty(id) || ConhecimentoHerdado.Presets.Any(h => h.Id == id) || ids.Contains(id))
+            if (string.IsNullOrEmpty(id) || ids.Contains(id))
                 continue;
             if (NomeValido(Texto(item, "nome")) is not { } nome)
                 continue;
-            // Um nome repetido, entre os próprios ou com um herdado (em qualquer caixa), sai.
-            if (saida.Concat(ConhecimentoHerdado.Presets).Any(p => string.Equals(p.Nome, nome, StringComparison.OrdinalIgnoreCase)))
+            // Um nome repetido entre os próprios (em qualquer caixa) sai.
+            if (saida.Any(p => string.Equals(p.Nome, nome, StringComparison.OrdinalIgnoreCase)))
                 continue;
             var quando = Texto(item, "quando") is { } q
                          && DateTimeOffset.TryParse(q, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var d)

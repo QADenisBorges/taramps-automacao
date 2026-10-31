@@ -618,15 +618,16 @@ public sealed class TelasParte1Testes : IDisposable
     }
 
     [Fact]
-    public async Task Setups_lista_com_o_selo_e_as_travas_e_apaga_o_que_nao_esta_em_uso()
+    public async Task Setups_lista_com_as_travas_e_apaga_o_que_nao_esta_em_uso()
     {
         await _b.Conectar();
         await _b.Tela.EsvaziarAsync();
         var casa = Assert.Single(_t.Setups.Linhas);
         Assert.Equal("Casa 2.1", casa.Nome);
-        Assert.Equal("HERDADO", casa.Selo);
         Assert.True(casa.EmUso);
         Assert.Equal("Em uso · 1 memória", casa.Detalhe);
+        Assert.Null(_t.Setups.Vazio);
+        Assert.True(_t.Setups.MostraLembrete);
 
         await casa.Apagar.ExecutarAsync();
         Assert.Equal("Este Setup está em uso.", _t.Setups.Mensagem);

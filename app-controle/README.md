@@ -50,8 +50,8 @@ Desde a história 8c, o app **não salva nem renomeia** as 3 memórias do aparel
 o `*240*` e o `*23N*` em qualquer forma ("comando não liberado nesta versão do app"); o
 `GerenteMemorias` só lê os nomes e carrega (`*241*n*`, chave "Carregar memória do aparelho"). O
 `GerenteSetups` (núcleo `Setups/`) guarda os **Setups** (calibração, equilíbrio L/R e link) e as
-**memórias do celular** (caráter) em `setups.json`, começando pelo herdado: o Setup "Casa 2.1" e a
-memória FILME, a leitura de 18/10 dividida em camadas (`Camadas`). Na primeira leitura de cada
+**memórias do celular** (caráter) em `setups.json` (até a 8g, começando pelo herdado: o Setup
+"Casa 2.1" e a memória FILME, a leitura de 18/10 dividida em camadas, `Camadas`). Na primeira leitura de cada
 conexão ele confere a calibração com a do último Setup usado: se não bate, guarda a marca em
 `setup-mudo.json`, muta os 4 canais e espera a escolha (Escolher, Criar Setup novo, Seguir sem
 Setup); a porta da IA recusa todo POST até lá. Aplicar memória, escolher Setup e o "Manter a
@@ -72,6 +72,19 @@ a frase "Carregar a memória N" do Histórico (entradas antigas `CarregarMemoria
 nenhuma memória do celular. O `GerenteMemorias` saiu do núcleo. Uma marca `carregar-memoria` antiga na `CopiaAntes` ainda mostra
 "aplicado pela metade", mas só Voltar à cópia funciona; Terminar diz "O app não sabe refazer esta
 operação.". O simulador dos testes continua imitando o 241 e os nomes, porque é o aparelho.
+
+Desde a história 8g (30/10/2026), **o app nasce zerado** (CAP-6): sem nenhum arquivo, não há
+Setup, modelo na base, memória nem preset, e nada do conhecimento herdado (o Casa 2.1, as fichas,
+as notas das memórias do aparelho, as seções de texto, o selo HERDADO) vem embutido; o
+`ConhecimentoHerdado` e o `HerdadoViewModel` saíram. Um `setups.json` ou `modelos.json` ilegível
+volta ao vazio, sem erro, com uma linha no log. Um `setups.json` que já tem o Casa 2.1 carrega como
+um Setup comum (renomear e apagar valem), e o `playlists.json` formato 1 nomeia as pendentes como
+"Memória 1" a "Memória 3". Na primeira conexão sem nenhum Setup, o app muta os 4 canais e abre a
+escolha ("Nenhum Setup cadastrado. Crie um Setup do aparelho ou siga sem Setup.", sem "Escolher o
+Setup"). O Setup ganhou o ambiente opcional (Sala, Carro, Ao ar livre, Outro; campo `ambiente` do
+formato 3, gravado só com valor), escolhido em pílulas na folha "Criar Setup novo" e na tela Setup, e
+mostrado no `GET /estado` como `setup.ambiente`. Os dados reais do Denis vivem só nos testes, na
+fixture `CasaDoDenis` do `BgsControle.Simulador`.
 
 ## Projetos
 

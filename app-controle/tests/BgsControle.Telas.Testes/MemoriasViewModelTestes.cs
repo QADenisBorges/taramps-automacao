@@ -1,5 +1,4 @@
 using BgsControle.Nucleo;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;

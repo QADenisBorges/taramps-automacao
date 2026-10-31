@@ -1,5 +1,4 @@
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;
 
@@ -31,7 +30,7 @@ public sealed partial class SetupsTestes
         return _setups.SetupEmUso!.Id;
     }
 
-    // ----------------------------------------------------------------- Casa 2.1 herdado
+    // ----------------------------------------------------------------- Casa 2.1 da fixture CasaDoDenis
 
     [Fact]
     public async Task Casa_2_1_conferido_tem_as_saidas_JBL_L_JBL_R_e_Sub_e_o_Link_3_4_ligado()
@@ -77,7 +76,7 @@ public sealed partial class SetupsTestes
 
         Assert.True(r.Ok, r.Mensagem);
         var espelho = _estado.Copiar();
-        var camadas = ConhecimentoHerdado.LeituraFilme.Where(v => Camadas.De(v.Codigo) == Camada.Regulagem || v.Codigo == "020").ToArray();
+        var camadas = CasaDoDenis.LeituraFilme.Where(v => Camadas.De(v.Codigo) == Camada.Regulagem || v.Codigo == "020").ToArray();
         Assert.Equal(Catalogo.ConsultasMarco1.Count - 4 - 1, camadas.Length);
         Assert.Empty(Camadas.Diferentes(camadas, espelho));
         Assert.Equal("+7.0", _simulador.Valor("081", 1)); // a R: o valor final guardado
@@ -202,13 +201,13 @@ public sealed partial class SetupsTestes
         Assert.Equal(new CorteCanal(40m, 150m), GerenteSetups.Corte(CenarioFilme.Memoria, 2));
         Assert.Equal(FuncaoAcustica.Sub, _setups.FuncaoSugerida(Casa, outra));
         Assert.Equal(FuncaoAcustica.Grave, _setups.Funcao(Casa, outra with { Funcao = FuncaoAcustica.Grave }));
-        Assert.Equal(FuncaoAcustica.MedioGrave, _setups.Funcao(Casa, casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblR)));
-        Assert.Equal(FuncaoAcustica.Sub, _setups.Funcao(Casa, casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdSubCasa)));
+        Assert.Equal(FuncaoAcustica.MedioGrave, _setups.Funcao(Casa, casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblR)));
+        Assert.Equal(FuncaoAcustica.Sub, _setups.Funcao(Casa, casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdSubCasa)));
     }
 
     private static Equipamento NoBridgeDoSub() => new("novo", GrupoEquipamento.AltoFalante, "Outra", "Coisa")
     {
-        Ligado = LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4)),
+        Ligado = LigacaoAltoFalante.NoBridge(CasaDoDenis.IdModuloCasa, new Bridge(3, 4)),
     };
 
     [Fact]
@@ -236,7 +235,7 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Passa_baixa_em_OFF_com_a_frequencia_guardada_ate_200_Hz_nao_sugere_sub()
     {
-        var casa = ConhecimentoHerdado.SetupCasa;
+        var casa = CasaDoDenis.SetupCasa;
         var semPassaBaixa = CenarioFilme.Memoria with
         {
             Regulagem = CenarioFilme.Regulagem.Select(v => (v.Codigo, v.Indice) == ("043", 2) ? v with { NoFio = "0" } : v).ToArray(),
@@ -251,7 +250,7 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Quem_nao_toca_nao_tem_funcao_acustica()
     {
-        var casa = ConhecimentoHerdado.SetupCasa;
+        var casa = CasaDoDenis.SetupCasa;
         var modulo = casa.Equipamentos[0];
 
         Assert.Null(GerenteSetups.FuncaoSugerida(casa, CenarioFilme.Memoria, modulo));
@@ -317,7 +316,7 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Um_equipamento_ilegivel_e_descartado_e_os_outros_ficam()
     {
-        var json = GerenteSetups.ParaJson(GerenteSetups.Herdados());
+        var json = GerenteSetups.ParaJson(CasaDoDenis.Dados);
         var estragado = json.Replace("\"grupo\": \"amplificador\"", "\"grupo\": \"foguete\"", StringComparison.Ordinal);
         Assert.NotEqual(json, estragado);
 
@@ -334,15 +333,15 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Um_dado_da_ficha_com_a_origem_desconhecida_sai_e_o_equipamento_fica()
     {
-        var json = GerenteSetups.ParaJson(GerenteSetups.Herdados());
+        var json = GerenteSetups.ParaJson(CasaDoDenis.Dados);
         var estragado = json.Replace("\"origem\": \"estimado\"", "\"origem\": \"chute\"", StringComparison.Ordinal);
         Assert.NotEqual(json, estragado);
 
         var casa = GerenteSetups.DeJson(estragado)!.Setups.Single(s => s.Id == Casa);
 
         Assert.Equal(4, casa.Equipamentos.Count);
-        Assert.Null(casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblL).Dados.VolumeCaixa);
-        Assert.NotNull(casa.Equipamentos.Single(e => e.Id == ConhecimentoHerdado.IdJblL).Dados.Re);
+        Assert.Null(casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblL).Dados.VolumeCaixa);
+        Assert.NotNull(casa.Equipamentos.Single(e => e.Id == CasaDoDenis.IdJblL).Dados.Re);
     }
 
     [Fact]
@@ -362,7 +361,7 @@ public sealed partial class SetupsTestes
     public async Task Editar_o_modulo_do_Casa_sem_o_bridge_e_recusado_dizendo_que_o_Sub_bloqueia()
     {
         await _setups.Carregada;
-        var modulo = _setups.Equipamento(Casa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = _setups.Equipamento(Casa, CasaDoDenis.IdModuloCasa)!;
         var antes = GerenteSetups.ParaJson(_setups.Dados);
 
         var r = await _setups.EditarEquipamentoAsync(Casa, modulo with { Bridges = [] });
@@ -429,7 +428,7 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Um_canal_escrito_como_texto_descarta_so_aquele_equipamento()
     {
-        var json = GerenteSetups.ParaJson(GerenteSetups.Herdados());
+        var json = GerenteSetups.ParaJson(CasaDoDenis.Dados);
         var estragado = json.Replace("\"canal\": 1", "\"canal\": \"1\"", StringComparison.Ordinal);
         Assert.NotEqual(json, estragado);
 
@@ -442,7 +441,7 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Um_canal_null_no_ligado_e_sem_ligacao_e_o_equipamento_fica()
     {
-        var json = GerenteSetups.ParaJson(GerenteSetups.Herdados());
+        var json = GerenteSetups.ParaJson(CasaDoDenis.Dados);
         var comNull = json.Replace("\"canal\": 1", "\"canal\": null", StringComparison.Ordinal);
         Assert.NotEqual(json, comNull);
 
@@ -455,10 +454,10 @@ public sealed partial class SetupsTestes
     [Fact]
     public void Um_bridge_que_nao_vale_no_arquivo_sai_e_o_modulo_e_os_alto_falantes_ficam()
     {
-        var herdados = GerenteSetups.Herdados();
-        var casa = herdados.Setups[0];
+        var fixture = CasaDoDenis.Dados;
+        var casa = fixture.Setups[0];
         var modulo = casa.Equipamentos[0] with { Bridges = [new Bridge(3, 4), new Bridge(2, 3)] };
-        var json = GerenteSetups.ParaJson(herdados with
+        var json = GerenteSetups.ParaJson(fixture with
         {
             Setups = [casa with { Equipamentos = [modulo, .. casa.Equipamentos.Skip(1), casa.Equipamentos[1] with { Nome = "Repetida" }] }],
         });
@@ -467,7 +466,7 @@ public sealed partial class SetupsTestes
 
         Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], lida.Equipamentos.Select(e => e.Nome));
         Assert.Equal([new Bridge(3, 4)], lida.Equipamentos[0].Bridges);
-        Assert.Equal(LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4)), lida.Equipamentos[3].Ligado);
+        Assert.Equal(LigacaoAltoFalante.NoBridge(CasaDoDenis.IdModuloCasa, new Bridge(3, 4)), lida.Equipamentos[3].Ligado);
         Assert.Equal(["JBL L", "JBL R", "Sub"], Ligacoes.Saidas(lida.Equipamentos).Select(s => s.Nome));
     }
 }

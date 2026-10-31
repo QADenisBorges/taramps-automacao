@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
@@ -246,7 +245,7 @@ public sealed class CriacaoTestes : IDisposable
         Assert.Equal(EtapaCriacao.Perguntas, _criacao.Etapa);
         var copia = _copia.Ultima!;
         Assert.Equal(CriacaoMemoria.Tipo, copia.Operacao!.Tipo);
-        Assert.Equal(ConhecimentoHerdado.IdSetupCasa, copia.Operacao.Alvo);
+        Assert.Equal(CasaDoDenis.IdSetupCasa, copia.Operacao.Alvo);
         Assert.Null(copia.Operacao.Etapa);
         Assert.Contains(copia.Valores, v => v.Codigo == "081" && v.Indice == 2 && v.NoFio == _simulador.Valor("081", 2));
         Assert.Equal(CriacaoMemoria.Tipo, CopiaAntes.DeJson(_guardadoCopia.Texto!)!.Operacao!.Tipo); // guardada no celular
@@ -538,7 +537,7 @@ public sealed class CriacaoTestes : IDisposable
         Assert.Equal(EtapaCriacao.Fechada, _criacao.Etapa);
         var nova = _setups.MemoriaEmUso!;
         Assert.Equal("MUSICA ORIG", nova.Nome);
-        Assert.Equal(ConhecimentoHerdado.IdSetupCasa, nova.IdSetup);
+        Assert.Equal(CasaDoDenis.IdSetupCasa, nova.IdSetup);
         Assert.Equal(nova.Id, _setups.Ativa(nova.IdSetup)!.Id);
         Assert.Equal(CenarioFilme.IdPreset, nova.IdPreset); // lembra o preset em uso
         Assert.Contains(nova.Regulagem, v => v.Codigo == "081" && v.Indice == 2 && v.NoFio == "+2.0");

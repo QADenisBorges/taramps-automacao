@@ -1,4 +1,4 @@
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Telas.Esquema;
 
@@ -15,7 +15,7 @@ public sealed class EsquemaLigacaoTestes
     [Fact]
     public void Casa_2_1_as_JBL_em_CH1_e_CH2_e_o_Sub_em_CH3_e_CH4()
     {
-        var e = EsquemaLigacao.Montar(ConhecimentoHerdado.EquipamentosCasa);
+        var e = EsquemaLigacao.Montar(CasaDoDenis.EquipamentosCasa);
 
         Assert.Equal(["CH1", "CH2", "CH3", "CH4"], e.Portas.Select(p => p.Rotulo));
         Assert.Equal([34d, 80d, 126d, 172d], e.Portas.Select(p => p.Y));

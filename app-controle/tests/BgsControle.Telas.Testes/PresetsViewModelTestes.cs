@@ -1,6 +1,5 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Seguranca;
 using System.Text.RegularExpressions;
@@ -10,8 +9,8 @@ namespace BgsControle.Telas.Testes;
 
 /// <summary>
 /// As histórias 8 e 8d nas telas, contra o processador simulado: o <see cref="PresetsViewModel"/>
-/// (presets de 15 bandas, o herdado Cinema, aplicar por cima da memória, Apagar travado no lembrado),
-/// o <see cref="HerdadoViewModel"/> e o selo herdado nos cartões de memória.
+/// (presets de 15 bandas, o Cinema do cenário de teste, aplicar por cima da memória, Apagar travado no
+/// lembrado). O app nasce zerado (história 8g): sem preset, sem memória e sem nada herdado.
 /// </summary>
 public sealed class PresetsViewModelTestes : IDisposable
 {
@@ -62,43 +61,29 @@ public sealed class PresetsViewModelTestes : IDisposable
     // ----------------------------------------------------------------- primeira abertura
 
     [Fact]
-    public async Task Primeira_abertura_sem_presets_nem_memorias_as_notas_e_as_secoes_estao_la_sem_arquivo_e_sem_digitar_nada()
+    public async Task Primeira_abertura_sem_presets_nem_memorias_e_nada_herdado_sem_arquivo_e_sem_digitar_nada()
     {
-        var b = new Bancada(setups: true, filme: false);
+        var b = new Bancada(setups: true, zerado: true);
         using var vm = b.CriarPresetsViewModel();
         await b.Setups!.Carregada;
         await b.Presets.Carregada;
+        await b.Modelos!.Carregada;
         await b.Tela.EsvaziarAsync();
-        var herdado = new HerdadoViewModel();
         using var memorias = b.CriarMemoriasViewModel();
 
         // Presets: nenhum (decisão do Denis, 29/10/2026).
         Assert.Empty(vm.Itens);
         Assert.Equal("Mexa nas 15 bandas e toque em Salvar para criar um preset.", vm.TextoVazio);
 
-        // Memórias do celular: nenhuma no Casa 2.1.
+        // Memórias do celular: nenhuma, e nenhum Setup (o app nasce zerado, 30/10/2026).
         Assert.Empty(memorias.Cartoes);
-        Assert.Equal("Memórias do Casa 2.1", memorias.TituloCelular);
-
-        // As notas das 3 posições do protótipo ficam no conhecimento herdado (as memórias do processador não
-        // aparecem na tela Memórias desde 29/10/2026).
-        Assert.Contains("máximo seguro", herdado.NotaMemoria(1)!.Texto);
-        Assert.Equal("MUSICA ORIG", herdado.NotaMemoria(2)!.NomeNoPrototipo);
-        Assert.Contains("precisa ser refeita", herdado.NotaMemoria(2)!.Texto);
-        Assert.Contains("definitiva", herdado.NotaMemoria(3)!.Texto);
-
-        // As seções de texto.
-        Assert.Equal("HERDADO", herdado.Selo);
-        Assert.Equal(9, herdado.Secoes.Count);
-        Assert.NotNull(herdado.Secao("Cuidados com o app da Taramps"));
-        Assert.NotNull(herdado.Secao("Os equipamentos do Casa 2.1")); // história 8e
-        Assert.Null(herdado.Secao("A FILME em três camadas"));
-        Assert.NotNull(herdado.Secao("Memórias e presets do celular"));
-        Assert.Equal("SPL", herdado.NotaMemoria(1)!.NomeNoPrototipo);
+        Assert.Empty(b.Setups.Setups);
+        Assert.Empty(b.Modelos.Modelos);
 
         Assert.Empty(b.Simulador.Escritas);
         Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoPresets));
         Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoSetups));
+        Assert.Null(b.Arquivos.Conteudo(RepositorioTextoArquivos.ArquivoModelos));
     }
 
     [Fact]
@@ -175,7 +160,7 @@ public sealed class PresetsViewModelTestes : IDisposable
     }
 
     [Fact]
-    public async Task Aplicar_o_Cinema_herdado_sem_confirmacao_volta_as_15_bandas_de_18_10()
+    public async Task Aplicar_o_Cinema_do_cenario_sem_confirmacao_volta_as_15_bandas_de_18_10()
     {
         await _b.Conectar();
         await Mudar();

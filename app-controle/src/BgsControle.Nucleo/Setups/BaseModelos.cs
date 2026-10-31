@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Registro;
 
 namespace BgsControle.Nucleo.Setups;
@@ -17,8 +16,8 @@ public sealed record ModeloGuardado(string Modelo, GrupoEquipamento Grupo, strin
 /// A base de modelos no celular (CAP-16; forja de 29/10/2026), em <c>modelos.json</c> nos arquivos
 /// privados. Uma ficha confirmada fica guardada pelo modelo (o texto aparado, sem diferença de
 /// maiúsculas), é reaproveitada em outros Setups e completa o campo enquanto o usuário digita
-/// (<see cref="Sugerir"/>, <see cref="Ficha"/>). Sem arquivo (ou com ele estragado), nasce com os 3
-/// modelos herdados (<see cref="ConhecimentoHerdado.Modelos"/>). Não manda nada ao aparelho.
+/// (<see cref="Sugerir"/>, <see cref="Ficha"/>). Sem arquivo (ou com ele estragado), nasce vazia (CAP-6,
+/// o app nasce zerado). Não manda nada ao aparelho.
 /// </summary>
 public sealed class BaseModelos
 {
@@ -29,7 +28,7 @@ public sealed class BaseModelos
     private readonly TimeProvider _relogio;
     private readonly object _trava = new();
     private readonly SemaphoreSlim _gravacao = new(1, 1);
-    private IReadOnlyList<ModeloGuardado> _modelos = ConhecimentoHerdado.Modelos;
+    private IReadOnlyList<ModeloGuardado> _modelos = [];
 
     public BaseModelos(IRepositorioTexto repositorio, LogBle log, TimeProvider? relogio = null)
     {
@@ -45,7 +44,7 @@ public sealed class BaseModelos
     /// <summary>A base mudou. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
-    /// <summary>Os modelos guardados, na ordem em que entraram (os herdados primeiro).</summary>
+    /// <summary>Os modelos guardados, na ordem em que entraram.</summary>
     public IReadOnlyList<ModeloGuardado> Modelos
     {
         get
@@ -137,11 +136,11 @@ public sealed class BaseModelos
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
         {
-            // Arquivo estragado: fica com os herdados.
+            // Arquivo estragado: fica vazia, sem erro.
         }
         if (lidos is null)
         {
-            _log.Evento("modelos.json ilegível: a base ficou com os modelos herdados");
+            _log.Evento("modelos.json ilegível: a base ficou vazia");
             return;
         }
         lock (_trava)

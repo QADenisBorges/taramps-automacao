@@ -3,29 +3,20 @@ using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>Uma linha da lista de Setups: nome, quantas memórias, selo HERDADO, em uso, Renomear e Apagar.</summary>
+/// <summary>Uma linha da lista de Setups: nome, quantas memórias, em uso, Renomear e Apagar.</summary>
 public sealed class LinhaSetupViewModel : TelaBase
 {
-    private bool _notaVisivel;
-
     internal LinhaSetupViewModel(Setup setup, int memorias, bool emUso, SetupsViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
     {
         Id = setup.Id;
         Nome = setup.Nome;
-        Herdado = setup.Herdado;
-        Nota = setup.Nota;
         EmUso = emUso;
         Detalhe = (emUso ? "Em uso · " : "") + (memorias == 1 ? "1 memória" : $"{memorias} memórias");
-        MotivoTravaApagar = emUso ? GerenteSetups.MsgSetupEmUso : setup.Herdado ? GerenteSetups.MsgSetupHerdado : null;
+        MotivoTravaApagar = emUso ? GerenteSetups.MsgSetupEmUso : null;
         Abrir = new Comando(() => tela.AbrirSetup(Id));
         Renomear = new Comando(() => tela.AbrirRenomear(Id));
         Apagar = new Comando(() => tela.AbrirApagar(Id));
-        AlternarNota = new Comando(() =>
-        {
-            _notaVisivel = !_notaVisivel;
-            Avisar(nameof(NotaVisivel));
-        });
     }
 
     public string Id { get; }
@@ -35,22 +26,10 @@ public sealed class LinhaSetupViewModel : TelaBase
     /// <summary>"Em uso · 2 memórias".</summary>
     public string Detalhe { get; }
 
-    public bool Herdado { get; }
-
-    /// <summary>"HERDADO" no Casa 2.1, ou null.</summary>
-    public string? Selo => Herdado ? HerdadoViewModel.TextoSelo : null;
-
-    public string? Nota { get; }
-
-    public bool NotaVisivel => _notaVisivel;
-
-    /// <summary>Tocar no selo mostra a nota herdada.</summary>
-    public Comando AlternarNota { get; }
-
     /// <summary>O Setup em uso fica em branco.</summary>
     public bool EmUso { get; }
 
-    /// <summary>"Este Setup está em uso." ou "O Setup herdado não se apaga.", ou null.</summary>
+    /// <summary>"Este Setup está em uso.", ou null.</summary>
     public string? MotivoTravaApagar { get; }
 
     public bool PodeApagar => MotivoTravaApagar is null;
@@ -64,15 +43,18 @@ public sealed class LinhaSetupViewModel : TelaBase
 }
 
 /// <summary>
-/// Configurações › Setups (EXPERIENCE, Information Architecture): os Setups, com o selo HERDADO no Casa
-/// 2.1; renomear (o campo vale no ✓) e apagar com folha ("Apagar o Setup Carro?" + "O Setup, as
-/// memórias e as playlists dele somem."). O Setup em uso e o herdado não se apagam. Criar e trocar de
-/// Setup só pela tela Trocar de Setup ou Setup em dúvida. Nada aqui manda algo ao aparelho.
+/// Configurações › Setups (EXPERIENCE, Information Architecture): os Setups; renomear (o campo vale no
+/// ✓) e apagar com folha ("Apagar o Setup Carro?" + "O Setup, as memórias e as playlists dele
+/// somem."). O Setup em uso não se apaga. Sem nenhum Setup, o texto de vazio diz como criar. Criar e
+/// trocar de Setup só pela tela Trocar de Setup ou Setup em dúvida. Nada aqui manda algo ao aparelho.
 /// </summary>
 public sealed class SetupsViewModel : TelaBase, IDisposable
 {
     public const string AvisoApagar = "O Setup, as memórias e as playlists dele somem.";
     public const string Lembrete = "Para criar ou trocar de Setup, toque no nome do Setup no Início.";
+
+    /// <summary>Sem nenhum Setup (o app nasce zerado).</summary>
+    public const string TextoVazio = "Nenhum Setup. Conecte o aparelho e toque em \"Sem Setup ›\" no Início para criar.";
 
     private readonly GerenteSetups _setups;
     private readonly Sessao _sessao;
@@ -111,6 +93,12 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
         _linhas.FirstOrDefault(l => string.Equals(l.Nome, nome, StringComparison.OrdinalIgnoreCase));
 
     public string TextoLembrete => Lembrete;
+
+    /// <summary>"Nenhum Setup. Conecte o aparelho…" sem nenhum Setup; senão null.</summary>
+    public string? Vazio => _linhas.Count == 0 ? TextoVazio : null;
+
+    /// <summary>O lembrete de como criar ou trocar aparece só com algum Setup (sem nenhum, vale o <see cref="Vazio"/>).</summary>
+    public bool MostraLembrete => _linhas.Count > 0;
 
     public string? Mensagem
     {
@@ -218,7 +206,7 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
 
     public Comando CancelarApagar { get; }
 
-    /// <summary>Abre a folha. No Setup em uso ou no herdado, só o motivo.</summary>
+    /// <summary>Abre a folha. No Setup em uso, só o motivo.</summary>
     public void AbrirApagar(string id)
     {
         if (Linhas.FirstOrDefault(l => l.Id == id) is not { } linha)
@@ -296,6 +284,8 @@ public sealed class SetupsViewModel : TelaBase, IDisposable
             .Select(s => new LinhaSetupViewModel(s, _setups.MemoriasDe(s.Id).Count, s.Id == emUso, this, Despachante, Relogio))
             .ToArray();
         Avisar(nameof(Linhas));
+        Avisar(nameof(Vazio));
+        Avisar(nameof(MostraLembrete));
         Avisar(nameof(Ocupado));
         Avisar(nameof(RenomearTitulo));
         Avisar(nameof(ApagarTitulo));

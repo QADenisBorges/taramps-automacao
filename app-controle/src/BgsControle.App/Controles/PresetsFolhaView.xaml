@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     A folha de presets do chip "Preset: Cinema ▾" (EXPERIENCE, Chip de preset; DESIGN, linha-de-escolha): uma
-    linha por preset, o em uso em branco, HERDADO à direita no herdado. Tocar aplica só as 15 bandas por cima da
+    linha por preset, o em uso em branco. Tocar aplica só as 15 bandas por cima da
     memória (sem confirmação, cópia antes, releitura) e fecha; travado, a folha fica com o motivo.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"

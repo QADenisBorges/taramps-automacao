@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
@@ -26,19 +25,22 @@ public sealed record DadosSetups(
     IReadOnlyDictionary<string, UsoDoSetup> Uso)
 {
     public UsoDoSetup UsoDe(string idSetup) => Uso.GetValueOrDefault(idSetup) ?? UsoDoSetup.Vazio;
+
+    /// <summary>O app zerado (CAP-6): nenhum Setup, nenhuma memória, nenhum último Setup.</summary>
+    public static DadosSetups Vazio { get; } = new([], [], null, new Dictionary<string, UsoDoSetup>());
 }
 
 /// <summary>
 /// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5), no modelo de 29/10/2026:
 /// o Setup é só o físico (os equipamentos e as fichas) e a memória guarda toda a regulagem, com o valor
 /// final. Guarda tudo em <c>setups.json</c> (formato 3; os formatos 1 e 2 são migrados) e a marca do
-/// mudo da dúvida em <c>setup-mudo.json</c>; sem arquivo (ou com ele estragado), começa com o herdado:
-/// o Setup "Casa 2.1" com os equipamentos e as fichas, sem memórias.
+/// mudo da dúvida em <c>setup-mudo.json</c>; sem arquivo (ou com ele estragado), começa vazio: nenhum
+/// Setup e nenhuma memória (CAP-6, decisão do Denis de 30/10/2026: o app nasce zerado).
 /// <list type="bullet">
 /// <item><b>Conferência:</b> na primeira leitura completa de cada conexão nova (depois da regra 2 do
 /// gerador), compara a regulagem lida com a da memória ativa do último Setup usado. Bate: "Setup
 /// confere". Só o ganho, o limitador, o EQ ou o MASTER diferem: "som diferente", sem mutar. A rota, o
-/// atraso, a fase ou um corte diferem, ou o Setup não tem memória ativa: guarda a marca, muta os 4
+/// atraso, a fase ou um corte diferem, o Setup não tem memória ativa, ou não há nenhum Setup: guarda a marca, muta os 4
 /// canais (<c>100</c> = 1) e fica "Setup em dúvida" até escolher um Setup, criar um ou seguir sem
 /// Setup. Uma dúvida interrompida (marca guardada e os 4 canais lidos mutados) volta sem mutar de novo.</item>
 /// <item><b>Link automático</b> (decisão D1 do Denis, 29/10/2026): o link sai das ligações do Setup em
@@ -97,8 +99,9 @@ public sealed class GerenteSetups
     public const string MsgNaoExisteTerminar = "Não existe mais; use Voltar à cópia.";
     public const string MsgMemoriaEmUso = "Esta memória está em uso.";
     public const string MsgSetupEmUso = "Este Setup está em uso.";
-    public const string MsgSetupHerdado = "O Setup herdado não se apaga.";
     public const string MsgNomeRepetidoSetup = "Já existe um Setup com esse nome.";
+    public const string MsgNomeSetupInvalido = "Use de 1 a 24 letras, números, espaço, ponto, _ ou -";
+    public const string MsgAmbienteInvalido = "Ambiente desconhecido.";
     public const string MsgSoNaEscolha = "Isso só se faz na tela de escolha do Setup.";
     public const string MsgOutroSetup = "A memória é de outro Setup.";
     public const string MsgPedeFolha = "Este som não é de uma memória do celular. Toque em Salvar para guardá-lo.";
@@ -107,6 +110,10 @@ public sealed class GerenteSetups
     public const string MsgSemConexao = "Sem conexão com o aparelho.";
     public const string MsgCaiu = "A conexão caiu no meio. Ao reconectar, o app mostra o que ficou.";
     public const string MsgSemMudo = "O som não estava mutado.";
+
+    public static string MsgAmbienteDefinido(string setup, AmbienteSetup? ambiente) => ambiente is { } a
+        ? $"{setup}: {Ambientes.Rotulo(a)}."
+        : $"{setup}: ambiente não informado.";
 
     public static string MsgNomeRepetidoMemoria(string setup) => $"Já existe uma memória com esse nome no {setup}.";
 
@@ -197,7 +204,7 @@ public sealed class GerenteSetups
     private readonly SemaphoreSlim _operacao = new(1, 1);
     private readonly SemaphoreSlim _gravacao = new(1, 1);
 
-    private DadosSetups _dados = Herdados();
+    private DadosSetups _dados = DadosSetups.Vazio;
     private MarcaMudo? _marca;
     private EstadoConferencia _situacao = EstadoConferencia.Nenhuma;
     private string? _setupEmUso;
@@ -289,7 +296,7 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Os Setups, na ordem em que foram criados (o herdado primeiro).</summary>
+    /// <summary>Os Setups, na ordem em que foram criados.</summary>
     public IReadOnlyList<Setup> Setups => Dados.Setups;
 
     public Setup? Setup(string? id) => id is null ? null : Dados.Setups.FirstOrDefault(s => s.Id == id);
@@ -402,7 +409,7 @@ public sealed class GerenteSetups
     /// <summary>O preset em uso (<see cref="IdPresetEmUso"/>), ou null (nenhum, ou ele não existe mais).</summary>
     public Preset? PresetEmUso => _presets.Obter(IdPresetEmUso);
 
-    /// <summary>Na dúvida ou na troca: o Setup que era a referência (o "Casa 2.1" da frase), ou null.</summary>
+    /// <summary>Na dúvida ou na troca: o Setup que era a referência (o "Casa" da frase), ou null.</summary>
     public Setup? Referencia
     {
         get
@@ -580,6 +587,16 @@ public sealed class GerenteSetups
     /// <summary>A regra dos presets: de 1 a 24 letras, números, espaço, <c>_</c> ou <c>-</c> (null = não vale).</summary>
     public static string? NomeValido(string? digitado) => GerentePresets.NomeValido(digitado);
 
+    /// <summary>
+    /// O nome de um Setup: a regra dos presets e também o ponto ("Casa 2.1"); null = não vale. As
+    /// memórias e os presets seguem a regra deles (<see cref="NomeValido"/>).
+    /// </summary>
+    public static string? NomeSetupValido(string? digitado)
+    {
+        var nome = digitado?.Normalize(NormalizationForm.FormC).Trim();
+        return nome is not null && GerentePresets.NomeValido(nome.Replace('.', '_')) is not null ? nome : null;
+    }
+
     // ------------------------------------------------------------------ conferência
 
     private void AoMudarSessao()
@@ -688,12 +705,22 @@ public sealed class GerenteSetups
 
             if (referencia is null)
             {
+                // Nenhum Setup cadastrado (ReferenciaEm só dá null sem Setups): não há memória para
+                // comparar (regra 5, CAP-16). Muta como o app e pede a escolha (criar ou seguir sem Setup).
+                string? motivoSem;
+                using (Origem.Como(OrigemComando.App))
+                    motivoSem = await MutarAsync(null, espelho);
                 lock (_trava)
                 {
-                    _situacao = EstadoConferencia.Nenhuma;
+                    _situacao = EstadoConferencia.Duvida;
+                    _referencia = null;
+                    _diferencas = [];
                     _setupEmUso = null;
                     _emUso = SomEmUso.SomDoAparelho;
+                    _motivoMudo = motivoSem is null ? null : MsgNaoMutou(motivoSem);
+                    _antes = null;
                 }
+                _log.Evento("setup: em dúvida (nenhum Setup cadastrado)" + (motivoSem is null ? "; mutado" : $"; não mutou ({motivoSem})"));
                 await DesligarLinksNaConferenciaAsync();
                 return true;
             }
@@ -1027,9 +1054,9 @@ public sealed class GerenteSetups
     /// que tem as mesmas 15 bandas lidas, se há. O Setup e a memória ficam em uso, os links desligados
     /// (sem equipamentos não há bridge), e desmuta. Não manda nada ao aparelho além do desmutar. Um nome
     /// inválido ou repetido recusa sem guardar nada; o da memória com a recusa própria (<see cref="MsgNomeMemoria"/>,
-    /// <see cref="ResultadoSetup.ErroNomeMemoria"/>).
+    /// <see cref="ResultadoSetup.ErroNomeMemoria"/>). O ambiente é opcional (null = não informado).
     /// </summary>
-    public async Task<ResultadoSetup> CriarSetupAsync(string? nomeSetup, string? nomeMemoria = null)
+    public async Task<ResultadoSetup> CriarSetupAsync(string? nomeSetup, string? nomeMemoria = null, AmbienteSetup? ambiente = null)
     {
         await Carregada;
         if (!await _operacao.WaitAsync(0))
@@ -1038,14 +1065,16 @@ public sealed class GerenteSetups
         {
             if (!EmEscolha)
                 return Terminar(ResultadoSetup.Falha(MsgSoNaEscolha));
-            if (NomeValido(nomeSetup) is not { } nome)
-                return Terminar(ResultadoSetup.FalhaNomeSetup(GerentePresets.MsgNomeInvalido));
+            if (NomeSetupValido(nomeSetup) is not { } nome)
+                return Terminar(ResultadoSetup.FalhaNomeSetup(MsgNomeSetupInvalido));
+            if (ambiente is { } pedido && !Enum.IsDefined(pedido))
+                return Terminar(ResultadoSetup.Falha(MsgAmbienteInvalido));
             if (Dados.Setups.Any(s => MesmoNome(s.Nome, nome)))
                 return Terminar(ResultadoSetup.FalhaNomeSetup(MsgNomeRepetidoSetup));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
             var espelho = _estado.Copiar();
-            var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow());
+            var setup = new Setup($"setup-{Guid.NewGuid():N}", nome, _relogio.GetLocalNow(), ambiente);
             var igual = _presets.ComAsBandas(espelho);
             var (memoria, motivo, doNome) = NovaMemoria(setup, string.IsNullOrWhiteSpace(nomeMemoria) ? nome : nomeMemoria, espelho, igual?.Id);
             if (memoria is null)
@@ -1078,7 +1107,8 @@ public sealed class GerenteSetups
                 _motivoMudo = null;
                 _antes = null;
             }
-            _log.Evento($"setup: {nome} criado, com a memória {memoria.Nome} do som do aparelho");
+            _log.Evento($"setup: {nome} criado, com a memória {memoria.Nome} do som do aparelho"
+                        + (ambiente is { } a ? $" ({Ambientes.Nome(a)})" : ""));
             await AdotarPlaylistsAsync();
             var frase = MsgSetupCriado(nome, memoria.Nome);
             if (desmutar is not null)
@@ -1223,8 +1253,8 @@ public sealed class GerenteSetups
         {
             if (Setup(id) is not { } setup)
                 return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
-            if (NomeValido(nomeDigitado) is not { } nome)
-                return Terminar(ResultadoSetup.Falha(GerentePresets.MsgNomeInvalido));
+            if (NomeSetupValido(nomeDigitado) is not { } nome)
+                return Terminar(ResultadoSetup.Falha(MsgNomeSetupInvalido));
             if (Dados.Setups.Any(s => s.Id != id && MesmoNome(s.Nome, nome)))
                 return Terminar(ResultadoSetup.Falha(MsgNomeRepetidoSetup));
             var dados = Dados;
@@ -1239,7 +1269,36 @@ public sealed class GerenteSetups
         }
     }
 
-    /// <summary>Apaga um Setup, com as memórias dele. O Setup em uso e o herdado não se apagam.</summary>
+    /// <summary>
+    /// Define o ambiente do Setup (Sala, Carro, Ao ar livre, Outro; null = não informado). É um dado
+    /// físico: não manda nada ao aparelho. Se não gravar, o ambiente fica como estava.
+    /// </summary>
+    public async Task<ResultadoSetup> DefinirAmbienteAsync(string id, AmbienteSetup? ambiente)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (ambiente is { } novo && !Enum.IsDefined(novo))
+                return Terminar(ResultadoSetup.Falha(MsgAmbienteInvalido));
+            if (Setup(id) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (setup.Ambiente == ambiente)
+                return Terminar(ResultadoSetup.Feito(null));
+            var dados = Dados;
+            if (!await GravarAsync(dados with { Setups = dados.Setups.Select(s => s.Id == id ? s with { Ambiente = ambiente } : s).ToArray() }))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"setup: {setup.Nome} no ambiente {(ambiente is { } a ? Ambientes.Nome(a) : "não informado")}");
+            return Terminar(ResultadoSetup.Feito(MsgAmbienteDefinido(setup.Nome, ambiente)));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>Apaga um Setup, com as memórias dele. O Setup em uso não se apaga.</summary>
     public async Task<ResultadoSetup> ApagarSetupAsync(string id)
     {
         await Carregada;
@@ -1249,8 +1308,6 @@ public sealed class GerenteSetups
         {
             if (Setup(id) is not { } setup)
                 return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
-            if (setup.Herdado)
-                return Terminar(ResultadoSetup.Falha(MsgSetupHerdado));
             if (SetupEmUso?.Id == id)
                 return Terminar(ResultadoSetup.Falha(MsgSetupEmUso));
             var dados = Dados;
@@ -1876,12 +1933,11 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// As memórias na ordem em que uma playlist pendente procura a dona: as do Casa 2.1 primeiro,
-    /// depois as dos outros Setups na ordem; dentro de cada Setup, na ordem de criação.
+    /// As memórias na ordem em que uma playlist pendente procura a dona: os Setups na ordem; dentro de
+    /// cada Setup, na ordem de criação.
     /// </summary>
     public static IReadOnlyList<(string Id, string Nome)> OrdemDeAdocao(DadosSetups dados) =>
         dados.Setups
-            .OrderBy(s => s.Id == ConhecimentoHerdado.IdSetupCasa ? 0 : 1) // estável: os outros ficam na ordem
             .SelectMany(s => dados.Memorias.Where(m => m.IdSetup == s.Id))
             .Select(m => (m.Id, m.Nome))
             .ToArray();
@@ -2086,22 +2142,17 @@ public sealed class GerenteSetups
         return null;
     }
 
-    /// <summary>A referência da conferência: o último Setup usado; no primeiro uso, o Casa 2.1.</summary>
+    /// <summary>
+    /// A referência da conferência: o último Setup usado; sem ele, o primeiro Setup; sem nenhum Setup,
+    /// null (a conferência muta e pede a escolha).
+    /// </summary>
     private static Setup? ReferenciaEm(DadosSetups dados) =>
         dados.Setups.FirstOrDefault(s => s.Id == dados.UltimoSetup)
-        ?? dados.Setups.FirstOrDefault(s => s.Id == ConhecimentoHerdado.IdSetupCasa)
         ?? dados.Setups.FirstOrDefault();
 
     private static bool MesmoNome(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     // ------------------------------------------------------------------ guardado
-
-    /// <summary>O que vem dos protótipos (CAP-6): só o Casa 2.1, com os equipamentos e as fichas, sem memórias.</summary>
-    public static DadosSetups Herdados() => new(
-        [ConhecimentoHerdado.SetupCasa],
-        [],
-        ConhecimentoHerdado.IdSetupCasa,
-        new Dictionary<string, UsoDoSetup> { [ConhecimentoHerdado.IdSetupCasa] = UsoDoSetup.Vazio });
 
     /// <summary>Grava os dados (com duas tentativas); só se gravou eles passam a valer.</summary>
     private async Task<bool> GravarAsync(DadosSetups novos)
@@ -2180,10 +2231,10 @@ public sealed class GerenteSetups
             }
             catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException)
             {
-                // Arquivo estragado: volta ao herdado, sem erro.
+                // Arquivo estragado: volta ao vazio, sem erro.
             }
             if (lidos is null)
-                _log.Evento("setups.json ilegível: voltei ao herdado (Casa 2.1, sem memórias)");
+                _log.Evento("setups.json ilegível: voltei ao vazio (nenhum Setup)");
         }
         MarcaMudo? marca = null;
         if (await Gravacao.LerAsync(_repositorioMudo) is { } textoMarca)
@@ -2249,6 +2300,8 @@ public sealed class GerenteSetups
                 w.WriteStartObject();
                 w.WriteString("id", s.Id);
                 w.WriteString("nome", s.Nome);
+                if (s.Ambiente is { } ambiente)
+                    w.WriteString("ambiente", Ambientes.Nome(ambiente));
                 w.WriteString("quando", s.Quando.ToString("O", Fio));
                 EscreverEquipamentos(w, s.Equipamentos);
                 var uso = dados.UsoDe(s.Id);
@@ -2313,17 +2366,19 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Lê o <c>setups.json</c>. Fora dos formatos 1, 2 e 3, sem nenhum Setup válido ou com outra forma:
-    /// null (o gerente volta ao herdado). Uma entrada com id ou nome inválido, repetida, ou uma memória
-    /// de um Setup que não existe, é descartada; as outras ficam. O herdado (o selo e a nota) vem pelo id.
+    /// Lê o <c>setups.json</c>. Fora dos formatos 1, 2 e 3, com outra forma, ou com Setups e nenhum
+    /// válido: null (o gerente volta ao vazio). Uma lista de Setups vazia vale (nenhum Setup). Uma
+    /// entrada com id ou nome inválido, repetida, ou uma memória de um Setup que não existe, é
+    /// descartada; as outras ficam. Um Setup com o id do antigo Casa 2.1 é um Setup comum.
     /// <list type="bullet">
     /// <item><b>Formato 3</b> (história 8f): o Setup só físico (os equipamentos e as fichas com origem) e
-    /// as memórias com a regulagem. Um equipamento ilegível é descartado; os outros ficam, e as
-    /// ligações para ele se desfazem (<see cref="Ligacoes.Sanear"/>).</item>
+    /// as memórias com a regulagem, e o ambiente opcional (<c>ambiente</c>; um texto que não vale fica
+    /// null). Um equipamento ilegível é descartado; os outros ficam, e as ligações para ele se desfazem
+    /// (<see cref="Ligacoes.Sanear"/>).</item>
     /// <item><b>Formatos 1 e 2</b> (a migração da 8f, decisão D2 do Denis): ficam os Setups, os
     /// equipamentos e o último Setup usado; somem as memórias, os botões, as memórias ativas, a
-    /// calibração, o equilíbrio e o link. Os dados das fichas viram dados digitados, menos os do Casa 2.1
-    /// herdado, que vêm do herdado. No formato 1, o Casa 2.1 ganha os equipamentos do herdado.</item>
+    /// calibração, o equilíbrio e o link. Os dados das fichas viram dados digitados. O formato 1 não
+    /// tinha equipamentos: os Setups ficam sem nenhum.</item>
     /// </list>
     /// </summary>
     public static DadosSetups? DeJson(string json)
@@ -2341,23 +2396,23 @@ public sealed class GerenteSetups
         foreach (var item in setupsJson.EnumerateArray())
         {
             if (item.ValueKind != JsonValueKind.Object || Texto(item, "id") is not { Length: > 0 } id
-                || setups.Any(s => s.Id == id) || NomeGuardado(Texto(item, "nome"), id) is not { } nome
+                || setups.Any(s => s.Id == id) || NomeSetupValido(Texto(item, "nome")) is not { } nome
                 || setups.Any(s => MesmoNome(s.Nome, nome)))
                 continue;
-            var herdado = id == ConhecimentoHerdado.IdSetupCasa;
             IReadOnlyList<Equipamento> equipamentos = formato switch
             {
-                FormatoAntigo => herdado ? ConhecimentoHerdado.EquipamentosCasa : [],
-                Formato2 => herdado ? ComFichasHerdadas(LerEquipamentos(item, legado: true)) : LerEquipamentos(item, legado: true),
+                FormatoAntigo => [],
+                Formato2 => LerEquipamentos(item, legado: true),
                 _ => LerEquipamentos(item, legado: false),
             };
-            setups.Add(new Setup(id, nome, FichaJson.Quando(item), herdado, herdado ? ConhecimentoHerdado.NotaSetupCasa : null)
+            var ambiente = formato == Formato ? Ambientes.De(Texto(item, "ambiente")) : null;
+            setups.Add(new Setup(id, nome, FichaJson.Quando(item), ambiente)
             {
                 Equipamentos = equipamentos,
             });
             usos[id] = migrando ? (new List<string>(), new List<string?>()) : (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
-        if (setups.Count == 0)
+        if (setups.Count == 0 && setupsJson.GetArrayLength() > 0)
             return null;
 
         var memorias = new List<MemoriaCelular>();
@@ -2389,24 +2444,6 @@ public sealed class GerenteSetups
         var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
         return new DadosSetups(setups, memorias, ultimo, uso);
     }
-
-    /// <summary>
-    /// Na migração, os equipamentos herdados do Casa 2.1 (pelo id) recebem a ficha e o modelo do herdado;
-    /// a nota e o nome ficam os do usuário, menos a nota herdada de antes e o "Módulo genérico", que viram
-    /// os novos. As ligações e a função ficam como estavam.
-    /// </summary>
-    private static IReadOnlyList<Equipamento> ComFichasHerdadas(IReadOnlyList<Equipamento> lista) =>
-        lista.Select(e => ConhecimentoHerdado.EquipamentoCasa(e.Id) is { } h && h.Grupo == e.Grupo
-                ? e with
-                {
-                    Dados = h.Dados,
-                    Modelo = h.Modelo,
-                    // A nota que o usuário escreveu fica; a nota herdada de antes da 8f vira a nova.
-                    Nota = string.IsNullOrWhiteSpace(e.Nota) || ConhecimentoHerdado.NotasAntigas.Contains(e.Nota) ? h.Nota : e.Nota,
-                    Nome = e.Nome == ConhecimentoHerdado.NomeModuloAntigo ? h.Nome : e.Nome,
-                }
-                : e)
-            .ToArray();
 
     /// <summary>O JSON do <c>setup-mudo.json</c>: a marca, ou <c>"marca": null</c> quando não há.</summary>
     public static string MarcaParaJson(MarcaMudo? marca)
@@ -2490,12 +2527,6 @@ public sealed class GerenteSetups
             .ToArray();
     }
 
-    /// <summary>
-    /// O nome guardado, se vale: a regra dos presets, ou o nome de fábrica do herdado ("Casa 2.1"
-    /// tem um ponto, que a regra não deixa digitar).
-    /// </summary>
-    private static string? NomeGuardado(string? nome, string id) =>
-        NomeValido(nome) ?? (id == ConhecimentoHerdado.IdSetupCasa && nome == ConhecimentoHerdado.NomeSetupCasa ? nome : null);
 
     private static List<string?> Ids(JsonElement item, string nome)
     {

@@ -1,4 +1,4 @@
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Nucleo.Testes;
@@ -36,12 +36,12 @@ public sealed class EquipamentosTestes
     private static IEnumerable<(string Nome, string Rotulo, int Cor, string? Aviso)> Resumo(IEnumerable<SaidaApp> saidas) =>
         saidas.Select(s => (s.Nome, s.Rotulo, s.Cor, s.Aviso));
 
-    // ----------------------------------------------------------------- Casa 2.1 herdado
+    // ----------------------------------------------------------------- Casa 2.1 da fixture CasaDoDenis
 
     [Fact]
-    public void Casa_2_1_herdado_as_saidas_sao_JBL_L_JBL_R_e_Sub_no_par_CH3_CH4_com_a_cor_do_CH3()
+    public void Casa_2_1_da_fixture_as_saidas_sao_JBL_L_JBL_R_e_Sub_no_par_CH3_CH4_com_a_cor_do_CH3()
     {
-        var casa = ConhecimentoHerdado.SetupCasa;
+        var casa = CasaDoDenis.SetupCasa;
 
         Assert.Null(Ligacoes.Validar(casa.Equipamentos));
         Assert.Equal((false, true), Ligacoes.Links(casa.Equipamentos)); // o link sai do bridge 3+4
@@ -52,9 +52,9 @@ public sealed class EquipamentosTestes
     }
 
     [Fact]
-    public void Os_equipamentos_herdados_tem_o_SD800_4_EVO_as_JBL_e_o_Protech_no_bridge()
+    public void Os_equipamentos_da_fixture_tem_o_SD800_4_EVO_as_JBL_e_o_Protech_no_bridge()
     {
-        var e = ConhecimentoHerdado.EquipamentosCasa;
+        var e = CasaDoDenis.EquipamentosCasa;
 
         Assert.Equal(["Módulo SD800.4 EVO", "JBL L", "JBL R", "Sub"], e.Select(x => x.Nome));
         var modulo = e[0];
@@ -70,11 +70,11 @@ public sealed class EquipamentosTestes
             Assert.Equal(3.6m, j.Dados.Re!.Valor);
             Assert.Contains("100 Hz a 24 dB/oit", j.Nota);
         });
-        Assert.Equal(LigacaoAltoFalante.NoCanal(ConhecimentoHerdado.IdModuloCasa, 1), e[1].Ligado);
-        Assert.Equal(LigacaoAltoFalante.NoCanal(ConhecimentoHerdado.IdModuloCasa, 2), e[2].Ligado);
-        Assert.Equal(LigacaoAltoFalante.NoBridge(ConhecimentoHerdado.IdModuloCasa, new Bridge(3, 4)), e[3].Ligado);
+        Assert.Equal(LigacaoAltoFalante.NoCanal(CasaDoDenis.IdModuloCasa, 1), e[1].Ligado);
+        Assert.Equal(LigacaoAltoFalante.NoCanal(CasaDoDenis.IdModuloCasa, 2), e[2].Ligado);
+        Assert.Equal(LigacaoAltoFalante.NoBridge(CasaDoDenis.IdModuloCasa, new Bridge(3, 4)), e[3].Ligado);
         Assert.Equal("Protech Light 8\"", e[3].ModeloExibido);
-        Assert.Equal([2, 3], Ligacoes.CanaisQueAlimentam(e, ConhecimentoHerdado.IdSubCasa));
+        Assert.Equal([2, 3], Ligacoes.CanaisQueAlimentam(e, CasaDoDenis.IdSubCasa));
     }
 
     // ----------------------------------------------------------------- saídas do app
@@ -171,7 +171,7 @@ public sealed class EquipamentosTestes
     [Fact]
     public void Bridge_com_o_link_forcado_desligado_avisa_que_os_dois_canais_precisam_ser_iguais_sem_pedir_o_link()
     {
-        var casa = ConhecimentoHerdado.EquipamentosCasa;
+        var casa = CasaDoDenis.EquipamentosCasa;
 
         var saidas = Ligacoes.Saidas(casa, false, false);
 
@@ -331,7 +331,7 @@ public sealed class EquipamentosTestes
     [Fact]
     public void Editar_o_modulo_tirando_o_canal_ou_o_bridge_de_um_alto_falante_diz_quem_bloqueia()
     {
-        var casa = ConhecimentoHerdado.EquipamentosCasa;
+        var casa = CasaDoDenis.EquipamentosCasa;
         var modulo = casa[0];
         IReadOnlyList<Equipamento> Com(Equipamento m) => [m, .. casa.Skip(1)];
 
@@ -347,7 +347,7 @@ public sealed class EquipamentosTestes
     [Fact]
     public void Sanear_tira_so_os_bridges_que_nao_valem_e_fica_o_primeiro_de_cada_id()
     {
-        var casa = ConhecimentoHerdado.EquipamentosCasa;
+        var casa = CasaDoDenis.EquipamentosCasa;
         var lista = new List<Equipamento>(casa);
         lista[0] = casa[0] with { Bridges = [new Bridge(3, 4), new Bridge(2, 3), new Bridge(3, 4)] };
         lista.Add(casa[1] with { Nome = "Repetida" });

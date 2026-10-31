@@ -1,5 +1,5 @@
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
+using BgsControle.Simulador;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas.Testes;
@@ -53,9 +53,9 @@ public sealed class LinkViewModelTestes : IDisposable
     {
         await _b.Conectar();
         await Apoio.Esperar(() => Setups.Conferido);
-        var modulo = Setups.Equipamento(ConhecimentoHerdado.IdSetupCasa, ConhecimentoHerdado.IdModuloCasa)!;
+        var modulo = Setups.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdModuloCasa)!;
 
-        var r = await Setups.EditarEquipamentoAsync(ConhecimentoHerdado.IdSetupCasa,
+        var r = await Setups.EditarEquipamentoAsync(CasaDoDenis.IdSetupCasa,
             modulo with { Entradas = modulo.Entradas.Select(x => x.Numero == 4 ? x with { Fonte = null } : x).ToArray() });
         await _b.Tela.EsvaziarAsync();
 

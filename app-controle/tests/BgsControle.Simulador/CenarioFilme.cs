@@ -1,5 +1,4 @@
 using BgsControle.Nucleo.Escrita;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Setups;
 
@@ -7,8 +6,8 @@ namespace BgsControle.Simulador;
 
 /// <summary>
 /// O cenário de teste que substitui a FILME e o Cinema herdados de antes de 29/10/2026 (história 8f): o
-/// app nasce sem memórias e sem presets, e os testes que precisam de uma memória no Casa 2.1 guardam
-/// esta, criada da leitura de 18/10 com que o simulador nasce. É o mesmo que conectar, escolher o Casa
+/// app nasce zerado (história 8g), e os testes que precisam do Casa 2.1 com uma memória guardam o Casa
+/// da fixture <see cref="CasaDoDenis"/> e esta memória, criada da leitura de 18/10 com que o simulador nasce. É o mesmo que conectar, escolher o Casa
 /// 2.1 e "Criar memória do som atual" com o nome FILME (há um teste para isso), e depois guardar as 15
 /// bandas lidas como o preset "Cinema". Só vive nos testes.
 /// </summary>
@@ -27,18 +26,18 @@ public static class CenarioFilme
 
     /// <summary>A memória FILME no Casa 2.1, com a regulagem de 18/10, lembrando o Cinema.</summary>
     public static MemoriaCelular Memoria { get; } =
-        new(IdMemoria, ConhecimentoHerdado.IdSetupCasa, NomeMemoria, ConhecimentoHerdado.QuandoFilme, Regulagem, IdPreset);
+        new(IdMemoria, CasaDoDenis.IdSetupCasa, NomeMemoria, CasaDoDenis.QuandoFilme, Regulagem, IdPreset);
 
     /// <summary>O preset "Cinema": as 15 bandas de 18/10.</summary>
-    public static Preset Preset { get; } = new(IdPreset, NomePreset, ConhecimentoHerdado.QuandoFilme, Bandas);
+    public static Preset Preset { get; } = new(IdPreset, NomePreset, CasaDoDenis.QuandoFilme, Bandas);
 
-    /// <summary>O Casa 2.1 herdado com a FILME, ativa e no primeiro botão.</summary>
-    public static DadosSetups Dados => GerenteSetups.Herdados() with
+    /// <summary>O Casa 2.1 da fixture com a FILME, ativa e no primeiro botão.</summary>
+    public static DadosSetups Dados => CasaDoDenis.Dados with
     {
         Memorias = [Memoria],
         Uso = new Dictionary<string, UsoDoSetup>
         {
-            [ConhecimentoHerdado.IdSetupCasa] = new([IdMemoria], [IdMemoria, null, null]),
+            [CasaDoDenis.IdSetupCasa] = new([IdMemoria], [IdMemoria, null, null]),
         },
     };
 
@@ -48,9 +47,12 @@ public static class CenarioFilme
     /// <summary>O <c>presets.json</c> (formato 3) do cenário: só o Cinema.</summary>
     public static string PresetsJson => GerentePresets.ParaJson([Preset]);
 
+    /// <summary>O <c>modelos.json</c> do cenário: os 3 modelos da fixture.</summary>
+    public static string ModelosJson => CasaDoDenis.ModelosJson;
+
     private static IReadOnlyList<ValorCopiado> Da(IEnumerable<(string Codigo, int? Indice)> enderecos)
     {
         var quero = enderecos.ToHashSet();
-        return ConhecimentoHerdado.LeituraFilme.Where(v => quero.Contains((v.Codigo, v.Indice))).ToArray();
+        return CasaDoDenis.LeituraFilme.Where(v => quero.Contains((v.Codigo, v.Indice))).ToArray();
     }
 }

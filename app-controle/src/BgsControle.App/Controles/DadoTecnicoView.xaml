@@ -47,7 +47,7 @@
                     </DataTrigger>
                 </Entry.Triggers>
             </Entry>
-            <!-- O selo de origem: a forma do selo HERDADO (22 px, contornado), com a área de toque de 44. -->
+            <!-- O selo de origem (22 px, contornado), com a área de toque de 44. -->
             <Grid Grid.Column="1" MinimumHeightRequest="{StaticResource alvo-min}" MinimumWidthRequest="{StaticResource alvo-min}"
                   IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}"
                   SemanticProperties.Description="{Binding DescricaoSelo}" SemanticProperties.Hint="{Binding DicaSeloTela}">

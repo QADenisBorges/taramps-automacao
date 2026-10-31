@@ -38,13 +38,15 @@ public sealed class ArquiteturaTestes
         foreach (var csproj in projetos)
         {
             Assert.DoesNotContain(Referencias(csproj), r => r.Contains("Simulador", StringComparison.OrdinalIgnoreCase));
-            Assert.DoesNotContain("Simulador", File.ReadAllText(csproj), StringComparison.OrdinalIgnoreCase);
+            // O núcleo abre os internos à fixture dos testes (InternalsVisibleTo, história 8g): isso não é referência.
+            var texto = Regex.Replace(File.ReadAllText(csproj), @"<InternalsVisibleTo\s+Include=""BgsControle\.Simulador""\s*/>", "");
+            Assert.DoesNotContain("Simulador", texto, StringComparison.OrdinalIgnoreCase);
         }
     }
 
     /// <summary>
     /// História 8f: nenhuma tela mostra o equilíbrio, um toggle de link, o Manter/Atualizar da calibração
-    /// nem o selo de memória e de preset herdados (o selo do Setup herdado fica).
+    /// nem o selo de memória e de preset herdados (desde a 8g, nem o do Setup: <see cref="Nada_do_conhecimento_herdado_fica_no_app"/>).
     /// </summary>
     [Fact]
     public void Nenhuma_tela_mostra_equilibrio_toggle_de_link_calibracao_nem_selo_de_memoria_e_preset_herdados()
@@ -72,6 +74,64 @@ public sealed class ArquiteturaTestes
             Assert.DoesNotContain("{Binding Selo,", texto, StringComparison.Ordinal);
             Assert.DoesNotContain("IsVisible=\"{Binding Herdado}\"", texto, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>
+    /// História 8g: o app nasce zerado. O conhecimento herdado não existe mais no núcleo, nenhuma constante
+    /// pública das Telas ou do núcleo nem texto de XAML cita o Casa 2.1 ou os equipamentos do Denis, e as telas de
+    /// Setup não têm o selo HERDADO.
+    /// </summary>
+    [Fact]
+    public void Nada_do_conhecimento_herdado_fica_no_app()
+    {
+        string[] proibidos = ["Casa 2.1", "JBL", "Protech", "SD800"];
+        var nucleo = typeof(BgsControle.Nucleo.Setups.GerenteSetups).Assembly;
+        Assert.DoesNotContain(nucleo.GetTypes(), t => t.Name.Contains("Herdad", StringComparison.Ordinal)
+                                                      || (t.Namespace ?? "").EndsWith(".Herdado", StringComparison.Ordinal));
+        // A leitura de 18/10 vive só na fixture dos testes (CasaDoDenis), não embutida no núcleo.
+        Assert.DoesNotContain(nucleo.GetManifestResourceNames(), r => r.Contains("2026-10-18", StringComparison.Ordinal));
+        foreach (var arquivo in Directory.GetFiles(Path.Combine(Raiz().FullName, "src"), "*.cs", SearchOption.AllDirectories)
+                     .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj")))
+            Assert.DoesNotContain("ConhecimentoHerdado", File.ReadAllText(arquivo), StringComparison.Ordinal);
+
+        var telas = typeof(SetupViewModel).Assembly;
+        Assert.DoesNotContain(telas.GetTypes(), t => t.Name == "HerdadoViewModel");
+        // As constantes públicas das Telas e do núcleo (as Msg* de GerenteSetups e GerentePresets chegam à tela).
+        var constantes = telas.GetTypes().Concat(nucleo.GetTypes()).Where(t => t.IsPublic || t.IsNestedPublic)
+            .SelectMany(t => t.GetFields(BindingFlags.Public | BindingFlags.Static))
+            .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+            .Select(f => ($"{f.DeclaringType!.Name}.{f.Name}", (string)f.GetRawConstantValue()!))
+            .ToArray();
+        Assert.Contains(constantes, c => c.Item1 == "GerenteSetups.MsgDuvida");
+        Assert.Contains(constantes, c => c.Item1 == "GerentePresets.MsgNomeInvalido");
+        foreach (var (nome, valor) in constantes)
+        {
+            foreach (var p in proibidos)
+                Assert.False(valor.Contains(p, StringComparison.Ordinal), $"{nome} cita {p}: \"{valor}\"");
+            Assert.False(valor.Contains("HERDADO", StringComparison.Ordinal), $"{nome} tem o selo HERDADO");
+        }
+
+        var xamls = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "*.xaml", SearchOption.AllDirectories)
+            .Where(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj"))
+            .ToArray();
+        foreach (var f in xamls)
+        {
+            // Só os atributos (os comentários podem citar a história).
+            var atributos = XDocument.Load(f).Descendants().SelectMany(e => e.Attributes()).Select(a => a.Value).ToArray();
+            foreach (var p in proibidos.Append("HERDADO"))
+                Assert.DoesNotContain(atributos, a => a.Contains(p, StringComparison.Ordinal));
+        }
+        foreach (var nome in new[] { "SetupPage.xaml", "SetupsPage.xaml", "SetupEscolhaPage.xaml" })
+        {
+            var texto = File.ReadAllText(xamls.Single(f => Path.GetFileName(f) == nome));
+            Assert.DoesNotContain("{Binding Selo", texto, StringComparison.Ordinal);
+            Assert.DoesNotContain("{Binding Herdado}", texto, StringComparison.Ordinal);
+            Assert.DoesNotContain("{Binding Nota}", texto, StringComparison.Ordinal);
+        }
+        var escolha = File.ReadAllText(xamls.Single(f => Path.GetFileName(f) == "SetupEscolhaPage.xaml"));
+        Assert.Contains("{Binding PodeEscolher}", escolha, StringComparison.Ordinal);
+        Assert.Contains("{Binding AmbientesTela}", escolha, StringComparison.Ordinal);
+        Assert.Contains("{Binding AmbientesTela}", File.ReadAllText(xamls.Single(f => Path.GetFileName(f) == "SetupPage.xaml")), StringComparison.Ordinal);
     }
 
     /// <summary>

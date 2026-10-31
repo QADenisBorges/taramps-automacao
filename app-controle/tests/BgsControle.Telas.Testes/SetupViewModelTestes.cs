@@ -1,5 +1,4 @@
 using BgsControle.Nucleo;
-using BgsControle.Nucleo.Herdado;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Simulador;
 
@@ -62,8 +61,8 @@ public sealed class SetupViewModelTestes : IDisposable
         Assert.Equal("O QUE NÃO BATE", SetupViewModel.RotuloDiferencas);
         var casa = Assert.Single(_vm.Setups);
         Assert.Equal("Casa 2.1", casa.Nome);
-        Assert.Equal("HERDADO", casa.Selo);
         Assert.True(casa.EmUso);
+        Assert.True(_vm.PodeEscolher);
         Assert.True(Mutados(true));
     }
 
@@ -94,7 +93,7 @@ public sealed class SetupViewModelTestes : IDisposable
         _vm.NomeNovo = "Carro!";
         await _b.Rodar(_vm.ConfirmarCriar.ExecutarAsync());
         Assert.True(_vm.CriarAberto);
-        Assert.Equal("Use de 1 a 24 letras, números, espaço, _ ou -", _vm.ErroNome);
+        Assert.Equal("Use de 1 a 24 letras, números, espaço, ponto, _ ou -", _vm.ErroNome); // o nome do Setup aceita o ponto
         Assert.Null(_vm.ErroNomeMemoria);
         Assert.True(_vm.Aberta);
 

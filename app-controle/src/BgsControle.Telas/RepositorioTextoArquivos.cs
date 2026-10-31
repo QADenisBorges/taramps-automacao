@@ -11,7 +11,7 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>O link 1–2 e 3–4.</summary>
     public const string ArquivoLink = "link-canais.json";
 
-    /// <summary>Os presets próprios do celular (os herdados vêm do código).</summary>
+    /// <summary>Os presets próprios do celular.</summary>
     public const string ArquivoPresets = "presets.json";
 
     /// <summary>Os Setups, as memórias do celular, o último Setup usado e os 3 botões de cada Setup (história 8c).</summary>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--
     Configurações › Memórias (EXPERIENCE, Cartão de memória; DESIGN, cartao-de-memoria): as memórias do celular
-    do Setup em uso (EM USO, HERDADO, o preset lembrado; Aplicar, Renomear, Apagar), Criar memória do som atual e,
+    do Setup em uso (EM USO, o preset lembrado; Aplicar, Renomear, Apagar), Criar memória do som atual e,
     junto dele, o chip "+ Nova memória" (história 10d; até a Roda existir): pede a criação com perguntas, que
     sobe em tela toda quando abre. Travado (sem Setup, na dúvida, só leitura ou com uma criação aberta), apagado e
-    com o motivo. O aviso rápido da casca ("Memória MUSICA ORIG criada no Casa 2.1.") aparece aqui também.
+    com o motivo. O aviso rápido da casca (a memória criada) aparece aqui também.
     As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
