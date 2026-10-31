@@ -32,10 +32,10 @@ Uma visão que nasceu de uma dor. Nas sessões de regulagem, a IA ajustava solta
   - **intent:** Um serviço no notebook escuta os eventos da porta e acorda o Agente quando o usuário pede uma nova memória ou cadastra um modelo sem ficha. Roda um Agente por vez.
   - **success:** Contra a porta do núcleo sobre o simulador, com o modelo falso, um toque em "+ Nova memória" leva o Agente a abrir a criação em até 15 s. Um segundo pedido durante a criação não abre outro Agente. Sem o serviço, o app mostra o texto de `lado-do-app.md` em 15 s.
 - **CAP-2**
-  - **intent:** O Agente faz as perguntas uma por tela (3 ou 4 respostas e "Outro…"), escolhendo sempre a variável de maior dúvida × impacto, e para quando nenhuma resposta muda um parâmetro em mais de 1 dB (`cerebro-do-agente.md`).
-  - **success:** Na avaliação real, nenhum perfil passa de 8 perguntas, e dois perfis com gostos diferentes recebem sequências de perguntas diferentes.
+  - **intent:** O Agente faz as perguntas uma por tela (3 ou 4 respostas e "Outro…"), montadas pelo Setup, pelo ambiente e pelo objetivo, nunca por uma lista fixa de usos. Ele escolhe sempre a variável de maior dúvida × impacto, trata todo padrão como dúvida e para quando nenhuma resposta muda um parâmetro em mais de 1 dB nem uma rota (`cerebro-do-agente.md`).
+  - **success:** Na avaliação real, nenhum perfil passa de 8 perguntas, dois perfis com gostos diferentes recebem sequências diferentes, e um carro e uma sala recebem primeiras perguntas com respostas diferentes.
 - **CAP-3**
-  - **intent:** A receita transforma as variáveis em ajustes na ordem da física (cerca, ganho, corte, atraso e fase; depois tom; por último dinâmica), cada um com frase, valor de antes, valor novo e motivo, dentro da cerca do Rendimento.
+  - **intent:** A receita transforma as variáveis em ajustes na ordem da física (cerca, rota, ganho, corte, atraso e fase; depois tom; por último dinâmica), cada um com frase, valor de antes, valor novo e motivo, dentro da cerca do Rendimento. A rota (entradas separadas ou somadas em cada saída) é decisão com motivo, nunca padrão.
   - **success:** Na avaliação real, nenhum ajuste sai sem motivo, nenhum passa da cerca e nenhum EQ vem antes do tempo e da fase. O app recusa o que passar da cerca, e a recusa conta como violação.
 - **CAP-4**
   - **intent:** No refino, o Agente compara uma variável por vez pela escuta "1 ou 2", com o volume igualado pelo app, e cada escolha corta pela metade a dúvida daquela variável.
@@ -51,7 +51,7 @@ Uma visão que nasceu de uma dor. Nas sessões de regulagem, a IA ajustava solta
   - **success:** Depois de duas criações de música com a mesma escolha de grave, o perfil de música muda e o de filme não. Depois de uma só, nada muda.
 - **CAP-8**
   - **intent:** O Agente é provado por ouvintes simulados com gosto escondido: um modelo falso no build-auto e uma avaliação real por comando, com custo mostrado antes, que barra mudanças nas skills que não passem.
-  - **success:** A avaliação real passa nos 8 perfis (até 1,5 dB, até 8 perguntas, nenhuma violação), e um Agente genérico, com as mesmas perguntas para todos, falha.
+  - **success:** A avaliação real passa nos 8 perfis, de Setups e ambientes variados (até 1,5 dB, até 8 perguntas, nenhuma violação, a rota certa). Um Agente genérico, com as mesmas perguntas para todos, falha, e um Agente que supõe as entradas separadas falha no perfil da SPL.
 
 ## Constraints
 
@@ -60,6 +60,7 @@ Uma visão que nasceu de uma dor. Nas sessões de regulagem, a IA ajustava solta
 - Tudo no modelo, com skills; só a cerca é código, a do app (decisão do Denis, 30/10/2026).
 - A cerca do Rendimento vale sempre; nenhum valor sai sem motivo; a IA não salva; nenhuma tela mostra a palavra "IA".
 - Uma pergunta por tela; responder à última pergunta autoriza aplicar (UX de 30/10, que vale sobre a forja).
+- Nada é específico de um caso: nem direções (esquerda, direita, entrada A ou B), nem usos fixos (música, filme), nem um tipo de instalação. As variáveis são fenômenos, e todo padrão carrega dúvida (decisão do Denis, 30/10/2026).
 - As 3 memórias do processador são intocáveis e não são referência.
 - Instruções em camadas, versionadas no git; uma mudança nas skills só entra no `main` se a avaliação real passar.
 

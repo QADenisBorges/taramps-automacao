@@ -330,7 +330,8 @@
   description: >-
     O app abre como numa primeira instalação: sem o Setup Casa 2.1, sem
     equipamentos, fichas, base de modelos, notas das memórias do aparelho
-    nem preferências; fica só o protocolo (CAP-6, CAP-16).
+    nem preferências; fica só o protocolo (CAP-6, CAP-16). O Setup ganha
+    o ambiente (sala, carro, ao ar livre ou outro), dado físico.
   invoke_dev_with: >-
     Decisão do Denis de 30/10/2026 (memlog de spec-rendimento e da spec do
     app; conhecimento-herdado.md atualizado). Sem migração que apague

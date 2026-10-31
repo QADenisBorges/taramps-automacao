@@ -7,6 +7,11 @@ Complementa `../../forge/montagem-do-setup/estrategia-mesa.md` (variáveis de de
 - **Uma pergunta por tela**, não modal com várias (UX de 30/10). Responder à última pergunta autoriza aplicar.
 - **A escuta "1 ou 2" só no refino**, depois do primeiro Aplicando, no lugar de uma resposta do "Como ficou?".
 - **Padrão das variáveis:** sai da física e do Setup em uso, lido pela porta. Nunca das memórias do aparelho nem de regulagens antigas: o Agente começa zerado.
+- **Variáveis são fenômenos, não casos** (decisão do Denis, 30/10/2026). A tabela de variáveis da mesa (uso música/filme, onde senta) vale só como exemplo do caso de uma sala 2.1. O catálogo geral: objetivo (fidelidade × nível máximo), cobertura (um ouvinte no ponto ideal × vários ou fora do eixo), posição de quem ouve, ambiente (do Setup), tom, voz, dinâmica e cansaço. Cada variável só existe se o Setup permitir; por exemplo, atraso entre caixas só com caixas em posições diferentes.
+- **As perguntas nascem do Setup e do objetivo.** A primeira é sempre o objetivo do som, com respostas montadas pelo Agente para aquele Setup e ambiente (carro, caixa bob, sala, ao ar livre…), nunca uma lista fixa de usos.
+- **Nenhuma direção fixa.** O Agente não supõe esquerda, direita nem que cada entrada vai para uma caixa. A distribuição das entradas entre as saídas (separadas ou somadas) é decisão da receita, com motivo: separadas dão imagem; somadas dão nível, carga dividida e a música inteira para quem está fora do eixo, ao custo da imagem, de cancelamentos do que foi gravado com fase invertida e da folga interna da soma.
+- **Todo padrão carrega dúvida.** Se trocar um padrão mexe mais de 1 dB num ajuste ou muda uma rota, o Agente pergunta ou faz a escuta "1 ou 2"; nunca supõe. Caso real (Denis, SPL para sentir o máximo do kit): a IA antiga supôs as entradas como esquerda e direita, e a soma não foi considerada.
+- **A situação do perfil** é o nome que o usuário dá à memória ou ao uso, não uma lista fixa.
 
 ## Fluxo de uma criação
 
@@ -42,14 +47,14 @@ Tudo versionado no git. Uma mudança só entra se a avaliação real passar.
 ## Aprendizado (arquivos)
 
 - **Registros por criação:** o que foi proposto × o que o usuário deixou; o retorno positivo e o negativo; o retorno sem palavras (refino, cancelar, ajuste à mão depois); as escolhas do "1 ou 2"; o diálogo resumido; o contexto (volume, conteúdo, hora).
-- **Perfil por situação** (música, filme…): é o ponto de partida das variáveis. A memória manda. O perfil só muda quando a mesma escolha se repete em memórias diferentes.
+- **Perfil por situação** (o nome que o usuário dá): é o ponto de partida das variáveis. A memória manda. O perfil só muda quando a mesma escolha se repete em memórias diferentes.
 - **"Outro…" vira opção** só quando se liga a um parâmetro conhecido.
 - **Cada erro real vira caso de teste** dos ouvintes simulados.
 - O aprendizado começa vazio.
 
 ## Ouvintes simulados e avaliação
 
-- **Ouvinte simulado:** código, com um gosto escondido numérico (ex.: "grave +4 dB, ouve a 75 dB, filme à noite"). Responde às perguntas de palavras pelo perfil e ao "1 ou 2" pela versão mais perto do gosto.
+- **Ouvinte simulado:** código, com um Setup, um ambiente e um gosto escondido numérico (ex.: "grave +4 dB, ouve a 75 dB, filme à noite"). Responde às perguntas de palavras pelo perfil e ao "1 ou 2" pela versão mais perto do gosto. Os 8 perfis cobrem Setups e ambientes variados (carro, caixa bob ao ar livre, sala 2.1, 2 vias ativo) e incluem o caso da SPL: nível máximo do kit, posição das caixas indiferente, gosto escondido com as entradas somadas; um Agente que supõe entradas separadas reprova.
 - **Modelo falso** (build-auto): respostas gravadas no lugar do modelo, para testar serviço, ferramenta, porta, cerca e registros sem custo e sempre com o mesmo resultado.
 - **Avaliação real:** um comando roda o Agente de verdade contra 8 perfis e mostra o custo estimado antes (~US$ 12). Passa se, em cada perfil, todo parâmetro final fica a até 1,5 dB do gosto escondido, com até 8 perguntas e nenhuma violação da cerca ou da ordem da física. O relatório mostra, por perfil, as perguntas, a distância e as violações.
 - Um Agente genérico (mesmas perguntas para todos) tem de falhar.
