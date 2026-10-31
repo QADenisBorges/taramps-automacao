@@ -11,8 +11,11 @@ using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo.Porta;
 
-/// <summary>Um evento para a IA consultar (<c>GET /eventos?desde=N</c>): pausou, retomou, parada ou um comando da tela enviado.</summary>
-public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, EntradaHistorico? Comando);
+/// <summary>
+/// Um evento para a IA consultar (<c>GET /eventos?desde=N</c>): pausou, retomou, parada, um comando da tela enviado
+/// ou um evento da criação da memória (<see cref="Criacao"/>: a resposta, o "Como ficou?", salva, cancelada, interrompida).
+/// </summary>
+public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, EntradaHistorico? Comando, EventoCriacao? Criacao = null);
 
 /// <summary>
 /// A porta de comandos da IA (CAP-12, <c>porta-de-comandos.md</c>): as cinco travas num lugar só.
@@ -56,6 +59,9 @@ public sealed class PortaComandos : IDisposable
     public const string MsgChaveDesligada = "A chave Controle pela rede está desligada.";
     public const string MsgErroInesperado = "Erro inesperado no app.";
 
+    /// <summary>O <c>/ajuste</c> e o <c>/memoria/aplicar</c> comuns com a criação da memória aberta (CAP-18).</summary>
+    public const string MsgCriacaoAberta = "Uma nova memória está sendo criada: os ajustes vão por /criacao/ajuste até salvar ou cancelar.";
+
     /// <summary>Quantos <c>/ajuste</c> seguidos da IA passam sem o toque; o próximo espera Continuar (o 3 é provisório, do Denis).</summary>
     public const int AjustesSemToque = 3;
 
@@ -88,6 +94,7 @@ public sealed class PortaComandos : IDisposable
     private readonly TimeProvider _relogio;
     private readonly int _porta;
     private readonly ServidorHttp _servidor;
+    private readonly CriacaoMemoria? _criacao;
 
     private readonly object _trava = new();
     private readonly SemaphoreSlim _abrir = new(1, 1);
@@ -120,7 +127,8 @@ public sealed class PortaComandos : IDisposable
         MonitorAparelho monitor,
         LogBle log,
         TimeProvider? relogio = null,
-        int porta = PortaPadrao)
+        int porta = PortaPadrao,
+        CriacaoMemoria? criacao = null)
     {
         _sessao = sessao;
         _chaves = chaves;
@@ -138,6 +146,7 @@ public sealed class PortaComandos : IDisposable
         _log = log;
         _relogio = relogio ?? TimeProvider.System;
         _porta = porta;
+        _criacao = criacao;
         _servidor = new ServidorHttp(porta, AtenderAsync, Triagem, log);
         _paradaVista = uso.Parada;
 
@@ -148,6 +157,8 @@ public sealed class PortaComandos : IDisposable
         _historico.Registrou += AoRegistrar;
         Pareamento.Mudou += AoMudarPareamento;
         _sessao.Mudou += AoMudarSessao;
+        if (_criacao is not null)
+            _criacao.Aconteceu += AoAcontecerCriacao;
         // A chave pode já estar carregada (sem o aviso de agora): confere uma vez.
         Inicio = ServidorHttp.SemFluxo(AtualizarSeguroAsync);
     }
@@ -325,6 +336,9 @@ public sealed class PortaComandos : IDisposable
 
     private void AoPausar() => Registrar("pausou", null);
 
+    /// <summary>A criação da memória devolve pela porta: a resposta, o "Como ficou?", salva, cancelada, interrompida.</summary>
+    private void AoAcontecerCriacao(EventoCriacao evento) => Registrar(evento.Tipo, null, evento);
+
     private void AoRetomar() => Registrar("retomou", null);
 
     private void AoRegistrar(EntradaHistorico entrada)
@@ -385,11 +399,11 @@ public sealed class PortaComandos : IDisposable
         }
     }
 
-    private void Registrar(string tipo, EntradaHistorico? comando)
+    private void Registrar(string tipo, EntradaHistorico? comando, EventoCriacao? criacao = null)
     {
         lock (_trava)
         {
-            _eventos.AddLast(new EventoPorta(++_ultimoEvento, _relogio.GetLocalNow(), tipo, comando));
+            _eventos.AddLast(new EventoPorta(++_ultimoEvento, _relogio.GetLocalNow(), tipo, comando, criacao));
             while (_eventos.Count > MaximoEventos)
                 _eventos.RemoveFirst();
         }
@@ -538,6 +552,7 @@ public sealed class PortaComandos : IDisposable
                 "/catalogo" => new RespostaPorta(200, JsonPorta.Ok(EscreverCatalogo)),
                 "/eventos" => RespostaEventos(pedido),
                 "/historico" => RespostaHistorico(pedido),
+                "/criacao" when _criacao is not null => new RespostaPorta(200, JsonPorta.Ok(EscreverCriacao)),
                 _ => Recusa(404, MsgCaminho),
             };
         }
@@ -556,6 +571,12 @@ public sealed class PortaComandos : IDisposable
             ("POST", "/aparelho/reset-fabrica") => ResetFabrica,
             ("POST", "/tarefa") => IniciarTarefa,
             ("DELETE", "/tarefa") => TerminarTarefa,
+            ("POST", "/criacao/abrir") when _criacao is not null => AbrirCriacao,
+            ("POST", "/criacao/pergunta") when _criacao is not null => PerguntaCriacao,
+            ("POST", "/criacao/ajuste") when _criacao is not null => AjusteCriacao,
+            ("POST", "/criacao/resumo") when _criacao is not null => ResumoCriacao,
+            ("POST", "/criacao/como-ficou") when _criacao is not null => ComoFicouCriacao,
+            ("POST", "/criacao/cancelar") when _criacao is not null => CancelarCriacao,
             _ => null,
         };
         if (montar is null)
@@ -565,6 +586,9 @@ public sealed class PortaComandos : IDisposable
         // parar do gerador fica de fora: desligar o tom nunca é travado.
         if (pedido.Metodo == "POST" && pedido.Caminho != "/gerador/parar" && _setups.MotivoBloqueioIa is { } duvida)
             return RecusaDaPorta(op, duvida);
+        // Na criação da memória (CAP-18), só os ajustes dela: o /ajuste e o aplicar comuns esperam o fim.
+        if (pedido.Caminho is "/ajuste" or "/memoria/aplicar" && _criacao is { Aberta: true })
+            return RecusaDaPorta(op, MsgCriacaoAberta);
         return await RodarAsync(op);
     }
 
@@ -597,6 +621,12 @@ public sealed class PortaComandos : IDisposable
                 if (op.Quadro is { } quadro && _sessao.Conferir(quadro) is { } motivo)
                     return RecusaDaPorta(op, motivo); // o Conferir não registra: entra aqui, uma vez
                 var decisao = await Confirmacoes.PedirAsync(pedido);
+                if (decisao == DecisaoConfirmacao.Recusou && _criacao is { Aberta: true } criacao)
+                {
+                    // D5: o Cancelar de uma folha de risco no meio da criação cancela a criação e volta à cópia.
+                    await criacao.CancelarAsync(CriacaoMemoria.PorFolha);
+                    return RecusaDaPorta(op, CriacaoMemoria.MsgCanceladaNaFolha);
+                }
                 if (Recusada(decisao) is { } recusa)
                     return RecusaDaPorta(op, recusa);
                 ZerarSequencia(); // uma confirmação na tela é um toque do usuário no meio
@@ -844,6 +874,213 @@ public sealed class PortaComandos : IDisposable
             return Task.FromResult(Feito(null));
         });
 
+    // ------------------------------------------------------------------ a criação da memória (CAP-18)
+
+    private static RespostaPorta Criacao(ResultadoCriacao r, Action<Utf8JsonWriter>? mais = null) =>
+        r.Ok ? Feito(r.Mensagem, mais) : Recusa(r.Invalido ? 400 : 409, r.Motivo ?? MsgErroInesperado);
+
+    private static Operacao OperacaoCriacao(Func<Task<RespostaPorta>> executar) => new(null, null, null, executar);
+
+    private Operacao AbrirCriacao(CorpoPedido _) =>
+        OperacaoCriacao(async () => Criacao(await _criacao!.AbrirAsync(), EscreverEtapa));
+
+    private Operacao PerguntaCriacao(CorpoPedido corpo)
+    {
+        var texto = corpo.Texto("texto");
+        var respostas = corpo.ListaTextos("respostas");
+        var ultima = corpo.Booleano("ultima");
+        return OperacaoCriacao(() => Task.FromResult(Criacao(_criacao!.Perguntar(texto, respostas, ultima), EscreverEtapa)));
+    }
+
+    /// <summary>
+    /// Um ajuste da criação: só a regulagem (as 15 bandas, o preset de EQ e o mute dão 400), só depois da resposta à
+    /// última pergunta (ou ao "Como ficou?"), com a frase e o motivo. Não entra na conta do Continuar.
+    /// </summary>
+    private Operacao AjusteCriacao(CorpoPedido corpo)
+    {
+        var codigo = corpo.Texto("codigo");
+        var p = Catalogo.Marco1.FirstOrDefault(x => x.Codigo == codigo)
+                ?? throw new PedidoInvalidoException($"O código {codigo} não é um ajuste de áudio (veja GET /catalogo).");
+        if (!CriacaoMemoria.EntraNaCriacao(codigo))
+            throw new PedidoInvalidoException(CriacaoMemoria.MsgSoRegulagem);
+        var indice = corpo.InteiroOpcional("indice");
+        if (p.Escopo == Escopo.Global && indice is not null)
+            throw new PedidoInvalidoException($"O {codigo} é global: sem \"indice\".");
+        if (p.Escopo != Escopo.Global && indice is null)
+            throw new PedidoInvalidoException($"Falta o campo \"indice\" (0 a {p.Indices - 1}).");
+        var frase = TextoCheio(corpo, "frase");
+        var motivo = TextoCheio(corpo, "motivo");
+
+        string quadro;
+        Func<Task<ResultadoAjusteCriacao>> ajustar;
+        if (p.Tipo == TipoValor.Roteamento)
+        {
+            var texto = corpo.Texto("valor");
+            quadro = Codificar(() => p.CodificarEscrita(indice, texto));
+            ajustar = () => _criacao!.AjustarAsync(codigo, indice, texto, frase, motivo);
+        }
+        else
+        {
+            var numero = corpo.Numero("valor");
+            quadro = Codificar(() => p.CodificarEscrita(indice, numero));
+            ajustar = () => _criacao!.AjustarAsync(codigo, indice, numero, frase, motivo);
+        }
+        return new Operacao(ComandoNaPorta.Ler(quadro), quadro, null, async () =>
+        {
+            var r = await ajustar();
+            if (!r.Ok || r.Ajuste is not { } a)
+                return Recusa(r.Invalido ? 400 : 409, r.Motivo ?? Sessao.MotivoFalhaEscrita);
+            return Feito(a.Aviso, w =>
+            {
+                EscreverAjusteCriacao(w, a);
+                w.WriteString("etapa", NomeEtapa(_criacao!.Etapa));
+            });
+        });
+    }
+
+    private static string TextoCheio(CorpoPedido corpo, string nome)
+    {
+        var texto = corpo.Texto(nome).Trim();
+        return texto.Length > 0 ? texto : throw new PedidoInvalidoException($"O campo \"{nome}\" precisa de texto.");
+    }
+
+    private Operacao ResumoCriacao(CorpoPedido _) =>
+        OperacaoCriacao(() => Task.FromResult(Criacao(_criacao!.FecharRodada(), w =>
+        {
+            EscreverEtapa(w);
+            EscreverResumo(w);
+        })));
+
+    private Operacao ComoFicouCriacao(CorpoPedido corpo)
+    {
+        var respostas = corpo.ListaTextos("respostas");
+        return OperacaoCriacao(() => Task.FromResult(Criacao(_criacao!.PerguntarComoFicou(respostas), EscreverEtapa)));
+    }
+
+    /// <summary>Cancelar pela porta: fecha sempre; <c>voltou</c> diz se o som voltou à cópia (senão, ficou pela metade).</summary>
+    private Operacao CancelarCriacao(CorpoPedido _) =>
+        OperacaoCriacao(async () =>
+        {
+            var r = await _criacao!.CancelarAsync(CriacaoMemoria.PorPorta);
+            // Nada aberto, ou o Salvar do usuário andando: recusa, sem fechar.
+            if (!r.Ok && r.Motivo is CriacaoMemoria.MsgFechada or CriacaoMemoria.MsgSalvando)
+                return Recusa(409, r.Motivo);
+            return Feito(r.Mensagem, w => w.WriteBoolean("voltou", r.Ok));
+        });
+
+    private static string NomeEtapa(EtapaCriacao etapa) => etapa switch
+    {
+        EtapaCriacao.Perguntas => "perguntas",
+        EtapaCriacao.Ajustando => "ajustando",
+        EtapaCriacao.Resumo => "resumo",
+        EtapaCriacao.ComoFicou => "como-ficou",
+        EtapaCriacao.Salvar => "salvar",
+        _ => "fechada",
+    };
+
+    private void EscreverEtapa(Utf8JsonWriter w)
+    {
+        w.WriteString("etapa", NomeEtapa(_criacao!.Etapa));
+        w.WriteBoolean("autorizado", _criacao.Autorizado);
+        w.WriteNumber("rodada", _criacao.Rodada);
+    }
+
+    private static void EscreverAjusteCriacao(Utf8JsonWriter w, AjusteCriacao a)
+    {
+        w.WriteNumber("rodada", a.Rodada);
+        w.WriteString("codigo", a.Codigo);
+        if (a.Indice is { } i)
+            w.WriteNumber("indice", i);
+        else
+            w.WriteNull("indice");
+        w.WriteString("rotulo", a.Rotulo);
+        w.WriteString("frase", a.Frase);
+        w.WriteString("motivo", a.Motivo);
+        w.WriteString("antes", a.Antes);
+        w.WriteString("antesExibicao", a.AntesExibicao);
+        w.WriteString("novo", a.Novo);
+        w.WriteString("novoExibicao", a.NovoExibicao);
+        w.WriteString("relido", a.Relido);
+        w.WriteString("relidoExibicao", a.RelidoExibicao);
+        w.WriteBoolean("diferente", a.Diferente);
+        w.WriteBoolean("semEco", a.SemEco);
+    }
+
+    private void EscreverResumo(Utf8JsonWriter w)
+    {
+        w.WriteStartArray("resumo");
+        foreach (var l in _criacao!.Resumo)
+        {
+            w.WriteStartObject();
+            w.WriteString("codigo", l.Codigo);
+            if (l.Indice is { } i)
+                w.WriteNumber("indice", i);
+            else
+                w.WriteNull("indice");
+            w.WriteString("rotulo", l.Rotulo);
+            w.WriteString("antes", l.Antes);
+            w.WriteString("valor", l.Valor);
+            w.WriteString("frase", l.Frase);
+            w.WriteBoolean("daRodada", l.DaRodada);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
+    /// <summary>O <c>GET /criacao</c>: a etapa, o Setup, as perguntas com as respostas, a rodada, os ajustes e o "Como ficou?".</summary>
+    private void EscreverCriacao(Utf8JsonWriter w)
+    {
+        var c = _criacao!;
+        EscreverEtapa(w);
+        if (!c.Aberta)
+            return;
+        w.WriteStartObject("setup");
+        w.WriteString("id", c.IdSetup);
+        w.WriteString("nome", c.NomeSetup);
+        w.WriteEndObject();
+        w.WriteString("somAntes", c.SomAntes);
+        w.WriteStartArray("perguntas");
+        foreach (var p in c.Perguntas)
+        {
+            w.WriteStartObject();
+            w.WriteNumber("numero", p.Numero);
+            w.WriteString("texto", p.Texto);
+            w.WriteStartArray("respostas");
+            foreach (var r in p.Respostas)
+                w.WriteStringValue(r);
+            w.WriteEndArray();
+            w.WriteBoolean("ultima", p.Ultima);
+            w.WriteString("resposta", p.Resposta);
+            w.WriteBoolean("doOutro", p.DoOutro);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("ajustes");
+        foreach (var a in c.Ajustes)
+        {
+            w.WriteStartObject();
+            EscreverAjusteCriacao(w, a);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        EscreverResumo(w);
+        w.WriteStartArray("comoFicou");
+        foreach (var f in c.ComoFicou)
+        {
+            w.WriteStartObject();
+            w.WriteNumber("rodada", f.Rodada);
+            w.WriteStartArray("respostas");
+            foreach (var r in f.Respostas)
+                w.WriteStringValue(r);
+            w.WriteEndArray();
+            w.WriteString("resposta", f.Resposta);
+            w.WriteBoolean("doOutro", f.DoOutro);
+            w.WriteBoolean("salvar", f.Salvar);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
     // ------------------------------------------------------------------ as leituras
 
     private void EscreverEstado(Utf8JsonWriter w)
@@ -1041,10 +1278,34 @@ public sealed class PortaComandos : IDisposable
                 w.WriteString("tipo", e.Tipo);
                 if (e.Comando is { } c)
                     EscreverEntrada(w, c, comHora: false);
+                if (e.Criacao is { } criacao)
+                    EscreverEventoCriacao(w, criacao);
                 w.WriteEndObject();
             }
             w.WriteEndArray();
         }));
+    }
+
+    private static void EscreverEventoCriacao(Utf8JsonWriter w, EventoCriacao e)
+    {
+        if (e.Numero is { } numero)
+            w.WriteNumber("numero", numero);
+        if (e.Texto is not null)
+            w.WriteString("texto", e.Texto);
+        if (e.DoOutro is { } doOutro)
+            w.WriteBoolean("doOutro", doOutro);
+        if (e.Salvar is { } salvar)
+            w.WriteBoolean("salvar", salvar);
+        if (e.Rodada is { } rodada)
+            w.WriteNumber("rodada", rodada);
+        if (e.Por is not null)
+            w.WriteString("por", e.Por);
+        if (e.Voltou is { } voltou)
+            w.WriteBoolean("voltou", voltou);
+        if (e.Memoria is not null)
+            w.WriteString("memoria", e.Memoria);
+        if (e.Motivo is not null)
+            w.WriteString("motivo", e.Motivo);
     }
 
     private RespostaPorta RespostaHistorico(PedidoPorta pedido)
@@ -1112,6 +1373,16 @@ public sealed class PortaComandos : IDisposable
         POST /tarefa {"frase":"ajustando o EQ da FILME"}: a IA fica ativa com esta tarefa (a frase volta no /estado; a tela não a mostra).
         DELETE /tarefa: a IA terminou.
 
+        Criação da memória (CAP-18), nos dois sentidos: a IA manda, o celular mostra e devolve as respostas pelo /eventos.
+        GET  /criacao: a etapa (fechada, perguntas, ajustando, resumo, como-ficou, salvar), se os ajustes estão autorizados, a rodada, o Setup, o somAntes, as perguntas com as respostas, os ajustes, o resumo e o "Como ficou?".
+        POST /criacao/abrir: abre no Setup em uso (sem dúvida, conectado e com a leitura pronta); o app guarda a cópia de antes e a tarefa começa (o vigia de 30 s vale). Uma criação por vez.
+        POST /criacao/pergunta {"texto":"Para que é esta memória?","respostas":["Música","Filme","Jogo"],"ultima":false}: de 3 a 4 respostas; o celular acrescenta "Outro…". Só antes dos ajustes e depois da resposta à anterior. A resposta chega no /eventos como criacao-resposta (numero, texto, doOutro).
+        POST /criacao/ajuste {"codigo":"081","indice":2,"valor":2.0,"frase":"Mais corpo no sub","motivo":"..."}: só depois da resposta à última pergunta (ou ao "Como ficou?"), e só a regulagem (as 15 bandas, o preset de EQ, o link e o mute: 400). Volta antes, novo, relido e diferente; aqui, diferente do /ajuste, relido é o valor que o aparelho confirmou, e semEco diz que ele veio da releitura. Com o link ligado, se a outra saída não acompanhou, o resumo dá 409 até um ajuste ali acompanhar. Não conta para o Continuar.
+        POST /criacao/resumo: termina a rodada, se todo ajuste foi relido igual ao pedido (senão 409); volta o resumo, com os da rodada em destaque (daRodada).
+        POST /criacao/como-ficou {"respostas":["Quero mais impacto","Os graves embolaram"]}: de 2 a 3 respostas, depois do resumo; o celular mostra "Ótimo, pode salvar" antes e "Outro…" depois. A resposta chega como criacao-como-ficou (texto, doOutro, salvar, rodada); com salvar:false, os ajustes valem de novo numa rodada nova.
+        POST /criacao/cancelar: volta à cópia de antes e fecha, sem salvar (criacao-cancelada, por: porta; voltou diz se o som voltou todo).
+        Salvar e dar o nome são só do usuário (criacao-salva, com a memoria). O ✕ do usuário e o Cancelar de uma folha de risco durante a criação também cancelam (por: usuario, folha); o pedido da folha recebe 409 "O usuário cancelou a nova memória.". Se a conexão cai ou a tarefa acaba no meio (DELETE /tarefa, 30 s sem pedidos, o revogar), a criação é interrompida (criacao-interrompida): nada é salvo e, com algum ajuste escrito, o celular fica "aplicado pela metade". Durante a criação, o /ajuste e o /memoria/aplicar comuns recebem 409. Mantenha a tarefa e siga consultando o /eventos até criacao-salva ou criacao-cancelada, mesmo no Salvar, quando só o usuário age: DELETE /tarefa ou 30 s sem pedidos interrompem a criação. Com o Salvar do usuário andando, o /criacao/cancelar recebe 409.
+
         A IA não salva nem renomeia memórias: a porta não tem esse comando. As 3 memórias do aparelho não aparecem: a porta não as carrega nem lê os nomes (isso fica no app da Taramps).
         Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
@@ -1150,6 +1421,8 @@ public sealed class PortaComandos : IDisposable
         _historico.Registrou -= AoRegistrar;
         Pareamento.Mudou -= AoMudarPareamento;
         _sessao.Mudou -= AoMudarSessao;
+        if (_criacao is not null)
+            _criacao.Aconteceu -= AoAcontecerCriacao;
         _servidor.Fechar();
     }
 }

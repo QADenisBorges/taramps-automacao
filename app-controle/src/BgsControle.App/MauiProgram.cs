@@ -240,6 +240,16 @@ public static class MauiProgram
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoPortaIa),
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<LogBle>()));
+        // História 9d: a criação da memória (CAP-18), nos dois sentidos pela porta; o tipo "criar-memoria" fica
+        // registrado na CopiaAntes quando ela nasce (cedo, abaixo).
+        builder.Services.AddSingleton(sp => new CriacaoMemoria(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<UsoCompartilhado>(),
+            sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new PedidosConfirmacao(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new PortaComandos(
             sp.GetRequiredService<Sessao>(),
@@ -256,7 +266,8 @@ public static class MauiProgram
             sp.GetRequiredService<ComandosAparelho>(),
             sp.GetRequiredService<MonitorAparelho>(),
             sp.GetRequiredService<LogBle>(),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            criacao: sp.GetRequiredService<CriacaoMemoria>()));
 
         // História 11: os ViewModels que só faltavam ligar e as páginas novas. Singletons, como os da história 10.
         // História 9c: a chave "Controle pela rede" (no grupo APARELHO das Configurações), a folha de risco do
@@ -269,6 +280,10 @@ public static class MauiProgram
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new FolhaRiscoViewModel(
             sp.GetRequiredService<PedidosConfirmacao>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton(sp => new CriacaoMemoriaViewModel(
+            sp.GetRequiredService<CriacaoMemoria>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new ReaplicandoViewModel(
@@ -328,6 +343,9 @@ public static class MauiProgram
         // conexão, os tipos "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam
         // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas.
         app.Services.GetRequiredService<GerenteSetups>();
+        // História 9d: a criação da memória cedo: o tipo "criar-memoria" precisa estar registrado na CopiaAntes antes
+        // da primeira leitura (uma criação interrompida volta como "aplicado pela metade").
+        app.Services.GetRequiredService<CriacaoMemoria>();
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
         app.Services.GetRequiredService<GeradorSinal>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.

@@ -464,7 +464,8 @@ public sealed class GeradorSinal
             return Escritor.MsgLendo;
         if (!_estado.Pronto)
             return Escritor.MsgSemLeitura;
-        if (_copia.MotivoBloqueio() is { } bloqueio)
+        // A criação da memória (CAP-18) é uma operação longa: o tom confirmado na folha toca no meio dela.
+        if (_copia.MotivoBloqueioGerador() is { } bloqueio)
             return bloqueio;
         return null;
     }

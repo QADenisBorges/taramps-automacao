@@ -128,7 +128,8 @@ public sealed class Escritor
     /// <summary>
     /// Escreve um valor como o aparelho o devolveu (número ou texto). Sem <paramref name="espelhar"/>,
     /// o link não repete a escrita: a cópia do link e a volta à cópia escrevem cada canal por si.
-    /// Com <paramref name="daCopia"/> (só o Voltar à cópia), passa pelo <see cref="Bloqueio"/>.
+    /// Com <paramref name="daCopia"/> (o Voltar à cópia, o aplicar de uma memória ou preset e os ajustes da criação
+    /// da memória, que andam com a marca da cópia), passa pelo <see cref="Bloqueio"/>.
     /// </summary>
     internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, Valor valor, bool espelhar, bool daCopia = false)
     {
@@ -320,7 +321,8 @@ public sealed class Escritor
             var outro = Espelho?.Invoke(pedido.Parametro, pedido.Indice);
             if (outro is not { } canal || canal == pedido.Indice)
                 return r;
-            var espelhada = await EscreverAsync(pedido.Parametro, canal, valor, espelhar: false);
+            // A cópia do link passa pela trava como a mestre: só a escrita que já passava (a da criação da memória) passa.
+            var espelhada = await EscreverAsync(pedido.Parametro, canal, valor, espelhar: false, daCopia: pedido.DaCopia);
             if (espelhada.Ok && !espelhada.Diferente)
                 return r;
             _log.Evento($"{pedido.Quadro}: o link não levou à saída {canal + 1} " +

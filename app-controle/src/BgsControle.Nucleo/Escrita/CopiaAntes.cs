@@ -89,6 +89,7 @@ public sealed class CopiaAntes
     private Copia? _copia;
     private bool _emAndamento;
     private bool _resolvendo;
+    private bool _desfazendo;
     private OperacaoPendente? _pelaMetade;
 
     public CopiaAntes(
@@ -125,6 +126,22 @@ public sealed class CopiaAntes
                 return MsgOutraOperacao;
             return null;
         }
+    }
+
+    /// <summary>
+    /// O mesmo que <see cref="MotivoBloqueio"/> para o gerador, menos uma operação longa em andamento
+    /// cujo tipo deixa o gerador tocar (a criação da memória, CAP-18: um tom pedido no meio dela abre a
+    /// folha de risco e, confirmado, toca). Pela metade, resolvendo ou desfazendo, recusa igual.
+    /// </summary>
+    public string? MotivoBloqueioGerador()
+    {
+        lock (_trava)
+        {
+            if (_pelaMetade is null && !_resolvendo && !_desfazendo && _emAndamento && _copia?.Operacao is { } op
+                && _registros.GetValueOrDefault(op.Tipo) is { DeixaGerador: true })
+                return null;
+        }
+        return MotivoBloqueio();
     }
 
     /// <summary>Completa quando a cópia guardada foi lida.</summary>
@@ -167,10 +184,12 @@ public sealed class CopiaAntes
     /// Ensina a cópia a lidar com um tipo de operação: o que fazer ao achar a marca depois da
     /// leitura de uma conexão nova, e como refazê-la (Terminar).
     /// </summary>
-    public void Registrar(string tipo, Func<OperacaoPendente, Task<Retomada>> aoReconectar, Func<OperacaoPendente, Task<ResultadoCopia>> refazer)
+    /// <param name="deixaGerador">A operação é longa e o gerador pode tocar no meio dela (<see cref="MotivoBloqueioGerador"/>).</param>
+    public void Registrar(string tipo, Func<OperacaoPendente, Task<Retomada>> aoReconectar, Func<OperacaoPendente, Task<ResultadoCopia>> refazer,
+        bool deixaGerador = false)
     {
         lock (_trava)
-            _registros[tipo] = new Registro(aoReconectar, refazer);
+            _registros[tipo] = new Registro(aoReconectar, refazer, deixaGerador);
     }
 
     // ------------------------------------------------------------------ a operação
@@ -357,46 +376,9 @@ public sealed class CopiaAntes
         var concluir = false;
         try
         {
-            if (!SessaoAberta)
-                return ResultadoCopia.Falha(Sessao.MotivoSemConexao);
-            if (_estado.Lendo || !_estado.Pronto)
-                return ResultadoCopia.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura);
-
-            var (escritas, ilegiveis) = Diferencas(copia, _estado.Copiar());
-            if (ilegiveis > 0)
-            {
-                // Voltar só uma parte daria "voltou" sem ter voltado: nada sai.
-                _log.Evento($"voltar à cópia: {ilegiveis} valores da cópia ilegíveis ({op.Descricao})");
-                return ResultadoCopia.Falha(MsgCopiaIlegivel(ilegiveis));
-            }
-            if (escritas.Count > 0 && _sessao.Conferir(escritas[0].Quadro) is { } motivo)
-            {
-                // Recusado antes de mexer em qualquer parâmetro (chave desligada, só leitura).
-                _log.Recusado(escritas[0].Quadro, motivo);
-                return ResultadoCopia.Falha(motivo);
-            }
-
-            _log.Evento($"voltar à cópia: {escritas.Count} ajustes diferentes ({op.Descricao})");
-            var falhas = 0;
-            string? ultimoMotivo = null;
-            foreach (var e in escritas)
-            {
-                var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
-                if (!r.Ok || r.Diferente)
-                {
-                    falhas++;
-                    ultimoMotivo = r.Motivo ?? $"o aparelho ficou em {r.Valor?.NoFio}";
-                }
-            }
-            if (falhas > 0)
-            {
-                _log.Evento($"voltar à cópia: {falhas} ajustes não voltaram ({ultimoMotivo})");
-                return ResultadoCopia.Falha(falhas == 1
-                    ? $"1 ajuste não voltou: {ultimoMotivo}"
-                    : $"{falhas} ajustes não voltaram: {ultimoMotivo}");
-            }
-            concluir = true;
-            return ResultadoCopia.Sucesso;
+            var r = await EscreverCopiaAsync(copia, "voltar à cópia", op.Descricao);
+            concluir = r.Ok;
+            return r;
         }
         finally
         {
@@ -411,6 +393,101 @@ public sealed class CopiaAntes
                 Notificar();
             }
         }
+    }
+
+    /// <summary>
+    /// Desfazer a operação em andamento (o cancelar da criação da memória, CAP-18): volta à cópia como o
+    /// <see cref="VoltarAsync"/>, só no que difere, sem o link repetir. No sucesso, a marca sai. Na falha,
+    /// fica "aplicado pela metade" já, com a sessão aberta, ou fica a marca para a próxima conexão, sem
+    /// ela. A origem das escritas é a de quem chama.
+    /// </summary>
+    public async Task<ResultadoCopia> DesfazerAsync()
+    {
+        Copia? copia;
+        OperacaoPendente? op;
+        lock (_trava)
+        {
+            copia = _copia;
+            op = copia?.Operacao;
+            if (copia is null || op is null || !_emAndamento)
+                return ResultadoCopia.Falha(MsgSemCopia);
+            if (_resolvendo || _desfazendo)
+                return ResultadoCopia.Falha(MsgOutraOperacao);
+            _desfazendo = true;
+        }
+        Notificar();
+
+        ResultadoCopia r;
+        try
+        {
+            r = await EscreverCopiaAsync(copia, "desfazer", op.Descricao);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao desfazer ({e.GetType().Name})");
+            r = ResultadoCopia.Falha($"Erro inesperado ({e.GetType().Name}).");
+        }
+        finally
+        {
+            lock (_trava)
+                _desfazendo = false;
+        }
+
+        if (r.Ok)
+            await ConcluirAsync();
+        else if (SessaoAberta)
+            MarcarPelaMetade();
+        else
+            Interromper();
+        return r;
+    }
+
+    /// <summary>
+    /// O laço do Voltar à cópia e do Desfazer: confere a sessão e a leitura, escreve pelo escritor cada
+    /// parâmetro de áudio da cópia que difere do espelho (sem o link repetir, passando pela trava) e
+    /// diz se todos voltaram. Não mexe na marca.
+    /// </summary>
+    private async Task<ResultadoCopia> EscreverCopiaAsync(Copia copia, string acao, string descricao)
+    {
+        if (!SessaoAberta)
+            return ResultadoCopia.Falha(Sessao.MotivoSemConexao);
+        if (_estado.Lendo || !_estado.Pronto)
+            return ResultadoCopia.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura);
+
+        var (escritas, ilegiveis) = Diferencas(copia, _estado.Copiar());
+        if (ilegiveis > 0)
+        {
+            // Voltar só uma parte daria "voltou" sem ter voltado: nada sai.
+            _log.Evento($"{acao}: {ilegiveis} valores da cópia ilegíveis ({descricao})");
+            return ResultadoCopia.Falha(MsgCopiaIlegivel(ilegiveis));
+        }
+        if (escritas.Count > 0 && _sessao.Conferir(escritas[0].Quadro) is { } motivo)
+        {
+            // Recusado antes de mexer em qualquer parâmetro (chave desligada, só leitura).
+            _log.Recusado(escritas[0].Quadro, motivo);
+            return ResultadoCopia.Falha(motivo);
+        }
+
+        _log.Evento($"{acao}: {escritas.Count} ajustes diferentes ({descricao})");
+        var falhas = 0;
+        string? ultimoMotivo = null;
+        foreach (var e in escritas)
+        {
+            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
+            if (!r.Ok || r.Diferente)
+            {
+                falhas++;
+                ultimoMotivo = r.Motivo ?? $"o aparelho ficou em {r.Valor?.NoFio}";
+            }
+        }
+        if (falhas > 0)
+        {
+            _log.Evento($"{acao}: {falhas} ajustes não voltaram ({ultimoMotivo})");
+            return ResultadoCopia.Falha(falhas == 1
+                ? $"1 ajuste não voltou: {ultimoMotivo}"
+                : $"{falhas} ajustes não voltaram: {ultimoMotivo}");
+        }
+        return ResultadoCopia.Sucesso;
     }
 
     /// <summary>
@@ -674,7 +751,8 @@ public sealed class CopiaAntes
         }
     }
 
-    private sealed record Registro(Func<OperacaoPendente, Task<Retomada>> AoReconectar, Func<OperacaoPendente, Task<ResultadoCopia>> Refazer);
+    private sealed record Registro(Func<OperacaoPendente, Task<Retomada>> AoReconectar, Func<OperacaoPendente, Task<ResultadoCopia>> Refazer,
+        bool DeixaGerador);
 
     /// <summary>Um ajuste a escrever: o parâmetro, onde, o valor e o quadro já montado.</summary>
     internal sealed record Escrita(Parametro Parametro, int? Indice, Valor Valor, string Quadro);

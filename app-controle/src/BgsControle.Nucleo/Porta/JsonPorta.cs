@@ -103,6 +103,23 @@ internal sealed class CorpoPedido
         return v.GetString();
     }
 
+    /// <summary>Uma lista de textos (as respostas de uma pergunta). Falta, ou um item que não é texto: 400.</summary>
+    public IReadOnlyList<string> ListaTextos(string nome)
+    {
+        if (Campo(nome) is not { } v)
+            throw new PedidoInvalidoException($"Falta o campo \"{nome}\" (lista de textos).");
+        if (v.ValueKind != JsonValueKind.Array)
+            throw new PedidoInvalidoException($"O campo \"{nome}\" tem de ser uma lista de textos.");
+        var lista = new List<string>();
+        foreach (var item in v.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+                throw new PedidoInvalidoException($"O campo \"{nome}\" tem de ser uma lista de textos.");
+            lista.Add(item.GetString()!);
+        }
+        return lista;
+    }
+
     public bool Booleano(string nome)
     {
         if (Campo(nome) is not { } v)

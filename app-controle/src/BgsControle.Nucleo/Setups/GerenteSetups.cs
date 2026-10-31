@@ -1407,33 +1407,67 @@ public sealed class GerenteSetups
                 return Terminar(new ResultadoSetup(false, MsgPedeFolha, MsgPedeFolha, PedeFolhaSalvar: true));
             if (!_estado.Pronto || _estado.Lendo)
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
-            // A memória nova lembra o preset em uso.
-            var (memoria, motivo, _) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), PresetEmUso?.Id);
-            if (memoria is null)
-                return Terminar(ResultadoSetup.Falha(motivo!));
-
-            var dados = Dados;
-            var novos = dados with
-            {
-                Memorias = [.. dados.Memorias, memoria],
-                Uso = Com(dados.Uso, setup.Id, Usar(dados.UsoDe(setup.Id), memoria.Id)),
-            };
-            if (!await GravarAsync(novos))
-                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
-            lock (_trava)
-            {
-                _emUso = SomEmUso.DoCelular(memoria.Id);
-                if (_situacao == EstadoConferencia.SomDiferente)
-                    _situacao = EstadoConferencia.Confere;
-            }
-            _log.Evento($"memória {memoria.Nome} criada no {setup.Nome}");
-            await AdotarPlaylistsAsync();
-            return Terminar(ResultadoSetup.Feito(MsgCriada(memoria.Nome, setup.Nome)));
+            return Terminar(await CriarDoEspelhoAsync(setup, nomeDigitado));
         }
         finally
         {
             _operacao.Release();
         }
+    }
+
+    /// <summary>
+    /// O Salvar da criação da memória (CAP-18, só o usuário): cria no Setup aberto a memória com a regulagem
+    /// relida (o espelho), mesmo com o som do aparelho em uso, lembrando o preset em uso; ela vira a memória
+    /// em uso e a ativa. Não manda nada ao aparelho. Um nome inválido ou repetido recusa sem guardar nada.
+    /// </summary>
+    internal async Task<ResultadoSetup> SalvarCriacaoAsync(string idSetup, string? nomeDigitado)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (EmEscolha)
+                return Terminar(ResultadoSetup.Falha(MsgDuvida));
+            if (Setup(idSetup) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (!_estado.Pronto || _estado.Lendo)
+                return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
+            return Terminar(await CriarDoEspelhoAsync(setup, nomeDigitado));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// A memória nova do espelho no Setup, lembrando o preset em uso: entra nas memórias, vira a em uso e a
+    /// ativa e vai aos botões. Chamar com a operação.
+    /// </summary>
+    private async Task<ResultadoSetup> CriarDoEspelhoAsync(Setup setup, string? nomeDigitado)
+    {
+        var (memoria, motivo, _) = NovaMemoria(setup, nomeDigitado, _estado.Copiar(), PresetEmUso?.Id);
+        if (memoria is null)
+            return ResultadoSetup.Falha(motivo!);
+
+        var dados = Dados;
+        var novos = dados with
+        {
+            Memorias = [.. dados.Memorias, memoria],
+            Uso = Com(dados.Uso, setup.Id, Usar(dados.UsoDe(setup.Id), memoria.Id)),
+        };
+        if (!await GravarAsync(novos))
+            return ResultadoSetup.Falha(MsgNaoGuardou);
+        lock (_trava)
+        {
+            _emUso = SomEmUso.DoCelular(memoria.Id);
+            if (_situacao == EstadoConferencia.SomDiferente)
+                _situacao = EstadoConferencia.Confere;
+        }
+        _log.Evento($"memória {memoria.Nome} criada no {setup.Nome}");
+        await AdotarPlaylistsAsync();
+        return ResultadoSetup.Feito(MsgCriada(memoria.Nome, setup.Nome));
     }
 
     /// <summary>
