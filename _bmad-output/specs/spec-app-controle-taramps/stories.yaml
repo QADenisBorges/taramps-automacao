@@ -272,7 +272,7 @@
 # a interface não mostra a IA (sem aba IA, PARAR IA, faixa nem Histórico; a porta
 # continua por baixo), a diferença leve ao conectar reaplica sozinha, e a criação
 # da memória por perguntas entra no POC (CAP-18, só o lado do app).
-# Ordem (replanejada em 30/10): 9c → 9d → 10d → 8g → 13a–13g → Agente → 12b → 12c → 12d.
+# Ordem (replanejada em 30/10): 9c → 9d → 10d → 8g → 13a–13g → 14a–14f → 12b → 12c → 12d → 12e.
 - id: "9c"
   title: Porta sem rosto e reaplicar sozinho
   description: >-
@@ -423,7 +423,70 @@
     [ASSUMPTION] de telas-rendimento.md ficam explícitos para a conferência
     na 12d. Nenhuma tela com a palavra "IA". Sem celular no adb, a
     conferência visual fica pendente.
-# Aqui entram as histórias do Agente da memória (spec própria), antes da 12b.
+# Agente da memória, só o cérebro (spec própria em
+# _bmad-output/specs/spec-agente-memoria/). Tudo com o modelo falso, sem custo;
+# a avaliação real e a criação no aparelho ficam na 12e, no fim.
+- id: "14a"
+  title: Ferramenta da porta, serviço que acorda e modelo falso
+  description: >-
+    Pasta agente/ na raiz: a ferramenta de linha de comando que fala com a
+    porta em JSON, o serviço que escuta os eventos e acorda o Agente (um
+    por vez) e o modelo falso com respostas gravadas (spec-agente-memoria
+    CAP-1).
+  invoke_dev_with: >-
+    _bmad-output/specs/spec-agente-memoria/SPEC.md (Assumptions) e
+    cerebro-do-agente.md. .NET 10; os testes de ponta a ponta sobem a
+    Porta do núcleo do app sobre o ProcessadorSimulado. O Claude Code é
+    lançado em modo não interativo; nos testes, o modelo falso entra no
+    lugar dele. Nenhum dado do sistema do Denis embutido.
+- id: "14b"
+  title: Lado do app — pedido de criação, escuta 1 ou 2 e proposta de ficha
+  description: >-
+    Na porta e no núcleo do app: o evento do "+ Nova memória" com o prazo
+    de 15 s, a pergunta "1 ou 2" com o volume igualado pelo master e a
+    proposta de ficha que só o toque salva (spec-agente-memoria CAP-1,
+    CAP-4, CAP-6).
+  invoke_dev_with: >-
+    lado-do-app.md e porta-de-comandos.md. As mesmas travas da porta, a
+    cerca do Rendimento e a cópia antes. Núcleo e ViewModels testados
+    contra o ProcessadorSimulado, sem telas.
+- id: "14c"
+  title: Telas do lado do app do Agente
+  description: >-
+    XAML da espera do pedido de criação, da tela "1 ou 2" e da folha da
+    proposta de ficha, de lado-do-app.md.
+  invoke_dev_with: >-
+    DESIGN.md e EXPERIENCE.md do UX de 30/10 (visual BGS Sound, tela toda
+    na criação). Os [ASSUMPTION] de lado-do-app.md ficam explícitos para a
+    12e. Nenhuma tela com a palavra "IA".
+- id: "14d"
+  title: Skills e instruções em camadas
+  description: >-
+    A base curta, as skills objetivo, escuta, diagnóstico, receita,
+    ficha-tecnica e medicao-assistida e o conhecimento com fonte,
+    versionados em agente/ (spec-agente-memoria CAP-2 a CAP-6).
+  invoke_dev_with: >-
+    cerebro-do-agente.md e estrategia-mesa.md. Os testes conferem a
+    estrutura (cada skill carrega, cita as fontes e usa só a ferramenta da
+    porta) e o encanamento com o modelo falso. Sem chamada ao modelo real.
+- id: "14e"
+  title: Aprendizado em arquivos
+  description: >-
+    Registros de cada criação e perfil por situação, que só muda com a
+    mesma escolha repetida em memórias diferentes; começa vazio
+    (spec-agente-memoria CAP-7).
+  invoke_dev_with: >-
+    cerebro-do-agente.md, seção "Aprendizado". Testado com o modelo falso.
+- id: "14f"
+  title: Ouvintes simulados e avaliador
+  description: >-
+    Os 8 perfis com gosto escondido, o ouvinte simulado em código, as
+    métricas, o relatório e o comando da avaliação real com o custo
+    mostrado antes (spec-agente-memoria CAP-8).
+  invoke_dev_with: >-
+    cerebro-do-agente.md, seção "Ouvintes simulados e avaliação". Nos
+    testes, um Agente falso bom passa e um Agente falso genérico (mesmas
+    perguntas para todos) falha. O comando real não roda nesta história.
 # Plano de 30/10/2026 (planning-artifacts/planejamento-final-2026-10-30.md): o
 # teste no aparelho fica todo no fim. Entre a 10d e a 12b entram as histórias do
 # Rendimento e depois as do Agente da memória, rodando contra o ProcessadorSimulado.
@@ -474,8 +537,20 @@
     [ASSUMPTION] de telas-rendimento.md. Teste a seco e calibração com os
     alto-falantes desligados do módulo; toda medida com a foto do VC830L.
     As 3 memórias do processador continuam como estavam.
+- id: "12e"
+  title: Agente de verdade — avaliação real e criação no aparelho
+  description: >-
+    A avaliação real contra os 8 ouvintes simulados, com o ok do Denis
+    para o custo, e uma criação completa no A52: "+ Nova memória",
+    perguntas, Aplicando, escuta "1 ou 2", Salvar, e uma proposta de ficha.
+  done_checkpoint: true
+  invoke_dev_with: >-
+    Sinal de sucesso de spec-agente-memoria/SPEC.md e os [ASSUMPTION] de
+    lado-do-app.md. Mostrar o custo estimado e esperar o ok antes de cada
+    rodada real. Nenhuma tela com "IA"; as 3 memórias do processador
+    continuam como estavam.
 # Plano de 30/10/2026: o Rendimento (8g e 13a–13g, spec em
-# _bmad-output/specs/spec-rendimento/) e depois as histórias do Agente da
-# memória, só o cérebro (spec a partir de
-# _bmad-output/forge/montagem-do-setup/forged-idea.md), entram entre a 10d e a
-# 12b. A 12b, a 12c e a 12d, com o celular e o processador, ficam no fim.
+# _bmad-output/specs/spec-rendimento/) e o Agente da memória (14a–14f, spec em
+# _bmad-output/specs/spec-agente-memoria/) entram entre a 10d e a 12b. A 12b,
+# a 12c, a 12d e a 12e, com o celular, o processador e o modelo de verdade,
+# ficam no fim.

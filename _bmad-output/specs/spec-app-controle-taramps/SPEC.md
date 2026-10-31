@@ -102,7 +102,7 @@ Uma visão a realizar, que nasceu de uma dor. Para regular o 2.1, o Denis depend
 ## Non-goals
 
 - IA dentro do app: fica para depois; primeiro, o agente pela porta (forja de 29/10/2026).
-- O cérebro do agente que cria a memória (perguntas adaptativas, escuta "1 ou 2", diagnóstico da queixa, skills, aprendizado, ouvintes simulados e o serviço que acorda o agente): spec própria, depois do Rendimento, a partir de `../../forge/montagem-do-setup/forged-idea.md`. O lado do app (telas e porta nos dois sentidos) é a CAP-18. Onde a forja e o UX de 30/10 diferem (uma pergunta por tela; aplicar ao responder à última pergunta, não no toque em Ouvir), vale o UX.
+- O cérebro do agente que cria a memória (perguntas adaptativas, escuta "1 ou 2", diagnóstico da queixa, skills, aprendizado, ouvintes simulados e o serviço que acorda o agente): spec própria em `../spec-agente-memoria/SPEC.md` (30/10/2026), que também acrescenta ao app o pedido de criação, a escuta "1 ou 2" e a proposta de ficha (`../spec-agente-memoria/lado-do-app.md`). O lado do app (telas e porta nos dois sentidos) é a CAP-18. Onde a forja e o UX de 30/10 diferem (uma pergunta por tela; aplicar ao responder à última pergunta, não no toque em Ouvir), vale o UX.
 - A tela Histórico: o histórico é lido pela porta (decisão do Denis, 30/10/2026).
 - Guardião completo, com limites por alto-falante (fica para uma etapa posterior; aqui existem só as chaves de acesso).
 - Usar as 3 memórias do processador: salvar (`240`), renomear (`23N`) e carregar (`241`) só pelo app da Taramps. Elas não aparecem neste app, que não lê nem os nomes (decisão do Denis, 29/10/2026).
