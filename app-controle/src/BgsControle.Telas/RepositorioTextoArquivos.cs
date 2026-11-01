@@ -38,6 +38,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>A cópia do <c>setups.json</c> formato 3 guardada antes de a migração da história 13c o regravar no 4.</summary>
     public const string ArquivoSetupsFormato3 = "setups.formato3.json";
 
+    /// <summary>As análises da playlist (história 13d): por faixa (URI + duração) e impressão da cadeia, o pico, a RMS e os trechos fortes.</summary>
+    public const string ArquivoAnalises = "analises.json";
+
     public string Arquivo { get; } = arquivo;
 
     public Task<string?> LerAsync() => arquivos.LerTextoAsync(Arquivo);

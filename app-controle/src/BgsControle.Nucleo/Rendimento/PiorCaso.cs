@@ -208,7 +208,7 @@ public static class PiorCaso
     }
 
     /// <summary>Um sino do aparelho (ganho, frequência, Q), ou null com o ganho em 0; ou o dado que falta.</summary>
-    private static ((double Ganho, double F0, double Q)? Sino, string? Falta) Sinos(Func<Endereco, Valor?> ler, int? canal,
+    internal static ((double Ganho, double F0, double Q)? Sino, string? Falta) Sinos(Func<Endereco, Valor?> ler, int? canal,
         string codigoGanho, string codigoFrequencia, string codigoQ)
     {
         if (ler(new Endereco(codigoGanho, canal))?.Numero is not { } g)

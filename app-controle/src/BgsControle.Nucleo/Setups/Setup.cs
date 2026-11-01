@@ -110,6 +110,12 @@ public sealed record MemoriaCelular(
     /// </summary>
     public IReadOnlyDictionary<string, decimal> Masters { get; init; } = SemMasters;
 
+    /// <summary>
+    /// A playlist da memória é analisada (história 13d, "Otimizar configuração na playlist"): toda faixa nova é
+    /// analisada sozinha, e a análise é refeita quando a cadeia muda. Opcional no formato 4 (ausente = false).
+    /// </summary>
+    public bool Otimizada { get; init; }
+
     /// <summary>Nenhum master guardado (o mesmo para todas as memórias sem master).</summary>
     public static IReadOnlyDictionary<string, decimal> SemMasters { get; } = new Dictionary<string, decimal>();
 }

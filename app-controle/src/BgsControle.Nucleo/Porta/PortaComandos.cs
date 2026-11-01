@@ -96,6 +96,7 @@ public sealed class PortaComandos : IDisposable
     private readonly int _porta;
     private readonly ServidorHttp _servidor;
     private readonly CriacaoMemoria? _criacao;
+    private readonly AnalisePlaylist? _analise;
 
     private readonly object _trava = new();
     private readonly SemaphoreSlim _abrir = new(1, 1);
@@ -129,7 +130,8 @@ public sealed class PortaComandos : IDisposable
         LogBle log,
         TimeProvider? relogio = null,
         int porta = PortaPadrao,
-        CriacaoMemoria? criacao = null)
+        CriacaoMemoria? criacao = null,
+        AnalisePlaylist? analise = null)
     {
         _sessao = sessao;
         _chaves = chaves;
@@ -148,6 +150,7 @@ public sealed class PortaComandos : IDisposable
         _relogio = relogio ?? TimeProvider.System;
         _porta = porta;
         _criacao = criacao;
+        _analise = analise;
         _servidor = new ServidorHttp(porta, AtenderAsync, Triagem, log);
         _paradaVista = uso.Parada;
 
@@ -1220,6 +1223,7 @@ public sealed class PortaComandos : IDisposable
         NivelRendimento? nivel;
         ContaNivel? conta;
         string? avisoNivel;
+        TetoExtra extra;
         try
         {
             limites = _setups.LimitesEmUso;
@@ -1231,6 +1235,17 @@ public sealed class PortaComandos : IDisposable
                 : conta is null ? _setups.NivelIndisponivel ?? Niveis.MsgFalhou
                 : conta.Master is null ? conta.Falta ?? Niveis.MsgFalhou
                 : conta.Aviso;
+            // História 13d: o teto do Extra da memória em uso com o preset em uso (só calculado; nada é aplicado). Uma falha
+            // nele não derruba o /limites: o extra fica indisponível.
+            try
+            {
+                extra = _analise?.TetoEmUso() ?? TetoExtra.Sem(EstadoExtra.Falta, Niveis.MsgExtra);
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"porta: falha ao calcular o teto do Extra ({e.GetType().Name})");
+                extra = TetoExtra.Sem(EstadoExtra.Indisponivel, Niveis.MsgFalhou);
+            }
         }
         catch (Exception e)
         {
@@ -1245,8 +1260,70 @@ public sealed class PortaComandos : IDisposable
             else
                 w.WriteNull("master");
             w.WriteString("avisoNivel", avisoNivel);
+            EscreverExtra(w, extra);
             EscreverLimites(w, limites, fora);
         }));
+    }
+
+    /// <summary>
+    /// O <c>extra</c> do <c>GET /limites</c> (história 13d): o estado (<c>falta</c>, <c>analisando</c>, <c>pronta</c> ou
+    /// <c>indisponivel</c>), o master candidato do preset em uso, o motivo, o aviso, quem está pesando (cada faixa
+    /// analisada e quantos dB ela tira do teto) e os trechos fortes por faixa.
+    /// </summary>
+    private static void EscreverExtra(Utf8JsonWriter w, TetoExtra extra)
+    {
+        w.WriteStartObject("extra");
+        w.WriteString("estado", extra.Estado switch
+        {
+            EstadoExtra.Analisando => "analisando",
+            EstadoExtra.Pronta => "pronta",
+            EstadoExtra.Indisponivel => "indisponivel",
+            _ => "falta",
+        });
+        if (extra.Master is { } master)
+            w.WriteNumber("master", master);
+        else
+            w.WriteNull("master");
+        w.WriteString("motivo", extra.Motivo);
+        w.WriteString("aviso", extra.Aviso);
+        w.WriteStartArray("pesando");
+        foreach (var f in extra.Faixas.Where(f => f.Situacao == SituacaoFaixa.Pronta))
+        {
+            w.WriteStartObject();
+            w.WriteString("id", f.Faixa.Id);
+            w.WriteString("faixa", f.Faixa.Nome);
+            w.WriteNumber("db", f.Peso);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("trechos");
+        foreach (var f in extra.Faixas)
+        {
+            w.WriteStartObject();
+            w.WriteString("id", f.Faixa.Id);
+            w.WriteString("faixa", f.Faixa.Nome);
+            w.WriteString("situacao", f.Situacao switch
+            {
+                SituacaoFaixa.EmAnalise => "em-analise",
+                SituacaoFaixa.Falhou => "falhou",
+                SituacaoFaixa.SemSom => "sem-som",
+                _ => "pronta",
+            });
+            if (f.Situacao is SituacaoFaixa.Falhou or SituacaoFaixa.SemSom)
+                w.WriteString("motivo", f.Motivo);
+            w.WriteStartArray("trechos");
+            foreach (var t in f.Trechos)
+            {
+                w.WriteStartObject();
+                w.WriteNumber("inicio", t.Inicio);
+                w.WriteNumber("fim", t.Fim);
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteEndObject();
     }
 
     private static void EscreverLimites(Utf8JsonWriter w, IReadOnlyList<LimiteSaida> limites, IReadOnlyList<AltoFalanteFora> fora)
@@ -1493,7 +1570,7 @@ public sealed class PortaComandos : IDisposable
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
-        GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Uma falha no cálculo: 500.
+        GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Em "extra", o teto do Extra da memória em uso com o preset em uso, pela análise da playlist (o "Otimizar configuração na playlist" do Player; só calculado, nunca aplicado): estado (falta, analisando, pronta ou indisponivel), master (o candidato, em dB, ou null), motivo, aviso (falta ganho), pesando (por faixa analisada com som: id, faixa e db, quanto ela tira do teto) e trechos (por faixa, na cadeia do preset em uso: id, faixa, situacao pronta, em-analise, falhou ou sem-som, o motivo da falha ou do sem som e os 2 trechos fortes de 10 s com inicio e fim em segundos). Uma falha no cálculo do extra dá estado indisponivel com o motivo, sem derrubar o resto. Uma falha no cálculo: 500.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.

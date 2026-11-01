@@ -1,4 +1,5 @@
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Setups;
 
@@ -23,7 +24,8 @@ public sealed record LinhaNivel(NivelRendimento? Nivel, string Nome, string Text
 /// <summary>
 /// A folha "Nível da memória" (história 13c; <c>telas-rendimento.md</c>, "Nível da memória" e "Aviso do Máximo"; sem
 /// XAML, que é da 13g): uma linha por nível, do Baixo ao Máximo, com o teto em volts da saída que manda e a fonte, e o
-/// Extra apagado ("Falta analisar a playlist."). Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
+/// Extra apagado com o pé da análise da playlist (história 13d): "Analisando a playlist." durante a análise, "Falta o
+/// teste a seco." com ela pronta e "Falta analisar a playlist." sem ela. Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
 /// com o motivo. Escolher grava o nível na memória em uso e põe o master da combinação com o preset em uso; o Máximo
 /// pede antes a folha de risco do app (Confirmar e Cancelar). "Sem nível" volta a memória a null, sem mexer no master.
 /// </summary>
@@ -52,6 +54,8 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     private readonly GerenteSetups _setups;
     private readonly EstadoAparelho _estado;
+    private readonly AnalisePlaylist? _analise;
+    private readonly LogBle? _log;
     private IReadOnlyList<LinhaNivel>? _linhas;
     private bool _folhaAberta;
     private bool _riscoAberto;
@@ -59,11 +63,14 @@ public sealed class NivelViewModel : TelaBase, IDisposable
     private string? _mensagem;
     private bool _descartado;
 
-    public NivelViewModel(GerenteSetups setups, EstadoAparelho estado, IDespachante despachante, TimeProvider relogio)
+    public NivelViewModel(GerenteSetups setups, EstadoAparelho estado, IDespachante despachante, TimeProvider relogio,
+        AnalisePlaylist? analise = null, LogBle? log = null)
         : base(despachante, relogio)
     {
         _setups = setups;
         _estado = estado;
+        _analise = analise;
+        _log = log;
         Abrir = new Comando(() => FolhaAberta = true);
         Fechar = new Comando(() =>
         {
@@ -81,6 +88,8 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         _setups.Mudou += AoMudar;
         _estado.Recarregou += AoMudar;
         _estado.Mudou += AoMudarValor;
+        if (_analise is not null)
+            _analise.Mudou += AoMudar;
     }
 
     // ------------------------------------------------------------------ a folha
@@ -257,8 +266,24 @@ public sealed class NivelViewModel : TelaBase, IDisposable
                 conta?.Aviso,
                 emUso?.Nivel == nivel));
         }
-        linhas.Add(new LinhaNivel(null, Niveis.NomeExtra, TextoExtra, false, Niveis.MsgExtra, null, null, false));
+        linhas.Add(new LinhaNivel(null, Niveis.NomeExtra, TextoExtra, false, MotivoExtra(), null, null, false));
         return linhas;
+    }
+
+    /// <summary>A linha do Extra, sempre apagada (aplicar é da 13e e da 13f), com o pé da análise da playlist.</summary>
+    private string MotivoExtra()
+    {
+        if (_analise is null)
+            return Niveis.MsgExtra;
+        try
+        {
+            return _analise.TetoEmUso().TextoNivel;
+        }
+        catch (Exception e)
+        {
+            _log?.Evento($"nível: falha ao ler o teto do Extra ({e.GetType().Name})");
+            return Niveis.MsgExtra;
+        }
     }
 
     private void AoMudar() => NaTela(Recalcular);
@@ -287,5 +312,7 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         _setups.Mudou -= AoMudar;
         _estado.Recarregou -= AoMudar;
         _estado.Mudou -= AoMudarValor;
+        if (_analise is not null)
+            _analise.Mudou -= AoMudar;
     }
 }

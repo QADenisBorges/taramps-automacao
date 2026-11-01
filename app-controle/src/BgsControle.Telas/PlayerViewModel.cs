@@ -1,10 +1,15 @@
 using System.Globalization;
 using BgsControle.Nucleo.Player;
+using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
 
-/// <summary>Uma linha da playlist: nome, duração em m:ss, pasta, a marca de "tocando" e a de arquivo sumido.</summary>
+/// <summary>
+/// Uma linha da playlist: nome, duração em m:ss, pasta, a marca de "tocando" e a de arquivo sumido, e o que ela pesa no
+/// teto do Extra (história 13d).
+/// </summary>
 public sealed class LinhaPlaylistViewModel : TelaBase
 {
     private int _posicao;
@@ -12,6 +17,8 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     private bool _indisponivel;
     private bool _semAcesso;
     private bool _editando;
+    private bool _emAnalise;
+    private string? _textoAnalise;
 
     internal LinhaPlaylistViewModel(Faixa faixa, PlayerViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -94,6 +101,35 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     /// <summary>"Arquivo não encontrado", "Sem acesso ao arquivo: adicione de novo", ou null.</summary>
     public string? TextoIndisponivel => !_indisponivel ? null : _semAcesso ? PlayerViewModel.MsgSemAcessoArquivo : Player.TextoIndisponivel;
 
+    /// <summary>A faixa está em análise (história 13d): ela não toca até terminar.</summary>
+    public bool EmAnalise
+    {
+        get => _emAnalise;
+        internal set
+        {
+            if (_emAnalise == value)
+                return;
+            _emAnalise = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>
+    /// Quem está pesando (história 13d): "−3,0 dB no teto", "Em análise" ou "Não deu para analisar: …"; null sem análise
+    /// ou com a faixa sem peso.
+    /// </summary>
+    public string? TextoAnalise
+    {
+        get => _textoAnalise;
+        internal set
+        {
+            if (_textoAnalise == value)
+                return;
+            _textoAnalise = value;
+            Avisar();
+        }
+    }
+
     /// <summary>O modo Editar da tela: a linha mostra − e ≡.</summary>
     public bool Editando
     {
@@ -162,6 +198,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     private readonly ISeletorAudio _seletor;
     private readonly AparelhoViewModel? _aparelho;
     private readonly IAudioDoCelular? _audio;
+    private readonly AnalisePlaylist? _analise;
+    private readonly LogBle? _log;
 
     private readonly Dictionary<string, LinhaPlaylistViewModel> _porId = [];
     private IReadOnlyList<LinhaPlaylistViewModel> _linhas = [];
@@ -179,11 +217,15 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         IDespachante despachante,
         TimeProvider relogio,
         AparelhoViewModel? aparelho = null,
-        IAudioDoCelular? audio = null)
+        IAudioDoCelular? audio = null,
+        AnalisePlaylist? analise = null,
+        LogBle? log = null)
         : base(despachante, relogio)
     {
         _aparelho = aparelho;
         _audio = audio;
+        _analise = analise;
+        _log = log;
         _player = player;
         _playlists = playlists;
         _setups = setups;
@@ -205,6 +247,8 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             _aparelho.PropertyChanged += AoMudarAparelho;
         if (_audio is not null)
             _audio.Mudou += AoMudarAlgo;
+        if (_analise is not null)
+            _analise.Mudou += AoMudarAlgo;
         Atualizar();
     }
 
@@ -502,11 +546,17 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         MontarLinhas();
 
         var atual = _player.Atual?.Id;
+        var extra = TetoDaPlaylist();
         foreach (var l in _linhas)
         {
             l.Tocando = l.Id == atual;
             l.Indisponivel = _player.Indisponivel(l.Id);
             l.SemAcesso = _audio?.SemAcesso(l.Uri) == true;
+            l.EmAnalise = _analise?.EmAnalise(l.Id) == true;
+            // "Em análise" só na faixa nova (que não toca); numa reanálise a faixa segue tocando e fica sem o texto até o fim.
+            l.TextoAnalise = l.EmAnalise ? AnalisePlaylist.TextoEmAnalise
+                : extra?.FirstOrDefault(f => f.Faixa.Id == l.Id) is { Situacao: not SituacaoFaixa.EmAnalise } fe ? fe.Texto
+                : null;
         }
 
         // Um aviso novo do Player (nenhuma faixa disponível, por exemplo) aparece.
@@ -536,6 +586,23 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         Avisar(nameof(TextoAcaoAviso));
         Avisar(nameof(TravaTocar));
         Avisar(nameof(Tocando));
+    }
+
+    /// <summary>As faixas da playlist no teto do Extra (o peso, a análise ou a falha), ou null sem análise.</summary>
+    private IReadOnlyList<FaixaExtra>? TetoDaPlaylist()
+    {
+        if (_analise is null || _player.Memoria is not { } n)
+            return null;
+        try
+        {
+            return _analise.TetoDa(n).Faixas;
+        }
+        catch (Exception e)
+        {
+            // Sem a conta, a linha fica sem o peso.
+            _log?.Evento($"player: falha ao ler o teto do Extra ({e.GetType().Name})");
+            return null;
+        }
     }
 
     /// <summary>O Player está tocando (o botão mostra pausar).</summary>
@@ -573,5 +640,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             _aparelho.PropertyChanged -= AoMudarAparelho;
         if (_audio is not null)
             _audio.Mudou -= AoMudarAlgo;
+        if (_analise is not null)
+            _analise.Mudou -= AoMudarAlgo;
     }
 }

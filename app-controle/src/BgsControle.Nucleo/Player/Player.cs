@@ -32,6 +32,8 @@ public enum EstadoPlayer
 /// <item>Remover a faixa que está tocando (ou pausada) para o Player.</item>
 /// <item>O reprodutor que pausa sozinho (Bluetooth de áudio caiu, foco de áudio perdido) deixa o Player
 /// Pausado; uma faixa que falha no meio fica "Arquivo não encontrado" e o Player segue para a próxima.</item>
+/// <item>Uma faixa em análise (história 13d, <see cref="EmAnalise"/>) não toca: a sequência a pula, e tocá-la direto dá
+/// "Esta faixa ainda está em análise.".</item>
 /// </list>
 /// Os comandos andam um de cada vez, na ordem.
 /// </summary>
@@ -39,6 +41,9 @@ public sealed class Player : IDisposable
 {
     public const string MsgSemMemoria = "Sem memória do celular em uso, não há playlist. Aplique uma memória do celular.";
     public const string TextoIndisponivel = "Arquivo não encontrado";
+
+    /// <summary>Tocar direto uma faixa em análise (história 13d).</summary>
+    public const string MsgEmAnalise = "Esta faixa ainda está em análise.";
 
     /// <summary>"Playlist da FILME".</summary>
     public static string TituloPlaylist(string nome) => $"Playlist da {nome}";
@@ -139,6 +144,25 @@ public sealed class Player : IDisposable
     /// <summary>As faixas da playlist da memória em uso, na ordem; vazia sem memória.</summary>
     public IReadOnlyList<Faixa> Faixas => _playlists.Playlist(Memoria);
 
+    /// <summary>
+    /// A faixa (pelo id) está em análise e não toca (história 13d; no app, a análise da playlist). Null: nenhuma está.
+    /// </summary>
+    public Func<string, bool>? EmAnalise { get; set; }
+
+    /// <summary>A faixa está em análise agora (uma falha da pergunta conta como não).</summary>
+    private bool NaAnalise(string id)
+    {
+        try
+        {
+            return EmAnalise?.Invoke(id) == true;
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"player: falha ao conferir a análise ({e.GetType().Name})");
+            return false;
+        }
+    }
+
     /// <summary>O reprodutor recusou o arquivo desta faixa ("Arquivo não encontrado").</summary>
     public bool Indisponivel(string id)
     {
@@ -210,7 +234,10 @@ public sealed class Player : IDisposable
         await TocarAPartirAsync(n, lista, Posicao(lista, atual.Id) + 1);
     });
 
-    /// <summary>Tocar numa linha: toca aquela faixa (se o arquivo sumiu, a próxima que tocar).</summary>
+    /// <summary>
+    /// Tocar numa linha: toca aquela faixa (se o arquivo sumiu, a próxima que tocar). Em análise, não toca: "Esta faixa
+    /// ainda está em análise." (o que tocava segue).
+    /// </summary>
     public Task TocarFaixaAsync(string id) => Executar(async () =>
     {
         if (ComMemoria() is not { } n)
@@ -219,6 +246,12 @@ public sealed class Player : IDisposable
         var posicao = Posicao(lista, id);
         if (posicao < 0)
             return;
+        if (NaAnalise(id))
+        {
+            Avisar(MsgEmAnalise);
+            _log.Evento($"player: a faixa {posicao + 1} da playlist da {NomeMemoria(n)} está em análise; não toca");
+            return;
+        }
         await TocarAPartirAsync(n, lista, posicao);
     });
 
@@ -226,7 +259,8 @@ public sealed class Player : IDisposable
 
     /// <summary>
     /// Toca a primeira faixa que o reprodutor aceitar, de <paramref name="inicio"/> em diante; as
-    /// recusadas ficam marcadas. Se nenhuma tocar, para (com o aviso se nenhuma da playlist está disponível).
+    /// recusadas ficam marcadas, e as em análise são puladas. Se nenhuma tocar, para (com o aviso se nenhuma da
+    /// playlist está disponível).
     /// </summary>
     private async Task TocarAPartirAsync(string n, IReadOnlyList<Faixa> lista, int inicio)
     {
@@ -234,6 +268,11 @@ public sealed class Player : IDisposable
         for (var i = Math.Max(inicio, 0); i < lista.Count; i++)
         {
             var faixa = lista[i];
+            if (NaAnalise(faixa.Id))
+            {
+                _log.Evento($"player: a faixa {i + 1} da playlist da {NomeMemoria(n)} está em análise; pulada");
+                continue;
+            }
             if (await _reprodutor.TocarAsync(faixa.Uri))
             {
                 lock (_trava)
@@ -249,9 +288,10 @@ public sealed class Player : IDisposable
         }
 
         await PararAsync();
+        var emAnalise = lista.Where(f => NaAnalise(f.Id)).Select(f => f.Id).ToHashSet();
         bool nenhuma;
         lock (_trava)
-            nenhuma = lista.Count > 0 && lista.All(f => _indisponiveis.Contains(f.Id));
+            nenhuma = lista.Count > 0 && lista.All(f => _indisponiveis.Contains(f.Id) || emAnalise.Contains(f.Id));
         if (nenhuma)
             Avisar(MsgNenhumaDisponivel(NomeMemoria(n)));
     }

@@ -860,6 +860,23 @@ public sealed class GerenteSetups
         return memoria with { Masters = masters, Regulagem = regulagem };
     }
 
+    /// <summary>
+    /// Marca ou desmarca a memória como otimizada (história 13d): a playlist dela passa a ser analisada (ou deixa de
+    /// ser). Só grava no celular; nada vai ao aparelho. Mesmo valor: nada muda.
+    /// </summary>
+    public async Task<ResultadoSetup> DefinirOtimizadaAsync(string idMemoria, bool otimizada)
+    {
+        await Carregada;
+        if (Memoria(idMemoria) is not { } memoria)
+            return ResultadoSetup.Falha(MsgMemoriaNaoExiste);
+        if (memoria.Otimizada == otimizada)
+            return ResultadoSetup.Feito(null);
+        if (!await GravarAsync(d => ComMemoria(d, idMemoria, m => m with { Otimizada = otimizada })))
+            return ResultadoSetup.Falha(MsgNaoGuardou);
+        _log.Evento($"memória {memoria.Nome} {(otimizada ? "otimizada na playlist" : "sem otimizar na playlist")}");
+        return ResultadoSetup.Feito(null);
+    }
+
     /// <summary>Os dados com a memória mudada (a que está nos dados agora).</summary>
     private static DadosSetups ComMemoria(DadosSetups dados, string idMemoria, Func<MemoriaCelular, MemoriaCelular> mudar) =>
         dados with { Memorias = dados.Memorias.Select(m => m.Id == idMemoria ? mudar(m) : m).ToArray() };
@@ -2785,7 +2802,8 @@ public sealed class GerenteSetups
     /// O JSON do <c>setups.json</c> (formato 4): cada Setup com os equipamentos e as fichas (cada dado
     /// com a origem) e o uso das memórias; cada memória com a regulagem, o preset lembrado e, da 13c, o nível
     /// (<c>nivel</c>: <c>baixo</c>, <c>medio</c>, <c>alto</c> ou <c>maximo</c>; ausente = sem nível) e os masters por
-    /// preset (<c>masters</c>: {id do preset, ou "" sem preset → dB}).
+    /// preset (<c>masters</c>: {id do preset, ou "" sem preset → dB}); da 13d, <c>"otimizada": true</c> na memória cuja
+    /// playlist é analisada (ausente = false; o formato não sobe).
     /// </summary>
     public static string ParaJson(DadosSetups dados)
     {
@@ -2847,6 +2865,8 @@ public sealed class GerenteSetups
                         w.WriteNumber(idPreset, master);
                     w.WriteEndObject();
                 }
+                if (m.Otimizada)
+                    w.WriteBoolean("otimizada", true);
                 w.WriteEndObject();
             }
             w.WriteEndArray();
@@ -2949,7 +2969,13 @@ public sealed class GerenteSetups
                 var idPreset = Texto(item, "preset") is { Length: > 0 } preset ? preset : null;
                 var memoria = new MemoriaCelular(id, idSetup, nome, FichaJson.Quando(item), LerValores(item, "regulagem", Camada.Regulagem), idPreset);
                 if (formato == Formato)
-                    memoria = memoria with { Nivel = Niveis.De(Texto(item, "nivel")), Masters = LerMasters(item) };
+                    memoria = memoria with
+                    {
+                        Nivel = Niveis.De(Texto(item, "nivel")),
+                        Masters = LerMasters(item),
+                        // História 13d: opcional, sem subir o formato; só o true vale.
+                        Otimizada = item.TryGetProperty("otimizada", out var otimizada) && otimizada.ValueKind == JsonValueKind.True,
+                    };
                 memorias.Add(memoria);
             }
         }

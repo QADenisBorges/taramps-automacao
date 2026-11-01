@@ -168,11 +168,26 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReprodutor>(sp => new ReprodutorAndroid(
             Android.App.Application.Context,
             sp.GetRequiredService<AudioDoCelularAndroid>()));
-        builder.Services.AddSingleton(sp => new Player(
-            sp.GetRequiredService<GerentePlaylists>(),
+        // História 13d: a análise da playlist (o PCM pelo MediaExtractor + MediaCodec, em segundo plano) e o teto do
+        // Extra, com os resultados em analises.json. Uma faixa em análise não toca.
+        builder.Services.AddSingleton<IDecodificadorAudio>(_ => new DecodificadorAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton(sp => new AnalisePlaylist(
             sp.GetRequiredService<GerenteSetups>(),
-            sp.GetRequiredService<IReprodutor>(),
+            sp.GetRequiredService<GerentePresets>(),
+            sp.GetRequiredService<GerentePlaylists>(),
+            sp.GetRequiredService<IDecodificadorAudio>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoAnalises),
             sp.GetRequiredService<LogBle>()));
+        builder.Services.AddSingleton(sp =>
+        {
+            var player = new Player(
+                sp.GetRequiredService<GerentePlaylists>(),
+                sp.GetRequiredService<GerenteSetups>(),
+                sp.GetRequiredService<IReprodutor>(),
+                sp.GetRequiredService<LogBle>());
+            player.EmAnalise = sp.GetRequiredService<AnalisePlaylist>().EmAnalise;
+            return player;
+        });
 
         // História 13b: a calibração guiada da saída (o ganho do módulo pelo gerador e o multímetro, o nível do
         // Bluetooth pelo tom de 0 dBFS do celular, num AudioTrack). O tipo "calibrar-saida" fica registrado na
@@ -244,6 +259,15 @@ public static class MauiProgram
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<AnalisePlaylist>(),
+            sp.GetRequiredService<LogBle>()));
+        // História 13d: "Otimizar configuração na playlist", no Player (sem XAML até a 13g).
+        builder.Services.AddSingleton(sp => new OtimizarViewModel(
+            sp.GetRequiredService<AnalisePlaylist>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<Player>(),
+            sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
             sp.GetRequiredService<MonitorAparelho>(),
@@ -314,7 +338,8 @@ public static class MauiProgram
             sp.GetRequiredService<MonitorAparelho>(),
             sp.GetRequiredService<LogBle>(),
             sp.GetRequiredService<TimeProvider>(),
-            criacao: sp.GetRequiredService<CriacaoMemoria>()));
+            criacao: sp.GetRequiredService<CriacaoMemoria>(),
+            analise: sp.GetRequiredService<AnalisePlaylist>()));
 
         // História 11: os ViewModels que só faltavam ligar e as páginas novas. Singletons, como os da história 10.
         // História 9c: a chave "Controle pela rede" (no grupo APARELHO das Configurações), a folha de risco do
