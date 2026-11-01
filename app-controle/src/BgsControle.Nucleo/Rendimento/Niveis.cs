@@ -54,8 +54,11 @@ public static class Niveis
     /// <summary>O Extra com o validado de outra cadeia (a memória, o preset, a ficha ou a calibração mudou depois do teste).</summary>
     public const string MsgRefazerTesteSeco = "A configuração mudou depois do teste a seco. Faça o teste de novo.";
 
-    /// <summary>A escolha do Extra na tela, apagada até a 13f (CAP-7).</summary>
-    public const string MsgFaltaTermico = "Falta o modelo térmico.";
+    /// <summary>
+    /// O Extra sem nenhum alto-falante passivo nas saídas (CAP-7, história 13f): não há a quem dar o modelo térmico. Com um
+    /// alto-falante sem os cinco dados, a frase leva o nome dele (<see cref="ModeloTermico.MsgFalta"/>).
+    /// </summary>
+    public const string MsgFaltaTermico = "O Extra precisa de um alto-falante passivo com o modelo térmico.";
 
     /// <summary>O motivo do "revalidar" quando a ficha ou o ganho medido do Setup muda (história 13e).</summary>
     public const string MsgFichaMudou = "A ficha ou a calibração mudou.";

@@ -18,15 +18,18 @@ namespace BgsControle.Telas;
 /// <param name="AvisoCalor">O aviso do Máximo (passa da potência da ficha), ou null.</param>
 /// <param name="AvisoGanho">"O nível não chega ao teto: falta ganho na memória. Saída: JBL L.", ou null.</param>
 /// <param name="Escolhida">É o nível da memória em uso.</param>
+/// <param name="Selo">O selo "estimado" da linha do Extra com algum dado térmico só digitado (história 13f), ou null.</param>
 public sealed record LinhaNivel(NivelRendimento? Nivel, string Nome, string Texto, bool Pode, string? Motivo, string? AvisoCalor,
-    string? AvisoGanho, bool Escolhida);
+    string? AvisoGanho, bool Escolhida, string? Selo = null);
 
 /// <summary>
 /// A folha "Nível da memória" (história 13c; <c>telas-rendimento.md</c>, "Nível da memória" e "Aviso do Máximo"; sem
 /// XAML, que é da 13g): uma linha por nível, do Baixo ao Máximo, com o teto em volts da saída que manda e a fonte, e o
 /// Extra apagado com o pé da análise da playlist (história 13d): "Analisando a playlist." durante a análise, "Falta o
-/// teste a seco." com ela pronta e "Falta analisar a playlist." sem ela; com o teste a seco feito (13e), "Falta o modelo
-/// térmico." até a 13f. O selo "revalidar" da memória em uso vem com o motivo. Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
+/// teste a seco." com ela pronta e "Falta analisar a playlist." sem ela; com o teste a seco feito (13e) e o modelo térmico de
+/// todo alto-falante (13f), o Extra se acende ("Extra · até 22 V nas JBL L e JBL R · só a playlist", com o selo "estimado"
+/// se algum dado térmico é só digitado) e se escolhe; sem o térmico, "Falta o modelo térmico do Sub.". O selo "revalidar" da
+/// memória em uso vem com o motivo. Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
 /// com o motivo. Escolher grava o nível na memória em uso e põe o master da combinação com o preset em uso; o Máximo
 /// pede antes a folha de risco do app (Confirmar e Cancelar). "Sem nível" volta a memória a null, sem mexer no master.
 /// </summary>
@@ -50,8 +53,20 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         return $"{nome} · até {Niveis.Volts(v)} {onde} {Ligacoes.Lista(saidas)} · {Niveis.TextoQualquerFonte}";
     }
 
-    /// <summary>"Extra · só a playlist auditada".</summary>
-    public static string TextoExtra => $"{Niveis.NomeExtra} · só a playlist auditada";
+    /// <summary>A fonte do Extra (história 13f).</summary>
+    public const string TextoSoPlaylist = "só a playlist";
+
+    /// <summary>"Extra · só a playlist" (sem o teto).</summary>
+    public static string TextoExtra => $"{Niveis.NomeExtra} · {TextoSoPlaylist}";
+
+    /// <summary>"Extra · até 22 V nas JBL L e JBL R · só a playlist" (história 13f).</summary>
+    public static string TextoLinhaExtra(double? tetoV, IReadOnlyList<string> saidas)
+    {
+        if (tetoV is not { } v || saidas.Count == 0)
+            return TextoExtra;
+        var onde = saidas.Count == 1 ? "na" : "nas";
+        return $"{Niveis.NomeExtra} · até {Niveis.Volts(v)} {onde} {Ligacoes.Lista(saidas)} · {TextoSoPlaylist}";
+    }
 
     private readonly GerenteSetups _setups;
     private readonly EstadoAparelho _estado;
@@ -79,6 +94,7 @@ public sealed class NivelViewModel : TelaBase, IDisposable
             FolhaAberta = false;
         });
         Escolher = new ComandoCom<NivelRendimento>(EscolherAsync);
+        EscolherExtra = new Comando(() => EscolherAsync(NivelRendimento.Extra));
         SemNivel = new Comando(() => DefinirAsync(null));
         Confirmar = new Comando(ConfirmarAsync);
         Cancelar = new Comando(() =>
@@ -154,8 +170,11 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         }
     }
 
-    /// <summary>Escolhe o nível (o Máximo abre antes a folha de risco).</summary>
+    /// <summary>Escolhe o nível (o Máximo abre antes a folha de risco; o Extra, só com a linha acesa).</summary>
     public ComandoCom<NivelRendimento> Escolher { get; }
+
+    /// <summary>O toque na linha do Extra (história 13f): escolhe o Extra, ou mostra o motivo da linha apagada.</summary>
+    public Comando EscolherExtra { get; }
 
     /// <summary>"Sem nível": a memória volta a null, sem mexer no master.</summary>
     public Comando SemNivel { get; }
@@ -195,7 +214,9 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     private async Task EscolherAsync(NivelRendimento nivel)
     {
-        var linha = Linhas.FirstOrDefault(l => l.Nivel == nivel);
+        var linha = nivel == NivelRendimento.Extra
+            ? Linhas.FirstOrDefault(l => l.Nome == Niveis.NomeExtra)
+            : Linhas.FirstOrDefault(l => l.Nivel == nivel);
         if (linha is null || !linha.Pode)
         {
             Mensagem = linha?.Motivo ?? MotivoSemMemoria;
@@ -273,24 +294,49 @@ public sealed class NivelViewModel : TelaBase, IDisposable
                 conta?.Aviso,
                 emUso?.Nivel == nivel));
         }
-        linhas.Add(new LinhaNivel(null, Niveis.NomeExtra, TextoExtra, false, MotivoExtra(), null, null,
-            emUso?.Nivel == NivelRendimento.Extra));
+        linhas.Add(LinhaExtra(emUso, indisponivel));
         return linhas;
     }
 
     /// <summary>
-    /// A linha do Extra, apagada até a 13f (o modelo térmico, CAP-7), com o pé: "Falta o modelo térmico." com o teste a
-    /// seco feito (história 13e); "A configuração mudou depois do teste a seco…" com o validado de outra cadeia; senão o pé
-    /// da análise da playlist (13d).
+    /// A linha do Extra (história 13f): acesa com o teste a seco validado na cadeia de agora e o modelo térmico de todo
+    /// alto-falante passivo das saídas; o teto em volts da saída que manda (min(X, C) − 1 dB) e o selo "estimado".
     /// </summary>
-    private string MotivoExtra()
+    private LinhaNivel LinhaExtra(MemoriaCelular? emUso, string? indisponivel)
+    {
+        var motivo = MotivoExtra() ?? indisponivel;
+        ContaNivel? conta = null;
+        string? selo = null;
+        if (motivo is null)
+        {
+            try
+            {
+                conta = _setups.Conta(NivelRendimento.Extra);
+                selo = _setups.TermicoEmUso.Selo;
+            }
+            catch (Exception e)
+            {
+                _log?.Evento($"nível: falha na conta do Extra ({e.GetType().Name})");
+                motivo = Niveis.MsgFalhou;
+            }
+        }
+        return new LinhaNivel(null, Niveis.NomeExtra, TextoLinhaExtra(conta?.TetoNivelV, conta?.SaidasQueMandam ?? []), motivo is null,
+            motivo, null, conta?.Aviso, emUso?.Nivel == NivelRendimento.Extra, selo);
+    }
+
+    /// <summary>
+    /// Por que a linha do Extra está apagada, ou null (acesa): com o teste a seco feito (história 13e), "A configuração mudou
+    /// depois do teste a seco…" com o validado de outra cadeia, ou "Falta o modelo térmico do Sub." sem os cinco dados
+    /// térmicos de algum alto-falante (13f); sem o validado, o pé da análise da playlist (13d).
+    /// </summary>
+    private string? MotivoExtra()
     {
         if (_analise is null)
             return Niveis.MsgExtra;
         try
         {
             if (_setups.MemoriaEmUso is { } memoria && _setups.ExtraValidadoEmUso is not null)
-                return _setups.MotivoSemExtra(memoria) ?? Niveis.MsgFaltaTermico;
+                return _setups.MotivoSemExtra(memoria);
             return _analise.TetoEmUso().TextoNivel;
         }
         catch (Exception e)

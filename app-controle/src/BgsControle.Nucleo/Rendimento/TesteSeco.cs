@@ -327,6 +327,12 @@ public sealed class TesteSeco : IDisposable
 
     // ------------------------------------------------------------------ para começar
 
+    /// <summary>
+    /// Um impedimento de fora (história 13f: o descanso do Extra, com o Bluetooth travado, deixaria o teste sem sinal e
+    /// qualquer teto passaria), ou null.
+    /// </summary>
+    public Func<string?>? Impedimento { get; set; }
+
     /// <summary>Por que não dá para fazer o teste a seco agora, ou null. Cada recusa com o seu motivo.</summary>
     public string? MotivoParaComecar() => Preparar().Motivo;
 
@@ -348,6 +354,18 @@ public sealed class TesteSeco : IDisposable
             return Recusa(GerenteSetups.MsgDuvida);
         if (_setups.MemoriaEmUso is not { } memoria)
             return Recusa(MsgSemMemoria);
+        string? impedimento;
+        try
+        {
+            impedimento = Impedimento?.Invoke();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"teste a seco: falha ao conferir o descanso do Extra ({e.GetType().Name})");
+            impedimento = Niveis.MsgFalhou;
+        }
+        if (impedimento is not null)
+            return Recusa(impedimento);
         if (!memoria.Otimizada)
             return Recusa(MsgSemOtimizar);
         TetoExtra teto;

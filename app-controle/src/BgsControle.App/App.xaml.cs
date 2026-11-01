@@ -46,6 +46,9 @@ public partial class App : Application
         if (esperar)
             _servicos.GetService<TesteSeco>()?.InterromperAoFechar();
         var log = _servicos.GetRequiredService<LogBle>();
+        // História 13f: o modelo térmico do Extra vai para o termico.json (ao abrir, o tempo fora entra como esfriamento). A
+        // trava do descanso fica no aparelho. Ao fechar, espera com o histórico, no mesmo limite.
+        var termico = _servicos.GetService<TermicoExtra>() is { } t0 ? Task.Run(t0.GravarAgoraAsync) : Task.FromResult(true);
         var gravacao = Task.Run(_servicos.GetRequiredService<Historico>().GravarAgoraAsync);
         _ = gravacao.ContinueWith(t =>
         {
@@ -56,7 +59,7 @@ public partial class App : Application
             return;
         try
         {
-            if (!gravacao.Wait(EsperaHistorico))
+            if (!Task.WhenAll(gravacao, termico).Wait(EsperaHistorico))
                 log.Evento("histórico: a gravação ao fechar o app passou de 1 s");
         }
         catch (AggregateException)

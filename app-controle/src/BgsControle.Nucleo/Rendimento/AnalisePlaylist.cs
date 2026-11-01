@@ -550,6 +550,35 @@ public sealed class AnalisePlaylist : IDisposable
         return info.Impressoes.GetValueOrDefault(chave);
     }
 
+    /// <summary>
+    /// As análises prontas das faixas da playlist da memória em uso, na cadeia de agora (a memória com o preset em uso), por
+    /// id da faixa (história 13f: o RMS de cada saída alimenta o modelo térmico). Vazio sem memória em uso otimizada, sem a
+    /// cadeia ou sem nenhuma análise.
+    /// </summary>
+    public IReadOnlyDictionary<string, AnaliseFaixa> AnalisesEmUso() => Analises(_setups.MemoriaEmUso?.Id, _setups.IdPresetEmUso);
+
+    /// <summary>
+    /// As análises prontas das faixas da playlist da memória com o preset (null, ou um preset que não existe mais: as bandas
+    /// planas), na cadeia de agora, por id da faixa. Vazio sem a memória otimizada, sem a cadeia ou sem nenhuma análise.
+    /// </summary>
+    public IReadOnlyDictionary<string, AnaliseFaixa> Analises(string? idMemoria, string? idPreset)
+    {
+        if (_setups.Memoria(idMemoria) is not { Otimizada: true } memoria
+            || ImpressaoAtual(memoria.Id, idPreset) is not { } impressao)
+            return new Dictionary<string, AnaliseFaixa>();
+        var faixas = Fotografar().Playlists.PorMemoria.GetValueOrDefault(memoria.Id) ?? [];
+        var prontas = new Dictionary<string, AnaliseFaixa>(StringComparer.Ordinal);
+        lock (_trava)
+        {
+            foreach (var f in faixas)
+            {
+                if (_guardadas.TryGetValue(Chave(f, impressao), out var g))
+                    prontas[f.Id] = g.Analise;
+            }
+        }
+        return prontas;
+    }
+
     /// <summary>O teto do Extra da memória em uso com o preset em uso.</summary>
     public TetoExtra TetoEmUso() => _setups.MemoriaEmUso is { } m ? Teto(m.Id, _setups.IdPresetEmUso) : TetoExtra.Sem(EstadoExtra.Indisponivel, MsgSemMemoria);
 

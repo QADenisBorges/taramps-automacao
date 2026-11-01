@@ -177,6 +177,23 @@ public sealed record DadosTecnicos
     /// <summary>Em mH.</summary>
     public DadoTecnico? Le { get; init; }
 
+    // ------------------------------------------------------------------ térmico do alto-falante (história 13f)
+
+    /// <summary>A temperatura máxima da bobina, em °C.</summary>
+    public DadoTecnico? TemperaturaMaximaBobina { get; init; }
+
+    /// <summary>A resistência térmica da bobina ao ímã, em K/W.</summary>
+    public DadoTecnico? RthBobinaIma { get; init; }
+
+    /// <summary>A resistência térmica do ímã ao ar, em K/W.</summary>
+    public DadoTecnico? RthImaAr { get; init; }
+
+    /// <summary>A constante de tempo térmica da bobina, em s.</summary>
+    public DadoTecnico? TauBobina { get; init; }
+
+    /// <summary>A constante de tempo térmica do ímã, em s.</summary>
+    public DadoTecnico? TauIma { get; init; }
+
     // ------------------------------------------------------------------ caixa
 
     /// <summary>"selada", "dutada", "radiador passivo"… (até 32 caracteres).</summary>
@@ -242,6 +259,11 @@ public sealed record DadosTecnicos
         new("sd", d => d.Sd, (d, v) => d with { Sd = v }),
         new("xmax", d => d.Xmax, (d, v) => d with { Xmax = v }),
         new("le", d => d.Le, (d, v) => d with { Le = v }),
+        new("tMaxBobina", d => d.TemperaturaMaximaBobina, (d, v) => d with { TemperaturaMaximaBobina = v }),
+        new("rthBobinaIma", d => d.RthBobinaIma, (d, v) => d with { RthBobinaIma = v }),
+        new("rthImaAr", d => d.RthImaAr, (d, v) => d with { RthImaAr = v }),
+        new("tauBobina", d => d.TauBobina, (d, v) => d with { TauBobina = v }),
+        new("tauIma", d => d.TauIma, (d, v) => d with { TauIma = v }),
         new("volumeCaixa", d => d.VolumeCaixa, (d, v) => d with { VolumeCaixa = v }),
         new("fb", d => d.Fb, (d, v) => d with { Fb = v }),
         new("areaDuto", d => d.AreaDuto, (d, v) => d with { AreaDuto = v }),

@@ -97,6 +97,7 @@ public sealed class PortaComandos : IDisposable
     private readonly ServidorHttp _servidor;
     private readonly CriacaoMemoria? _criacao;
     private readonly AnalisePlaylist? _analise;
+    private readonly TermicoExtra? _termico;
 
     private readonly object _trava = new();
     private readonly SemaphoreSlim _abrir = new(1, 1);
@@ -131,7 +132,8 @@ public sealed class PortaComandos : IDisposable
         TimeProvider? relogio = null,
         int porta = PortaPadrao,
         CriacaoMemoria? criacao = null,
-        AnalisePlaylist? analise = null)
+        AnalisePlaylist? analise = null,
+        TermicoExtra? termico = null)
     {
         _sessao = sessao;
         _chaves = chaves;
@@ -151,6 +153,7 @@ public sealed class PortaComandos : IDisposable
         _porta = porta;
         _criacao = criacao;
         _analise = analise;
+        _termico = termico;
         _servidor = new ServidorHttp(porta, AtenderAsync, Triagem, log);
         _paradaVista = uso.Parada;
 
@@ -1110,6 +1113,15 @@ public sealed class PortaComandos : IDisposable
             GerenteSetups.EscreverNivelBluetooth(w, nivel);
         else
             w.WriteNull("nivelBluetooth");
+        // História 13f: a temperatura ambiente do Setup em uso ({valor, origem, fonte}, ou null: vale 25 °C) e a que vale.
+        if (setup?.TemperaturaAmbiente is { } temperatura)
+            GerenteSetups.EscreverDadoSetup(w, "temperaturaAmbiente", temperatura);
+        else
+            w.WriteNull("temperaturaAmbiente");
+        if (setup is not null)
+            w.WriteNumber("temperaturaAmbienteUsada", ModeloTermico.Ambiente(setup));
+        else
+            w.WriteNull("temperaturaAmbienteUsada");
         w.WriteBoolean("duvida", _setups.MotivoBloqueioIa is not null);
         w.WriteString("estado", _setups.Estado switch
         {
@@ -1227,6 +1239,7 @@ public sealed class PortaComandos : IDisposable
         MemoriaCelular? memoriaEmUso;
         ExtraValidado? validado;
         bool? emVigor;
+        TermicoNaPorta termico;
         try
         {
             limites = _setups.LimitesEmUso;
@@ -1253,6 +1266,7 @@ public sealed class PortaComandos : IDisposable
             memoriaEmUso = _setups.MemoriaEmUso;
             validado = _setups.ExtraValidadoEmUso;
             emVigor = _setups.ExtraEmVigorEmUso;
+            termico = Termico();
         }
         catch (Exception e)
         {
@@ -1267,7 +1281,7 @@ public sealed class PortaComandos : IDisposable
             else
                 w.WriteNull("master");
             w.WriteString("avisoNivel", avisoNivel);
-            EscreverExtra(w, extra, memoriaEmUso, validado, emVigor);
+            EscreverExtra(w, extra, memoriaEmUso, validado, emVigor, termico);
             EscreverLimites(w, limites, fora);
         }));
     }
@@ -1282,7 +1296,8 @@ public sealed class PortaComandos : IDisposable
     /// <c>revalidar</c> (bool) com o <c>motivoRevalidar</c> e as <c>marcas</c> dos clips não previstos no uso
     /// ({faixa, id, saida, segundos}).
     /// </remarks>
-    private static void EscreverExtra(Utf8JsonWriter w, TetoExtra extra, MemoriaCelular? memoria, ExtraValidado? validado, bool? emVigor)
+    private static void EscreverExtra(Utf8JsonWriter w, TetoExtra extra, MemoriaCelular? memoria, ExtraValidado? validado, bool? emVigor,
+        TermicoNaPorta termico)
     {
         w.WriteStartObject("extra");
         w.WriteString("estado", extra.Estado switch
@@ -1360,7 +1375,69 @@ public sealed class PortaComandos : IDisposable
             w.WriteEndObject();
         }
         w.WriteEndArray();
+        EscreverTermico(w, termico);
         w.WriteEndObject();
+    }
+
+    /// <summary>O térmico do Extra para o <c>/limites</c> (história 13f), lido de uma vez.</summary>
+    private sealed record TermicoNaPorta(AvaliacaoTermica Avaliacao, IReadOnlyList<TermicoAltoFalante> AltoFalantes, TimeSpan? TempoExtra,
+        TimeSpan? Descanso, bool Travado, string? Aviso, bool SemLimite = false);
+
+    /// <summary>O térmico agora (sem o modelo ao vivo, só a avaliação dos dados). Uma falha dá o térmico vazio.</summary>
+    private TermicoNaPorta Termico()
+    {
+        try
+        {
+            return _termico is { } t
+                ? new TermicoNaPorta(t.Avaliacao, t.AltoFalantes, t.TempoExtra, t.Descanso, t.BluetoothTravado, t.Aviso, t.SemLimite)
+                : new TermicoNaPorta(_setups.TermicoEmUso, [], null, null, false, null);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"porta: falha ao ler o térmico do Extra ({e.GetType().Name})");
+            return new TermicoNaPorta(new AvaliacaoTermica(false, Niveis.MsgFalhou, false, []), [], null, null, false, null);
+        }
+    }
+
+    /// <summary>
+    /// O térmico no <c>extra</c> (história 13f): <c>termicoPode</c> e <c>termicoMotivo</c> ("Falta o modelo térmico do Sub."),
+    /// <c>termicoSelo</c> ("estimado" ou null), <c>termico</c> (por alto-falante: altoFalante, temperatura e maxima em °C, selo;
+    /// null sem o modelo), <c>tempoExtra</c> (s, ou null) e <c>descanso</c> (s que faltam, ou null), com
+    /// <c>bluetoothTravado</c> e o <c>avisoTermico</c>.
+    /// </summary>
+    private static void EscreverTermico(Utf8JsonWriter w, TermicoNaPorta t)
+    {
+        w.WriteBoolean("termicoPode", t.Avaliacao.Pode);
+        w.WriteString("termicoMotivo", t.Avaliacao.Motivo);
+        w.WriteString("termicoSelo", t.Avaliacao.Selo);
+        w.WriteStartArray("termico");
+        foreach (var a in t.AltoFalantes)
+        {
+            w.WriteStartObject();
+            w.WriteString("altoFalante", a.AltoFalante);
+            if (a.Temperatura is { } temperatura)
+                w.WriteNumber("temperatura", temperatura);
+            else
+                w.WriteNull("temperatura");
+            if (a.Maxima is { } maxima)
+                w.WriteNumber("maxima", maxima);
+            else
+                w.WriteNull("maxima");
+            w.WriteString("selo", a.Selo);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        if (t.TempoExtra is { } tempo)
+            w.WriteNumber("tempoExtra", (long)Math.Ceiling(Math.Round(tempo.TotalSeconds, 6)));
+        else
+            w.WriteNull("tempoExtra");
+        w.WriteBoolean("semLimite", t.SemLimite);
+        if (t.Descanso is { } descanso)
+            w.WriteNumber("descanso", (long)Math.Ceiling(Math.Round(descanso.TotalSeconds, 6)));
+        else
+            w.WriteNull("descanso");
+        w.WriteBoolean("bluetoothTravado", t.Travado);
+        w.WriteString("avisoTermico", t.Aviso);
     }
 
     private static void EscreverLimites(Utf8JsonWriter w, IReadOnlyList<LimiteSaida> limites, IReadOnlyList<AltoFalanteFora> fora)
@@ -1603,18 +1680,18 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos aparece no celular, embaixo da chave Controle pela rede (Configurações, grupo APARELHO). Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), duvida, as memórias do celular dele com id, nome, emUso, o preset lembrado, nivel (o nível de rendimento: "baixo", "medio", "alto", "maximo" ou null) e master (o master guardado pelo nível para o preset em uso, ou null), e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), temperaturaAmbiente (°C, {"valor":35,"origem":"digitado"}, ou null: vale 25 °C) e temperaturaAmbienteUsada (°C), duvida, as memórias do celular dele com id, nome, emUso, o preset lembrado, nivel (o nível de rendimento: "baixo", "medio", "alto", "maximo" ou null) e master (o master guardado pelo nível para o preset em uso, ou null), e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
-        GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Em "extra", o teto do Extra da memória em uso com o preset em uso, pela análise da playlist (o "Otimizar configuração na playlist" do Player; só calculado, nunca aplicado): estado (falta, analisando, pronta ou indisponivel), master (o candidato, em dB, ou null), motivo, aviso (falta ganho), pesando (por faixa analisada com som: id, faixa e db, quanto ela tira do teto) e trechos (por faixa, na cadeia do preset em uso: id, faixa, situacao pronta, em-analise, falhou ou sem-som, o motivo da falha ou do sem som e os 2 trechos fortes de 10 s com inicio e fim em segundos). Ainda no "extra" (história 13e): validado (o master que passou no teste a seco, da memória em uso com o preset em uso, em dB, ou null; o teste a seco não roda pela porta), validadoVigente (false com a memória em "revalidar" ou a cadeia mudada depois do teste: aí o master do Extra é o menor entre o validado e o do pior caso; null sem validado), revalidar (true quando a ficha ou a calibração mudou, ou houve dois clips não previstos na mesma faixa) com o motivoRevalidar, e marcas (as faixas marcadas por um clip não previsto no uso do Extra: faixa, id, saida e segundos). O nivel pode ser "extra". Uma falha no cálculo do extra dá estado indisponivel com o motivo, sem derrubar o resto. Uma falha no cálculo: 500.
-        POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
+        GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Em "extra", o teto do Extra da memória em uso com o preset em uso, pela análise da playlist (o "Otimizar configuração na playlist" do Player; só calculado, nunca aplicado): estado (falta, analisando, pronta ou indisponivel), master (o candidato, em dB, ou null), motivo, aviso (falta ganho), pesando (por faixa analisada com som: id, faixa e db, quanto ela tira do teto) e trechos (por faixa, na cadeia do preset em uso: id, faixa, situacao pronta, em-analise, falhou ou sem-som, o motivo da falha ou do sem som e os 2 trechos fortes de 10 s com inicio e fim em segundos). Ainda no "extra" (história 13e): validado (o master que passou no teste a seco, da memória em uso com o preset em uso, em dB, ou null; o teste a seco não roda pela porta), validadoVigente (false com a memória em "revalidar" ou a cadeia mudada depois do teste: aí o master do Extra é o menor entre o validado e o do pior caso; null sem validado), revalidar (true quando a ficha ou a calibração mudou, ou houve dois clips não previstos na mesma faixa) com o motivoRevalidar, e marcas (as faixas marcadas por um clip não previsto no uso do Extra: faixa, id, saida e segundos). Ainda no "extra" (história 13f, o modelo térmico): termicoPode (todo alto-falante passivo das saídas com os cinco dados térmicos; sem eles o Extra não se escolhe), termicoMotivo ("Falta o modelo térmico do Sub.", ou null), termicoSelo ("estimado" com algum dado térmico só digitado, ou null), termico (por alto-falante: altoFalante, temperatura estimada da bobina e maxima, em °C, e selo; null sem o modelo), tempoExtra (no Extra em uso e tocando, os segundos até a primeira bobina chegar à máxima, ou null), semLimite (true no Extra, tocando, quando nenhuma bobina chega à máxima com a faixa atual: tempoExtra fica null), descanso (os segundos que faltam do descanso depois do corte, com o Bluetooth travado, ou null; no descanso, o POST /aparelho/bluetooth {"ligado":true} e um /ajuste que tira o mute (100 = 0) são recusados com "Descansando: mm:ss.", na tela também), bluetoothTravado e avisoTermico ("Não consegui travar o Bluetooth. Desligue o módulo.", ou null). O nivel pode ser "extra". Uma falha no cálculo do extra dá estado indisponivel com o motivo, sem derrubar o resto. Uma falha no cálculo: 500.
+        POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b". No descanso do Extra (história 13f), tirar o mute (100 = 0) é recusado com "Descansando: mm:ss.".
         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.
         POST /gerador/sweep {"inicioHz":20,"fimHz":200,"db":-30.0,"velocidade":1}: velocidade de 1 (lento) a 3 (rápido). Pede o toque do usuário na folha de risco.
         POST /gerador/parar: desliga o gerador. Não pede o toque nem a chave do gerador, e a pausa da IA não o trava; com firmware diferente do R003, recusa como todo POST.
         POST /aparelho/remote-out {"ligado":true}: pede o toque do usuário na folha de risco.
-        POST /aparelho/bluetooth {"ligado":true}
+        POST /aparelho/bluetooth {"ligado":true}: no descanso do Extra (história 13f), ligar é recusado com "Descansando: mm:ss." (o app religa sozinho no fim).
         POST /aparelho/nome {"nome":"SALA"}
         POST /aparelho/reset-audio: pede o toque do usuário na folha de risco.
         POST /aparelho/reset-fabrica: pede o toque do usuário na folha de risco.

@@ -1,4 +1,5 @@
 using System.Globalization;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -290,6 +291,11 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         ("sd", "Sd", "cm²"),
         ("xmax", "Xmax", "mm"),
         ("le", "Le", "mH"),
+        ("tMaxBobina", "Temperatura máxima da bobina", "°C"),
+        ("rthBobinaIma", "Rth bobina–ímã", "K/W"),
+        ("rthImaAr", "Rth ímã–ar", "K/W"),
+        ("tauBobina", "τ da bobina", "s"),
+        ("tauIma", "τ do ímã", "s"),
         (CampoTipoCaixa, "Tipo da caixa", null),
         ("volumeCaixa", "Volume da caixa", "L"),
         ("fb", "Fb", "Hz"),
@@ -305,12 +311,26 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         ("correnteAlimentacao", "Corrente da alimentação", "A"),
     ];
 
-    /// <summary>Os blocos da ficha que valem para quem toca (alto-falante passivo e grupo 1).</summary>
+    /// <summary>Os cinco dados térmicos do alto-falante passivo (história 13f: o modelo térmico do Extra).</summary>
+    public static IReadOnlyList<string> CamposTermicos { get; } = ["tMaxBobina", "rthBobinaIma", "rthImaAr", "tauBobina", "tauIma"];
+
+    /// <summary>Os blocos da ficha que valem para o grupo 1 (amplifica e toca).</summary>
     private static readonly (string Titulo, string[] Campos)[] SecoesQueTocam =
     [
         (SecaoGerais, ["diametro", "impedancia", "potenciaRms", "sensibilidade", "faixaMinima", "faixaMaxima"]),
         (SecaoAltoFalante, ["re", "fs", "qes", "qms", "vas", "bl", "sd", "xmax", "le"]),
         (SecaoCaixa, [CampoTipoCaixa, "volumeCaixa", "fb", "areaDuto"]),
+    ];
+
+    /// <summary>
+    /// Os blocos da ficha do alto-falante passivo: os de quem toca e, no bloco do alto-falante, os cinco dados térmicos
+    /// (história 13f; só o passivo entra no modelo térmico do Extra).
+    /// </summary>
+    private static readonly (string Titulo, string[] Campos)[] SecoesAltoFalante =
+    [
+        SecoesQueTocam[0],
+        (SecaoAltoFalante, [.. SecoesQueTocam[1].Campos, .. CamposTermicos]),
+        SecoesQueTocam[2],
     ];
 
     /// <summary>Os blocos da ficha do módulo (grupo 2).</summary>
@@ -328,7 +348,8 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
 
     private static (string Titulo, string[] Campos)[] SecoesDo(GrupoEquipamento grupo) => grupo switch
     {
-        GrupoEquipamento.AltoFalante or GrupoEquipamento.AmplificaETocam => SecoesQueTocam,
+        GrupoEquipamento.AltoFalante => SecoesAltoFalante,
+        GrupoEquipamento.AmplificaETocam => SecoesQueTocam,
         GrupoEquipamento.Amplificador => SecoesModulo,
         _ => SecoesRepasse,
     };
@@ -484,6 +505,86 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
             Avisar(nameof(Ocupado));
         }
     }
+
+    // ------------------------------------------------------------------ a temperatura ambiente (história 13f)
+
+    public const string RotuloTemperatura = "TEMPERATURA AMBIENTE";
+    public const string LinhaTemperatura = "Opcional. O tempo de Extra parte dela.";
+    public const string TextoGuardarTemperatura = "Guardar";
+
+    private string _temperatura = "";
+    private string _temperaturaGuardada = "";
+    private string? _temperaturaDoSetup;
+
+    /// <summary>"TEMPERATURA AMBIENTE".</summary>
+    public string RotuloTemperaturaTela => RotuloTemperatura;
+
+    /// <summary>"Opcional. O tempo de Extra parte dela."</summary>
+    public string LinhaTemperaturaTela => LinhaTemperatura;
+
+    /// <summary>"Guardar".</summary>
+    public string TextoGuardarTemperaturaTela => TextoGuardarTemperatura;
+
+    /// <summary>A temperatura que vale no Setup mostrado: "35 °C", ou "25 °C (padrão)" sem o dado; null sem Setup.</summary>
+    public string? TextoTemperaturaAmbiente => Setup is { } setup ? ModeloTermico.TextoAmbiente(setup.TemperaturaAmbiente) : null;
+
+    /// <summary>O campo da temperatura ambiente, em °C (vírgula ou ponto; vazio = não informada, vale 25 °C).</summary>
+    public string Temperatura
+    {
+        get => _temperatura;
+        set
+        {
+            if (_temperatura == value)
+                return;
+            _temperatura = value;
+            Avisar();
+        }
+    }
+
+    /// <summary>Grava o campo como a temperatura ambiente do Setup mostrado (digitada; vazio = não informada).</summary>
+    public Comando GuardarTemperatura => _guardarTemperatura ??= new Comando(GuardarTemperaturaAsync);
+
+    private Comando? _guardarTemperatura;
+
+    /// <summary>
+    /// Grava a temperatura do campo (digitada; vazio = não informada) e mostra a frase ("Casa 2.1: 35 °C."). Um texto que
+    /// não é número, ou fora de −40 a 60 °C, dá o motivo e nada muda.
+    /// </summary>
+    public async Task GuardarTemperaturaAsync()
+    {
+        if (Setup is not { } setup || Ocupado)
+            return;
+        DadoTecnico? dado = null;
+        if (!string.IsNullOrWhiteSpace(_temperatura))
+        {
+            var texto = _temperatura.Trim().Replace('−', '-').Replace(',', '.');
+            if (!decimal.TryParse(texto, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var v))
+            {
+                Mensagem = GerenteSetups.MsgTemperaturaInvalida;
+                return;
+            }
+            // Uma casa, como a tela mostra; um valor igual ao guardado fica com a origem dele.
+            v = Math.Round(v, 1, MidpointRounding.AwayFromZero);
+            dado = setup.TemperaturaAmbiente is { } antes && antes.Valor == v ? antes : DadoTecnico.Digitado(v);
+        }
+        _agindo = true;
+        Avisar(nameof(Ocupado));
+        try
+        {
+            var r = await _setups.DefinirTemperaturaAmbienteAsync(setup.Id, dado);
+            Mensagem = r.Mensagem ?? r.Motivo;
+            Atualizar();
+        }
+        finally
+        {
+            _agindo = false;
+            Avisar(nameof(Ocupado));
+        }
+    }
+
+    /// <summary>O campo da temperatura guardada ("35", "22,5"), ou vazio.</summary>
+    private static string TextoCampoTemperatura(DadoTecnico? t) =>
+        t is { } d ? d.Valor.ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',') : "";
 
     /// <summary>"Adicione os equipamentos ligados em cada canal." quando o Setup não tem nenhum; sem Setup, o pedido para escolher um.</summary>
     public string? TextoVazio => Setup is null ? MsgSemSetup : _itens.Count == 0 ? TextoVazioSetup : null;
@@ -1324,6 +1425,16 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
         Avisar(nameof(Setup));
         Avisar(nameof(AmbientesTela));
         Avisar(nameof(SaidasTela));
+        // História 13f: a temperatura ambiente acompanha o Setup (o campo volta ao guardado, se não está sendo editado).
+        var guardada = TextoCampoTemperatura(setup?.TemperaturaAmbiente);
+        if (_temperaturaDoSetup != setup?.Id || _temperaturaGuardada != guardada)
+        {
+            _temperaturaDoSetup = setup?.Id;
+            _temperaturaGuardada = guardada;
+            _temperatura = guardada;
+            Avisar(nameof(Temperatura));
+        }
+        Avisar(nameof(TextoTemperaturaAmbiente));
         Avisar(nameof(Titulo));
         Avisar(nameof(Itens));
         Avisar(nameof(Saidas));

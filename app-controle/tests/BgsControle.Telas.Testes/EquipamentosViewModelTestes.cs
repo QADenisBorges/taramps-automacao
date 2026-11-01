@@ -709,4 +709,72 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Null(_vm.FuncaoSugerida);
         Assert.Null(_vm.FuncaoQueVale);
     }
+
+    // ------------------------------------------------------------------ história 13f: o térmico na ficha e a temperatura ambiente
+
+    [Fact]
+    public async Task A_ficha_do_alto_falante_passivo_tem_os_cinco_dados_termicos_com_o_selo_e_eles_sao_guardados()
+    {
+        await MostrarCasa();
+        _vm.AbrirEditar(CasaDoDenis.IdSubCasa);
+
+        var bloco = _vm.SecoesDados.Single(s => s.Titulo == EquipamentosViewModel.SecaoAltoFalante).Dados.Select(d => d.Nome).ToArray();
+        Assert.Equal(EquipamentosViewModel.CamposTermicos, bloco.TakeLast(5));
+        Assert.Equal("Temperatura máxima da bobina (°C)", _vm.Dado("tMaxBobina")!.RotuloTela);
+        Assert.Equal("τ do ímã (s)", _vm.Dado("tauIma")!.RotuloTela);
+        Assert.Equal("Rth bobina–ímã (K/W)", _vm.Dado("rthBobinaIma")!.RotuloTela);
+
+        _vm.Dado("tMaxBobina")!.Texto = "180";
+        _vm.Dado("rthBobinaIma")!.Texto = "1,2";
+        _vm.Dado("rthImaAr")!.Texto = "0,9";
+        _vm.Dado("tauBobina")!.Texto = "20";
+        _vm.Dado("tauIma")!.Texto = "900";
+        Assert.Equal("digitado", _vm.Dado("tauIma")!.Selo);
+        _vm.Dado("tauIma")!.EscolherOrigem(OrigemDado.Oficial);
+        await _vm.Confirmar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        var sub = _b.Setups!.Equipamento(CasaDoDenis.IdSetupCasa, CasaDoDenis.IdSubCasa)!;
+        Assert.Equal(new DadoTecnico(180m, OrigemDado.Digitado), sub.Dados.TemperaturaMaximaBobina);
+        Assert.Equal(new DadoTecnico(1.2m, OrigemDado.Digitado), sub.Dados.RthBobinaIma);
+        Assert.Equal(new DadoTecnico(900m, OrigemDado.Oficial), sub.Dados.TauIma);
+
+        // O grupo 1 (amplifica e toca) não tem o térmico (só o passivo entra no modelo).
+        await _vm.Adicionar.ExecutarAsync();
+        _vm.Grupo = GrupoEquipamento.AmplificaETocam;
+        Assert.DoesNotContain(_vm.SecoesDados.SelectMany(s => s.Dados), d => d.Nome == "tauIma");
+    }
+
+    [Fact]
+    public async Task A_temperatura_ambiente_vale_25_graus_sem_o_dado_e_o_campo_grava_a_digitada()
+    {
+        await MostrarCasa();
+
+        Assert.Equal("25 °C (padrão)", _vm.TextoTemperaturaAmbiente);
+        Assert.Equal("", _vm.Temperatura);
+        Assert.Equal("TEMPERATURA AMBIENTE", _vm.RotuloTemperaturaTela);
+
+        _vm.Temperatura = "35";
+        await _vm.GuardarTemperatura.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("Casa 2.1: 35 °C.", _vm.Mensagem);
+        Assert.Equal("35 °C", _vm.TextoTemperaturaAmbiente);
+        Assert.Equal(DadoTecnico.Digitado(35m), _b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.TemperaturaAmbiente);
+
+        _vm.Temperatura = "quente";
+        await _vm.GuardarTemperatura.ExecutarAsync();
+        Assert.Equal("A temperatura ambiente vai de −40 a 60 °C.", _vm.Mensagem);
+        _vm.Temperatura = "−45";
+        await _vm.GuardarTemperatura.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("A temperatura ambiente vai de −40 a 60 °C.", _vm.Mensagem);
+        Assert.Equal(DadoTecnico.Digitado(35m), _b.Setups.Setup(CasaDoDenis.IdSetupCasa)!.TemperaturaAmbiente);
+
+        // Vazio: volta a não informada.
+        _vm.Temperatura = "";
+        await _vm.GuardarTemperatura.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal("Casa 2.1: 25 °C (padrão).", _vm.Mensagem);
+        Assert.Null(_b.Setups.Setup(CasaDoDenis.IdSetupCasa)!.TemperaturaAmbiente);
+    }
 }

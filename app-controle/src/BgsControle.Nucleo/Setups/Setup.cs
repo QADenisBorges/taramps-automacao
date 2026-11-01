@@ -31,6 +31,12 @@ public sealed record Setup(
     /// Opcional; o valor pode ser negativo (−13,0 dB). Null = não medido.
     /// </summary>
     public DadoTecnico? NivelBluetooth { get; init; }
+
+    /// <summary>
+    /// A temperatura ambiente do Setup, em °C (história 13f): o ponto de partida do modelo térmico do Extra. Opcional no
+    /// formato 4; null = não informada, e vale <see cref="ModeloTermico.AmbientePadrao"/> (25 °C, "25 °C (padrão)").
+    /// </summary>
+    public DadoTecnico? TemperaturaAmbiente { get; init; }
 }
 
 /// <summary>Onde o Setup está (CAP-16): um dado físico do Setup, que o Agente usa. Opcional, sem padrão.</summary>

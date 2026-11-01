@@ -156,22 +156,45 @@ public sealed class Player : IDisposable
     public Func<string?>? Bloqueio { get; set; }
 
     /// <summary>
+    /// O descanso do Extra (história 13f): por que o Player não toca agora ("Descansando: 12:34"), ou null. Vale como o
+    /// <see cref="Bloqueio"/>, com quem ele se soma (os dois têm donos diferentes).
+    /// </summary>
+    public Func<string?>? Descanso { get; set; }
+
+    /// <summary>
     /// Antes de começar ou continuar a tocar por um comando (história 13e: o fiscal do Extra tira o mudo do outro player
     /// e põe o volume do celular no máximo). Uma falha fica no log e não impede o tocar.
     /// </summary>
     public Func<Task>? AntesDeTocar { get; set; }
 
-    /// <summary>O motivo do bloqueio agora (uma falha da pergunta conta como nenhum).</summary>
+    /// <summary>Não deu para conferir o descanso do Extra (o Player não toca: o lado seguro).</summary>
+    public const string MsgDescansoFalhou = "Não consegui conferir o descanso do Extra.";
+
+    /// <summary>
+    /// O motivo do bloqueio agora: o <see cref="Bloqueio"/> (uma falha da pergunta conta como nenhum) e, em separado, o
+    /// <see cref="Descanso"/> (uma falha dele bloqueia).
+    /// </summary>
     private string? Bloqueado()
     {
+        string? motivo = null;
         try
         {
-            return Bloqueio?.Invoke();
+            motivo = Bloqueio?.Invoke();
         }
         catch (Exception e)
         {
             _log.Evento($"player: falha ao conferir o bloqueio ({e.GetType().Name})");
-            return null;
+        }
+        if (motivo is not null)
+            return motivo;
+        try
+        {
+            return Descanso?.Invoke();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"player: falha ao conferir o descanso do Extra ({e.GetType().Name})");
+            return MsgDescansoFalhou;
         }
     }
 

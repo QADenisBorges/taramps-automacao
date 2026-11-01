@@ -171,7 +171,7 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         {
             Nivel = NivelRendimento.Maximo,
         };
-        var dados = new DadosSetups([CasaDoDenis.SetupCasaComBluetooth], [memoria], CasaDoDenis.IdSetupCasa,
+        var dados = new DadosSetups([CasaDoDenis.SetupCasaComTermico], [memoria], CasaDoDenis.IdSetupCasa,
             new Dictionary<string, UsoDoSetup> { [CasaDoDenis.IdSetupCasa] = new([IdPlana], [IdPlana, null, null]) });
         var arquivos = new ArquivosFalso();
         arquivos.Semear(RepositorioTextoArquivos.ArquivoSetups, GerenteSetups.ParaJson(dados));
@@ -312,11 +312,13 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         Assert.True(_vm.PodeConcluir);
         SemIa(_vm);
 
-        // A folha do nível: o Extra fica apagado até o modelo térmico (13f).
+        // A folha do nível: com o teste a seco e o modelo térmico de todo alto-falante (13f), o Extra se acende.
         await _b.Tela.EsvaziarAsync();
         var extra = _nivelVm.Linhas.Single(l => l.Nome == "Extra");
-        Assert.False(extra.Pode);
-        Assert.Equal("Falta o modelo térmico.", extra.Motivo);
+        Assert.True(extra.Pode, extra.Motivo);
+        Assert.Null(extra.Motivo);
+        Assert.Null(extra.Selo);
+        Assert.Matches(@"^Extra · até \d+(,\d)? V nas JBL L e JBL R · só a playlist$", extra.Texto);
         Assert.Null(_nivelVm.SeloRevalidar);
     }
 

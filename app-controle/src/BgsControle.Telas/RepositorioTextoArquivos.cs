@@ -44,6 +44,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>O mudo posto pelo fiscal do Extra (história 13e): o mudo de antes de cada canal, para o tocar de depois de reabrir o app.</summary>
     public const string ArquivoFiscalExtra = "fiscal-extra.json";
 
+    /// <summary>O modelo térmico do Extra (história 13f): o ΔT de cada bobina e a hora, o descanso e a trava que o app pôs no aparelho.</summary>
+    public const string ArquivoTermico = "termico.json";
+
     public string Arquivo { get; } = arquivo;
 
     public Task<string?> LerAsync() => arquivos.LerTextoAsync(Arquivo);

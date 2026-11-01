@@ -137,9 +137,36 @@ public sealed class ComandosAparelho
     public Task<ResultadoAparelho> DefinirRemoteOutAsync(bool ligar) =>
         LigarDesligarAsync(Catalogo.RemoteOut(ligar), Consulta252, ligar, MsgRemoteOut(ligar), "Remote out");
 
-    /// <summary>Liga ou desliga o Bluetooth de áudio (<c>*251*1*</c> / <c>*251*0*</c>), confirmado pelo eco ou pela releitura.</summary>
-    public Task<ResultadoAparelho> DefinirBluetoothAudioAsync(bool ligar) =>
-        LigarDesligarAsync(Catalogo.BluetoothAudio(ligar), Consulta251, ligar, MsgBluetoothAudio(ligar), "Bluetooth de áudio");
+    /// <summary>
+    /// O descanso do Extra (história 13f): o motivo de não religar o Bluetooth de áudio agora ("Descansando: 12:34."), ou
+    /// null. Vale para a tela e para a porta; o religar do próprio descanso, no fim dele, já passa. Ligado pelo
+    /// <c>TermicoExtra</c>.
+    /// </summary>
+    internal Func<string?>? TravaBluetooth { get; set; }
+
+    /// <summary>
+    /// Liga ou desliga o Bluetooth de áudio (<c>*251*1*</c> / <c>*251*0*</c>), confirmado pelo eco ou pela releitura. No
+    /// descanso do Extra, ligar é recusado (<see cref="TravaBluetooth"/>; uma falha ao conferir recusa).
+    /// </summary>
+    public Task<ResultadoAparelho> DefinirBluetoothAudioAsync(bool ligar)
+    {
+        if (ligar && TravaBluetooth is { } trava)
+        {
+            string? motivo;
+            try
+            {
+                motivo = trava();
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"falha ao conferir o descanso do Extra ({e.GetType().Name})");
+                motivo = Rendimento.Niveis.MsgFalhou;
+            }
+            if (motivo is not null)
+                return Task.FromResult(Terminar(ResultadoAparelho.Falha(motivo)));
+        }
+        return LigarDesligarAsync(Catalogo.BluetoothAudio(ligar), Consulta251, ligar, MsgBluetoothAudio(ligar), "Bluetooth de áudio");
+    }
 
     private async Task<ResultadoAparelho> LigarDesligarAsync(string quadro, Consulta consulta, bool ligar, string frase, string nome)
     {

@@ -190,7 +190,8 @@ internal sealed class VolumeFalso : IVolumeCelular
 }
 
 /// <summary>
-/// A bancada da história 13e contra o processador simulado: o Casa 2.1 calibrado (Bluetooth −13 dB), a memória PLANA em
+/// A bancada da história 13e contra o processador simulado: o Casa 2.1 calibrado (Bluetooth −13 dB; da 13f, com os dados
+/// térmicos de teste, <see cref="CasaDoDenis.SetupCasaComTermico"/>, ou outro Setup), a memória PLANA em
 /// uso no Máximo (o ganho +15 nas JBL, LR24 em 200 Hz, os limitadores das JBL em −5,0 dB, abaixo de min(X, C)),
 /// lembrando o preset Plano; a análise da playlist com o dublê do decodificador, o Player, o teste a seco e o fiscal.
 /// As faixas são senos de 1 kHz de 2 s (um trecho cada): o pico nas JBL é o dBFS − 13 + 15.
@@ -248,7 +249,17 @@ internal sealed class BancadaExtra : IDisposable
     /// <summary>O mudo do fiscal guardado no celular (o <c>fiscal-extra.json</c>).</summary>
     public TextoMemoria ArquivoFiscal { get; } = new();
 
-    public BancadaExtra()
+    /// <summary>O modelo térmico guardado no celular (o <c>termico.json</c>, história 13f).</summary>
+    public TextoMemoria ArquivoTermico { get; } = new();
+
+    /// <summary>Os modelos térmicos criados por <see cref="NovoTermico"/> (o último é o do app aberto).</summary>
+    private readonly List<TermicoExtra> _termicos = [];
+
+    public BancadaExtra() : this(CasaDoDenis.SetupCasaComTermico)
+    {
+    }
+
+    public BancadaExtra(Setup setup)
     {
         var regulagem = PiorCasoTestes.Plana(GanhoJbl)
             .Where(v => Camadas.De(v.Codigo) == Camada.Regulagem)
@@ -262,7 +273,7 @@ internal sealed class BancadaExtra : IDisposable
         {
             Nivel = NivelRendimento.Maximo,
         };
-        var dados = new DadosSetups([CasaDoDenis.SetupCasaComBluetooth], [memoria], CasaDoDenis.IdSetupCasa,
+        var dados = new DadosSetups([setup], [memoria], CasaDoDenis.IdSetupCasa,
             new Dictionary<string, UsoDoSetup> { [CasaDoDenis.IdSetupCasa] = new([IdPlana], [IdPlana, null, null]) });
 
         Simulador = new ProcessadorSimulado(Relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
@@ -298,13 +309,16 @@ internal sealed class BancadaExtra : IDisposable
     /// </summary>
     public void Dispose()
     {
+        foreach (var t in _termicos)
+            t.Dispose();
         Fiscal.Dispose();
         Teste.Dispose();
         Player.Dispose();
         Analise.Dispose();
         Assert.DoesNotContain(Simulador.Escritas, e => e.StartsWith("*24", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
         Assert.All(Simulador.Escritas, e =>
-            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null || e is "*252*0*" or "*252*1*", e));
+            Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null
+                        || e is "*252*0*" or "*252*1*" or "*251*0*" or "*251*1*", e));
     }
 
     // ----------------------------------------------------------------- apoio
@@ -312,6 +326,15 @@ internal sealed class BancadaExtra : IDisposable
     /// <summary>Um fiscal novo (o app reaberto), com o mudo guardado em <see cref="ArquivoFiscal"/>.</summary>
     public FiscalExtra NovoFiscal() =>
         new(Sessao, Estado, Escritor, Copia, Setups, Analise, Player, Reprodutor, Monitor, Outro, Volume, Log, Relogio, Teste, ArquivoFiscal);
+
+    /// <summary>Um modelo térmico novo (o app aberto de novo, história 13f), com o <see cref="ArquivoTermico"/>; o descanso impede o teste a seco.</summary>
+    public TermicoExtra NovoTermico()
+    {
+        var t = new TermicoExtra(Sessao, Estado, Escritor, Setups, Analise, Player, Comandos, Log, Relogio, ArquivoTermico);
+        Teste.Impedimento = () => t.TextoDescanso;
+        _termicos.Add(t);
+        return t;
+    }
 
     public async Task Conectar()
     {
@@ -408,11 +431,11 @@ internal sealed class BancadaExtra : IDisposable
     public string? Modulo => Simulador.Valor("252");
 
     /// <summary>A porta conectada, aberta e pareada (sem conectar de novo): a porta (para descartar) e a chave.</summary>
-    public async Task<(PortaComandos Porta, string Chave)> PortaPareada()
+    public async Task<(PortaComandos Porta, string Chave)> PortaPareada(TermicoExtra? termico = null)
     {
         var pareamento = new Pareamento(new TextoMemoria(), Relogio, Log);
         var porta = new PortaComandos(Sessao, Chaves, Uso, Historico, pareamento, new PedidosConfirmacao(Relogio, Log),
-            new RedeFalsa(), Estado, Escritor, Setups, Gerador, Comandos, Monitor, Log, Relogio, 0, analise: Analise);
+            new RedeFalsa(), Estado, Escritor, Setups, Gerador, Comandos, Monitor, Log, Relogio, 0, analise: Analise, termico: termico);
         await Historico.Carregado;
         await pareamento.Carregado;
         Assert.True((await Chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);

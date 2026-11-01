@@ -263,6 +263,24 @@ public static class MauiProgram
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<TesteSeco>(),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoFiscalExtra)));
+        // História 13f: o modelo térmico do Extra (o tempo de Extra, o corte e o descanso com o Bluetooth travado), em
+        // termico.json. O descanso impede o teste a seco (sem o Bluetooth, nenhum clip acusaria nada).
+        builder.Services.AddSingleton(sp =>
+        {
+            var termico = new TermicoExtra(
+                sp.GetRequiredService<Sessao>(),
+                sp.GetRequiredService<EstadoAparelho>(),
+                sp.GetRequiredService<Escritor>(),
+                sp.GetRequiredService<GerenteSetups>(),
+                sp.GetRequiredService<AnalisePlaylist>(),
+                sp.GetRequiredService<Player>(),
+                sp.GetRequiredService<ComandosAparelho>(),
+                sp.GetRequiredService<LogBle>(),
+                sp.GetRequiredService<TimeProvider>(),
+                new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoTermico));
+            sp.GetRequiredService<TesteSeco>().Impedimento = () => termico.TextoDescanso;
+            return termico;
+        });
 
         builder.Services.AddSingleton<ConexaoViewModel>();
         // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do gerador, da monitoração e
@@ -313,6 +331,11 @@ public static class MauiProgram
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        // História 13f: o Extra ao vivo (o tempo de Extra e o descanso; o XAML é da 13g).
+        builder.Services.AddSingleton(sp => new ExtraAoVivoViewModel(
+            sp.GetRequiredService<TermicoExtra>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
         // História 13d: "Otimizar configuração na playlist", no Player (sem XAML até a 13g).
@@ -392,7 +415,8 @@ public static class MauiProgram
             sp.GetRequiredService<LogBle>(),
             sp.GetRequiredService<TimeProvider>(),
             criacao: sp.GetRequiredService<CriacaoMemoria>(),
-            analise: sp.GetRequiredService<AnalisePlaylist>()));
+            analise: sp.GetRequiredService<AnalisePlaylist>(),
+            termico: sp.GetRequiredService<TermicoExtra>()));
 
         // História 11: os ViewModels que só faltavam ligar e as páginas novas. Singletons, como os da história 10.
         // História 9c: a chave "Controle pela rede" (no grupo APARELHO das Configurações), a folha de risco do
@@ -497,6 +521,8 @@ public static class MauiProgram
         // volta como "aplicado pela metade") e o fiscal do Extra (ouve o clip, o outro player e o volume desde o começo).
         app.Services.GetRequiredService<TesteSeco>();
         app.Services.GetRequiredService<FiscalExtra>();
+        // História 13f: o modelo térmico cedo (o tempo fechado entra como esfriamento, e o descanso continua pelo relógio).
+        app.Services.GetRequiredService<TermicoExtra>();
         return app;
     }
 }

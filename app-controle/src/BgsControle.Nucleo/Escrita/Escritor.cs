@@ -241,6 +241,29 @@ public sealed class Escritor
         }
     }
 
+    /// <summary>
+    /// O descanso do Extra (história 13f): para um valor pedido, o motivo da recusa ("Descansando: 12:34."), ou null. Tirar o
+    /// mudo (<c>100</c> = 0) no descanso desfaria a trava; vale para toda origem e para os lotes. Ligado pelo
+    /// <c>TermicoExtra</c>; o religar dele, no fim do descanso, já passa.
+    /// </summary>
+    internal Func<Parametro, Valor?, string?>? Descanso { get; set; }
+
+    /// <summary>A recusa do <see cref="Descanso"/>, ou null. Uma falha ao conferir recusa (o lado seguro).</summary>
+    private string? ConferirDescanso(Parametro parametro, Valor? esperado)
+    {
+        if (Descanso is not { } regra)
+            return null;
+        try
+        {
+            return regra(parametro, esperado);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao conferir o descanso do Extra ({e.GetType().Name})");
+            return Rendimento.Niveis.MsgFalhou;
+        }
+    }
+
     /// <summary>O motivo do <see cref="Bloqueio"/> agora, ou null.</summary>
     internal string? MotivoBloqueio()
     {
@@ -336,6 +359,9 @@ public sealed class Escritor
         // O master à mão acima da conta do nível em uso (história 13c), antes da fila, como a cerca.
         if (ConferirMaster(parametro, esperado, daCopia, loteConferido) is { } nivel)
             return Recusar(quadro, nivel);
+        // O descanso do Extra (história 13f): o mudo da trava não sai até ele acabar.
+        if (ConferirDescanso(parametro, esperado) is { } descanso)
+            return Recusar(quadro, descanso);
         // A origem ambiente de quem pediu (tela, IA ou app) vai junto até o envio: a fila roda em
         // outra tarefa, e um pedido mais novo de outra origem pode tomar o lugar deste.
         var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, loteConferido, Origem.Atual);

@@ -118,6 +118,18 @@ public sealed class GerenteSetups
     public const string MsgCaiu = "A conexão caiu no meio. Ao reconectar, o app mostra o que ficou.";
     public const string MsgSemMudo = "O som não estava mutado.";
 
+    /// <summary>A temperatura ambiente fora da faixa que o app aceita (história 13f).</summary>
+    public const string MsgTemperaturaInvalida = "A temperatura ambiente vai de −40 a 60 °C.";
+
+    /// <summary>A faixa da temperatura ambiente, em °C [ASSUMPTION: de −40 a 60 °C, a faixa de um carro ao sol ao frio].</summary>
+    public const decimal TemperaturaMinima = -40m;
+
+    public const decimal TemperaturaMaxima = 60m;
+
+    /// <summary>"Casa 2.1: 35 °C." / "Casa 2.1: 25 °C (padrão)."</summary>
+    public static string MsgTemperaturaDefinida(string setup, DadoTecnico? temperatura) =>
+        $"{setup}: {ModeloTermico.TextoAmbiente(temperatura)}.";
+
     public static string MsgAmbienteDefinido(string setup, AmbienteSetup? ambiente) => ambiente is { } a
         ? $"{setup}: {Ambientes.Rotulo(a)}."
         : $"{setup}: ambiente não informado.";
@@ -642,7 +654,7 @@ public sealed class GerenteSetups
         var saidas = SaidasEmUso;
         if (setup is null || Niveis.Indisponivel(setup, saidas) is not null)
             return null;
-        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, ler, setup.NivelBluetooth!.Valor, nivel), MemoriaEmUso, idPreset);
+        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, ler, setup.NivelBluetooth!.Valor, nivel), MemoriaEmUso, idPreset, setup);
     }
 
     // ------------------------------------------------------------------ o Extra (história 13e)
@@ -672,15 +684,17 @@ public sealed class GerenteSetups
     /// No Extra, a conta com o master validado da memória com o preset (o pior caso do Máximo dá os tetos e as saídas que
     /// mandam). Com o validado fora de vigor ("revalidar", ou a cadeia mudou), o master desce, se precisar, ao pior caso
     /// da cadeia de agora: min(validado, pior caso). Sem o validado deste preset (o preset trocou), fica o master do pior
-    /// caso, que vale com qualquer sinal.
+    /// caso, que vale com qualquer sinal. História 13f: sem o modelo térmico de todo alto-falante passivo do Setup (um dado
+    /// tirado depois, ou o Extra escolhido antes da 13f), o validado também fica fora de vigor: sem o corte, o master não
+    /// passa do pior caso do Máximo.
     /// </summary>
-    private ContaNivel ComExtra(ContaNivel conta, MemoriaCelular? memoria, string? idPreset)
+    private ContaNivel ComExtra(ContaNivel conta, MemoriaCelular? memoria, string? idPreset, Setup setup)
     {
         if (conta.Nivel != NivelRendimento.Extra || memoria is null || conta.Master is not { } piorCaso)
             return conta;
         if (memoria.ExtraValidado.GetValueOrDefault(ChaveExtra(idPreset)) is not { } validado)
             return conta;
-        var master = EmVigor(memoria, idPreset, validado) ? validado.Master : Math.Min(validado.Master, piorCaso);
+        var master = EmVigor(memoria, idPreset, validado) && Termico(setup).Pode ? validado.Master : Math.Min(validado.Master, piorCaso);
         return conta with { Master = master, FaltaGanho = null, MasterCurto = null };
     }
 
@@ -704,15 +718,29 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// Por que o Extra não se escolhe na memória com o preset dela (o em uso, se ela está em uso), ou null: sem o validado
-    /// ("Falta o teste a seco."), ou com o validado de outra cadeia ("A configuração mudou depois do teste a seco…").
+    /// ("Falta o teste a seco."), com o validado de outra cadeia ("A configuração mudou depois do teste a seco…"), ou sem o
+    /// modelo térmico (história 13f: "Falta o modelo térmico do Sub.").
     /// </summary>
     public string? MotivoSemExtra(MemoriaCelular memoria)
     {
         var idPreset = MemoriaEmUso?.Id == memoria.Id ? IdPresetEmUso : memoria.IdPreset;
         if (!memoria.ExtraValidado.TryGetValue(ChaveExtra(idPreset), out var validado))
             return Niveis.MsgFaltaTesteSeco;
-        return ImpressaoDe(memoria, idPreset) == validado.Impressao ? null : Niveis.MsgRefazerTesteSeco;
+        if (ImpressaoDe(memoria, idPreset) != validado.Impressao)
+            return Niveis.MsgRefazerTesteSeco;
+        // História 13f: sem o modelo térmico de todo alto-falante passivo das saídas, o app não inventa um tempo seguro.
+        return Termico(Setup(memoria.IdSetup)).Motivo;
     }
+
+    /// <summary>
+    /// O Extra pelo térmico no Setup em uso (história 13f): pode com os cinco dados de todo alto-falante passivo das
+    /// saídas; senão, "Falta o modelo térmico do Sub.". O selo "estimado" com algum dado térmico só digitado.
+    /// </summary>
+    public AvaliacaoTermica TermicoEmUso => ModeloTermico.Avaliar(SetupEmUso, SaidasEmUso);
+
+    /// <summary>O Extra pelo térmico num Setup (as saídas com o link das ligações dele).</summary>
+    private static AvaliacaoTermica Termico(Setup? setup) =>
+        ModeloTermico.Avaliar(setup, setup is null ? [] : Ligacoes.Saidas(setup.Equipamentos));
 
     /// <summary>
     /// O teste a seco passou (história 13e): grava o master validado da memória com o preset (a chave de
@@ -808,7 +836,7 @@ public sealed class GerenteSetups
         var saidas = Ligacoes.Saidas(setup.Equipamentos);
         if (Niveis.Indisponivel(setup, saidas) is not null)
             return null;
-        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, LeitorCom(alvo), setup.NivelBluetooth!.Valor, nivel), memoria, idPreset);
+        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, LeitorCom(alvo), setup.NivelBluetooth!.Valor, nivel), memoria, idPreset, setup);
     }
 
     /// <summary>O espelho agora com os valores por cima (o que um lote vai deixar no aparelho).</summary>
@@ -1784,6 +1812,38 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
             _log.Evento($"setup: {setup.Nome} com o nível do Bluetooth {(nivel is { } n ? n.Valor.ToString("0.0", Fio) + " dB" : "não medido")}");
             return Terminar(ResultadoSetup.Feito(null));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Define a temperatura ambiente do Setup (história 13f; null = não informada, vale 25 °C). É um dado físico: não manda
+    /// nada ao aparelho e não põe as memórias em "revalidar" (o teto do Extra não depende dela, só o tempo de Extra). Fora
+    /// de −40 a 60 °C, recusa. Se não gravar, fica como estava.
+    /// </summary>
+    public async Task<ResultadoSetup> DefinirTemperaturaAmbienteAsync(string id, DadoTecnico? temperatura)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Setup(id) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (temperatura is { } t && (t.Valor < TemperaturaMinima || t.Valor > TemperaturaMaxima || !Enum.IsDefined(t.Origem)))
+                return Terminar(ResultadoSetup.Falha(MsgTemperaturaInvalida));
+            if (temperatura is { Fonte: { } fonte } && Ligacoes.TextoLongoValido(fonte) is null)
+                return Terminar(ResultadoSetup.Falha(Ligacoes.MsgFonteDadoInvalida));
+            if (setup.TemperaturaAmbiente == temperatura)
+                return Terminar(ResultadoSetup.Feito(null));
+            var dados = Dados;
+            if (!await GravarAsync(dados with { Setups = dados.Setups.Select(s => s.Id == id ? s with { TemperaturaAmbiente = temperatura } : s).ToArray() }))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"setup: {setup.Nome} com a temperatura ambiente {ModeloTermico.TextoAmbiente(temperatura)}");
+            return Terminar(ResultadoSetup.Feito(MsgTemperaturaDefinida(setup.Nome, temperatura)));
         }
         finally
         {
@@ -2990,6 +3050,9 @@ public sealed class GerenteSetups
                 w.WriteString("quando", s.Quando.ToString("O", Fio));
                 if (s.NivelBluetooth is { } nivel)
                     EscreverNivelBluetooth(w, nivel);
+                // História 13f: a temperatura ambiente, opcional (o formato não sobe).
+                if (s.TemperaturaAmbiente is { } temperatura)
+                    EscreverDadoSetup(w, "temperaturaAmbiente", temperatura);
                 EscreverEquipamentos(w, s.Equipamentos);
                 var uso = dados.UsoDe(s.Id);
                 w.WriteStartArray("recentes");
@@ -3114,6 +3177,7 @@ public sealed class GerenteSetups
             {
                 Equipamentos = equipamentos,
                 NivelBluetooth = atual ? LerNivelBluetooth(item) : null,
+                TemperaturaAmbiente = atual ? LerTemperaturaAmbiente(item) : null,
             });
             usos[id] = migrando ? (new List<string>(), new List<string?>()) : (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
@@ -3264,20 +3328,32 @@ public sealed class GerenteSetups
     /// O nível do Bluetooth do Setup (história 13b): <c>"nivelBluetooth":{"valor":-13.0,"origem":"medido","fonte":"…"}</c>.
     /// O valor pode ser negativo; o formato do arquivo não muda (o campo é opcional).
     /// </summary>
-    internal static void EscreverNivelBluetooth(Utf8JsonWriter w, DadoTecnico nivel)
+    internal static void EscreverNivelBluetooth(Utf8JsonWriter w, DadoTecnico nivel) => EscreverDadoSetup(w, "nivelBluetooth", nivel);
+
+    /// <summary>Um dado do Setup (o nível do Bluetooth, a temperatura ambiente): <c>{"valor":…,"origem":"…","fonte":"…"}</c>.</summary>
+    internal static void EscreverDadoSetup(Utf8JsonWriter w, string nome, DadoTecnico dado)
     {
-        w.WriteStartObject("nivelBluetooth");
-        w.WriteNumber("valor", nivel.Valor);
-        w.WriteString("origem", FichaJson.NomeOrigem(nivel.Origem));
-        if (nivel.Fonte is { } fonte)
+        w.WriteStartObject(nome);
+        w.WriteNumber("valor", dado.Valor);
+        w.WriteString("origem", FichaJson.NomeOrigem(dado.Origem));
+        if (dado.Fonte is { } fonte)
             w.WriteString("fonte", fonte);
         w.WriteEndObject();
     }
 
+    /// <summary>
+    /// A temperatura ambiente guardada (história 13f), ou null (ausente, ilegível ou fora de −40 a 60 °C).
+    /// </summary>
+    private static DadoTecnico? LerTemperaturaAmbiente(JsonElement item) =>
+        LerDadoSetup(item, "temperaturaAmbiente") is { } t && t.Valor >= TemperaturaMinima && t.Valor <= TemperaturaMaxima ? t : null;
+
     /// <summary>O nível do Bluetooth guardado, ou null (ausente, sem número, sem origem conhecida ou com a fonte inválida).</summary>
-    private static DadoTecnico? LerNivelBluetooth(JsonElement item)
+    private static DadoTecnico? LerNivelBluetooth(JsonElement item) => LerDadoSetup(item, "nivelBluetooth");
+
+    /// <summary>Um dado do Setup guardado, ou null (ausente, sem número, sem origem conhecida ou com a fonte inválida).</summary>
+    private static DadoTecnico? LerDadoSetup(JsonElement item, string nome)
     {
-        if (!item.TryGetProperty("nivelBluetooth", out var n) || n.ValueKind != JsonValueKind.Object
+        if (!item.TryGetProperty(nome, out var n) || n.ValueKind != JsonValueKind.Object
             || !n.TryGetProperty("valor", out var valor) || valor.ValueKind != JsonValueKind.Number || !valor.TryGetDecimal(out var v)
             || FichaJson.OrigemDe(Texto(n, "origem")) is not { } origem)
             return null;

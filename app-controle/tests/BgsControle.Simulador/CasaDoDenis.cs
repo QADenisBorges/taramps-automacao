@@ -190,6 +190,37 @@ public static class CasaDoDenis
     /// <summary>História 13c: o Casa 2.1 calibrado e com o nível do Bluetooth medido (−13 dB): os níveis são oferecidos.</summary>
     public static Setup SetupCasaComBluetooth { get; } = SetupCasa with { NivelBluetooth = NivelBluetoothCasa };
 
+    /// <summary>A fonte dos dados térmicos de teste (história 13f): não são do Denis nem dos fabricantes.</summary>
+    public const string FonteTermicoTeste = "Dado de teste da história 13f";
+
+    /// <summary>Os cinco dados térmicos de teste na ficha (história 13f), todos com a mesma origem.</summary>
+    public static DadosTecnicos ComTermico(DadosTecnicos d, decimal tMax, decimal rthBobinaIma, decimal rthImaAr, decimal tauBobina,
+        decimal tauIma, OrigemDado origem = OrigemDado.Oficial) => d with
+    {
+        TemperaturaMaximaBobina = new DadoTecnico(tMax, origem, FonteTermicoTeste),
+        RthBobinaIma = new DadoTecnico(rthBobinaIma, origem, FonteTermicoTeste),
+        RthImaAr = new DadoTecnico(rthImaAr, origem, FonteTermicoTeste),
+        TauBobina = new DadoTecnico(tauBobina, origem, FonteTermicoTeste),
+        TauIma = new DadoTecnico(tauIma, origem, FonteTermicoTeste),
+    };
+
+    /// <summary>
+    /// O Casa 2.1 com os equipamentos trocados pela função (história 13f: os dados térmicos de teste em cada alto-falante).
+    /// </summary>
+    public static Setup ComAltoFalantes(Setup setup, Func<Equipamento, DadosTecnicos> dados) => setup with
+    {
+        Equipamentos = setup.Equipamentos.Select(e => e.Grupo == GrupoEquipamento.AltoFalante ? e with { Dados = dados(e) } : e).ToArray(),
+    };
+
+    /// <summary>
+    /// História 13f: o Casa 2.1 calibrado, com o Bluetooth medido e os dados térmicos de teste (oficiais, para não levar o
+    /// selo "estimado"): nas JBL, 150 °C, 3 + 2,5 K/W, τ 10 s e 600 s; no Sub, 180 °C, 1,2 + 0,9 K/W, τ 20 s e 900 s. Com eles,
+    /// a música dos testes nunca chega à máxima no tempo de um teste.
+    /// </summary>
+    public static Setup SetupCasaComTermico { get; } = ComAltoFalantes(SetupCasaComBluetooth, e => e.Id == IdSubCasa
+        ? ComTermico(e.Dados, 180m, 1.2m, 0.9m, 20m, 900m)
+        : ComTermico(e.Dados, 150m, 3m, 2.5m, 10m, 600m));
+
     /// <summary>O equipamento do Casa 2.1 pelo id, ou null.</summary>
     public static Equipamento? EquipamentoCasa(string? id) => EquipamentosCasa.FirstOrDefault(e => e.Id == id);
 
