@@ -238,8 +238,9 @@ public sealed class RoteiroTestes
         Assert.Contains("-p", config.Lancador.Argumentos);
         Assert.Contains(LancadorClaude.MarcaPrompt, config.Lancador.Argumentos);
         Assert.Contains("json", config.Lancador.Argumentos);
-        Assert.Contains(config.Lancador.Argumentos, a => a.Contains("porta", StringComparison.Ordinal));
-        // Cada gatilho tem a sua tarefa (o esqueleto), e cada uma manda usar a ferramenta porta.
+        Assert.Contains(LancadorClaude.MarcaFerramentas, config.Lancador.Argumentos);
+        Assert.All(config.Gatilhos.Values, t => Assert.Contains("Bash(porta:*)", config.Lancador.FerramentasDe(t)));
+        // Cada gatilho tem a sua tarefa, e cada uma manda usar a ferramenta porta.
         Assert.All(config.Gatilhos.Values, t => Assert.Contains("porta", LancadorClaude.Prompt(Caminhos.Agente, t)));
         Assert.All(config.Lancador.Roteiros.Values, r => Roteiro.Carregar(Path.Combine(Caminhos.Agente, r)));
     }
@@ -252,7 +253,7 @@ public sealed class RoteiroTestes
         var config = new ConfigLancador { Comando = Path.ChangeExtension(Caminhos.PortaDll, OperatingSystem.IsWindows() ? ".exe" : null), Argumentos = ["{prompt}"] };
         var lancador = new LancadorClaude(config, Caminhos.Agente, local.Local);
 
-        var codigo = await lancador.RodarAsync("criar-memoria", CancellationToken.None);
+        var codigo = await lancador.RodarAsync("criar-memoria", null, CancellationToken.None);
 
         Assert.Equal(1, codigo);
         var saida = local.Ler("agente.log")!;
@@ -266,9 +267,74 @@ public sealed class RoteiroTestes
         var lancador = new LancadorModeloFalso(new Dictionary<string, string> { ["criar-memoria"] = Caminhos.Roteiro("trava") }, local.Local);
         using var prazo = new CancellationTokenSource(TimeSpan.FromSeconds(1.5));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => lancador.RodarAsync("criar-memoria", prazo.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => lancador.RodarAsync("criar-memoria", null, prazo.Token));
 
         Assert.True(System.Diagnostics.Process.GetProcesses().All(p => p.Id != lancador.UltimoPid));
+    }
+
+    [Fact]
+    public async Task Um_texto_inteiro_evento_campo_vira_o_valor_do_campo_do_evento_com_o_tipo_dele()
+    {
+        var roteiro = Roteiro.DeJson("""
+            { "passos": [ { "pedir": { "alvo": "/ficha/proposta", "corpo": {
+                "idEquipamento": "{evento.idEquipamento}", "numero": "{evento.n}", "ligado": "{evento.ativo}",
+                "grupo": "{evento.ficha.grupo}", "lista": ["{evento.idEquipamento}", "texto {evento.idEquipamento}"], "fixo": "x" } } } ] }
+            """);
+        var evento = new JsonObject
+        {
+            ["tipo"] = "ficha-pedida", ["idEquipamento"] = "eq-1", ["n"] = 7, ["ativo"] = true,
+            ["ficha"] = new JsonObject { ["grupo"] = "alto-falante" },
+        };
+        var f = new FerramentaFalsa();
+
+        Assert.Equal(ExecutorRoteiro.Terminou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido, evento).RodarAsync(roteiro));
+
+        var corpo = Assert.Single(f.Entradas)["corpo"]!.AsObject();
+        Assert.Equal("eq-1", corpo["idEquipamento"]!.GetValue<string>());
+        Assert.Equal(System.Text.Json.JsonValueKind.Number, corpo["numero"]!.GetValueKind());
+        Assert.Equal(7, corpo["numero"]!.GetValue<int>());
+        Assert.True(corpo["ligado"]!.GetValue<bool>());
+        Assert.Equal("alto-falante", corpo["grupo"]!.GetValue<string>());
+        Assert.Equal("eq-1", corpo["lista"]![0]!.GetValue<string>());
+        Assert.Equal("texto {evento.idEquipamento}", corpo["lista"]![1]!.GetValue<string>()); // só o texto inteiro troca
+        Assert.Equal("x", corpo["fixo"]!.GetValue<string>());
+        // O roteiro fica como estava (a troca é numa cópia).
+        Assert.Equal("{evento.idEquipamento}", roteiro.Passos[0].Pedir!.Corpo!["idEquipamento"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Sem_o_evento_ou_sem_o_campo_o_pedido_nao_vai_e_conta_como_recusado()
+    {
+        var semDesvio = Roteiro.DeJson("""{ "passos": [ { "pedir": { "alvo": "/a", "corpo": { "id": "{evento.idEquipamento}" } } } ] }""");
+        var comDesvio = Roteiro.DeJson("""
+            { "passos": [ { "pedir": { "alvo": "/a", "corpo": { "id": "{evento.idEquipamento}" } }, "seFalhar": "x" },
+                          { "id": "x", "pedir": { "alvo": "/desvio" } } ] }
+            """);
+        var f = new FerramentaFalsa();
+
+        Assert.Equal(ExecutorRoteiro.Falhou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido).RodarAsync(semDesvio));
+        Assert.Equal(ExecutorRoteiro.Falhou,
+            await new ExecutorRoteiro(f, TextWriter.Null, Rapido, new JsonObject { ["tipo"] = "ficha-pedida" }).RodarAsync(semDesvio));
+        Assert.Empty(f.Entradas);
+        Assert.Equal(ExecutorRoteiro.Terminou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido).RodarAsync(comDesvio));
+        Assert.Equal(["/desvio"], Alvos(f));
+    }
+
+    [Fact]
+    public void O_roteiro_da_ficha_manda_a_proposta_para_o_equipamento_do_evento_com_a_origem_e_a_fonte()
+    {
+        var r = Roteiro.Carregar(Caminhos.Roteiro("ficha-basica"));
+
+        var proposta = Assert.Single(r.Passos, p => p.Pedir?.Alvo == "/ficha/proposta").Pedir!;
+        Assert.Equal("{evento.idEquipamento}", proposta.Corpo!["idEquipamento"]!.GetValue<string>());
+        var dados = proposta.Corpo!["dados"]!.AsArray();
+        Assert.NotEmpty(dados);
+        Assert.All(dados, d =>
+        {
+            Assert.Contains(d!["origem"]!.GetValue<string>(), new[] { "oficial", "outra-fonte" });
+            Assert.False(string.IsNullOrWhiteSpace(d["fonte"]?.GetValue<string>()));
+        });
+        Assert.Equal("testes/roteiros/ficha-basica.json", Caminhos.Config.Lancador.Roteiros["ficha-tecnica"]);
     }
 
     [Fact]

@@ -113,6 +113,7 @@ internal sealed class Bancada : IAsyncDisposable
     private readonly MonitorAparelho _monitor;
     private readonly ComandosAparelho _comandos;
     private readonly PedidosConfirmacao _confirmacoes;
+    private readonly BaseModelos _modelos;
 
     public Bancada()
     {
@@ -130,8 +131,11 @@ internal sealed class Bancada : IAsyncDisposable
         var link = new LinkCanais(Sessao, _estado, _escritor, new TextoMemoria(), _log);
         var presets = new GerentePresets(Sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log);
         var playlists = new GerentePlaylists(new TextoMemoria(), _log);
+        // A base de modelos e a proposta de ficha (história 14b): o pedido de ficha de um modelo fora da base vai à porta.
+        _modelos = new BaseModelos(new TextoMemoria(CenarioFilme.ModelosJson), _log);
         _setups = new GerenteSetups(Sessao, _estado, _escritor, _leitura, _copia, link, presets, playlists, Chaves,
-            new TextoMemoria(CenarioFilme.SetupsJson), new TextoMemoria(), _log);
+            new TextoMemoria(CenarioFilme.SetupsJson), new TextoMemoria(), _log, modelos: _modelos);
+        Ficha = new PropostaFicha(_setups, _log);
         _gerador = new GeradorSinal(Sessao, _estado, _leitura, _copia, _log, Escrita, new TemposGerador(TimeSpan.FromSeconds(30), TimeSpan.FromMilliseconds(100)));
         _monitor = new MonitorAparelho(Sessao, _leitura);
         _comandos = new ComandosAparelho(Sessao, _estado, _leitura, _copia, cofre, _log, _gerador, Escrita);
@@ -149,6 +153,15 @@ internal sealed class Bancada : IAsyncDisposable
     public Sessao Sessao { get; }
 
     public CriacaoMemoria Criacao { get; }
+
+    /// <summary>Os Setups do cenário (o lado do usuário salva um equipamento por aqui).</summary>
+    public GerenteSetups Setups => _setups;
+
+    /// <summary>A base de modelos do celular (só o toque do usuário grava nela).</summary>
+    public BaseModelos Modelos => _modelos;
+
+    /// <summary>A proposta de ficha: a folha do celular (<see cref="PropostaFicha.Atual"/>).</summary>
+    public PropostaFicha Ficha { get; }
 
     public Pareamento Pareamento { get; private set; }
 
@@ -170,7 +183,7 @@ internal sealed class Bancada : IAsyncDisposable
 
     private PortaComandos NovaPorta() =>
         new(Sessao, Chaves, _uso, _historico, Pareamento, _confirmacoes, new RedeLocalhost(), _estado, _escritor, _setups, _gerador,
-            _comandos, _monitor, _log, null, NumeroPorta, Criacao);
+            _comandos, _monitor, _log, null, NumeroPorta, Criacao, ficha: Ficha);
 
     public async Task ConectarAsync()
     {
@@ -178,6 +191,7 @@ internal sealed class Bancada : IAsyncDisposable
         await _copia.Carregada;
         await _historico.Carregado;
         await Pareamento.Carregado;
+        await _modelos.Carregada;
         await Sessao.ConectarAsync();
         Assert.Equal(EstadoSessao.Conectado, Sessao.Estado);
         await Esperar.Ate(() => _estado.Pronto && !_estado.Lendo && !_leitura.Lendo && !_copia.EmAndamento
@@ -228,6 +242,7 @@ internal sealed class Bancada : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         Porta.Dispose();
+        Ficha.Dispose();
         Criacao.Dispose();
         if (Sessao.Estado == EstadoSessao.Conectado)
             await Sessao.DesconectarAsync();

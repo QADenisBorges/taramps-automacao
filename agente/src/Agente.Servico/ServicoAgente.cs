@@ -13,7 +13,8 @@ namespace Agente.Servico;
 /// <c>servico.json</c> (na pasta local). Ao subir, começa do evento atual, sem reprocessar o passado. O N guardado é o
 /// maior entre o <c>ultimo</c> e o maior evento lido. Depois de uma queda, a primeira leitura pega todos os eventos e só
 /// trata os mais novos que o último visto (pela hora): se o app reabriu, a contagem recomeçou.</item>
-/// <item><b>Gatilhos</b> (<see cref="ConfigServico.Gatilhos"/>): o tipo do evento → a tarefa do Agente.</item>
+/// <item><b>Gatilhos</b> (<see cref="ConfigServico.Gatilhos"/>): o tipo do evento → a tarefa do Agente. O evento vai junto
+/// para o lançador (história 14d).</item>
 /// <item><b>Um Agente por vez:</b> um gatilho com um Agente rodando é ignorado, com a linha <see cref="MsgJaRodando"/>.</item>
 /// <item><b>Prazo:</b> passado <see cref="ConfigServico.PrazoAgente"/>, o processo é encerrado.</item>
 /// <item><b>Fim</b> (por qualquer motivo: saiu sozinho, prazo, erro do lançador, serviço parando): com a criação aberta em
@@ -199,7 +200,7 @@ public sealed class ServicoAgente : IDisposable
             if (releitura && !(vistaAntes is null || (e.Hora is { } h ? h > vistaAntes : e.N > cursor)))
                 continue;
             if (e.Tipo is not null && _config.Gatilhos.TryGetValue(e.Tipo, out var tarefa))
-                Acordar(e.Tipo, tarefa, cancelar);
+                Acordar(e.Tipo, tarefa, e.Evento, cancelar);
         }
         Guardar(novoCursor, maiorHora);
         lock (_trava)
@@ -253,7 +254,8 @@ public sealed class ServicoAgente : IDisposable
 
     // ------------------------------------------------------------------ o Agente
 
-    private void Acordar(string tipo, string tarefa, CancellationToken cancelar)
+    /// <summary>Acorda um Agente na tarefa, com o evento que o acordou (vai ao prompt: a ficha precisa do modelo e do id).</summary>
+    private void Acordar(string tipo, string tarefa, JsonObject evento, CancellationToken cancelar)
     {
         lock (_trava)
         {
@@ -264,11 +266,12 @@ public sealed class ServicoAgente : IDisposable
             }
             _lancamentos++;
             _log.Escrever($"Agente acordado pelo {tipo}: tarefa {tarefa}.");
-            _agente = Task.Run(() => RodarAgenteAsync(tarefa, cancelar), CancellationToken.None);
+            var copia = (JsonObject)evento.DeepClone();
+            _agente = Task.Run(() => RodarAgenteAsync(tarefa, copia, cancelar), CancellationToken.None);
         }
     }
 
-    private async Task RodarAgenteAsync(string tarefa, CancellationToken parar)
+    private async Task RodarAgenteAsync(string tarefa, JsonObject evento, CancellationToken parar)
     {
         var inicio = Stopwatch.GetTimestamp();
         int? codigo = null;
@@ -281,7 +284,7 @@ public sealed class ServicoAgente : IDisposable
             try
             {
                 prazo.CancelAfter(_config.PrazoAgente);
-                codigo = await _lancador.RodarAsync(tarefa, prazo.Token);
+                codigo = await _lancador.RodarAsync(tarefa, evento, prazo.Token);
             }
             catch (OperationCanceledException) when (!parar.IsCancellationRequested)
             {

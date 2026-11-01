@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json.Nodes;
 using Agente.Porta;
 
 namespace Agente.Servico;
@@ -8,10 +9,11 @@ namespace Agente.Servico;
 public interface ILancadorAgente
 {
     /// <summary>
-    /// Roda o Agente na <paramref name="tarefa"/> até ele terminar e devolve o código de saída. O cancelamento (o prazo, ou o
-    /// serviço parando) encerra o processo e lança <see cref="OperationCanceledException"/>.
+    /// Roda o Agente na <paramref name="tarefa"/> até ele terminar e devolve o código de saída. O <paramref name="evento"/> é o
+    /// evento do <c>/eventos</c> que acordou o Agente (null sem evento). O cancelamento (o prazo, ou o serviço parando)
+    /// encerra o processo e lança <see cref="OperationCanceledException"/>.
     /// </summary>
-    Task<int> RodarAsync(string tarefa, CancellationToken cancelar);
+    Task<int> RodarAsync(string tarefa, JsonObject? evento, CancellationToken cancelar);
 }
 
 /// <summary>
@@ -26,13 +28,13 @@ public abstract class LancadorProcesso(string? arquivoSaida) : ILancadorAgente
     /// <summary>O id do último processo lançado (para conferir que o prazo o encerrou mesmo).</summary>
     public int? UltimoPid { get; private set; }
 
-    /// <summary>Monta o processo da tarefa (sem o redirecionamento, que é desta classe).</summary>
-    protected abstract ProcessStartInfo Montar(string tarefa);
+    /// <summary>Monta o processo da tarefa, com o evento que acordou o Agente (sem o redirecionamento, que é desta classe).</summary>
+    protected abstract ProcessStartInfo Montar(string tarefa, JsonObject? evento);
 
-    public async Task<int> RodarAsync(string tarefa, CancellationToken cancelar)
+    public async Task<int> RodarAsync(string tarefa, JsonObject? evento, CancellationToken cancelar)
     {
         cancelar.ThrowIfCancellationRequested();
-        var inicio = Montar(tarefa);
+        var inicio = Montar(tarefa, evento);
         inicio.UseShellExecute = false;
         inicio.RedirectStandardOutput = true;
         inicio.RedirectStandardError = true;
@@ -118,11 +120,13 @@ public static class Executavel
 
 /// <summary>
 /// O lançador de verdade: o comando do <c>servico.config.json</c> (o Claude Code em modo não interativo), com o prompt de
-/// <c>tarefas/&lt;tarefa&gt;.md</c> e a ferramenta <c>porta</c> no PATH.
+/// <c>tarefas/&lt;tarefa&gt;.md</c> (e o evento que acordou o Agente), as ferramentas da tarefa e a ferramenta <c>porta</c>
+/// no PATH.
 /// <para>
 /// O Agente começa zerado: ele roda numa pasta de trabalho fora do repositório (<see cref="PastaTrabalho"/>, dentro da pasta
-/// local), para não carregar o CLAUDE.md nem a memória do projeto. Antes de cada lançamento, o serviço copia
-/// <c>agente/tarefas/</c> para lá. Uma pasta de trabalho dentro do repositório é recusada.
+/// local), para não carregar o CLAUDE.md nem a memória do projeto. Antes de cada lançamento, o serviço recria lá as
+/// instruções em camadas de <c>agente/</c> (<see cref="CopiarCamadas"/>). Uma pasta de trabalho dentro do repositório é
+/// recusada.
 /// </para>
 /// </summary>
 public sealed class LancadorClaude(ConfigLancador config, string pastaAgente, string pastaLocal)
@@ -130,33 +134,70 @@ public sealed class LancadorClaude(ConfigLancador config, string pastaAgente, st
 {
     public const string MarcaPrompt = "{prompt}";
     public const string MarcaTarefa = "{tarefa}";
+    public const string MarcaFerramentas = "{ferramentas}";
     public const string Trabalho = "trabalho";
+
+    /// <summary>O título da seção do prompt com o JSON do evento que acordou o Agente.</summary>
+    public const string TituloEvento = "O evento que acordou você";
+
+    /// <summary>As pastas e o arquivo das camadas, em <c>agente/</c> (história 14d).</summary>
+    public const string PastaTarefas = "tarefas";
+
+    public const string PastaInstrucoes = "instrucoes";
+    public const string ArquivoBase = "base.md";
+    public const string PastaSkills = "skills";
+    public const string PastaConhecimento = "conhecimento";
+
+    /// <summary>Na pasta de trabalho, a base vira o <c>CLAUDE.md</c>, que o Claude Code carrega sozinho.</summary>
+    public const string ClaudeMd = "CLAUDE.md";
+
+    /// <summary>Na pasta de trabalho, as skills ficam em <c>.claude/skills</c>, onde carregam pela descrição.</summary>
+    public static string SkillsNoTrabalho { get; } = Path.Combine(".claude", "skills");
 
     /// <summary>A pasta onde o Agente roda: <c>&lt;pasta local&gt;/trabalho</c>.</summary>
     public string PastaTrabalho { get; } = Path.Combine(Path.GetFullPath(pastaLocal), Trabalho);
 
-    /// <summary>O texto da tarefa, de <c>&lt;base&gt;/tarefas/&lt;tarefa&gt;.md</c> (o esqueleto da 14a; as skills são da 14d).</summary>
+    /// <summary>O texto da tarefa, de <c>&lt;base&gt;/tarefas/&lt;tarefa&gt;.md</c>.</summary>
     public static string Prompt(string pastaBase, string tarefa)
     {
         if (tarefa.Length == 0 || tarefa.Any(c => !(char.IsAsciiLetterOrDigit(c) || c == '-')))
             throw new ArgumentException($"Tarefa inválida: {tarefa}.", nameof(tarefa));
-        var caminho = Path.Combine(pastaBase, "tarefas", tarefa + ".md");
+        var caminho = Path.Combine(pastaBase, PastaTarefas, tarefa + ".md");
         return File.Exists(caminho) ? File.ReadAllText(caminho) : throw new FileNotFoundException($"Falta a tarefa {caminho}.", caminho);
     }
 
-    /// <summary>O processo que seria lançado para a tarefa (já com as tarefas copiadas para a pasta de trabalho).</summary>
-    public ProcessStartInfo InicioPara(string tarefa) => Montar(tarefa);
+    /// <summary>
+    /// O prompt: o texto da tarefa e, com um evento, a seção <see cref="TituloEvento"/> com o JSON dele (a tarefa da ficha
+    /// precisa do modelo e do <c>idEquipamento</c>, e o <c>/eventos</c> "desde o último" já não traz o evento que acordou o
+    /// Agente). Sem evento, só a tarefa.
+    /// </summary>
+    public static string Prompt(string pastaBase, string tarefa, JsonObject? evento)
+    {
+        var texto = Prompt(pastaBase, tarefa);
+        if (evento is null)
+            return texto;
+        return $"{texto.TrimEnd()}\n\n## {TituloEvento}\n\n```json\n{evento.ToJsonString(RespostaFerramenta.Formato)}\n```\n";
+    }
 
-    protected override ProcessStartInfo Montar(string tarefa)
+    /// <summary>O processo que seria lançado para a tarefa (já com as camadas copiadas para a pasta de trabalho).</summary>
+    public ProcessStartInfo InicioPara(string tarefa, JsonObject? evento = null) => Montar(tarefa, evento);
+
+    protected override ProcessStartInfo Montar(string tarefa, JsonObject? evento)
     {
         if (RaizDoRepositorio(pastaAgente) is { } repositorio && Dentro(PastaTrabalho, repositorio))
             throw new InvalidOperationException(
                 $"A pasta de trabalho do Agente ({PastaTrabalho}) fica dentro do repositório: ele carregaria os arquivos do projeto. Use outra pasta local.");
-        CopiarTarefas();
-        var prompt = Prompt(PastaTrabalho, tarefa);
+        CopiarCamadas();
+        var prompt = Prompt(PastaTrabalho, tarefa, evento);
+        var ferramentas = string.Join(' ', config.FerramentasDe(tarefa));
         var inicio = new ProcessStartInfo(config.Comando) { WorkingDirectory = PastaTrabalho };
         foreach (var a in config.Argumentos)
-            inicio.ArgumentList.Add(a.Replace(MarcaPrompt, prompt, StringComparison.Ordinal).Replace(MarcaTarefa, tarefa, StringComparison.Ordinal));
+        {
+            // O prompt entra por último: um "{tarefa}" ou "{ferramentas}" escrito pelo usuário (no modelo do evento) fica como está.
+            inicio.ArgumentList.Add(a.Replace(MarcaTarefa, tarefa, StringComparison.Ordinal)
+                .Replace(MarcaFerramentas, ferramentas, StringComparison.Ordinal)
+                .Replace(MarcaPrompt, prompt, StringComparison.Ordinal));
+        }
         if (!string.IsNullOrWhiteSpace(config.PastaPorta))
         {
             // Relativa à pasta local (o padrão "bin": onde o README manda publicar a porta).
@@ -167,16 +208,37 @@ public sealed class LancadorClaude(ConfigLancador config, string pastaAgente, st
         return inicio;
     }
 
-    /// <summary>A cópia nova de <c>agente/tarefas/</c> na pasta de trabalho (a antiga sai).</summary>
-    private void CopiarTarefas()
+    /// <summary>
+    /// A cópia nova das camadas de <c>agente/</c> na pasta de trabalho (o que sobrou de antes nelas sai): as <c>tarefas/</c>, a
+    /// base (<c>instrucoes/base.md</c>) como <c>CLAUDE.md</c>, as <c>skills/</c> em <c>.claude/skills/</c> e o
+    /// <c>conhecimento/</c>.
+    /// </summary>
+    private void CopiarCamadas()
     {
-        var origem = Path.Combine(pastaAgente, "tarefas");
-        var destino = Path.Combine(PastaTrabalho, "tarefas");
+        var baseMd = Path.Combine(pastaAgente, PastaInstrucoes, ArquivoBase);
+        if (!File.Exists(baseMd))
+            throw new FileNotFoundException($"Falta a base {baseMd}.", baseMd);
+        Directory.CreateDirectory(PastaTrabalho);
+        CopiarPasta(Path.Combine(pastaAgente, PastaTarefas), Path.Combine(PastaTrabalho, PastaTarefas));
+        CopiarPasta(Path.Combine(pastaAgente, PastaSkills), Path.Combine(PastaTrabalho, SkillsNoTrabalho));
+        CopiarPasta(Path.Combine(pastaAgente, PastaConhecimento), Path.Combine(PastaTrabalho, PastaConhecimento));
+        File.Copy(baseMd, Path.Combine(PastaTrabalho, ClaudeMd), overwrite: true);
+    }
+
+    /// <summary>Recria <paramref name="destino"/> com os arquivos <c>.md</c> de <paramref name="origem"/> (e as subpastas).</summary>
+    private static void CopiarPasta(string origem, string destino)
+    {
+        if (!Directory.Exists(origem))
+            throw new DirectoryNotFoundException($"Falta a pasta {origem}.");
         if (Directory.Exists(destino))
             Directory.Delete(destino, recursive: true);
         Directory.CreateDirectory(destino);
-        foreach (var arquivo in Directory.EnumerateFiles(origem, "*.md"))
-            File.Copy(arquivo, Path.Combine(destino, Path.GetFileName(arquivo)));
+        foreach (var arquivo in Directory.EnumerateFiles(origem, "*.md", SearchOption.AllDirectories))
+        {
+            var alvo = Path.Combine(destino, Path.GetRelativePath(origem, arquivo));
+            Directory.CreateDirectory(Path.GetDirectoryName(alvo)!);
+            File.Copy(arquivo, alvo);
+        }
     }
 
     /// <summary>A raiz do repositório git que contém a pasta (a que tem <c>.git</c>), ou null.</summary>

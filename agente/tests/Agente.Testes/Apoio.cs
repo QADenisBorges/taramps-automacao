@@ -142,24 +142,33 @@ internal sealed class ServicoRodando : IAsyncDisposable
     }
 }
 
-/// <summary>Um lançador que só conta (o Agente termina na hora, com 0).</summary>
+/// <summary>Um lançador que só conta (o Agente termina na hora, com 0): as tarefas e os eventos que as acordaram.</summary>
 internal sealed class LancadorQueConta : ILancadorAgente
 {
-    private readonly List<string> _tarefas = [];
+    private readonly List<(string Tarefa, JsonObject? Evento)> _lancados = [];
 
     public IReadOnlyList<string> Tarefas
     {
         get
         {
-            lock (_tarefas)
-                return _tarefas.ToArray();
+            lock (_lancados)
+                return _lancados.Select(l => l.Tarefa).ToArray();
         }
     }
 
-    public Task<int> RodarAsync(string tarefa, CancellationToken cancelar)
+    public IReadOnlyList<JsonObject?> Eventos
     {
-        lock (_tarefas)
-            _tarefas.Add(tarefa);
+        get
+        {
+            lock (_lancados)
+                return _lancados.Select(l => l.Evento).ToArray();
+        }
+    }
+
+    public Task<int> RodarAsync(string tarefa, JsonObject? evento, CancellationToken cancelar)
+    {
+        lock (_lancados)
+            _lancados.Add((tarefa, evento));
         return Task.FromResult(0);
     }
 }

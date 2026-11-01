@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Agente.ModeloFalso;
 using Agente.Porta;
 using Agente.Servico;
@@ -55,6 +56,93 @@ public sealed class LancadorTestes
     }
 
     [Fact]
+    public void A_copia_leva_a_base_como_CLAUDE_md_as_skills_o_conhecimento_e_as_tarefas_e_tira_os_restos()
+    {
+        using var local = new LocalTemporario();
+        var lancador = new LancadorClaude(new ConfigLancador(), Caminhos.Agente, local.Local);
+        var trabalho = lancador.PastaTrabalho;
+        var skillsTrabalho = Path.Combine(trabalho, LancadorClaude.SkillsNoTrabalho);
+        string[] restos =
+        [
+            Path.Combine(skillsTrabalho, "velha", "SKILL.md"),
+            Path.Combine(trabalho, LancadorClaude.PastaConhecimento, "velho.md"),
+            Path.Combine(trabalho, LancadorClaude.PastaTarefas, "velha.md"),
+        ];
+        foreach (var resto in restos)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(resto)!);
+            File.WriteAllText(resto, "sobrou");
+        }
+        File.WriteAllText(Path.Combine(trabalho, LancadorClaude.ClaudeMd), "sobrou");
+
+        lancador.InicioPara("criar-memoria");
+
+        Assert.Equal(File.ReadAllText(Path.Combine(Caminhos.Agente, LancadorClaude.PastaInstrucoes, LancadorClaude.ArquivoBase)),
+            File.ReadAllText(Path.Combine(trabalho, LancadorClaude.ClaudeMd)));
+        foreach (var skill in InstrucoesTestes.Skills)
+        {
+            Assert.Equal(File.ReadAllText(Path.Combine(Caminhos.Agente, LancadorClaude.PastaSkills, skill, "SKILL.md")),
+                File.ReadAllText(Path.Combine(skillsTrabalho, skill, "SKILL.md")));
+        }
+        Assert.Equal(InstrucoesTestes.Skills.Order(), Directory.EnumerateDirectories(skillsTrabalho).Select(Path.GetFileName).Order());
+        var conhecimento = Directory.EnumerateFiles(Path.Combine(Caminhos.Agente, LancadorClaude.PastaConhecimento), "*.md").Select(Path.GetFileName).Order().ToArray();
+        Assert.NotEmpty(conhecimento);
+        Assert.Equal(conhecimento, Directory.EnumerateFiles(Path.Combine(trabalho, LancadorClaude.PastaConhecimento)).Select(Path.GetFileName).Order());
+        Assert.True(File.Exists(Path.Combine(trabalho, LancadorClaude.PastaTarefas, "criar-memoria.md")));
+        Assert.True(File.Exists(Path.Combine(trabalho, LancadorClaude.PastaTarefas, "ficha-tecnica.md")));
+        Assert.All(restos, r => Assert.False(File.Exists(r), r));
+        // As instruções da pasta do repositório não vão como pasta: só a base, como CLAUDE.md.
+        Assert.False(Directory.Exists(Path.Combine(trabalho, LancadorClaude.PastaInstrucoes)));
+    }
+
+    [Fact]
+    public void O_prompt_traz_a_tarefa_e_o_JSON_do_evento_que_acordou_o_Agente()
+    {
+        using var local = new LocalTemporario();
+        var config = new ConfigLancador { Comando = "claude", Argumentos = ["-p", "{prompt}"] };
+        var lancador = new LancadorClaude(config, Caminhos.Agente, local.Local);
+        var evento = new JsonObject
+        {
+            ["n"] = 4, ["tipo"] = "ficha-pedida", ["idSetup"] = "s1", ["idEquipamento"] = "eq-1", ["modelo"] = "ABC 123",
+            ["grupo"] = "alto-falante", ["categoria"] = "woofer",
+        };
+
+        var comEvento = lancador.InicioPara("ficha-tecnica", evento).ArgumentList[1];
+        var semEvento = lancador.InicioPara("ficha-tecnica").ArgumentList[1];
+
+        Assert.StartsWith("# Tarefa: ficha técnica de um modelo", comEvento);
+        Assert.Contains("## " + LancadorClaude.TituloEvento, comEvento);
+        var inicioJson = comEvento.IndexOf("```json\n", StringComparison.Ordinal) + "```json\n".Length;
+        var json = comEvento[inicioJson..comEvento.IndexOf("\n```", inicioJson, StringComparison.Ordinal)];
+        Assert.True(JsonNode.DeepEquals(evento, JsonNode.Parse(json)), json);
+        Assert.Contains("\"modelo\":\"ABC 123\"", comEvento);
+        // Um marcador escrito pelo usuário no evento fica como está (o prompt entra por último).
+        var comMarcador = new LancadorClaude(config with { Argumentos = ["{prompt}", "{ferramentas}"] }, Caminhos.Agente, local.Local)
+            .InicioPara("ficha-tecnica", new JsonObject { ["modelo"] = "X {ferramentas} {tarefa}" }).ArgumentList[0];
+        Assert.Contains("X {ferramentas} {tarefa}", comMarcador);
+        Assert.Equal(LancadorClaude.Prompt(Caminhos.Agente, "ficha-tecnica"), semEvento);
+        Assert.DoesNotContain("## " + LancadorClaude.TituloEvento, semEvento);
+        Assert.DoesNotContain("```json", semEvento);
+    }
+
+    [Fact]
+    public void O_marcador_ferramentas_vira_a_lista_da_tarefa_separada_por_espaco()
+    {
+        using var local = new LocalTemporario();
+        var config = Caminhos.Config.Lancador with { Argumentos = ["--allowedTools", "{ferramentas}", "x{ferramentas}x"] };
+        var lancador = new LancadorClaude(config, Caminhos.Agente, local.Local);
+
+        var ficha = lancador.InicioPara("ficha-tecnica").ArgumentList;
+        var criar = lancador.InicioPara("criar-memoria").ArgumentList;
+
+        Assert.Equal(["--allowedTools", "Bash(porta:*) WebSearch WebFetch", "xBash(porta:*) WebSearch WebFetchx"], ficha);
+        Assert.Equal(["--allowedTools", "Bash(porta:*)", "xBash(porta:*)x"], criar);
+        // O padrão do código (sem a lista no JSON) também é só a porta.
+        Assert.Equal(["Bash(porta:*)"], new ConfigLancador().FerramentasDe("qualquer"));
+        Assert.Contains(LancadorClaude.MarcaFerramentas, new ConfigLancador().Argumentos);
+    }
+
+    [Fact]
     public void Uma_pasta_de_trabalho_dentro_do_repositorio_e_recusada_sem_criar_nada()
     {
         var dentro = Path.Combine(Caminhos.Agente, "local-de-teste-" + Guid.NewGuid().ToString("N"));
@@ -98,6 +186,14 @@ public sealed class LancadorTestes
     [InlineData("""{ "lancador": { "tipo": "claude", "comando": "" } }""")]
     [InlineData("""{ "lancador": { "tipo": "claude", "argumentos": null } }""")]
     [InlineData("""{ "lancador": { "tipo": "modelo-falso", "roteiros": null } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": null } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": [] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": [""] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": ["Bash(porta:*)"], "ficha-tecnica": [] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": ["Bash(porta:*)"], "ficha-tecnica": ["WebSearch", " "] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "ficha-tecnica": ["WebSearch"] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": ["Bash(porta --json:*)"] } } }""")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": ["Bash(porta:*)"], "ficha-tecncia": ["WebSearch"] } } }""")]
     public void Configuracao_fora_da_faixa_e_recusada(string json) =>
         Assert.Throws<ConfigInvalidaException>(() => ConfigCom(json));
 
@@ -112,6 +208,7 @@ public sealed class LancadorTestes
     [Theory]
     [InlineData("{ não é json", "não é um JSON válido")]
     [InlineData("""{ "lancador": { "tipo": "cluade" } }""", "lancador.tipo")]
+    [InlineData("""{ "lancador": { "tipo": "claude", "ferramentas": { "*": [] } } }""", "ferramentas")]
     public async Task O_servico_com_a_configuracao_invalida_para_com_o_codigo_2_e_a_mensagem(string json, string mensagem)
     {
         using var local = new LocalTemporario();

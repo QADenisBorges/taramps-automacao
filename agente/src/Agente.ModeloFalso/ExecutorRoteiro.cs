@@ -14,9 +14,17 @@ public interface IFerramenta
 /// <summary>
 /// Roda um <see cref="Roteiro"/> pela ferramenta da porta, como o modelo de verdade faria: cada <c>pedir</c> é uma chamada
 /// da ferramenta e cada <c>esperar</c> lê o <c>/eventos</c> por ela, a partir do evento atual de quando o roteiro começou.
+/// <para>
+/// O <c>evento</c> é o que acordou o Agente (história 14d). No corpo de um <c>pedir</c>, um valor de texto que é inteiro
+/// <c>"{evento.&lt;campo&gt;}"</c> (o campo pode ser um caminho com pontos) vira o valor do campo do evento, com o tipo dele.
+/// Sem o evento, ou sem o campo, o pedido não vai e conta como recusado.
+/// </para>
 /// </summary>
-public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, TimeSpan? intervaloEspera = null)
+public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, TimeSpan? intervaloEspera = null, JsonObject? evento = null)
 {
+    /// <summary>O começo da marca de um campo do evento: <c>{evento.idEquipamento}</c>.</summary>
+    public const string MarcaEvento = "{evento.";
+
     public const int Terminou = 0;
     public const int Falhou = 1;
 
@@ -113,8 +121,50 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
             ["alvo"] = pedir.Alvo,
         };
         if (pedir.Corpo is not null)
-            entrada["corpo"] = pedir.Corpo.DeepClone();
+        {
+            try
+            {
+                entrada["corpo"] = TrocarEvento(pedir.Corpo, evento);
+            }
+            catch (CampoDoEventoException e)
+            {
+                return Task.FromResult(RespostaFerramenta.Recusa(e.Message));
+            }
+        }
         return ferramenta.RodarAsync(entrada, cancelar);
+    }
+
+    /// <summary>
+    /// Uma cópia do <paramref name="no"/> com cada valor de texto inteiro <c>"{evento.&lt;campo&gt;}"</c> trocado pelo valor do
+    /// campo do <paramref name="evento"/> (com o tipo dele). Um texto com a marca só no meio fica como está.
+    /// </summary>
+    /// <exception cref="CampoDoEventoException">Sem evento, ou o evento sem o campo.</exception>
+    public static JsonNode? TrocarEvento(JsonNode? no, JsonObject? evento)
+    {
+        switch (no)
+        {
+            case JsonObject o:
+            {
+                var copia = new JsonObject();
+                foreach (var (chave, valor) in o)
+                    copia[chave] = TrocarEvento(valor, evento);
+                return copia;
+            }
+            case JsonArray a:
+                return new JsonArray(a.Select(item => TrocarEvento(item, evento)).ToArray());
+            case JsonValue v when v.GetValueKind() == JsonValueKind.String:
+            {
+                var texto = v.GetValue<string>();
+                if (!(texto.StartsWith(MarcaEvento, StringComparison.Ordinal) && texto.EndsWith('}')))
+                    return v.DeepClone();
+                var campo = texto[MarcaEvento.Length..^1];
+                if (evento is null)
+                    throw new CampoDoEventoException($"O roteiro pede {texto}, mas nenhum evento acordou o Agente.");
+                return No(evento, campo)?.DeepClone() ?? throw new CampoDoEventoException($"O evento não tem o campo \"{campo}\".");
+            }
+            default:
+                return no?.DeepClone();
+        }
     }
 
     private Task<RespostaFerramenta> LerEventosAsync(long desde, CancellationToken cancelar) =>
@@ -185,6 +235,18 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
     /// <summary>O valor de um caminho com pontos (<c>corpo.etapa</c>), como texto: o texto, <c>true</c>/<c>false</c> ou o número.</summary>
     public static string? Valor(JsonNode? no, string caminho)
     {
+        return No(no, caminho) switch
+        {
+            JsonValue v when v.GetValueKind() == JsonValueKind.String => v.GetValue<string>(),
+            JsonValue v => v.ToJsonString(),
+            { } outro => outro.ToJsonString(),
+            _ => null,
+        };
+    }
+
+    /// <summary>O nó de um caminho com pontos (<c>corpo.etapa</c>, <c>lista.1</c>), ou null.</summary>
+    private static JsonNode? No(JsonNode? no, string caminho)
+    {
         foreach (var parte in caminho.Split('.'))
         {
             no = no switch
@@ -196,13 +258,7 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
             if (no is null)
                 return null;
         }
-        return no switch
-        {
-            JsonValue v when v.GetValueKind() == JsonValueKind.String => v.GetValue<string>(),
-            JsonValue v => v.ToJsonString(),
-            { } outro => outro.ToJsonString(),
-            _ => null,
-        };
+        return no;
     }
 
     /// <summary>Um número inteiro do JSON (lido do texto ou montado em memória), ou null.</summary>
@@ -216,3 +272,6 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
             log.WriteLine($"{DateTimeOffset.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture)} modelo falso: {texto}");
     }
 }
+
+/// <summary>O roteiro pede um campo do evento que acordou o Agente, e não há o evento ou o campo.</summary>
+public sealed class CampoDoEventoException(string mensagem) : Exception(mensagem);

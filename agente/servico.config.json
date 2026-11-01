@@ -9,14 +9,22 @@
     "ficha-pedida": "ficha-tecnica"
   },
   "lancador": {
-    // "claude": o Claude Code em modo não interativo, com o texto de tarefas/<tarefa>.md no {prompt}.
+    // "claude": o Claude Code em modo não interativo, com o texto de tarefas/<tarefa>.md (e o evento que acordou o
+    // Agente) no {prompt}, e as ferramentas da tarefa (abaixo, separadas por espaço) no {ferramentas}.
     // "modelo-falso": os roteiros gravados abaixo, sem modelo nenhum.
     "tipo": "claude",
     "comando": "claude",
-    "argumentos": ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "Bash(porta:*)"],
+    "argumentos": ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "{ferramentas}"],
+    // A tarefa → as ferramentas liberadas. "*" vale para as outras: só a porta. A ficha técnica lê a web (só leitura)
+    // para achar a ficha e o endereço da fonte.
+    "ferramentas": {
+      "*": ["Bash(porta:*)"],
+      "ficha-tecnica": ["Bash(porta:*)", "WebSearch", "WebFetch"]
+    },
     "pastaPorta": "bin",
     "roteiros": {
-      "criar-memoria": "testes/roteiros/criacao-basica.json"
+      "criar-memoria": "testes/roteiros/criacao-basica.json",
+      "ficha-tecnica": "testes/roteiros/ficha-basica.json"
     }
   }
 }

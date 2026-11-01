@@ -150,6 +150,49 @@ public sealed class ServicoTestes
         bancada.NadaDeMemoriaDoAparelho();
     }
 
+    /// <summary>Um modelo genérico, fora da base do cenário.</summary>
+    private const string ModeloNovo = "ABC 123";
+
+    [Fact]
+    public async Task Ficha_pedida_roda_a_tarefa_ficha_tecnica_com_o_evento_e_a_proposta_chega_a_folha_com_a_origem()
+    {
+        await using var bancada = await Bancada.ProntaAsync();
+        using var local = new LocalTemporario();
+        await ParearAsync(bancada, local.Local);
+        var lancador = new LancadorModeloFalso(new Dictionary<string, string> { ["ficha-tecnica"] = Caminhos.Roteiro("ficha-basica") }, local.Local);
+        await using var servico = new ServicoRodando(Caminhos.Config, lancador, local.Local);
+        await servico.EsperarLinha("Começando do evento");
+
+        // O usuário salva um equipamento com o modelo fora da base: o app pede a ficha (ficha-pedida).
+        var idSetup = bancada.Setups.Setups[0].Id;
+        var salvo = await bancada.Setups.AdicionarEquipamentoAsync(idSetup,
+            new Equipamento("x", GrupoEquipamento.AltoFalante, "woofer", "Woofer extra", ModeloNovo) { Dados = DadosTecnicos.Nenhum });
+        Assert.True(salvo.Ok, salvo.Mensagem);
+        var id = salvo.Id!;
+
+        // O serviço acorda a tarefa ficha-tecnica com o evento; o roteiro manda a proposta com o idEquipamento dele.
+        await Esperar.Ate(() => bancada.Ficha.Atual is not null, Longo, "a proposta chegar à folha");
+        Assert.True(servico.Tem("Agente acordado pelo ficha-pedida: tarefa ficha-tecnica."));
+        var proposta = bancada.Ficha.Atual!;
+        Assert.Equal(id, proposta.Pedido.IdEquipamento);
+        Assert.Equal(ModeloNovo, proposta.Pedido.Modelo);
+        Assert.Equal(["fs", "qes", "qms"], proposta.Dados.Select(d => d.Campo));
+        Assert.All(proposta.Dados, d =>
+        {
+            Assert.True(d.Origem is OrigemDado.Oficial or OrigemDado.OutraFonte);
+            Assert.StartsWith("https://", d.Fonte);
+        });
+        Assert.Contains(proposta.Dados, d => d.Origem == OrigemDado.OutraFonte);
+        Assert.Contains(proposta.Dados, d => d.Aviso is not null);
+        await servico.EsperarLinha("Agente terminou: código 0", Longo);
+        Assert.Contains("proposta: POST /ficha/proposta -> ok 200", local.Ler("agente.log"));
+
+        // Nada vai para a ficha nem para a base sem o toque do usuário.
+        Assert.Null(bancada.Setups.Setup(idSetup)!.Equipamentos.Single(e => e.Id == id).Dados.Fs);
+        Assert.True(bancada.Modelos.Ficha(ModeloNovo)?.Dados.Vazia ?? true);
+        bancada.NadaDeMemoriaDoAparelho();
+    }
+
     [Fact]
     public async Task Prazo_vencido_encerra_o_processo_cancela_a_criacao_aberta_e_registra()
     {
@@ -196,6 +239,7 @@ public sealed class ServicoTestes
         Assert.True(bancada.Criacao.Pedir().Ok);
         await Esperar.Ate(() => lancador.Tarefas.Count == 1, TimeSpan.FromSeconds(10), "o pedido depois da volta acordar o Agente");
         Assert.Equal("criar-memoria", lancador.Tarefas[0]);
+        Assert.Equal("criacao-pedida", lancador.Eventos[0]!["tipo"]!.GetValue<string>()); // o evento que acordou vai junto
     }
 
     [Fact]
@@ -316,7 +360,7 @@ public sealed class ServicoTestes
 
     private sealed class LancadorQueAbreEFalha(string local) : ILancadorAgente
     {
-        public async Task<int> RodarAsync(string tarefa, CancellationToken cancelar)
+        public async Task<int> RodarAsync(string tarefa, JsonObject? evento, CancellationToken cancelar)
         {
             using var cliente = new ClientePorta();
             var r = await FerramentaPorta.PedirAsync(local, "POST", "/criacao/abrir", null, cliente, cancelar);

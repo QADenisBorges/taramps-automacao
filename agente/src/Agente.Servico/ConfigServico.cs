@@ -72,6 +72,12 @@ public sealed record ConfigServico
             throw new ConfigInvalidaException("Os \"gatilhos\" são pares evento → tarefa, sem vazios.");
         if (Lancador is null)
             throw new ConfigInvalidaException("Falta o \"lancador\".");
+        if (Lancador.Ferramentas is null || !Lancador.Ferramentas.ContainsKey(ConfigLancador.FerramentasPadrao)
+            || Lancador.Ferramentas.Any(f => string.IsNullOrWhiteSpace(f.Key) || f.Value is null || f.Value.Count == 0
+                                             || f.Value.Any(i => string.IsNullOrWhiteSpace(i) || i.Any(char.IsWhiteSpace))
+                                             || (f.Key != ConfigLancador.FerramentasPadrao && !Gatilhos.ContainsValue(f.Key))))
+            throw new ConfigInvalidaException(
+                $"As \"ferramentas\" são pares tarefa → lista de ferramentas, com o padrão \"{ConfigLancador.FerramentasPadrao}\", só de tarefas dos gatilhos, sem lista vazia nem item vazio ou com espaço.");
         switch (Lancador.Tipo)
         {
             case ConfigLancador.TipoClaude:
@@ -99,7 +105,8 @@ public sealed class ConfigInvalidaException(string mensagem) : Exception(mensage
 
 /// <summary>
 /// O lançador do Agente. <c>tipo</c> "claude" roda o <c>comando</c> com os <c>argumentos</c> (o <c>{prompt}</c> vira o texto de
-/// <c>tarefas/&lt;tarefa&gt;.md</c> e o <c>{tarefa}</c> o nome dela), numa pasta de trabalho fora do repositório, com a
+/// <c>tarefas/&lt;tarefa&gt;.md</c> com o evento que acordou o Agente, o <c>{tarefa}</c> o nome dela e o <c>{ferramentas}</c>
+/// as <c>ferramentas</c> da tarefa, separadas por espaço), numa pasta de trabalho fora do repositório, com a
 /// <c>pastaPorta</c> no PATH.
 /// <c>tipo</c> "modelo-falso" roda o roteiro de <c>roteiros</c> da tarefa, sem modelo.
 /// </summary>
@@ -108,11 +115,24 @@ public sealed record ConfigLancador
     public const string TipoClaude = "claude";
     public const string TipoModeloFalso = "modelo-falso";
 
+    /// <summary>A chave das <see cref="Ferramentas"/> que vale para a tarefa sem lista própria.</summary>
+    public const string FerramentasPadrao = "*";
+
     public string Tipo { get; init; } = TipoClaude;
 
     public string Comando { get; init; } = "claude";
 
-    public List<string> Argumentos { get; init; } = ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "Bash(porta:*)"];
+    public List<string> Argumentos { get; init; } = ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "{ferramentas}"];
+
+    /// <summary>
+    /// A tarefa → as ferramentas liberadas para o Agente (o <c>{ferramentas}</c> dos argumentos), com o padrão em
+    /// <see cref="FerramentasPadrao"/>: só a <c>porta</c>.
+    /// </summary>
+    public Dictionary<string, List<string>> Ferramentas { get; init; } = new() { [FerramentasPadrao] = ["Bash(porta:*)"] };
+
+    /// <summary>As ferramentas da tarefa, ou as do padrão.</summary>
+    public IReadOnlyList<string> FerramentasDe(string tarefa) =>
+        Ferramentas.TryGetValue(tarefa, out var lista) ? lista : Ferramentas[FerramentasPadrao];
 
     /// <summary>A pasta (relativa à pasta local) com o executável <c>porta</c>, posta no PATH do Agente.</summary>
     public string? PastaPorta { get; init; } = "bin";

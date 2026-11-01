@@ -1,0 +1,14 @@
+{
+  "descricao": "Ficha básica: manda uma proposta genérica de alto-falante para o equipamento do evento que acordou o Agente (o idEquipamento vem do evento), com a origem e a fonte de cada dado e um aviso do que não fechou. Só dados genéricos.",
+  "passos": [
+    { "id": "proposta", "pedir": { "metodo": "POST", "alvo": "/ficha/proposta", "corpo": {
+        "idEquipamento": "{evento.idEquipamento}",
+        "dados": [
+          { "campo": "fs", "valor": 46, "origem": "oficial", "fonte": "https://exemplo.com/ficha-do-fabricante.pdf" },
+          { "campo": "qes", "valor": 0.42, "origem": "outra-fonte", "fonte": "https://exemplo.com/medida-de-terceiros" },
+          { "campo": "qms", "valor": 4.1, "origem": "oficial", "fonte": "https://exemplo.com/ficha-do-fabricante.pdf",
+            "aviso": "Qts não fecha com Qes e Qms" }
+        ] } } },
+    { "id": "fim", "fim": true }
+  ]
+}
