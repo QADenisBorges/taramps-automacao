@@ -149,6 +149,47 @@ public sealed class Player : IDisposable
     /// </summary>
     public Func<string, bool>? EmAnalise { get; set; }
 
+    /// <summary>
+    /// Por que o Player não toca agora (história 13e: o teste a seco usa o reprodutor), ou null. Tocar, continuar e a
+    /// Próxima dão o aviso; pausar sempre vale.
+    /// </summary>
+    public Func<string?>? Bloqueio { get; set; }
+
+    /// <summary>
+    /// Antes de começar ou continuar a tocar por um comando (história 13e: o fiscal do Extra tira o mudo do outro player
+    /// e põe o volume do celular no máximo). Uma falha fica no log e não impede o tocar.
+    /// </summary>
+    public Func<Task>? AntesDeTocar { get; set; }
+
+    /// <summary>O motivo do bloqueio agora (uma falha da pergunta conta como nenhum).</summary>
+    private string? Bloqueado()
+    {
+        try
+        {
+            return Bloqueio?.Invoke();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"player: falha ao conferir o bloqueio ({e.GetType().Name})");
+            return null;
+        }
+    }
+
+    /// <summary>Roda o <see cref="AntesDeTocar"/>.</summary>
+    private async Task PrepararTocarAsync()
+    {
+        if (AntesDeTocar is not { } antes)
+            return;
+        try
+        {
+            await antes();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"player: falha antes de tocar ({e.GetType().Name})");
+        }
+    }
+
     /// <summary>A faixa está em análise agora (uma falha da pergunta conta como não).</summary>
     private bool NaAnalise(string id)
     {
@@ -183,6 +224,13 @@ public sealed class Player : IDisposable
     {
         if (ComMemoria() is not { } n)
             return;
+        if (Estado != EstadoPlayer.Tocando && Bloqueado() is { } bloqueio)
+        {
+            Avisar(bloqueio);
+            return;
+        }
+        if (Estado != EstadoPlayer.Tocando)
+            await PrepararTocarAsync();
         switch (Estado)
         {
             case EstadoPlayer.Tocando:
@@ -216,13 +264,25 @@ public sealed class Player : IDisposable
     /// Pausar (história 13b, o tom do celular na calibração): tocando, pausa onde está; parado ou pausado, nada
     /// muda. O Tocar/pausar continua de onde parou.
     /// </summary>
-    public Task PausarAsync() => Executar(async () =>
+    public Task PausarAsync(string motivo = "para o tom do celular") => Executar(async () =>
     {
         if (Estado != EstadoPlayer.Tocando)
             return;
         await _reprodutor.PausarAsync();
         Definir(EstadoPlayer.Pausado, Atual);
-        _log.Evento("player: pausado para o tom do celular");
+        _log.Evento($"player: pausado {motivo}");
+    });
+
+    /// <summary>
+    /// Parar (história 13e, o teste a seco): tocando ou pausado, para e solta o reprodutor, sem faixa atual; o próximo
+    /// Tocar recomeça pela primeira.
+    /// </summary>
+    public Task PararAsync(string motivo) => Executar(async () =>
+    {
+        if (Estado == EstadoPlayer.Parado)
+            return;
+        await PararAsync();
+        _log.Evento($"player: parado {motivo}");
     });
 
     /// <summary>Próxima: toca a faixa seguinte à atual. Parado, não faz nada.</summary>
@@ -230,6 +290,14 @@ public sealed class Player : IDisposable
     {
         if (ComMemoria() is not { } n || Atual is not { } atual)
             return;
+        if (Bloqueado() is { } bloqueio)
+        {
+            Avisar(bloqueio);
+            return;
+        }
+        // Do pausado (o mudo do outro player, por exemplo), a Próxima começa a tocar: o antes de tocar vale.
+        if (Estado != EstadoPlayer.Tocando)
+            await PrepararTocarAsync();
         var lista = _playlists.Playlist(n);
         await TocarAPartirAsync(n, lista, Posicao(lista, atual.Id) + 1);
     });
@@ -252,6 +320,12 @@ public sealed class Player : IDisposable
             _log.Evento($"player: a faixa {posicao + 1} da playlist da {NomeMemoria(n)} está em análise; não toca");
             return;
         }
+        if (Bloqueado() is { } bloqueio)
+        {
+            Avisar(bloqueio);
+            return;
+        }
+        await PrepararTocarAsync();
         await TocarAPartirAsync(n, lista, posicao);
     });
 

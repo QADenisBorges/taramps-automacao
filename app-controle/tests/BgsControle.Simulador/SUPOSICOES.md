@@ -63,6 +63,7 @@ item no aparelho real e marca o resultado.
 | VOLTIMETRO-ESPONTANEO | O aparelho manda o voltímetro sozinho, como `#005#v#` (V × 10); a consulta `#005#` responde `ERRO 0` (medido). O período não foi medido. | `EmitirVoltimetro`; `MonitorAparelho` |  |
 | CLIP-ENTRADA | O clip da entrada (`#111#v#`, ≠0 = clip) chega sozinho, no formato da leitura; o período e o gatilho não foram medidos. | `EmitirClipEntrada`; `MonitorAparelho` |  |
 | PRESET-APLICA-TUDO | Escrever todos os ajustes de áudio diferentes em sequência e reler tudo confirma o preset no PRO 2.4BT; o aparelho não tem comando de preset. | `GerentePresets.AplicarInternoAsync` |  |
+| CLIP-LIMITADOR | O 150 marca o limitador agindo: o aparelho manda `#150#bits#` com o bit da saída quando o pico na saída mais o master passa do limiar do limitador (071) dela. | `Sinal`; `TesteSeco` | A conferir na 12d (o teste a seco real). |
 
 ## Falhas injetáveis
 
@@ -73,6 +74,8 @@ item no aparelho real e marca o resultado.
 - `DefinirMemoria(n, código, índice, valor)`: muda uma memória para preparar um teste.
 - `EmitirClip(bits)`, `EmitirClipEntrada(clip)` e `EmitirVoltimetro(decivolts)`: o aparelho
   manda o clip das saídas, o clip da entrada e o voltímetro sozinho, quando o teste quiser.
+- `Sinal(canal, dB)` (história 13e): o pico que chega à saída antes do limitador, sem o master;
+  com o nível mais o master acima do limiar do 071 da saída, o aparelho manda o `#150#bits#`.
 - `TamanhoMaximoFragmento = N`: quebra cada mensagem em notificações de tamanho sorteado, de 1 a
   N bytes (N até 20), em vez dos pedaços de 20.
 - `AtrasoSenha` e `AtrasoLeitura` em zero: a resposta sai de dentro da própria escrita, para os

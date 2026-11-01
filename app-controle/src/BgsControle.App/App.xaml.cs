@@ -42,6 +42,9 @@ public partial class App : Application
         // História 13d: sair do app cancela a análise da playlist em curso (nada dela é gravado). Só cancela: o serviço vive
         // enquanto o processo vive (a janela pode ser recriada), e a fila volta a andar sozinha.
         _servicos.GetService<AnalisePlaylist>()?.CancelarEmCurso();
+        // História 13e: fechar o app no meio do teste a seco para o trecho e não religa o módulo (fica "pela metade").
+        if (esperar)
+            _servicos.GetService<TesteSeco>()?.InterromperAoFechar();
         var log = _servicos.GetRequiredService<LogBle>();
         var gravacao = Task.Run(_servicos.GetRequiredService<Historico>().GravarAgoraAsync);
         _ = gravacao.ContinueWith(t =>

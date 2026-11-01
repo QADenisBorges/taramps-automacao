@@ -41,6 +41,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>As análises da playlist (história 13d): por faixa (URI + duração) e impressão da cadeia, o pico, a RMS e os trechos fortes.</summary>
     public const string ArquivoAnalises = "analises.json";
 
+    /// <summary>O mudo posto pelo fiscal do Extra (história 13e): o mudo de antes de cada canal, para o tocar de depois de reabrir o app.</summary>
+    public const string ArquivoFiscalExtra = "fiscal-extra.json";
+
     public string Arquivo { get; } = arquivo;
 
     public Task<string?> LerAsync() => arquivos.LerTextoAsync(Arquivo);

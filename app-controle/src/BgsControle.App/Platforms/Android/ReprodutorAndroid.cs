@@ -28,6 +28,8 @@ public sealed class ReprodutorAndroid : IReprodutor
     private readonly object _trava = new();
     private MediaPlayer? _tocador;
     private string? _uri;
+    private TaskCompletionSource<bool>? _fimTrecho;
+    private int _instancias;
 
     public ReprodutorAndroid(Context contexto, AudioDoCelularAndroid audio)
     {
@@ -55,13 +57,40 @@ public sealed class ReprodutorAndroid : IReprodutor
 
     public event Action<string>? Falhou;
 
+    /// <summary>
+    /// O foco de áudio foi perdido de vez (outro app de mídia começou a tocar; história 13e, o fiscal do Extra). Pode chegar
+    /// em qualquer thread.
+    /// </summary>
+    internal event Action? PerdeuFoco;
+
+    /// <summary>Quantos MediaPlayer deste reprodutor existem agora (do criar ao soltar): os do app nas configurações de reprodução.</summary>
+    internal int Instancias => Volatile.Read(ref _instancias);
+
+    public TimeSpan? Posicao
+    {
+        get
+        {
+            lock (_trava)
+            {
+                try
+                {
+                    return _tocador is { } t ? TimeSpan.FromMilliseconds(t.CurrentPosition) : null;
+                }
+                catch (Java.Lang.IllegalStateException)
+                {
+                    return null;
+                }
+            }
+        }
+    }
+
     public async Task<bool> TocarAsync(string uri)
     {
         await PararAsync();
         MediaPlayer? tocador = null;
         try
         {
-            tocador = new MediaPlayer();
+            tocador = Criar();
             tocador.SetAudioAttributes(_atributos);
             tocador.SetWakeMode(_contexto, Android.OS.WakeLockFlags.Partial);
             tocador.SetDataSource(_contexto, Android.Net.Uri.Parse(uri)!);
@@ -142,15 +171,130 @@ public sealed class ReprodutorAndroid : IReprodutor
         return Task.FromResult(false);
     }
 
+    /// <summary>
+    /// O trecho do teste a seco (história 13e): prepara, vai ao início (<c>SeekTo</c>), toca e para no fim do trecho (ou
+    /// no fim do arquivo). Parar, outro tocar, uma falha ou o cancelar terminam antes (false).
+    /// </summary>
+    public async Task<bool> TocarTrechoAsync(string uri, TimeSpan inicio, TimeSpan duracao, CancellationToken cancelar = default)
+    {
+        await PararAsync();
+        if (cancelar.IsCancellationRequested)
+            return false;
+        MediaPlayer? tocador = null;
+        var fim = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            tocador = Criar();
+            tocador.SetAudioAttributes(_atributos);
+            tocador.SetWakeMode(_contexto, Android.OS.WakeLockFlags.Partial);
+            tocador.SetDataSource(_contexto, Android.Net.Uri.Parse(uri)!);
+            await Task.Run(tocador.Prepare);
+            var dono = tocador;
+            // O fim do arquivo dentro do trecho: o trecho acabou.
+            tocador.Completion += (_, _) =>
+            {
+                if (Soltar(dono))
+                    fim.TrySetResult(true);
+            };
+            tocador.Error += (_, e) =>
+            {
+                e.Handled = true;
+                if (Soltar(dono))
+                    fim.TrySetResult(false);
+            };
+            if (inicio > TimeSpan.Zero)
+                tocador.SeekTo((long)inicio.TotalMilliseconds, MediaPlayerSeekMode.Closest);
+            PedirFoco();
+            lock (_trava)
+            {
+                _tocador = tocador;
+                _uri = uri;
+                _fimTrecho = fim;
+            }
+            tocador.Start();
+            _audio.MarcarSemAcesso(uri, false);
+        }
+        catch (Java.Lang.SecurityException)
+        {
+            Largar(tocador);
+            _audio.MarcarSemAcesso(uri, true);
+            return false;
+        }
+        catch (Exception)
+        {
+            Largar(tocador);
+            return false;
+        }
+
+        bool tocou;
+        using (cancelar.Register(() => fim.TrySetResult(false)))
+        {
+            var prazo = Task.Delay(duracao);
+            var primeiro = await Task.WhenAny(fim.Task, prazo);
+            // No prazo, o trecho só conta inteiro se a posição chegou ao fim dele (um seek lento ou uma trava não passam).
+            tocou = primeiro == prazo ? ChegouAoFim(tocador!, inicio + duracao) : await fim.Task;
+        }
+        bool ainda;
+        lock (_trava)
+        {
+            ainda = ReferenceEquals(_tocador, tocador);
+            if (ReferenceEquals(_fimTrecho, fim))
+                _fimTrecho = null;
+        }
+        if (ainda)
+            await PararAsync();
+        return tocou && !cancelar.IsCancellationRequested;
+    }
+
+    /// <summary>A posição do tocador (ainda o atual e tocando) chegou a <paramref name="fim"/> − 0,5 s.</summary>
+    private bool ChegouAoFim(MediaPlayer tocador, TimeSpan fim)
+    {
+        lock (_trava)
+        {
+            try
+            {
+                return ReferenceEquals(_tocador, tocador) && tocador.IsPlaying
+                       && tocador.CurrentPosition >= (fim - TimeSpan.FromSeconds(0.5)).TotalMilliseconds;
+            }
+            catch (Java.Lang.IllegalStateException)
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>O MediaPlayer do Player (ou do trecho) está tocando agora (o fiscal do Extra não o conta como outro app).</summary>
+    internal bool Tocando
+    {
+        get
+        {
+            lock (_trava)
+            {
+                try
+                {
+                    return _tocador is { IsPlaying: true };
+                }
+                catch (Java.Lang.IllegalStateException)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
     public Task PararAsync()
     {
         MediaPlayer? tocador;
+        TaskCompletionSource<bool>? fimTrecho;
         lock (_trava)
         {
             tocador = _tocador;
             _tocador = null;
             _uri = null;
+            fimTrecho = _fimTrecho;
+            _fimTrecho = null;
         }
+        fimTrecho?.TrySetResult(false);
         if (tocador is not null)
         {
             try
@@ -185,8 +329,11 @@ public sealed class ReprodutorAndroid : IReprodutor
     private void PausarSozinho()
     {
         string? uri = null;
+        TaskCompletionSource<bool>? fimTrecho;
         lock (_trava)
         {
+            // Um trecho do teste a seco que pausa sozinho não tocou inteiro.
+            fimTrecho = _fimTrecho;
             try
             {
                 if (_tocador is { IsPlaying: true } t)
@@ -200,6 +347,7 @@ public sealed class ReprodutorAndroid : IReprodutor
                 // Já parado.
             }
         }
+        fimTrecho?.TrySetResult(false);
         if (uri is not null)
             Pausou?.Invoke(uri);
     }
@@ -232,10 +380,18 @@ public sealed class ReprodutorAndroid : IReprodutor
         return true;
     }
 
-    private static void Largar(MediaPlayer? tocador)
+    /// <summary>Um MediaPlayer novo, contado em <see cref="Instancias"/> até o <see cref="Largar"/>.</summary>
+    private MediaPlayer Criar()
+    {
+        Interlocked.Increment(ref _instancias);
+        return new MediaPlayer();
+    }
+
+    private void Largar(MediaPlayer? tocador)
     {
         if (tocador is null)
             return;
+        Interlocked.Decrement(ref _instancias);
         try
         {
             tocador.Release();
@@ -253,6 +409,8 @@ public sealed class ReprodutorAndroid : IReprodutor
         {
             if (focusChange is AudioFocus.Loss or AudioFocus.LossTransient)
                 dono.PausarSozinho();
+            if (focusChange is AudioFocus.Loss)
+                dono.PerdeuFoco?.Invoke();
         }
     }
 

@@ -448,6 +448,8 @@ public sealed class AnalisePlaylist : IDisposable
         _setups.Mudou += Reavaliar;
         _presets.Mudou += Reavaliar;
         _playlists.Mudou += Reavaliar;
+        // História 13e: o Extra só se escolhe com o validado da impressão de agora.
+        _setups.ImpressaoExtra = ImpressaoAtual;
         _ = Carregada.ContinueWith(_ => Pedir(), TaskScheduler.Default);
     }
 
@@ -531,6 +533,22 @@ public sealed class AnalisePlaylist : IDisposable
     /// <summary>A playlist da memória tem faixas pendentes (novas ou em reanálise).</summary>
     public bool Analisando(string? idMemoria) =>
         idMemoria is not null && Fotografar().Memorias.TryGetValue(idMemoria, out var m) && m.Pendentes.Count > 0;
+
+    /// <summary>
+    /// A impressão da cadeia de agora da memória com o preset (null, ou um preset que não existe mais: as bandas planas),
+    /// ou null: a memória não está otimizada, não dá para analisar (o motivo da 13c) ou falta um dado da cadeia. É a que
+    /// o teste a seco grava com o validado (história 13e).
+    /// </summary>
+    public string? ImpressaoAtual(string? idMemoria, string? idPreset)
+    {
+        if (_setups.Memoria(idMemoria) is not { Otimizada: true } memoria)
+            return null;
+        var foto = Fotografar();
+        if (!foto.Memorias.TryGetValue(memoria.Id, out var info) || info.Motivo is not null)
+            return null;
+        var chave = idPreset is { } id && foto.Presets.Any(p => p.Id == id) ? id : SemPreset;
+        return info.Impressoes.GetValueOrDefault(chave);
+    }
 
     /// <summary>O teto do Extra da memória em uso com o preset em uso.</summary>
     public TetoExtra TetoEmUso() => _setups.MemoriaEmUso is { } m ? Teto(m.Id, _setups.IdPresetEmUso) : TetoExtra.Sem(EstadoExtra.Indisponivel, MsgSemMemoria);
@@ -1005,7 +1023,7 @@ public sealed class AnalisePlaylist : IDisposable
     /// <see cref="LimiteFisico"/> (o valor; nos ganhos, também a origem, que é a calibração) e o nível do Bluetooth (valor e
     /// origem). Nomes, notas e fontes ficam de fora: mexer neles não invalida as análises.
     /// </summary>
-    private static string ImpressaoDoSetup(Setup setup)
+    internal static string ImpressaoDoSetup(Setup setup)
     {
         static string N(DadoTecnico? d) => d is null ? "-" : d.Valor.ToString(Fio);
         static string Com(DadoTecnico? d) => d is null ? "-" : $"{d.Valor.ToString(Fio)}/{d.Origem}";

@@ -165,9 +165,10 @@ public static class MauiProgram
 
         // História 11: o reprodutor real (o MediaPlayer do Android) e o Player, que toca a playlist da memória do
         // celular em uso (e segue tocando na queda do BLE, decisão do Denis de 24/10/2026).
-        builder.Services.AddSingleton<IReprodutor>(sp => new ReprodutorAndroid(
+        builder.Services.AddSingleton(sp => new ReprodutorAndroid(
             Android.App.Application.Context,
             sp.GetRequiredService<AudioDoCelularAndroid>()));
+        builder.Services.AddSingleton<IReprodutor>(sp => sp.GetRequiredService<ReprodutorAndroid>());
         // História 13d: a análise da playlist (o PCM pelo MediaExtractor + MediaCodec, em segundo plano) e o teto do
         // Extra, com os resultados em analises.json. Uma faixa em análise não toca.
         builder.Services.AddSingleton<IDecodificadorAudio>(_ => new DecodificadorAndroid(Android.App.Application.Context));
@@ -192,7 +193,8 @@ public static class MauiProgram
         // História 13b: a calibração guiada da saída (o ganho do módulo pelo gerador e o multímetro, o nível do
         // Bluetooth pelo tom de 0 dBFS do celular, num AudioTrack). O tipo "calibrar-saida" fica registrado na
         // CopiaAntes quando ela nasce (cedo, abaixo).
-        builder.Services.AddSingleton<ITomCelular>(_ => new TomCelularAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton(_ => new TomCelularAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton<ITomCelular>(sp => sp.GetRequiredService<TomCelularAndroid>());
         builder.Services.AddSingleton(sp => new Calibracao(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<EstadoAparelho>(),
@@ -220,6 +222,47 @@ public static class MauiProgram
             sp.GetRequiredService<ICofreSenha>(),
             sp.GetRequiredService<LogBle>(),
             gerador: sp.GetRequiredService<GeradorSinal>()));
+
+        // História 13e: o teste a seco do Extra (o módulo desligado, os trechos fortes e o 150) e o fiscal no uso do Extra
+        // (o clip, o outro player e o volume do celular). O tipo "teste-seco" fica registrado na CopiaAntes quando ele
+        // nasce (cedo, abaixo).
+        builder.Services.AddSingleton<IOutroPlayer>(sp => new OutroPlayerAndroid(
+            Android.App.Application.Context,
+            sp.GetRequiredService<ReprodutorAndroid>(),
+            sp.GetRequiredService<TomCelularAndroid>()));
+        builder.Services.AddSingleton<IVolumeCelular>(_ => new VolumeCelularAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton(sp => new TesteSeco(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<AnalisePlaylist>(),
+            sp.GetRequiredService<ComandosAparelho>(),
+            sp.GetRequiredService<MonitorAparelho>(),
+            sp.GetRequiredService<IReprodutor>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<Player>(),
+            sp.GetRequiredService<GeradorSinal>(),
+            sp.GetRequiredService<TimeProvider>(),
+            volume: sp.GetRequiredService<IVolumeCelular>()));
+        builder.Services.AddSingleton(sp => new FiscalExtra(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<AnalisePlaylist>(),
+            sp.GetRequiredService<Player>(),
+            sp.GetRequiredService<IReprodutor>(),
+            sp.GetRequiredService<MonitorAparelho>(),
+            sp.GetRequiredService<IOutroPlayer>(),
+            sp.GetRequiredService<IVolumeCelular>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<TesteSeco>(),
+            new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoFiscalExtra)));
 
         builder.Services.AddSingleton<ConexaoViewModel>();
         // Os ViewModels dos ajustes, das chaves, das memórias, do link, dos presets, do gerador, da monitoração e
@@ -262,6 +305,16 @@ public static class MauiProgram
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<AnalisePlaylist>(),
             sp.GetRequiredService<LogBle>()));
+        // História 13e: o teste a seco, um passo por tela (o XAML é da 13g).
+        builder.Services.AddSingleton(sp => new TesteSecoViewModel(
+            sp.GetRequiredService<TesteSeco>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<AnalisePlaylist>(),
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
         // História 13d: "Otimizar configuração na playlist", no Player (sem XAML até a 13g).
         builder.Services.AddSingleton(sp => new OtimizarViewModel(
             sp.GetRequiredService<AnalisePlaylist>(),
@@ -440,6 +493,10 @@ public static class MauiProgram
         // comandos (abre sozinha se a chave "Controle pela rede" já estiver ligada).
         app.Services.GetRequiredService<Player>();
         app.Services.GetRequiredService<PortaComandos>();
+        // História 13e: o teste a seco cedo (o tipo "teste-seco" na CopiaAntes antes da primeira leitura: uma queda no meio
+        // volta como "aplicado pela metade") e o fiscal do Extra (ouve o clip, o outro player e o volume desde o começo).
+        app.Services.GetRequiredService<TesteSeco>();
+        app.Services.GetRequiredService<FiscalExtra>();
         return app;
     }
 }

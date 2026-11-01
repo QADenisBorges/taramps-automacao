@@ -10,7 +10,7 @@ namespace BgsControle.Nucleo.Rendimento;
 
 /// <summary>
 /// O nível de rendimento de uma memória do celular (história 13c, spec-rendimento CAP-4). Null na memória = sem
-/// nível: o master é do usuário. O Extra é da 13d e da 13f.
+/// nível: o master é do usuário. O Extra (história 13e) usa o master validado pelo teste a seco.
 /// </summary>
 public enum NivelRendimento
 {
@@ -25,6 +25,12 @@ public enum NivelRendimento
 
     /// <summary>Teto = min(X, C) − 1 dB: passa da potência da ficha (com o aviso do calor).</summary>
     Maximo,
+
+    /// <summary>
+    /// Teto = min(X, C) − 1 dB pelos picos reais da playlist (história 13e): o master é o validado pelo teste a seco
+    /// (<see cref="Setups.MemoriaCelular.ExtraValidado"/>), e só baixa pela revalidação e pelo fiscal.
+    /// </summary>
+    Extra,
 }
 
 /// <summary>
@@ -33,14 +39,32 @@ public enum NivelRendimento
 /// </summary>
 public static class Niveis
 {
-    /// <summary>Os níveis, na ordem da tela.</summary>
+    /// <summary>Os níveis do pior caso, na ordem da tela (o Extra tem a linha dele).</summary>
     public static IReadOnlyList<NivelRendimento> Todos { get; } =
         [NivelRendimento.Baixo, NivelRendimento.Medio, NivelRendimento.Alto, NivelRendimento.Maximo];
 
     public const string NomeExtra = "Extra";
 
-    /// <summary>O motivo da linha do Extra, sempre apagada nesta história (a análise é da 13d e da 13f).</summary>
+    /// <summary>O motivo da linha do Extra sem a análise da playlist (história 13d).</summary>
     public const string MsgExtra = "Falta analisar a playlist.";
+
+    /// <summary>O Extra sem o master validado do preset em uso (história 13e).</summary>
+    public const string MsgFaltaTesteSeco = "Falta o teste a seco.";
+
+    /// <summary>O Extra com o validado de outra cadeia (a memória, o preset, a ficha ou a calibração mudou depois do teste).</summary>
+    public const string MsgRefazerTesteSeco = "A configuração mudou depois do teste a seco. Faça o teste de novo.";
+
+    /// <summary>A escolha do Extra na tela, apagada até a 13f (CAP-7).</summary>
+    public const string MsgFaltaTermico = "Falta o modelo térmico.";
+
+    /// <summary>O motivo do "revalidar" quando a ficha ou o ganho medido do Setup muda (história 13e).</summary>
+    public const string MsgFichaMudou = "A ficha ou a calibração mudou.";
+
+    /// <summary>O selo da memória em "revalidar".</summary>
+    public const string SeloRevalidar = "revalidar";
+
+    /// <summary>"Clip duas vezes na Faixa 3." (o 2º clip não previsto na mesma faixa).</summary>
+    public static string MsgClipDuasVezes(string faixa) => $"Clip duas vezes na {faixa}.";
 
     /// <summary>O aviso do Máximo, na folha de risco.</summary>
     public const string MsgMaximo =
@@ -67,8 +91,11 @@ public static class Niveis
     public static string MsgMasterCurtoNa(string saida) => $"{MsgMasterCurto} Saída: {saida}.";
 
     /// <summary>"Baixe o limitador da JBL L para −6,8 dB antes de sair do Máximo."</summary>
-    public static string MsgSairDoMaximo(string saida, decimal teto) =>
-        $"Baixe o limitador da {saida} para {LimiteFisico.Db(teto)} dB antes de sair do Máximo.";
+    public static string MsgSairDoMaximo(string saida, decimal teto) => MsgSairDo(NivelRendimento.Maximo, saida, teto);
+
+    /// <summary>"Baixe o limitador da JBL L para −6,8 dB antes de sair do Extra." (do Máximo ou do Extra para um nível com o térmico).</summary>
+    public static string MsgSairDo(NivelRendimento nivel, string saida, decimal teto) =>
+        $"Baixe o limitador da {saida} para {LimiteFisico.Db(teto)} dB antes de sair do {Nome(nivel)}.";
 
     /// <summary>"O master não foi escrito: …" (o nível ficou gravado; a conta na hora tenta de novo).</summary>
     public static string MsgMasterNaoEscrito(string motivo) => $"O master não foi escrito: {motivo}";
@@ -91,32 +118,34 @@ public static class Niveis
         _ => 1m,
     };
 
-    /// <summary>O Máximo: o teto é min(X, C) (o térmico fica de fora), na conta e na cerca.</summary>
-    public static bool SemTermico(NivelRendimento? nivel) => nivel == NivelRendimento.Maximo;
+    /// <summary>O Máximo e o Extra: o teto é min(X, C) (o térmico fica de fora), na conta e na cerca.</summary>
+    public static bool SemTermico(NivelRendimento? nivel) => nivel is NivelRendimento.Maximo or NivelRendimento.Extra;
 
-    /// <summary>"Baixo", "Médio", "Alto" ou "Máximo".</summary>
+    /// <summary>"Baixo", "Médio", "Alto", "Máximo" ou "Extra".</summary>
     public static string Nome(NivelRendimento nivel) => nivel switch
     {
         NivelRendimento.Baixo => "Baixo",
         NivelRendimento.Medio => "Médio",
         NivelRendimento.Alto => "Alto",
         NivelRendimento.Maximo => "Máximo",
+        NivelRendimento.Extra => NomeExtra,
         _ => throw new ArgumentOutOfRangeException(nameof(nivel), nivel, "Nível desconhecido."),
     };
 
-    /// <summary>O nome no JSON (<c>setups.json</c> e a porta): <c>baixo</c>, <c>medio</c>, <c>alto</c> ou <c>maximo</c>.</summary>
+    /// <summary>O nome no JSON (<c>setups.json</c> e a porta): <c>baixo</c>, <c>medio</c>, <c>alto</c>, <c>maximo</c> ou <c>extra</c>.</summary>
     public static string Chave(NivelRendimento nivel) => nivel switch
     {
         NivelRendimento.Baixo => "baixo",
         NivelRendimento.Medio => "medio",
         NivelRendimento.Alto => "alto",
         NivelRendimento.Maximo => "maximo",
+        NivelRendimento.Extra => "extra",
         _ => throw new ArgumentOutOfRangeException(nameof(nivel), nivel, "Nível desconhecido."),
     };
 
     /// <summary>O nível pelo nome do JSON; um texto que não vale (ou ausente) fica null (sem nível).</summary>
     public static NivelRendimento? De(string? chave) =>
-        Todos.Cast<NivelRendimento?>().FirstOrDefault(n => Chave(n!.Value) == chave);
+        Todos.Append(NivelRendimento.Extra).Cast<NivelRendimento?>().FirstOrDefault(n => Chave(n!.Value) == chave);
 
     /// <summary>
     /// Por que os níveis não são oferecidos, ou null: sem Setup em uso; uma saída com alto-falante passivo sem o
@@ -256,7 +285,8 @@ public sealed class GerenteNiveis
     {
         if (!_estado.Pronto || _estado.Lendo || _copia.MotivoBloqueio() is not null || _setups.Ocupado || _presets.Ocupado)
             return;
-        if (_setups.MemoriaEmUso is not { Nivel: { } nivel } memoria)
+        // História 13e: o master do Extra só muda pela revalidação e pelo fiscal (FiscalExtra), não pela conta na hora.
+        if (_setups.MemoriaEmUso is not { Nivel: { } nivel } memoria || nivel == NivelRendimento.Extra)
             return;
         if (_setups.Conta(nivel) is not { Master: { } master })
             return;

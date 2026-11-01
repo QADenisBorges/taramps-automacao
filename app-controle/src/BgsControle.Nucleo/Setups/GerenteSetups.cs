@@ -627,30 +627,188 @@ public sealed class GerenteSetups
     /// A conta do nível na cadeia do aparelho agora (o espelho), no Setup em uso e com o link que vale, ou null
     /// (o nível não é oferecido). A conta pode vir sem master, com o dado que falta.
     /// </summary>
-    public ContaNivel? Conta(NivelRendimento nivel) => Conta(nivel, _estado.Valor);
+    public ContaNivel? Conta(NivelRendimento nivel) => Conta(nivel, _estado.Valor, IdPresetEmUso);
 
     /// <summary>A conta do nível da memória em uso agora, ou null (sem nível, ou o nível não é oferecido).</summary>
     public ContaNivel? ContaEmUso() => NivelEmUso is { } nivel ? Conta(nivel) : null;
 
-    private ContaNivel? Conta(NivelRendimento nivel, Func<Endereco, Valor?> ler)
+    /// <summary>
+    /// A conta na cadeia <paramref name="ler"/>, no Setup em uso. No Extra (história 13e), o master é o validado da
+    /// memória em uso com o preset <paramref name="idPreset"/> (<see cref="ComExtra"/>).
+    /// </summary>
+    private ContaNivel? Conta(NivelRendimento nivel, Func<Endereco, Valor?> ler, string? idPreset)
     {
         var setup = SetupEmUso;
         var saidas = SaidasEmUso;
         if (setup is null || Niveis.Indisponivel(setup, saidas) is not null)
             return null;
-        return PiorCaso.Conta(setup.Equipamentos, saidas, ler, setup.NivelBluetooth!.Valor, nivel);
+        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, ler, setup.NivelBluetooth!.Valor, nivel), MemoriaEmUso, idPreset);
+    }
+
+    // ------------------------------------------------------------------ o Extra (história 13e)
+
+    /// <summary>
+    /// A impressão da cadeia de agora de uma memória com um preset, pela análise da playlist (a
+    /// <see cref="AnalisePlaylist"/> liga), ou null (sem análise, sem a memória otimizada, sem a cadeia). O Extra só se
+    /// escolhe com o validado da mesma impressão.
+    /// </summary>
+    public Func<string, string?, string?>? ImpressaoExtra { get; set; }
+
+    /// <summary>A chave do preset no Extra validado: o id do preset, se ele existe; senão "" (as bandas planas).</summary>
+    public string ChaveExtra(string? idPreset) => idPreset is { } id && _presets.Obter(id) is not null ? id : "";
+
+    /// <summary>O Extra validado da memória em uso com o preset em uso, ou null.</summary>
+    public ExtraValidado? ExtraValidadoEmUso =>
+        MemoriaEmUso is { } m ? m.ExtraValidado.GetValueOrDefault(ChaveExtra(IdPresetEmUso)) : null;
+
+    /// <summary>
+    /// O validado da memória em uso com o preset em uso vale como está (sem "revalidar" e com a impressão da cadeia de
+    /// agora), ou null sem validado. Fora de vigor, o master do Extra é min(validado, pior caso da cadeia de agora).
+    /// </summary>
+    public bool? ExtraEmVigorEmUso =>
+        MemoriaEmUso is { } m && ExtraValidadoEmUso is { } v ? EmVigor(m, IdPresetEmUso, v) : null;
+
+    /// <summary>
+    /// No Extra, a conta com o master validado da memória com o preset (o pior caso do Máximo dá os tetos e as saídas que
+    /// mandam). Com o validado fora de vigor ("revalidar", ou a cadeia mudou), o master desce, se precisar, ao pior caso
+    /// da cadeia de agora: min(validado, pior caso). Sem o validado deste preset (o preset trocou), fica o master do pior
+    /// caso, que vale com qualquer sinal.
+    /// </summary>
+    private ContaNivel ComExtra(ContaNivel conta, MemoriaCelular? memoria, string? idPreset)
+    {
+        if (conta.Nivel != NivelRendimento.Extra || memoria is null || conta.Master is not { } piorCaso)
+            return conta;
+        if (memoria.ExtraValidado.GetValueOrDefault(ChaveExtra(idPreset)) is not { } validado)
+            return conta;
+        var master = EmVigor(memoria, idPreset, validado) ? validado.Master : Math.Min(validado.Master, piorCaso);
+        return conta with { Master = master, FaltaGanho = null, MasterCurto = null };
+    }
+
+    /// <summary>O validado vale como está: a memória sem "revalidar" e a impressão da cadeia de agora igual à do teste.</summary>
+    private bool EmVigor(MemoriaCelular memoria, string? idPreset, ExtraValidado validado) =>
+        !memoria.Revalidar && ImpressaoDe(memoria, idPreset) == validado.Impressao;
+
+    /// <summary>A impressão da cadeia de agora pela análise (uma falha conta como nenhuma).</summary>
+    private string? ImpressaoDe(MemoriaCelular memoria, string? idPreset)
+    {
+        try
+        {
+            return ImpressaoExtra?.Invoke(memoria.Id, idPreset);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"memória {memoria.Nome}: falha ao conferir a impressão do Extra ({e.GetType().Name})");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Por que o Extra não se escolhe na memória com o preset dela (o em uso, se ela está em uso), ou null: sem o validado
+    /// ("Falta o teste a seco."), ou com o validado de outra cadeia ("A configuração mudou depois do teste a seco…").
+    /// </summary>
+    public string? MotivoSemExtra(MemoriaCelular memoria)
+    {
+        var idPreset = MemoriaEmUso?.Id == memoria.Id ? IdPresetEmUso : memoria.IdPreset;
+        if (!memoria.ExtraValidado.TryGetValue(ChaveExtra(idPreset), out var validado))
+            return Niveis.MsgFaltaTesteSeco;
+        return ImpressaoDe(memoria, idPreset) == validado.Impressao ? null : Niveis.MsgRefazerTesteSeco;
+    }
+
+    /// <summary>
+    /// O teste a seco passou (história 13e): grava o master validado da memória com o preset (a chave de
+    /// <see cref="ChaveExtra"/>) e a impressão da cadeia, tira o "revalidar" e limpa as marcas de clip (o teste novo é o
+    /// ponto de partida delas). False = não gravou.
+    /// </summary>
+    internal async Task<bool> GravarExtraValidadoAsync(string idMemoria, string chavePreset, decimal master, string impressao)
+    {
+        await Carregada;
+        if (Memoria(idMemoria) is not { } memoria)
+            return false;
+        var validado = new ExtraValidado(master, impressao, _relogio.GetLocalNow());
+        var ok = await GravarAsync(d => ComMemoria(d, idMemoria, m => m with
+        {
+            ExtraValidado = new Dictionary<string, ExtraValidado>(m.ExtraValidado, StringComparer.Ordinal) { [chavePreset] = validado },
+            Revalidar = false,
+            MotivoRevalidar = null,
+            Marcas = [],
+        }));
+        if (ok)
+            _log.Evento($"memória {memoria.Nome}: Extra validado em {master.ToString("0.0", Fio)} dB");
+        return ok;
+    }
+
+    /// <summary>
+    /// Baixa o master validado da memória com o preset (história 13e: a revalidação e o fiscal). Só baixa: um valor
+    /// igual ou acima não muda nada. Vale na hora, mesmo se não gravar.
+    /// </summary>
+    internal async Task BaixarExtraAsync(string idMemoria, string chavePreset, decimal master)
+    {
+        await Carregada;
+        if (Memoria(idMemoria) is not { } memoria || memoria.ExtraValidado.GetValueOrDefault(chavePreset) is not { } atual
+            || atual.Master <= master)
+            return;
+        await GravarUsoAsync(d => ComMemoria(d, idMemoria, m => m.ExtraValidado.GetValueOrDefault(chavePreset) is { } v && v.Master > master
+            ? m with
+            {
+                ExtraValidado = new Dictionary<string, ExtraValidado>(m.ExtraValidado, StringComparer.Ordinal) { [chavePreset] = v with { Master = master } },
+            }
+            : m));
+        _log.Evento($"memória {memoria.Nome}: Extra baixou para {master.ToString("0.0", Fio)} dB");
+    }
+
+    /// <summary>
+    /// Marca a faixa com um clip não previsto no uso do Extra (história 13e): uma marca por saída do mesmo aviso (todas da
+    /// mesma faixa). O 2º clip na mesma faixa põe a memória em "revalidar" ("Clip duas vezes na Faixa 3."). Devolve se a
+    /// memória foi para "revalidar" agora. Vale na hora.
+    /// </summary>
+    internal async Task<bool> MarcarClipAsync(string idMemoria, IReadOnlyList<MarcaClip> marcas)
+    {
+        await Carregada;
+        if (marcas.Count == 0 || Memoria(idMemoria) is not { } memoria)
+            return false;
+        var faixa = marcas[0];
+        var revalidar = memoria.Marcas.Any(x => x.IdFaixa == faixa.IdFaixa);
+        await GravarUsoAsync(d => ComMemoria(d, idMemoria, m => m.Marcas.Any(x => x.IdFaixa == faixa.IdFaixa)
+            ? m with { Marcas = [.. m.Marcas, .. marcas], Revalidar = true, MotivoRevalidar = Niveis.MsgClipDuasVezes(faixa.Faixa) }
+            : m with { Marcas = [.. m.Marcas, .. marcas] }));
+        return revalidar;
+    }
+
+    /// <summary>
+    /// A ficha ou o ganho medido (ou o nível do Bluetooth) de um Setup mudou nos dados novos: as memórias dele com o Extra
+    /// validado vão para "revalidar" ("A ficha ou a calibração mudou."). Chamar com a trava.
+    /// </summary>
+    private static DadosSetups ComRevalidar(DadosSetups antes, DadosSetups novos)
+    {
+        if (ReferenceEquals(antes.Setups, novos.Setups))
+            return novos;
+        var mudaram = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var s in novos.Setups)
+        {
+            if (antes.Setups.FirstOrDefault(a => a.Id == s.Id) is { } a && !ReferenceEquals(a, s)
+                && AnalisePlaylist.ImpressaoDoSetup(a) != AnalisePlaylist.ImpressaoDoSetup(s))
+                mudaram.Add(s.Id);
+        }
+        if (mudaram.Count == 0 || !novos.Memorias.Any(m => mudaram.Contains(m.IdSetup) && m.ExtraValidado.Count > 0))
+            return novos;
+        return novos with
+        {
+            Memorias = novos.Memorias.Select(m => mudaram.Contains(m.IdSetup) && m.ExtraValidado.Count > 0
+                ? m with { Revalidar = true, MotivoRevalidar = Niveis.MsgFichaMudou }
+                : m).ToArray(),
+        };
     }
 
     /// <summary>
     /// A conta do nível de uma memória sobre um alvo (a regulagem dela e as bandas do preset, por cima do espelho),
     /// no Setup dela, com o link tirado das ligações dele (como o aplicar): o master a pôr no aplicar, ou null.
     /// </summary>
-    private ContaNivel? ContaDoAlvo(Setup setup, NivelRendimento nivel, IEnumerable<ValorCopiado> alvo)
+    private ContaNivel? ContaDoAlvo(Setup setup, NivelRendimento nivel, IEnumerable<ValorCopiado> alvo, MemoriaCelular memoria, string? idPreset)
     {
         var saidas = Ligacoes.Saidas(setup.Equipamentos);
         if (Niveis.Indisponivel(setup, saidas) is not null)
             return null;
-        return PiorCaso.Conta(setup.Equipamentos, saidas, LeitorCom(alvo), setup.NivelBluetooth!.Valor, nivel);
+        return ComExtra(PiorCaso.Conta(setup.Equipamentos, saidas, LeitorCom(alvo), setup.NivelBluetooth!.Valor, nivel), memoria, idPreset);
     }
 
     /// <summary>O espelho agora com os valores por cima (o que um lote vai deixar no aparelho).</summary>
@@ -726,13 +884,13 @@ public sealed class GerenteSetups
 
     /// <summary>O master da combinação da memória em uso (com nível) e do preset, para o aplicar do preset, ou null.</summary>
     private decimal? MasterDoPreset(Preset preset) =>
-        NivelEmUso is { } nivel ? Conta(nivel, LeitorCom(preset.Valores))?.Master : null;
+        NivelEmUso is { } nivel ? Conta(nivel, LeitorCom(preset.Valores), preset.Id)?.Master : null;
 
     /// <summary>
-    /// Sair do Máximo (história 13c): um limitador acima de min(T, X, C) ficaria acima da cerca. Devolve "Baixe o
-    /// limitador da JBL L para −6,8 dB antes de sair do Máximo.", ou null.
+    /// Sair do Máximo (história 13c) ou do Extra (13e): um limitador acima de min(T, X, C) ficaria acima da cerca. Devolve
+    /// "Baixe o limitador da JBL L para −6,8 dB antes de sair do Máximo.", ou null.
     /// </summary>
-    private string? LimitadorAcimaForaDoMaximo()
+    private string? LimitadorAcimaForaDoMaximo(NivelRendimento saindo)
     {
         if (SetupEmUso is not { } setup)
             return null;
@@ -741,7 +899,7 @@ public sealed class GerenteSetups
             foreach (var c in limite.PorCanal)
             {
                 if (_estado.Valor(Cerca.CodigoLimitador, c.Canal)?.Numero is { } limiar && limiar != Cerca.LimitadorOff && limiar > c.TetoCerca)
-                    return Niveis.MsgSairDoMaximo(Cerca.Onde(limite, c.Canal), c.TetoCerca);
+                    return Niveis.MsgSairDo(saindo, Cerca.Onde(limite, c.Canal), c.TetoCerca);
             }
         }
         return null;
@@ -766,12 +924,12 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(Niveis.MsgFalhou));
             if (nivel is null && memoria.Nivel is null)
                 return Terminar(ResultadoSetup.Feito(null));
-            if (memoria.Nivel == NivelRendimento.Maximo && nivel != NivelRendimento.Maximo && MemoriaEmUso?.Id == memoria.Id)
+            if (Niveis.SemTermico(memoria.Nivel) && !Niveis.SemTermico(nivel) && MemoriaEmUso?.Id == memoria.Id)
             {
                 string? acima;
                 try
                 {
-                    acima = LimitadorAcimaForaDoMaximo();
+                    acima = LimitadorAcimaForaDoMaximo(memoria.Nivel!.Value);
                 }
                 catch (Exception e)
                 {
@@ -799,6 +957,9 @@ public sealed class GerenteSetups
                 return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
             if (_copia.MotivoBloqueio() is { } bloqueio)
                 return Terminar(ResultadoSetup.Falha(bloqueio));
+            // História 13e: o Extra só com o master validado do preset em uso, na cadeia de agora.
+            if (novo == NivelRendimento.Extra && MotivoSemExtra(memoria) is { } semExtra)
+                return Terminar(ResultadoSetup.Falha(semExtra));
             ContaNivel? conta;
             try
             {
@@ -2370,7 +2531,7 @@ public sealed class GerenteSetups
         ContaNivel? conta;
         try
         {
-            conta = ContaDoAlvo(setup, nivel, alvo);
+            conta = ContaDoAlvo(setup, nivel, alvo, memoria, sumiu ? null : memoria.IdPreset);
         }
         catch (Exception e)
         {
@@ -2624,7 +2785,7 @@ public sealed class GerenteSetups
         {
             DadosSetups novos;
             lock (_trava)
-                novos = mudar(_dados);
+                novos = ComRevalidar(_dados, mudar(_dados));
             if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
             {
                 _log.Evento("não consegui guardar os Setups no celular");
@@ -2647,6 +2808,8 @@ public sealed class GerenteSetups
         await _gravacao.WaitAsync();
         try
         {
+            lock (_trava)
+                novos = ComRevalidar(_dados, novos);
             if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
             {
                 _log.Evento("não consegui guardar os Setups no celular");
@@ -2672,7 +2835,7 @@ public sealed class GerenteSetups
             DadosSetups novos;
             lock (_trava)
             {
-                novos = mudar(_dados);
+                novos = ComRevalidar(_dados, mudar(_dados));
                 _dados = novos;
             }
             if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
@@ -2867,6 +3030,7 @@ public sealed class GerenteSetups
                 }
                 if (m.Otimizada)
                     w.WriteBoolean("otimizada", true);
+                EscreverExtra(w, m);
                 w.WriteEndObject();
             }
             w.WriteEndArray();
@@ -2975,6 +3139,11 @@ public sealed class GerenteSetups
                         Masters = LerMasters(item),
                         // História 13d: opcional, sem subir o formato; só o true vale.
                         Otimizada = item.TryGetProperty("otimizada", out var otimizada) && otimizada.ValueKind == JsonValueKind.True,
+                        // História 13e: opcionais, sem subir o formato.
+                        ExtraValidado = LerExtraValidado(item),
+                        Revalidar = Revalidar(item),
+                        MotivoRevalidar = Revalidar(item) ? Texto(item, "motivoRevalidar") ?? Niveis.MsgFichaMudou : null,
+                        Marcas = LerMarcas(item),
                     };
                 memorias.Add(memoria);
             }
@@ -2993,6 +3162,88 @@ public sealed class GerenteSetups
 
         var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
         return new DadosSetups(setups, memorias, ultimo, uso);
+    }
+
+    /// <summary>
+    /// O Extra da memória (história 13e): <c>"extraValidado":{"preset":{"master":-4.7,"impressao":"…","quando":"…"}}</c>,
+    /// <c>"revalidar":true</c> com <c>"motivoRevalidar"</c> e <c>"marcas":[{"faixa","nome","canal","saida","segundos","quando"}]</c>.
+    /// </summary>
+    private static void EscreverExtra(Utf8JsonWriter w, MemoriaCelular m)
+    {
+        if (m.ExtraValidado.Count > 0)
+        {
+            w.WriteStartObject("extraValidado");
+            foreach (var (idPreset, v) in m.ExtraValidado.OrderBy(x => x.Key, StringComparer.Ordinal))
+            {
+                w.WriteStartObject(idPreset);
+                w.WriteNumber("master", v.Master);
+                w.WriteString("impressao", v.Impressao);
+                w.WriteString("quando", v.Quando.ToString("O", Fio));
+                w.WriteEndObject();
+            }
+            w.WriteEndObject();
+        }
+        if (m.Revalidar)
+        {
+            w.WriteBoolean("revalidar", true);
+            if (m.MotivoRevalidar is { } motivo)
+                w.WriteString("motivoRevalidar", motivo);
+        }
+        if (m.Marcas.Count > 0)
+        {
+            w.WriteStartArray("marcas");
+            foreach (var x in m.Marcas)
+            {
+                w.WriteStartObject();
+                w.WriteString("faixa", x.IdFaixa);
+                w.WriteString("nome", x.Faixa);
+                w.WriteNumber("canal", x.Canal);
+                w.WriteString("saida", x.Saida);
+                if (x.Segundos is { } segundos)
+                    w.WriteNumber("segundos", segundos);
+                w.WriteString("quando", x.Quando.ToString("O", Fio));
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+        }
+    }
+
+    private static bool Revalidar(JsonElement item) => item.TryGetProperty("revalidar", out var r) && r.ValueKind == JsonValueKind.True;
+
+    /// <summary>O Extra validado por preset (história 13e): só os masters de −80 a 0 com a impressão; sem nenhum, o vazio.</summary>
+    private static IReadOnlyDictionary<string, ExtraValidado> LerExtraValidado(JsonElement item)
+    {
+        if (!item.TryGetProperty("extraValidado", out var ev) || ev.ValueKind != JsonValueKind.Object)
+            return MemoriaCelular.SemValidado;
+        var lidos = new Dictionary<string, ExtraValidado>(StringComparer.Ordinal);
+        foreach (var p in ev.EnumerateObject())
+        {
+            if (p.Value.ValueKind != JsonValueKind.Object || !p.Value.TryGetProperty("master", out var m) || m.ValueKind != JsonValueKind.Number
+                || !m.TryGetDecimal(out var master) || master is < PiorCaso.MinimoMaster or > 0
+                || Texto(p.Value, "impressao") is not { Length: > 0 } impressao)
+                continue;
+            lidos[p.Name] = new ExtraValidado(master, impressao, FichaJson.Quando(p.Value));
+        }
+        return lidos.Count == 0 ? MemoriaCelular.SemValidado : lidos;
+    }
+
+    /// <summary>As marcas de clip no uso do Extra (história 13e); uma marca ilegível sai.</summary>
+    private static IReadOnlyList<MarcaClip> LerMarcas(JsonElement item)
+    {
+        if (!item.TryGetProperty("marcas", out var ms) || ms.ValueKind != JsonValueKind.Array)
+            return [];
+        var lidas = new List<MarcaClip>();
+        foreach (var x in ms.EnumerateArray())
+        {
+            if (x.ValueKind != JsonValueKind.Object || Texto(x, "faixa") is not { Length: > 0 } faixa || Texto(x, "nome") is not { } nome
+                || !x.TryGetProperty("canal", out var c) || c.ValueKind != JsonValueKind.Number || !c.TryGetInt32(out var canal)
+                || canal is < 0 or > 3 || Texto(x, "saida") is not { } saida)
+                continue;
+            double? segundos = x.TryGetProperty("segundos", out var sg) && sg.ValueKind == JsonValueKind.Number && sg.TryGetDouble(out var v)
+                && double.IsFinite(v) && v >= 0 ? v : null;
+            lidas.Add(new MarcaClip(faixa, nome, canal, saida, segundos, FichaJson.Quando(x)));
+        }
+        return lidas;
     }
 
     /// <summary>Os masters por preset de uma memória (história 13c): só os números; sem nenhum, o vazio de todas.</summary>

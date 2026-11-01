@@ -114,6 +114,11 @@ internal sealed class ReprodutorFalso : IReprodutor
         return Task.CompletedTask;
     }
 
+    public TimeSpan? Posicao => null;
+
+    public Task<bool> TocarTrechoAsync(string uri, TimeSpan inicio, TimeSpan duracao, CancellationToken cancelar = default) =>
+        Task.FromResult(true);
+
     /// <summary>A faixa atual chega ao fim sozinha.</summary>
     public void Terminar()
     {

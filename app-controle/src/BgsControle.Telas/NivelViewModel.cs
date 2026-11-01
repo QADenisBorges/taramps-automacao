@@ -25,7 +25,8 @@ public sealed record LinhaNivel(NivelRendimento? Nivel, string Nome, string Text
 /// A folha "Nível da memória" (história 13c; <c>telas-rendimento.md</c>, "Nível da memória" e "Aviso do Máximo"; sem
 /// XAML, que é da 13g): uma linha por nível, do Baixo ao Máximo, com o teto em volts da saída que manda e a fonte, e o
 /// Extra apagado com o pé da análise da playlist (história 13d): "Analisando a playlist." durante a análise, "Falta o
-/// teste a seco." com ela pronta e "Falta analisar a playlist." sem ela. Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
+/// teste a seco." com ela pronta e "Falta analisar a playlist." sem ela; com o teste a seco feito (13e), "Falta o modelo
+/// térmico." até a 13f. O selo "revalidar" da memória em uso vem com o motivo. Sem calibração ou sem o Bluetooth medido, as linhas ficam apagadas
 /// com o motivo. Escolher grava o nível na memória em uso e põe o master da combinação com o preset em uso; o Máximo
 /// pede antes a folha de risco do app (Confirmar e Cancelar). "Sem nível" volta a memória a null, sem mexer no master.
 /// </summary>
@@ -127,6 +128,12 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     /// <summary>O nível da memória em uso, ou null (sem nível).</summary>
     public NivelRendimento? NivelEscolhido => _setups.NivelEmUso;
+
+    /// <summary>O selo "revalidar" da memória em uso (história 13e), ou null.</summary>
+    public string? SeloRevalidar => _setups.MemoriaEmUso is { Revalidar: true } ? Niveis.SeloRevalidar : null;
+
+    /// <summary>Por que a memória em uso está em "revalidar" ("A ficha ou a calibração mudou."), ou null.</summary>
+    public string? MotivoRevalidar => _setups.MemoriaEmUso is { Revalidar: true } m ? m.MotivoRevalidar : null;
 
     /// <summary>A memória em uso está sem nível (o master é do usuário).</summary>
     public bool SemNivelEscolhido => _setups.MemoriaEmUso is not null && _setups.NivelEmUso is null;
@@ -266,17 +273,24 @@ public sealed class NivelViewModel : TelaBase, IDisposable
                 conta?.Aviso,
                 emUso?.Nivel == nivel));
         }
-        linhas.Add(new LinhaNivel(null, Niveis.NomeExtra, TextoExtra, false, MotivoExtra(), null, null, false));
+        linhas.Add(new LinhaNivel(null, Niveis.NomeExtra, TextoExtra, false, MotivoExtra(), null, null,
+            emUso?.Nivel == NivelRendimento.Extra));
         return linhas;
     }
 
-    /// <summary>A linha do Extra, sempre apagada (aplicar é da 13e e da 13f), com o pé da análise da playlist.</summary>
+    /// <summary>
+    /// A linha do Extra, apagada até a 13f (o modelo térmico, CAP-7), com o pé: "Falta o modelo térmico." com o teste a
+    /// seco feito (história 13e); "A configuração mudou depois do teste a seco…" com o validado de outra cadeia; senão o pé
+    /// da análise da playlist (13d).
+    /// </summary>
     private string MotivoExtra()
     {
         if (_analise is null)
             return Niveis.MsgExtra;
         try
         {
+            if (_setups.MemoriaEmUso is { } memoria && _setups.ExtraValidadoEmUso is not null)
+                return _setups.MotivoSemExtra(memoria) ?? Niveis.MsgFaltaTermico;
             return _analise.TetoEmUso().TextoNivel;
         }
         catch (Exception e)
@@ -304,6 +318,8 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         Avisar(nameof(MotivoSemMemoria));
         Avisar(nameof(NivelEscolhido));
         Avisar(nameof(SemNivelEscolhido));
+        Avisar(nameof(SeloRevalidar));
+        Avisar(nameof(MotivoRevalidar));
     }
 
     public void Dispose()

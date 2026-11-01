@@ -36,6 +36,16 @@ public sealed class TomCelularAndroid : ITomCelular
             .Build()!;
     }
 
+    /// <summary>O tom do celular está tocando (história 13e: o fiscal do Extra não o conta como outro app).</summary>
+    internal bool Tocando
+    {
+        get
+        {
+            lock (_trava)
+                return _faixa is not null;
+        }
+    }
+
     public Task<bool> TocarAsync(int hz, TimeSpan duracao)
     {
         lock (_trava)

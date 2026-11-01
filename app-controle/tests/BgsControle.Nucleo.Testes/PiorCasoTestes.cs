@@ -222,7 +222,9 @@ public sealed class PiorCasoTestes
         Assert.Equal(["baixo", "medio", "alto", "maximo"], Niveis.Todos.Select(Niveis.Chave));
         Assert.Equal([6m, 3m, 1m, 1m], Niveis.Todos.Select(Niveis.Margem));
         Assert.All(Niveis.Todos, n => Assert.Equal(n, Niveis.De(Niveis.Chave(n))));
-        Assert.Null(Niveis.De("extra"));
+        // História 13e: o Extra entra no núcleo (e no setups.json).
+        Assert.Equal(NivelRendimento.Extra, Niveis.De("extra"));
+        Assert.Null(Niveis.De("ultra"));
         Assert.Null(Niveis.De(null));
         Assert.Equal("Nível Alto: o master vai até −3,8 dB.", Niveis.MsgMasterAcima(NivelRendimento.Alto, -3.8m));
         Assert.Equal("16 V", Niveis.Volts(15.94));

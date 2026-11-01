@@ -50,6 +50,12 @@ public sealed class MonitorAparelho
     /// <summary>O voltímetro, o clip de uma saída ou o da entrada mudou (acendeu ou apagou). Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
+    /// <summary>
+    /// Um aviso espontâneo de clip das saídas chegou (<c>#150#bits#</c> com algum bit, história 13e): os canais (0 a 3) com
+    /// o bit. Só os avisos que o aparelho manda sozinho (não a leitura completa). Pode chegar em qualquer thread.
+    /// </summary>
+    public event Action<IReadOnlyList<int>>? Clip;
+
     /// <summary>O voltímetro em volts (12,4), ou null sem valor.</summary>
     public decimal? Volts
     {
@@ -88,7 +94,7 @@ public sealed class MonitorAparelho
         if (LeitorCompleto.Casar(Consulta005, texto) is { } volts)
             Voltimetro(volts);
         else if (LeitorCompleto.Casar(Consulta150, texto) is { } bits)
-            ClipDasSaidas(bits);
+            AvisarClip(ClipDasSaidas(bits));
         else if (LeitorCompleto.Casar(Consulta111, texto) is { } entrada)
             ClipDaEntrada(entrada);
     }
@@ -120,13 +126,29 @@ public sealed class MonitorAparelho
         Notificar();
     }
 
-    private void ClipDasSaidas(string noFio)
+    /// <summary>Acende os clips do aviso; devolve os canais com o bit (vazio se ilegível).</summary>
+    private int[] ClipDasSaidas(string noFio)
     {
         var n = Consulta150.Parametro.Decodificar(noFio).Valor?.Numero;
         if (n is not { } bits || bits != decimal.Truncate(bits) || bits is < 0 or > 15)
-            return;
+            return [];
         var acender = Enumerable.Range(0, Saidas).Where(c => ((int)bits & (1 << c)) != 0).ToArray();
         Acender(acender);
+        return acender;
+    }
+
+    private void AvisarClip(int[] canais)
+    {
+        if (canais.Length == 0 || !SessaoAberta)
+            return;
+        try
+        {
+            Clip?.Invoke(canais);
+        }
+        catch (Exception)
+        {
+            // Quem ouve não pode parar as notificações da sessão.
+        }
     }
 
     private void ClipDaEntrada(string noFio)

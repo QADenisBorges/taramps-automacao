@@ -469,6 +469,29 @@ public sealed partial class ProcessadorSimulado : ITransporte
     }
 
     /// <summary>
+    /// O sinal que chega a uma saída (história 13e): <paramref name="db"/> é o nível de pico na saída antes do limitador,
+    /// sem o master (dB na escala do limitador, a mesma da análise da playlist). Quando o nível + o master (<c>080</c>)
+    /// passa do limiar do limitador da saída (<c>071</c>), o aparelho manda o <c>#150#bits#</c> com o bit da saída.
+    /// Devolve se houve clip.
+    /// </summary>
+    // Suposição CLIP-LIMITADOR: o 150 marca o limitador agindo (o nível acima do limiar); a 12d confere no aparelho.
+    public bool Sinal(int canal, double db)
+    {
+        if (canal is < 0 or > 3)
+            throw new ArgumentOutOfRangeException(nameof(canal), "Canal de 0 a 3.");
+        bool clip;
+        lock (_trava)
+        {
+            var master = decimal.Parse(_estado[("080", null)], NumberStyles.Float, Fio);
+            var limiar = decimal.Parse(_estado[("071", canal)], NumberStyles.Float, Fio);
+            clip = db + (double)master > (double)limiar;
+        }
+        if (clip)
+            EmitirClip(1 << canal);
+        return clip;
+    }
+
+    /// <summary>
     /// O voltímetro espontâneo (<c>#005#v#</c>, em V × 10), quando o teste quiser. A consulta
     /// <c>#005#</c> continua respondendo <c>ERRO 0</c> (medido).
     /// </summary>

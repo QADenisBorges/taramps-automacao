@@ -116,9 +116,44 @@ public sealed record MemoriaCelular(
     /// </summary>
     public bool Otimizada { get; init; }
 
+    /// <summary>
+    /// O teto do Extra validado pelo teste a seco (história 13e), por preset (o id, ou "" sem preset): o master e a
+    /// impressão da cadeia em que ele passou. Só baixa sozinho (a revalidação e o fiscal); subir pede outro teste a seco.
+    /// Opcional no formato 4.
+    /// </summary>
+    public IReadOnlyDictionary<string, ExtraValidado> ExtraValidado { get; init; } = SemValidado;
+
+    /// <summary>
+    /// A memória pede um teste a seco novo (história 13e): a ficha ou a calibração do Setup mudou, ou houve dois clips
+    /// não previstos na mesma faixa. O teste a seco que passa tira. Opcional no formato 4.
+    /// </summary>
+    public bool Revalidar { get; init; }
+
+    /// <summary>Por que a memória está em "revalidar" ("A ficha ou a calibração mudou."), ou null.</summary>
+    public string? MotivoRevalidar { get; init; }
+
+    /// <summary>As faixas marcadas por um clip não previsto no uso do Extra (história 13e), na ordem. Opcional no formato 4.</summary>
+    public IReadOnlyList<MarcaClip> Marcas { get; init; } = [];
+
     /// <summary>Nenhum master guardado (o mesmo para todas as memórias sem master).</summary>
     public static IReadOnlyDictionary<string, decimal> SemMasters { get; } = new Dictionary<string, decimal>();
+
+    /// <summary>Nenhum Extra validado (o mesmo para todas as memórias sem teste a seco).</summary>
+    public static IReadOnlyDictionary<string, ExtraValidado> SemValidado { get; } = new Dictionary<string, ExtraValidado>();
 }
+
+/// <summary>O teto do Extra que passou no teste a seco (história 13e): o master, a impressão da cadeia e quando.</summary>
+/// <param name="Master">O master validado, em dB (−80 a 0).</param>
+/// <param name="Impressao">A impressão da cadeia da análise da playlist (memória, preset, fichas, ganhos e Bluetooth) no teste.</param>
+public sealed record ExtraValidado(decimal Master, string Impressao, DateTimeOffset Quando);
+
+/// <summary>Uma faixa marcada por um clip não previsto no uso do Extra (história 13e): a saída e o momento.</summary>
+/// <param name="IdFaixa">O id da faixa na playlist.</param>
+/// <param name="Faixa">O nome da faixa, para a tela.</param>
+/// <param name="Canal">O canal do clip (0 a 3).</param>
+/// <param name="Saida">O nome da saída ("Sub").</param>
+/// <param name="Segundos">O momento da faixa, em segundos (a 0,1), ou null se o reprodutor não disse.</param>
+public sealed record MarcaClip(string IdFaixa, string Faixa, int Canal, string Saida, double? Segundos, DateTimeOffset Quando);
 
 /// <summary>O que o app sabe que está tocando.</summary>
 public enum TipoSomEmUso

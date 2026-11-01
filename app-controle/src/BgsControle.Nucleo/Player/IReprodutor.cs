@@ -21,6 +21,17 @@ public interface IReprodutor
     /// <summary>Para e solta o arquivo.</summary>
     Task PararAsync();
 
+    /// <summary>
+    /// Toca um trecho do arquivo (história 13e, o teste a seco), no lugar do que tocava: do <paramref name="inicio"/> por
+    /// <paramref name="duracao"/>, e para no fim. Completa quando o trecho termina (true) ou quando o arquivo não abre,
+    /// falha no meio, o reprodutor para (<see cref="PararAsync"/>) ou o <paramref name="cancelar"/> pede (false). No
+    /// Android, o <c>SeekTo</c> e uma parada no fim do trecho.
+    /// </summary>
+    Task<bool> TocarTrechoAsync(string uri, TimeSpan inicio, TimeSpan duracao, CancellationToken cancelar = default);
+
+    /// <summary>Onde está a faixa (ou o trecho) que toca ou está pausada, ou null sem nada aberto (história 13e: a marca do clip).</summary>
+    TimeSpan? Posicao { get; }
+
     /// <summary>A faixa com esta URI chegou ao fim sozinha. Pode chegar em qualquer thread.</summary>
     event Action<string>? Terminou;
 

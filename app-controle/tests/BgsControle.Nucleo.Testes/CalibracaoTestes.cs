@@ -193,6 +193,11 @@ public sealed class CalibracaoTestes : IDisposable
 
         public Task PararAsync() => Task.CompletedTask;
 
+        public TimeSpan? Posicao => null;
+
+        public Task<bool> TocarTrechoAsync(string uri, TimeSpan inicio, TimeSpan duracao, CancellationToken cancelar = default) =>
+            Task.FromResult(true);
+
         /// <summary>Só para o compilador: os eventos existem na interface.</summary>
         public void Nada()
         {

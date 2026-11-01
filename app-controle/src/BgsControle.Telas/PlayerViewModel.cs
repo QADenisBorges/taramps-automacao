@@ -19,6 +19,7 @@ public sealed class LinhaPlaylistViewModel : TelaBase
     private bool _editando;
     private bool _emAnalise;
     private string? _textoAnalise;
+    private string? _textoMarca;
 
     internal LinhaPlaylistViewModel(Faixa faixa, PlayerViewModel tela, IDespachante despachante, TimeProvider relogio)
         : base(despachante, relogio)
@@ -130,6 +131,22 @@ public sealed class LinhaPlaylistViewModel : TelaBase
         }
     }
 
+    /// <summary>
+    /// A faixa marcada por um clip não previsto no uso do Extra (história 13e): "Clip na Sub aos 42,3 s" (a última marca),
+    /// ou null.
+    /// </summary>
+    public string? TextoMarca
+    {
+        get => _textoMarca;
+        internal set
+        {
+            if (_textoMarca == value)
+                return;
+            _textoMarca = value;
+            Avisar();
+        }
+    }
+
     /// <summary>O modo Editar da tela: a linha mostra − e ≡.</summary>
     public bool Editando
     {
@@ -183,6 +200,14 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     public const string MsgSomPeloCelular = "O som está saindo pelo celular. Conecte o Bluetooth do celular ao processador.";
     public const string TextoAbrirBluetooth = "Abrir o Bluetooth";
 
+    /// <summary>O botão da folha do outro player (história 13e).</summary>
+    public const string TextoVoltarAoPlayer = "Voltar ao player do app";
+
+    /// <summary>"Clip na Sub aos 42,3 s" (ou "Clip na Sub" sem o momento).</summary>
+    public static string TextoClip(MarcaClip marca) => marca.Segundos is { } s
+        ? $"Clip na {marca.Saida} aos {s.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',')} s"
+        : $"Clip na {marca.Saida}";
+
     /// <summary>"3:07": minutos e segundos (os minutos passam de 59 sem virar hora).</summary>
     public static string FormatarDuracao(TimeSpan d)
     {
@@ -200,6 +225,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
     private readonly IAudioDoCelular? _audio;
     private readonly AnalisePlaylist? _analise;
     private readonly LogBle? _log;
+    private readonly FiscalExtra? _fiscal;
 
     private readonly Dictionary<string, LinhaPlaylistViewModel> _porId = [];
     private IReadOnlyList<LinhaPlaylistViewModel> _linhas = [];
@@ -219,13 +245,15 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         AparelhoViewModel? aparelho = null,
         IAudioDoCelular? audio = null,
         AnalisePlaylist? analise = null,
-        LogBle? log = null)
+        LogBle? log = null,
+        FiscalExtra? fiscal = null)
         : base(despachante, relogio)
     {
         _aparelho = aparelho;
         _audio = audio;
         _analise = analise;
         _log = log;
+        _fiscal = fiscal;
         _player = player;
         _playlists = playlists;
         _setups = setups;
@@ -237,6 +265,11 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         TocarPausar = new Comando(TocarPausarAsync);
         Proxima = new Comando(ProximaAsync);
         AcaoAviso = new Comando(AgirNoAvisoAsync);
+        VoltarAoPlayer = new Comando(() =>
+        {
+            _fiscal?.FecharFolha();
+            Avisar(nameof(FolhaOutroPlayer));
+        });
 
         _ultimoAvisoPlayer = _player.Aviso;
         _memoriaVista = _player.Memoria;
@@ -249,8 +282,24 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             _audio.Mudou += AoMudarAlgo;
         if (_analise is not null)
             _analise.Mudou += AoMudarAlgo;
+        if (_fiscal is not null)
+            _fiscal.Mudou += AoMudarAlgo;
         Atualizar();
     }
+
+    // ------------------------------------------------------------------ o fiscal do Extra (história 13e)
+
+    /// <summary>A folha "Outro app começou a tocar. O som foi mutado." está aberta.</summary>
+    public bool FolhaOutroPlayer => _fiscal?.FolhaOutroPlayer == true;
+
+    /// <summary>"Outro app começou a tocar. O som foi mutado."</summary>
+    public string TextoOutroPlayer => FiscalExtra.MsgOutroPlayer;
+
+    /// <summary>"Voltar ao player do app".</summary>
+    public string TextoVoltar => TextoVoltarAoPlayer;
+
+    /// <summary>Fecha a folha do outro player (o mudo sai quando o usuário toca no player do app).</summary>
+    public Comando VoltarAoPlayer { get; }
 
     // ------------------------------------------------------------------ avisos do topo
 
@@ -547,6 +596,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
 
         var atual = _player.Atual?.Id;
         var extra = TetoDaPlaylist();
+        var marcas = _player.Memoria is { } idMemoria ? _setups.Memoria(idMemoria)?.Marcas ?? [] : [];
         foreach (var l in _linhas)
         {
             l.Tocando = l.Id == atual;
@@ -557,6 +607,14 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             l.TextoAnalise = l.EmAnalise ? AnalisePlaylist.TextoEmAnalise
                 : extra?.FirstOrDefault(f => f.Faixa.Id == l.Id) is { Situacao: not SituacaoFaixa.EmAnalise } fe ? fe.Texto
                 : null;
+            l.TextoMarca = marcas.LastOrDefault(m => m.IdFaixa == l.Id) is { } marca ? TextoClip(marca) : null;
+        }
+
+        // O aviso do fiscal do Extra ("No Extra o volume fica no máximo; use o master.", o master que não desceu) aparece uma vez.
+        if (_fiscal?.Aviso is { } avisoFiscal)
+        {
+            _fiscal.LimparAviso();
+            Mensagem = avisoFiscal;
         }
 
         // Um aviso novo do Player (nenhuma faixa disponível, por exemplo) aparece.
@@ -586,6 +644,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         Avisar(nameof(TextoAcaoAviso));
         Avisar(nameof(TravaTocar));
         Avisar(nameof(Tocando));
+        Avisar(nameof(FolhaOutroPlayer));
     }
 
     /// <summary>As faixas da playlist no teto do Extra (o peso, a análise ou a falha), ou null sem análise.</summary>
@@ -642,5 +701,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             _audio.Mudou -= AoMudarAlgo;
         if (_analise is not null)
             _analise.Mudou -= AoMudarAlgo;
+        if (_fiscal is not null)
+            _fiscal.Mudou -= AoMudarAlgo;
     }
 }
