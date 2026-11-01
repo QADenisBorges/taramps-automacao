@@ -631,9 +631,11 @@ public sealed class CriacaoMemoria : IDisposable
                 anotar = !_escreveu;
                 _escreveu = true;
             }
-            // A cerca antes de anotar a etapa: um ajuste recusado não deixa marca (o escritor confere de novo).
-            // Um valor que não decodifica vai como desconhecido.
-            if (_escritor.ConferirCerca(p, indice, novo is null ? null : p.Decodificar(novo).Valor, espelhar: true) is { } cerca)
+            // A cerca (e a regra da saída sem calibração, história 13b: os ajustes da criação vêm da porta) antes de
+            // anotar a etapa: um ajuste recusado não deixa marca (o escritor confere de novo). Um valor que não
+            // decodifica vai como desconhecido.
+            if ((_escritor.ConferirSemCalibracao(p, indice, espelhar: true)
+                 ?? _escritor.ConferirCerca(p, indice, novo is null ? null : p.Decodificar(novo).Valor, espelhar: true)) is { } cerca)
             {
                 lock (_trava)
                 {

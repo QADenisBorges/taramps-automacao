@@ -98,6 +98,12 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
     /// <summary>O aviso do bridge (canais de saídas diferentes, sinal num canal só), ou null.</summary>
     public string? AvisoSaida => _saida.Aviso;
 
+    /// <summary>
+    /// "Sem calibração: o app não sabe a tensão." (história 13b): a saída tem alto-falante passivo e o módulo dela
+    /// não tem o ganho medido. A tela deixa mexer; só a porta recusa.
+    /// </summary>
+    public string? AvisoCalibracao => _saida.AvisoCalibracao;
+
     /// <summary>O ganho (−45,0 a +15,0 dB), no giratório: arrastar, − e + grandes, tocar no número para escrever.</summary>
     public ControleParametroViewModel Ganho => _controles.Ganho;
 
@@ -192,6 +198,7 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         Avisar(nameof(Canal));
         Avisar(nameof(Titulo));
         Avisar(nameof(AvisoSaida));
+        Avisar(nameof(AvisoCalibracao));
         Avisar(nameof(Subtitulo));
     }
 

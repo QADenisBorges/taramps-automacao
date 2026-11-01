@@ -38,7 +38,47 @@ public sealed record PassaAlta(FormaFiltro Forma, int Inclinacao, double Frequen
     /// Null com o filtro em OFF, sem leitura ou com um índice que o catálogo não conhece: sem filtro, que é o
     /// lado conservador.
     /// </summary>
-    public static PassaAlta? DoAparelho(decimal? indice, decimal? frequencia)
+    public static PassaAlta? DoAparelho(decimal? indice, decimal? frequencia) =>
+        FiltroDoAparelho.Ler(indice, frequencia) is { } x ? new PassaAlta(x.Forma, x.Inclinacao, x.Frequencia) : null;
+}
+
+/// <summary>
+/// O passa-baixa de uma saída, só pelo módulo (história 13b, a escolha do tom da calibração): |BTn| =
+/// 1/√(1+(f/fc)^(2n)) e |LRn| = 1/(1+(f/fc)^n), com n = inclinação/6.
+/// </summary>
+/// <param name="Forma">LR ou BT.</param>
+/// <param name="Inclinacao">Em dB/oit (6 a 48).</param>
+/// <param name="Frequencia">A frequência de corte, em Hz.</param>
+public sealed record PassaBaixa(FormaFiltro Forma, int Inclinacao, double Frequencia)
+{
+    /// <summary>n = inclinação/6.</summary>
+    public int Ordem => Inclinacao / 6;
+
+    /// <summary>"LR24", "BT24".</summary>
+    public string Rotulo => $"{(Forma == FormaFiltro.Lr ? "LR" : "BT")}{Inclinacao}";
+
+    /// <summary>|H(f)|.</summary>
+    public double Modulo(double f)
+    {
+        var r = f / Frequencia;
+        return Forma == FormaFiltro.Lr
+            ? 1 / (1 + Math.Pow(r, Ordem))
+            : 1 / Math.Sqrt(1 + Math.Pow(r, 2 * Ordem));
+    }
+
+    /// <summary>
+    /// O passa-baixa do aparelho: o tipo (o índice do <c>043</c>, 0 = OFF) e a frequência (o <c>041</c>). Null
+    /// com o filtro em OFF, sem leitura ou com um índice que o catálogo não conhece: sem filtro.
+    /// </summary>
+    public static PassaBaixa? DoAparelho(decimal? indice, decimal? frequencia) =>
+        FiltroDoAparelho.Ler(indice, frequencia) is { } x ? new PassaBaixa(x.Forma, x.Inclinacao, x.Frequencia) : null;
+}
+
+/// <summary>O tipo de um filtro do aparelho (o índice do <c>042</c> ou do <c>043</c>) e a frequência dele.</summary>
+internal static class FiltroDoAparelho
+{
+    /// <summary>A forma, a inclinação e a frequência; null com o filtro em OFF, sem leitura ou com um índice desconhecido.</summary>
+    public static (FormaFiltro Forma, int Inclinacao, double Frequencia)? Ler(decimal? indice, decimal? frequencia)
     {
         if (indice is not { } i || frequencia is not { } f || f <= 0 || i != decimal.Truncate(i))
             return null;
@@ -50,7 +90,7 @@ public sealed record PassaAlta(FormaFiltro Forma, int Inclinacao, double Frequen
         if (forma is null || !int.TryParse(rotulo[2..], System.Globalization.NumberStyles.None,
                 System.Globalization.CultureInfo.InvariantCulture, out var inclinacao))
             return null;
-        return new PassaAlta(forma.Value, inclinacao, (double)f);
+        return (forma.Value, inclinacao, (double)f);
     }
 }
 

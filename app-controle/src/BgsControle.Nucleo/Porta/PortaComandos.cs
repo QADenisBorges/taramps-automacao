@@ -1102,6 +1102,11 @@ public sealed class PortaComandos : IDisposable
         w.WriteString("nome", setup?.Nome);
         // O ambiente do Setup em uso (CAP-16): o nome do JSON, ou null (não informado, ou sem Setup).
         w.WriteString("ambiente", setup?.Ambiente is { } ambiente ? Ambientes.Nome(ambiente) : null);
+        // O nível do Bluetooth do Setup em uso (história 13b): {valor, origem, fonte}, ou null (não medido, ou sem Setup).
+        if (setup?.NivelBluetooth is { } nivel)
+            GerenteSetups.EscreverNivelBluetooth(w, nivel);
+        else
+            w.WriteNull("nivelBluetooth");
         w.WriteBoolean("duvida", _setups.MotivoBloqueioIa is not null);
         w.WriteString("estado", _setups.Estado switch
         {
@@ -1457,7 +1462,7 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos aparece no celular, embaixo da chave Controle pela rede (Configurações, grupo APARELHO). Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
@@ -1494,6 +1499,7 @@ public sealed class PortaComandos : IDisposable
         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
         A cerca do limitador: numa saída calibrada e com limite, uma escrita do limitador (071) ou do passa-alta (040, 042) que deixe o limitador OFF, desconhecido ou acima do teto (veja GET /limites, "cerca") é recusada com 409 e a conta ("Limite: JBL L, −6,8 dB, pelo térmico."; num par, o canal culpado entre parênteses), sem nada enviado: no /ajuste, no /criacao/ajuste e no /memoria/aplicar (o lote inteiro é conferido antes da primeira escrita). Para baixar o passa-alta, baixe o limitador antes. O cancelar da criação volta ao som de antes com o limitador de cada saída em min(valor de antes, teto). A cerca não tem chave.
+        Sem calibração: numa saída com alto-falante passivo cujo módulo não tem o ganho medido (GET /limites, calibrada false), o app não sabe a tensão, e a porta recusa com 409 "Sem calibração: JBL L. O app não sabe a tensão." o ganho, o limitador e o EQ de saída dos canais dela (081, 070 a 073, 090 a 092), e o MASTER, o EQ de entrada, as 15 bandas, o preset de EQ e a rota (080, 030 a 032, 020, 220, 010) se alguma saída do Setup em uso está sem calibração. Sem Setup em uso, esses códigos dão 409 "Sem Setup em uso: o app não sabe a tensão das saídas.". Vale no /ajuste, no /criacao/ajuste e no /memoria/aplicar; o cancelar da criação sempre volta. A calibração é feita pelo usuário no celular.
         Com firmware diferente do R003, só os GET respondem.
         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).
         Códigos: 400 corpo ou campo inválido; 401 sem chave ou chave errada; 403 fora da rede local; 404 caminho desconhecido; 409 recusa do app (com o motivo); 413 corpo acima de 64 KB; 431 cabeçalho grande demais; 500 erro inesperado no app.

@@ -264,6 +264,8 @@ public sealed class GerenteSetups
         // História 13a: a cerca do limitador, no Setup em uso e nas saídas com o link que vale agora.
         _escritor.Cerca = escritas => Cerca.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
         _escritor.CercaNaVolta = escritas => Cerca.NaVolta(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
+        // História 13b: a porta não mexe no nível de uma saída sem calibração (nem em nada global sem Setup em uso).
+        _escritor.SemCalibracao = enderecos => SemCalibracao.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, enderecos);
 
         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
         _copia.Registrar(TipoAplicarMemoria,
@@ -1312,6 +1314,51 @@ public sealed class GerenteSetups
         }
     }
 
+    /// <summary>
+    /// Define o nível do Bluetooth do Setup (história 13b; null = não medido). É um dado físico: não manda
+    /// nada ao aparelho. Se não gravar, fica como estava.
+    /// </summary>
+    public async Task<ResultadoSetup> DefinirNivelBluetoothAsync(string id, DadoTecnico? nivel)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Setup(id) is not { } setup)
+                return Terminar(ResultadoSetup.Falha(MsgSetupNaoExiste));
+            if (nivel is { Fonte: { } fonte } && Ligacoes.TextoLongoValido(fonte) is null)
+                return Terminar(ResultadoSetup.Falha(Ligacoes.MsgFonteDadoInvalida));
+            if (setup.NivelBluetooth == nivel)
+                return Terminar(ResultadoSetup.Feito(null));
+            var dados = Dados;
+            if (!await GravarAsync(dados with { Setups = dados.Setups.Select(s => s.Id == id ? s with { NivelBluetooth = nivel } : s).ToArray() }))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            _log.Evento($"setup: {setup.Nome} com o nível do Bluetooth {(nivel is { } n ? n.Valor.ToString("0.0", Fio) + " dB" : "não medido")}");
+            return Terminar(ResultadoSetup.Feito(null));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Grava o ganho medido do módulo (história 13b, a calibração guiada): o <c>Ganho</c> (por canal, vale para
+    /// todos os canais dele) ou, na ponte, o <c>GanhoPonte</c>. É um dado físico da ficha: não manda nada ao
+    /// aparelho e não vai para a base de modelos (o medido é da instalação).
+    /// </summary>
+    public Task<ResultadoEquipamento> GravarGanhoMedidoAsync(string idSetup, string idModulo, bool ponte, DadoTecnico ganho) =>
+        MudarEquipamentosAsync(idSetup, setup =>
+        {
+            if (setup.Equipamentos.FirstOrDefault(e => e.Id == idModulo) is not { Grupo: GrupoEquipamento.Amplificador } modulo)
+                return new Mudanca(null, MsgEquipamentoNaoExiste, null, null);
+            var dados = ponte ? modulo.Dados with { GanhoPonte = ganho } : modulo.Dados with { Ganho = ganho };
+            var novo = modulo with { Dados = dados };
+            return new Mudanca(setup.Equipamentos.Select(e => e.Id == idModulo ? novo : e).ToArray(), null,
+                MsgEquipamentoGuardado(modulo.Nome), idModulo);
+        });
+
     /// <summary>Apaga um Setup, com as memórias dele. O Setup em uso não se apaga.</summary>
     public async Task<ResultadoSetup> ApagarSetupAsync(string id)
     {
@@ -2071,6 +2118,26 @@ public sealed class GerenteSetups
             _log.Evento($"{op.Descricao}: recusado pela cerca ({cerca})");
             return Aplicado.Falha(cerca);
         }
+        // História 13b: pela porta, o lote inteiro passa pela regra da saída sem calibração antes da primeira escrita.
+        if (Origem.Atual == OrigemComando.Ia)
+        {
+            string? semCalibracao;
+            try
+            {
+                semCalibracao = SemCalibracao.Conferir(setup.Equipamentos, Ligacoes.Saidas(setup.Equipamentos),
+                    escritas.Select(e => new Endereco(e.Parametro.Codigo, e.Indice)));
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"{op.Descricao}: falha ao conferir a calibração ({e.GetType().Name})");
+                semCalibracao = SemCalibracao.MsgFalhou;
+            }
+            if (semCalibracao is not null)
+            {
+                _log.Evento($"{op.Descricao}: recusado sem calibração ({semCalibracao})");
+                return Aplicado.Falha(semCalibracao);
+            }
+        }
         var copia = await _copia.IniciarAsync(op, manterCopia: refazendo);
         if (!copia.Ok)
             return Aplicado.Falha(copia.Motivo!);
@@ -2343,6 +2410,8 @@ public sealed class GerenteSetups
                 if (s.Ambiente is { } ambiente)
                     w.WriteString("ambiente", Ambientes.Nome(ambiente));
                 w.WriteString("quando", s.Quando.ToString("O", Fio));
+                if (s.NivelBluetooth is { } nivel)
+                    EscreverNivelBluetooth(w, nivel);
                 EscreverEquipamentos(w, s.Equipamentos);
                 var uso = dados.UsoDe(s.Id);
                 w.WriteStartArray("recentes");
@@ -2449,6 +2518,7 @@ public sealed class GerenteSetups
             setups.Add(new Setup(id, nome, FichaJson.Quando(item), ambiente)
             {
                 Equipamentos = equipamentos,
+                NivelBluetooth = formato == Formato ? LerNivelBluetooth(item) : null,
             });
             usos[id] = migrando ? (new List<string>(), new List<string?>()) : (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
@@ -2483,6 +2553,33 @@ public sealed class GerenteSetups
 
         var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
         return new DadosSetups(setups, memorias, ultimo, uso);
+    }
+
+    /// <summary>
+    /// O nível do Bluetooth do Setup (história 13b): <c>"nivelBluetooth":{"valor":-13.0,"origem":"medido","fonte":"…"}</c>.
+    /// O valor pode ser negativo; o formato do arquivo não muda (o campo é opcional).
+    /// </summary>
+    internal static void EscreverNivelBluetooth(Utf8JsonWriter w, DadoTecnico nivel)
+    {
+        w.WriteStartObject("nivelBluetooth");
+        w.WriteNumber("valor", nivel.Valor);
+        w.WriteString("origem", FichaJson.NomeOrigem(nivel.Origem));
+        if (nivel.Fonte is { } fonte)
+            w.WriteString("fonte", fonte);
+        w.WriteEndObject();
+    }
+
+    /// <summary>O nível do Bluetooth guardado, ou null (ausente, sem número, sem origem conhecida ou com a fonte inválida).</summary>
+    private static DadoTecnico? LerNivelBluetooth(JsonElement item)
+    {
+        if (!item.TryGetProperty("nivelBluetooth", out var n) || n.ValueKind != JsonValueKind.Object
+            || !n.TryGetProperty("valor", out var valor) || valor.ValueKind != JsonValueKind.Number || !valor.TryGetDecimal(out var v)
+            || FichaJson.OrigemDe(Texto(n, "origem")) is not { } origem)
+            return null;
+        var fonte = Texto(n, "fonte");
+        if (fonte is not null && Ligacoes.TextoLongoValido(fonte) is null)
+            return null;
+        return new DadoTecnico(v, origem, fonte is null ? null : Ligacoes.TextoLongoValido(fonte));
     }
 
     /// <summary>O JSON do <c>setup-mudo.json</c>: a marca, ou <c>"marca": null</c> quando não há.</summary>

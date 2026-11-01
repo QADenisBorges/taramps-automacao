@@ -180,6 +180,41 @@ public sealed class Escritor
         return ConferirCerca(escritas);
     }
 
+    /// <summary>
+    /// A regra da saída sem calibração (<see cref="Rendimento.SemCalibracao"/>, história 13b): para os endereços
+    /// que vão sair, o motivo da recusa, ou null. Vale só para a origem IA e só nas escritas avulsas (a pedida e
+    /// a cópia do link); os lotes conferem inteiros antes (<c>loteConferido</c>), e os que voltam (a volta à cópia
+    /// e o desfazer) nunca são recusados por ela. Ligada pelo <c>GerenteSetups</c>.
+    /// </summary>
+    internal Func<IReadOnlyList<Endereco>, string?>? SemCalibracao { get; set; }
+
+    /// <summary>
+    /// A recusa da regra "sem calibração" para o pedido e, com <paramref name="espelhar"/>, a cópia do link dele,
+    /// qualquer que seja a origem (a criação da memória, que só tem ajustes da porta, confere antes de anotar a
+    /// etapa). Uma falha ao conferir recusa.
+    /// </summary>
+    internal string? ConferirSemCalibracao(Parametro parametro, int? indice, bool espelhar)
+    {
+        if (SemCalibracao is not { } regra || !Rendimento.SemCalibracao.Vigia(parametro.Codigo))
+            return null;
+        try
+        {
+            var enderecos = new List<Endereco> { new(parametro.Codigo, indice) };
+            if (espelhar && Espelho?.Invoke(parametro, indice) is { } outro && outro != indice)
+                enderecos.Add(new Endereco(parametro.Codigo, outro));
+            return regra(enderecos);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao conferir a calibração ({e.GetType().Name})");
+            return Rendimento.SemCalibracao.MsgFalhou;
+        }
+    }
+
+    /// <summary>A recusa "sem calibração" de um pedido avulso da IA, ou null (outra origem, ou um lote já conferido).</summary>
+    private string? SemCalibracaoDoPedido(Parametro parametro, int? indice, bool espelhar, bool loteConferido) =>
+        loteConferido || Origem.Atual != OrigemComando.Ia ? null : ConferirSemCalibracao(parametro, indice, espelhar);
+
     /// <summary>O motivo do <see cref="Bloqueio"/> agora, ou null.</summary>
     internal string? MotivoBloqueio()
     {
@@ -266,6 +301,9 @@ public sealed class Escritor
         var esperado = parametro.Decodificar(escrita.NoFio).Valor;
         if (!daCopia && MotivoBloqueio() is { } bloqueio)
             return Recusar(quadro, bloqueio);
+        // Sem calibração (história 13b): a porta não mexe no nível de uma saída cuja tensão o app não sabe.
+        if (SemCalibracaoDoPedido(parametro, indice, espelhar, loteConferido) is { } semCalibracao)
+            return Recusar(quadro, semCalibracao);
         // A cerca, antes da fila: vale para toda origem, também com daCopia.
         if (CercaDoPedido(parametro, indice, esperado, espelhar, loteConferido) is { } cerca)
             return Recusar(quadro, cerca);

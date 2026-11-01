@@ -11,6 +11,7 @@ using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
@@ -161,6 +162,23 @@ public static class MauiProgram
             sp.GetRequiredService<IReprodutor>(),
             sp.GetRequiredService<LogBle>()));
 
+        // História 13b: a calibração guiada da saída (o ganho do módulo pelo gerador e o multímetro, o nível do
+        // Bluetooth pelo tom de 0 dBFS do celular, num AudioTrack). O tipo "calibrar-saida" fica registrado na
+        // CopiaAntes quando ela nasce (cedo, abaixo).
+        builder.Services.AddSingleton<ITomCelular>(_ => new TomCelularAndroid(Android.App.Application.Context));
+        builder.Services.AddSingleton(sp => new Calibracao(
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<GeradorSinal>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<ITomCelular>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<Player>(),
+            sp.GetRequiredService<TimeProvider>()));
+
         // História 7b: a monitoração (voltímetro e clip, só ouve) e os comandos de aparelho (remote
         // out, Bluetooth de áudio, resets, troca de senha e nome do produto).
         builder.Services.AddSingleton(sp => new MonitorAparelho(
@@ -195,6 +213,18 @@ public static class MauiProgram
             sp.GetRequiredService<IChaves>(),
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        // História 13b: a calibração guiada, um passo por tela (o XAML é da 13g).
+        builder.Services.AddSingleton(sp => new CalibracaoViewModel(
+            sp.GetRequiredService<Calibracao>(),
+            sp.GetRequiredService<GeradorSinal>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<Sessao>(),
+            sp.GetRequiredService<IChaves>(),
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<IAudioDoCelular>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
@@ -356,6 +386,9 @@ public static class MauiProgram
         app.Services.GetRequiredService<CriacaoMemoria>();
         // O gerador cedo: a regra 2 confere o 202 já na primeira leitura, e o Desconectar desliga antes de soltar.
         app.Services.GetRequiredService<GeradorSinal>();
+        // História 13b: a calibração cedo: o tipo "calibrar-saida" precisa estar registrado na CopiaAntes antes da
+        // primeira leitura (uma calibração interrompida volta como "aplicado pela metade").
+        app.Services.GetRequiredService<Calibracao>();
         // A monitoração cedo: a primeira leitura semeia o voltímetro e o clip.
         app.Services.GetRequiredService<MonitorAparelho>();
         // História 11: o Player cedo (acompanha a memória em uso desde a primeira conferência) e a porta de

@@ -188,6 +188,19 @@ public sealed class Player : IDisposable
         }
     });
 
+    /// <summary>
+    /// Pausar (história 13b, o tom do celular na calibração): tocando, pausa onde está; parado ou pausado, nada
+    /// muda. O Tocar/pausar continua de onde parou.
+    /// </summary>
+    public Task PausarAsync() => Executar(async () =>
+    {
+        if (Estado != EstadoPlayer.Tocando)
+            return;
+        await _reprodutor.PausarAsync();
+        Definir(EstadoPlayer.Pausado, Atual);
+        _log.Evento("player: pausado para o tom do celular");
+    });
+
     /// <summary>Próxima: toca a faixa seguinte à atual. Parado, não faz nada.</summary>
     public Task ProximaAsync() => Executar(async () =>
     {

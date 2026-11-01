@@ -23,6 +23,13 @@ public sealed record Setup(
     /// criação. A lista é sempre válida (<see cref="Ligacoes.Validar"/>).
     /// </summary>
     public IReadOnlyList<Equipamento> Equipamentos { get; init; } = [];
+
+    /// <summary>
+    /// O nível do Bluetooth (história 13b): o tom de 0 dBFS do celular a 100 %, em dB na escala do
+    /// limitador (0 dB = 2,0 V na entrada do módulo), com a origem (a calibração guiada grava "medido").
+    /// Opcional; o valor pode ser negativo (−13,0 dB). Null = não medido.
+    /// </summary>
+    public DadoTecnico? NivelBluetooth { get; init; }
 }
 
 /// <summary>Onde o Setup está (CAP-16): um dado físico do Setup, que o Agente usa. Opcional, sem padrão.</summary>

@@ -1,5 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Setups;
 
 namespace BgsControle.Telas;
@@ -25,19 +26,32 @@ public sealed record SaidaTela(SaidaApp App, string Nome)
     /// <summary>É um par com link.</summary>
     public bool Par => App.Par;
 
+    /// <summary>
+    /// "Sem calibração: o app não sabe a tensão." numa saída com alto-falante passivo cujo módulo não tem o
+    /// ganho medido (história 13b, <see cref="SemCalibracao"/>), ou null. A tela deixa mexer, com o aviso.
+    /// </summary>
+    public string? AvisoCalibracao { get; init; }
+
     /// <summary>As saídas do núcleo com os nomes da tela, na ordem dos canais.</summary>
-    public static IReadOnlyList<SaidaTela> De(IReadOnlyList<SaidaApp> saidas)
+    public static IReadOnlyList<SaidaTela> De(IReadOnlyList<SaidaApp> saidas) => De(saidas, null);
+
+    /// <summary>As saídas do núcleo com os nomes da tela e, com os equipamentos do Setup, o aviso da calibração.</summary>
+    public static IReadOnlyList<SaidaTela> De(IReadOnlyList<SaidaApp> saidas, IReadOnlyList<Equipamento>? equipamentos)
     {
         var nomes = Ligacoes.NomesNaTela(saidas);
-        return saidas.Select((s, i) => new SaidaTela(s, nomes[i])).ToArray();
+        return saidas.Select((s, i) => new SaidaTela(s, nomes[i])
+        {
+            AvisoCalibracao = equipamentos is not null && SemCalibracao.Sem(equipamentos, s) ? SemCalibracao.MsgAviso : null,
+        }).ToArray();
     }
 
-    /// <summary>As saídas em uso agora.</summary>
-    public static IReadOnlyList<SaidaTela> EmUso(GerenteSetups setups) => De(setups.SaidasEmUso);
+    /// <summary>As saídas em uso agora, com o aviso da calibração.</summary>
+    public static IReadOnlyList<SaidaTela> EmUso(GerenteSetups setups) => De(setups.SaidasEmUso, setups.SetupEmUso?.Equipamentos);
 
-    /// <summary>A mesma saída para a tela: mestre, canais, nome e aviso.</summary>
+    /// <summary>A mesma saída para a tela: mestre, canais, nome, aviso e aviso da calibração.</summary>
     public bool Igual(SaidaTela outra) =>
-        Canal == outra.Canal && Nome == outra.Nome && Aviso == outra.Aviso && App.Canais.SequenceEqual(outra.App.Canais);
+        Canal == outra.Canal && Nome == outra.Nome && Aviso == outra.Aviso && AvisoCalibracao == outra.AvisoCalibracao
+        && App.Canais.SequenceEqual(outra.App.Canais);
 
     /// <summary>As duas listas mostram as mesmas saídas.</summary>
     public static bool Iguais(IReadOnlyList<SaidaTela> a, IReadOnlyList<SaidaTela> b) =>
