@@ -1,5 +1,6 @@
 using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
 
@@ -98,6 +99,87 @@ public sealed class Escritor
     /// </summary>
     internal Func<string?>? Bloqueio { get; set; }
 
+    /// <summary>
+    /// A cerca do limitador (<see cref="Rendimento.Cerca"/>, história 13a): para as escritas que vão sair
+    /// (a pedida e a cópia do link, ou um lote inteiro), o motivo da recusa, ou null. Um valor null é uma
+    /// escrita que não decodifica. Vale para toda origem, também com <c>daCopia</c>: a tela, a porta, a
+    /// criação, a cópia do link, o aplicar e a reaplicação. Um lote conferido inteiro antes da primeira
+    /// escrita (<c>loteConferido</c>) não é conferido de novo escrita a escrita.
+    /// </summary>
+    internal Func<IReadOnlyList<(Endereco Endereco, Valor? Valor)>, string?>? Cerca { get; set; }
+
+    /// <summary>
+    /// A cerca nos lotes que voltam (a volta à cópia e o desfazer): os limitadores que vão no teto em vez
+    /// do valor da cópia (<see cref="Rendimento.Cerca.NaVolta"/>). Ligada com a <see cref="Cerca"/>.
+    /// </summary>
+    internal Func<IReadOnlyList<(Endereco Endereco, Valor? Valor)>, IReadOnlyList<TetoNaVolta>>? CercaNaVolta { get; set; }
+
+    /// <summary>A recusa da <see cref="Cerca"/> para as escritas, ou null. Uma falha ao conferir recusa.</summary>
+    internal string? ConferirCerca(IReadOnlyList<(Endereco Endereco, Valor? Valor)> escritas)
+    {
+        if (Cerca is not { } cerca || !escritas.Any(e => Rendimento.Cerca.Toca(e.Endereco.Codigo)))
+            return null;
+        try
+        {
+            return cerca(escritas);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao conferir o limite ({e.GetType().Name})");
+            return Rendimento.Cerca.MsgFalhou;
+        }
+    }
+
+    /// <summary>
+    /// Os limitadores que um lote que volta escreve no teto (<see cref="CercaNaVolta"/>), ou vazio sem a
+    /// cerca ligada. Uma falha ao calcular devolve null: o lote não sai (<see cref="Rendimento.Cerca.MsgFalhou"/>).
+    /// </summary>
+    internal IReadOnlyList<TetoNaVolta>? TetosNaVolta(IReadOnlyList<(Endereco Endereco, Valor? Valor)> escritas)
+    {
+        if (CercaNaVolta is not { } naVolta)
+            return [];
+        try
+        {
+            return naVolta(escritas);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao conferir o limite na volta ({e.GetType().Name})");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A recusa da cerca para um valor (como o aparelho o devolve) e, com <paramref name="espelhar"/>, a
+    /// cópia do link, ou null: quem precisa saber antes de mexer em outra coisa (a criação da memória).
+    /// </summary>
+    internal string? ConferirCerca(Parametro parametro, int? indice, Valor? valor, bool espelhar) =>
+        CercaDoPedido(parametro, indice, valor, espelhar, loteConferido: false);
+
+    /// <summary>A recusa da cerca para o pedido e a cópia do link dele, ou null. Um pedido que não decodifica vai como desconhecido.</summary>
+    private string? CercaDoPedido(Parametro parametro, int? indice, Valor? esperado, bool espelhar, bool loteConferido)
+    {
+        if (loteConferido || !Rendimento.Cerca.Toca(parametro.Codigo))
+            return null;
+        var escritas = new List<(Endereco, Valor?)> { (new Endereco(parametro.Codigo, indice), esperado) };
+        if (espelhar)
+        {
+            int? outro;
+            try
+            {
+                outro = Espelho?.Invoke(parametro, indice);
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"falha ao conferir o link ({e.GetType().Name})");
+                return Rendimento.Cerca.MsgFalhou;
+            }
+            if (outro is { } canal && canal != indice)
+                escritas.Add((new Endereco(parametro.Codigo, canal), esperado));
+        }
+        return ConferirCerca(escritas);
+    }
+
     /// <summary>O motivo do <see cref="Bloqueio"/> agora, ou null.</summary>
     internal string? MotivoBloqueio()
     {
@@ -131,16 +213,19 @@ public sealed class Escritor
     /// Com <paramref name="daCopia"/> (o Voltar à cópia, o aplicar de uma memória ou preset e os ajustes da criação
     /// da memória, que andam com a marca da cópia), passa pelo <see cref="Bloqueio"/>.
     /// </summary>
-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, Valor valor, bool espelhar, bool daCopia = false)
+    /// <remarks>Com <paramref name="loteConferido"/>, a escrita é de um lote que a <see cref="Cerca"/> já conferiu inteiro antes da primeira escrita.</remarks>
+    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, Valor valor, bool espelhar, bool daCopia = false,
+        bool loteConferido = false)
     {
         if (valor.Numero is { } n)
-            return EscreverAsync(parametro, indice, n, espelhar, daCopia);
+            return EscreverAsync(parametro, indice, n, espelhar, daCopia, loteConferido);
         if (valor.Texto is { } t)
-            return EscreverAsync(parametro, indice, t, espelhar, daCopia);
+            return EscreverAsync(parametro, indice, t, espelhar, daCopia, loteConferido);
         return Task.FromResult(ResultadoEscrita.Falha(MsgIlegivel));
     }
 
-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, decimal valor, bool espelhar, bool daCopia = false)
+    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, decimal valor, bool espelhar, bool daCopia = false,
+        bool loteConferido = false)
     {
         string quadro;
         try
@@ -151,10 +236,11 @@ public sealed class Escritor
         {
             return Task.FromResult(ResultadoEscrita.Falha(e.Message));
         }
-        return Pedir(parametro, indice, quadro, espelhar, daCopia);
+        return Pedir(parametro, indice, quadro, espelhar, daCopia, loteConferido);
     }
 
-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, string texto, bool espelhar, bool daCopia = false)
+    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, string texto, bool espelhar, bool daCopia = false,
+        bool loteConferido = false)
     {
         string quadro;
         try
@@ -165,10 +251,10 @@ public sealed class Escritor
         {
             return Task.FromResult(ResultadoEscrita.Falha(e.Message));
         }
-        return Pedir(parametro, indice, quadro, espelhar, daCopia);
+        return Pedir(parametro, indice, quadro, espelhar, daCopia, loteConferido);
     }
 
-    private async Task<ResultadoEscrita> Pedir(Parametro parametro, int? indice, string quadro, bool espelhar, bool daCopia)
+    private async Task<ResultadoEscrita> Pedir(Parametro parametro, int? indice, string quadro, bool espelhar, bool daCopia, bool loteConferido)
     {
         if (Catalogo.EscritaDeAudio(quadro) is not { } escrita)
         {
@@ -180,9 +266,12 @@ public sealed class Escritor
         var esperado = parametro.Decodificar(escrita.NoFio).Valor;
         if (!daCopia && MotivoBloqueio() is { } bloqueio)
             return Recusar(quadro, bloqueio);
+        // A cerca, antes da fila: vale para toda origem, também com daCopia.
+        if (CercaDoPedido(parametro, indice, esperado, espelhar, loteConferido) is { } cerca)
+            return Recusar(quadro, cerca);
         // A origem ambiente de quem pediu (tela, IA ou app) vai junto até o envio: a fila roda em
         // outra tarefa, e um pedido mais novo de outra origem pode tomar o lugar deste.
-        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, Origem.Atual);
+        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, loteConferido, Origem.Atual);
         var endereco = new Endereco(parametro.Codigo, indice);
         var tcs = new TaskCompletionSource<ResultadoEscrita>(TaskCreationOptions.RunContinuationsAsynchronously);
         bool iniciar;
@@ -357,6 +446,9 @@ public sealed class Escritor
             // Conferido de novo com a porta: um pedido da fila não entra no meio de uma memória.
             if (!pedido.DaCopia && MotivoBloqueio() is { } bloqueio)
                 return Recusar(pedido.Quadro, bloqueio);
+            // A cerca de novo, com a porta: o estado agora já tem as escritas que saíram antes desta.
+            if (CercaDoPedido(pedido.Parametro, pedido.Indice, pedido.Esperado, pedido.Espelhar, pedido.LoteConferido) is { } cerca)
+                return Recusar(pedido.Quadro, cerca);
 
             var consulta = new Consulta(pedido.Parametro, pedido.Indice);
             var (envio, resposta) = await EnviarEEsperarAsync(pedido.Quadro, consulta, _tempos.PrazoEco);
@@ -476,7 +568,8 @@ public sealed class Escritor
         alvo?.Resposta.TrySetResult(null);
     }
 
-    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia, OrigemComando Origem);
+    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia, bool LoteConferido,
+        OrigemComando Origem);
 
     /// <summary>Quem espera uma escrita, com a origem de quem pediu.</summary>
     private sealed record Espera(TaskCompletionSource<ResultadoEscrita> Tcs, OrigemComando Origem);

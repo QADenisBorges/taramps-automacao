@@ -529,6 +529,49 @@ public sealed class ControleParametroViewModelTestes : IDisposable
         Assert.Equal("−10,0 dB", c.TextoValor);
     }
 
+    /// <summary>
+    /// História 13a, a cerca na tela: com o Casa 2.1 calibrado em uso e o passa-alta da JBL L em 200 Hz
+    /// (LR24), o teto é −6,8 dB pelo térmico. −6,7 é recusado com a conta, nada sai e a tela volta ao valor
+    /// do aparelho; −6,8 passa. O OFF também é recusado.
+    /// </summary>
+    [Fact]
+    public async Task Limitador_acima_do_teto_na_tela_mostra_a_conta_e_nada_sai()
+    {
+        var b = new Bancada(setups: true);
+        await b.Conectar();
+        var corte = b.Escritor.EscreverAsync(Catalogo.ParametroDe("040")!, 0, 200m);
+        await b.Rodar(corte);
+        Assert.True((await corte).Ok);
+        var c = b.Fabrica.Criar(Catalogo.ParametroDe("071")!, 0, null);
+        c.Expandir();
+        c.AbrirCampo();
+        c.TextoCampo = "-6,7";
+
+        await c.Confirmar.ExecutarAsync();
+        await b.Rodar(c.UltimaEscrita);
+
+        Assert.Equal("Limite: JBL L, −6,8 dB, pelo térmico.", c.Aviso);
+        Assert.Equal(0, b.EscritasDe("*071*0*"));
+        Assert.Equal("-15.0", b.Simulador.Valor("071", 0));
+        Assert.Equal("−15,0 dB", c.TextoValor);
+
+        await c.AlternarOff.ExecutarAsync();
+        await b.Rodar(c.UltimaEscrita);
+        Assert.Equal("Limite: JBL L, o limitador não pode ficar desligado.", c.Aviso);
+        Assert.Equal(0, b.EscritasDe("*071*0*"));
+
+        c.AbrirCampo();
+        c.TextoCampo = "-6,8";
+        await c.Confirmar.ExecutarAsync();
+        await b.Rodar(c.UltimaEscrita);
+
+        Assert.Null(c.Aviso);
+        Assert.Equal("-6.8", b.Simulador.Valor("071", 0));
+        Assert.Equal("−6,8 dB", c.TextoValor);
+        b.ConferirSoAudio();
+        Assert.Empty(b.Tela.Erros);
+    }
+
     // ----------------------------------------------------------------- travas
 
     [Fact]

@@ -348,7 +348,8 @@ public static class MauiProgram
         app.Services.GetRequiredService<GerentePresets>();
         // Os Setups cedo (com os presets e as playlists): a conferência roda na primeira leitura de cada
         // conexão, os tipos "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam
-        // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas.
+        // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas. História 13a: é ele que
+        // liga a cerca do limitador no escritor (como a cópia antes liga o bloqueio), antes de qualquer escrita.
         app.Services.GetRequiredService<GerenteSetups>();
         // História 9d: a criação da memória cedo: o tipo "criar-memoria" precisa estar registrado na CopiaAntes antes
         // da primeira leitura (uma criação interrompida volta como "aplicado pela metade").

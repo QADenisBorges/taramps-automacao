@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Aparelho;
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Gerador;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
@@ -552,6 +553,7 @@ public sealed class PortaComandos : IDisposable
                 "/catalogo" => new RespostaPorta(200, JsonPorta.Ok(EscreverCatalogo)),
                 "/eventos" => RespostaEventos(pedido),
                 "/historico" => RespostaHistorico(pedido),
+                "/limites" => RespostaLimites(),
                 "/criacao" when _criacao is not null => new RespostaPorta(200, JsonPorta.Ok(EscreverCriacao)),
                 _ => Recusa(404, MsgCaminho),
             };
@@ -1192,6 +1194,103 @@ public sealed class PortaComandos : IDisposable
         w.WriteEndArray();
     }
 
+    /// <summary>
+    /// O <c>GET /limites</c> (história 13a): por saída do Setup em uso, os canais, se está calibrada, o teto
+    /// (dB do limitador ou null) e em volts, o que manda, o selo, o aviso (o teto abaixo de −48 dB), o teto da
+    /// cerca em cada canal e cada limite com o valor, o selo, a conta e a falta; e os alto-falantes fora da
+    /// conta, com o motivo. Sem Setup em uso, as listas vazias. Uma falha no cálculo é 500 com a mensagem.
+    /// </summary>
+    private RespostaPorta RespostaLimites()
+    {
+        IReadOnlyList<LimiteSaida> limites;
+        IReadOnlyList<AltoFalanteFora> fora;
+        try
+        {
+            limites = _setups.LimitesEmUso;
+            fora = _setups.ForaDaContaEmUso;
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"porta: falha ao calcular os limites ({e.GetType().Name})");
+            return Recusa(500, Cerca.MsgFalhou);
+        }
+        return new RespostaPorta(200, JsonPorta.Ok(w => EscreverLimites(w, limites, fora)));
+    }
+
+    private static void EscreverLimites(Utf8JsonWriter w, IReadOnlyList<LimiteSaida> limites, IReadOnlyList<AltoFalanteFora> fora)
+    {
+        w.WriteStartArray("saidas");
+        foreach (var l in limites)
+        {
+            w.WriteStartObject();
+            w.WriteString("saida", l.Nome);
+            w.WriteStartArray("canais");
+            foreach (var c in l.Canais)
+                w.WriteNumberValue(c);
+            w.WriteEndArray();
+            w.WriteString("altoFalante", l.AltoFalante);
+            w.WriteBoolean("calibrada", l.Calibrada);
+            if (l.TetoDb is { } teto)
+                w.WriteNumber("teto", teto);
+            else
+                w.WriteNull("teto");
+            if (l.TetoV is { } tetoV)
+                w.WriteNumber("tetoV", Math.Round(tetoV, 2));
+            else
+                w.WriteNull("tetoV");
+            w.WriteString("manda", l.Manda is { } manda ? LimiteFisico.ChaveLimite(manda) : null);
+            w.WriteBoolean("estimado", l.Estimado);
+            w.WriteString("semLimite", l.SemLimite);
+            w.WriteString("aviso", l.Aviso);
+            w.WriteStartArray("cerca");
+            foreach (var c in l.PorCanal)
+            {
+                w.WriteStartObject();
+                w.WriteNumber("canal", c.Canal);
+                w.WriteNumber("teto", c.TetoCerca);
+                w.WriteNumber("tetoFisico", c.TetoDb);
+                w.WriteString("manda", LimiteFisico.ChaveLimite(c.Manda));
+                w.WriteString("altoFalante", c.AltoFalante);
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+            EscreverLimite(w, "termico", l.Termico);
+            EscreverLimite(w, "excursao", l.Excursao);
+            EscreverLimite(w, "ceifamento", l.Ceifamento);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("foraDaConta");
+        foreach (var f in fora)
+        {
+            w.WriteStartObject();
+            w.WriteString("altoFalante", f.AltoFalante);
+            w.WriteString("motivo", f.Motivo);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+
+    private static void EscreverLimite(Utf8JsonWriter w, string nome, Limite? limite)
+    {
+        if (limite is null)
+        {
+            w.WriteNull(nome);
+            return;
+        }
+        w.WriteStartObject(nome);
+        if (limite.Infinito)
+            w.WriteString("v", "infinito");
+        else if (limite.V is { } v)
+            w.WriteNumber("v", Math.Round(v, 2));
+        else
+            w.WriteNull("v");
+        w.WriteString("selo", limite.Selo);
+        w.WriteString("conta", limite.Conta);
+        w.WriteString("falta", limite.Falta);
+        w.WriteEndObject();
+    }
+
     private static void EscreverCatalogo(Utf8JsonWriter w)
     {
         w.WriteStartArray("parametros");
@@ -1362,6 +1461,7 @@ public sealed class PortaComandos : IDisposable
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
+        GET  /limites: o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Uma falha no cálculo: 500.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.
@@ -1393,6 +1493,7 @@ public sealed class PortaComandos : IDisposable
         O toque do usuário na tela nunca é recusado: ele pausa a IA, que retoma depois de 10 s sem toques. Um ajuste que o usuário acabou de mexer é recusado pela porta por 10 s ("o usuário está mexendo nisso.").
         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
+        A cerca do limitador: numa saída calibrada e com limite, uma escrita do limitador (071) ou do passa-alta (040, 042) que deixe o limitador OFF, desconhecido ou acima do teto (veja GET /limites, "cerca") é recusada com 409 e a conta ("Limite: JBL L, −6,8 dB, pelo térmico."; num par, o canal culpado entre parênteses), sem nada enviado: no /ajuste, no /criacao/ajuste e no /memoria/aplicar (o lote inteiro é conferido antes da primeira escrita). Para baixar o passa-alta, baixe o limitador antes. O cancelar da criação volta ao som de antes com o limitador de cada saída em min(valor de antes, teto). A cerca não tem chave.
         Com firmware diferente do R003, só os GET respondem.
         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).
         Códigos: 400 corpo ou campo inválido; 401 sem chave ou chave errada; 403 fora da rede local; 404 caminho desconhecido; 409 recusa do app (com o motivo); 413 corpo acima de 64 KB; 431 cabeçalho grande demais; 500 erro inesperado no app.

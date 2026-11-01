@@ -387,6 +387,26 @@ public sealed class CriacaoTestes : IDisposable
         Assert.Null(_copia.Ultima!.Operacao!.Etapa); // nenhum ajuste escrito
     }
 
+    /// <summary>História 13a: a cerca vale na criação (o passa-alta da JBL L em 150 Hz na FILME: o teto é o do curso do cone).</summary>
+    [Fact]
+    public async Task Ajuste_do_limitador_acima_do_teto_da_409_nada_sai_e_nao_anota_a_etapa()
+    {
+        var chave = await Autorizada();
+
+        var r = await Ajuste(chave, codigo: "071", indice: 0, valor: -3.0m, frase: "Mais volume", motivo: "Pediu mais.");
+
+        Assert.Equal(409, r.Status);
+        Assert.StartsWith("Limite: JBL L, −9,", Motivo(r));
+        Assert.EndsWith("dB, pelo curso do cone.", Motivo(r));
+        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*071*0*", StringComparison.Ordinal));
+        Assert.Equal("-15.0", _simulador.Valor("071", 0));
+        Assert.Null(_copia.Ultima!.Operacao!.Etapa); // nenhum ajuste escrito
+
+        Assert.Equal(200, (await Ajuste(chave, codigo: "071", indice: 0, valor: -12.0m, frase: "Mais volume", motivo: "Pediu mais.")).Status);
+        Assert.Equal("-12.0", _simulador.Valor("071", 0));
+        Assert.Equal(CriacaoMemoria.EtapaAjustes, _copia.Ultima!.Operacao!.Etapa); // o ajuste aceito anota a etapa
+    }
+
     [Fact]
     public async Task Ajuste_do_ganho_da_saida_3_devolve_antes_novo_e_relido_vai_como_IA_e_o_espelho_mostra()
     {
@@ -570,6 +590,37 @@ public sealed class CriacaoTestes : IDisposable
         Assert.Equal(CriacaoMemoria.PorUsuario, e.Por);
         Assert.True(e.Voltou);
         Assert.Equal("fechada", Json(await Pedir("GET", "/criacao", chave: chave)).GetProperty("etapa").GetString());
+    }
+
+    /// <summary>
+    /// História 13a (decisão do Denis de 31/10/2026): o som de antes tinha o limitador do Sub acima do teto
+    /// (−3 dB, com o teto em −7,8 dB pelo curso do cone); o ✕ volta ao som de antes com o Sub no teto, o
+    /// resto igual, e a criação fecha.
+    /// </summary>
+    [Fact]
+    public async Task O_X_com_o_Sub_acima_do_teto_no_som_de_antes_volta_com_o_Sub_no_teto_e_fecha()
+    {
+        await Conectar();
+        _simulador.Definir("071", 2, "-3.0");
+        _simulador.Definir("071", 3, "-3.0");
+        Assert.True((await Rodar(_leitura.LerNovaAsync()))?.Completo);
+        Assert.Equal(-3.0m, _estado.Valor("071", 2)!.Numero);
+        var chave = await Parear();
+        Assert.Equal(200, (await Pedir("POST", "/criacao/abrir", null, chave)).Status);
+        Assert.Equal(200, (await Pergunta(chave, ultima: true)).Status);
+        Assert.True(_criacao.Responder(0).Ok);
+        var ganhoAntes = _simulador.Valor("081", 2);
+        Assert.Equal(200, (await Ajuste(chave)).Status); // o ganho da saída 3
+
+        var r = await Rodar(_criacao.CancelarAsync(CriacaoMemoria.PorUsuario));
+
+        Assert.True(r.Ok, r.Motivo);
+        Assert.Equal(EtapaCriacao.Fechada, _criacao.Etapa);
+        Assert.Equal("-7.8", _simulador.Valor("071", 2));
+        Assert.Equal("-7.8", _simulador.Valor("071", 3));
+        Assert.Equal(ganhoAntes, _simulador.Valor("081", 2));
+        Assert.Null(_copia.Ultima!.Operacao);
+        Assert.Null(_copia.PelaMetade);
     }
 
     [Fact]

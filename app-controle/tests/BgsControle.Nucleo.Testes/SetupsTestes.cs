@@ -94,6 +94,13 @@ public sealed partial class SetupsTestes : IDisposable
     /// <summary>O app sem nenhum arquivo: a primeira abertura (o app nasce zerado).</summary>
     private static SetupsTestes SemArquivos(string? playlists = null) => new(null, null, playlists);
 
+    /// <summary>História 13a: o cenário da FILME com o Casa 2.1 sem calibração (a cerca não vale ali).</summary>
+    private static SetupsTestes ComFilmeSemCalibracao() =>
+        new(GerenteSetups.ParaJson(CenarioFilme.Dados with
+            {
+                Setups = [CasaDoDenis.SetupCasa with { Equipamentos = CasaDoDenis.EquipamentosSemCalibracao }],
+            }), null, presetsGuardado: CenarioFilme.PresetsJson, modelosGuardado: CenarioFilme.ModelosJson);
+
     /// <summary>Só o Casa 2.1 da fixture (sem memórias) e os 3 modelos dela guardados.</summary>
     private static SetupsTestes SoCasa(string? playlists = null) =>
         new(CasaDoDenis.SetupsJson, null, playlists, modelosGuardado: CasaDoDenis.ModelosJson);
@@ -1124,30 +1131,32 @@ public sealed partial class SetupsTestes : IDisposable
     [Fact]
     public async Task Aplicar_memoria_com_limiter_OFF_escreve_0_5_volta_as_bandas_do_preset_e_o_mute_nao_muda()
     {
-        await Conectar();
-        Assert.True((await Rodar(_escritor.EscreverAsync(Limiter, 1, 0.5m))).Ok);
-        Assert.True((await Rodar(_setups.CriarMemoriaAsync("SEM LIMITE"))).Ok);
-        var off = Valor(_setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Regulagem, "071", 1)!;
+        // Desde a 13a, o limitador OFF só passa numa saída sem calibração (a cerca não vale ali).
+        using var t = ComFilmeSemCalibracao();
+        await t.Conectar();
+        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Limiter, 1, 0.5m))).Ok);
+        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("SEM LIMITE"))).Ok);
+        var off = Valor(t._setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Regulagem, "071", 1)!;
         Assert.Equal("OFF", Limiter.Decodificar(off).Valor!.Rotulo);
-        Assert.True((await Rodar(_setups.AplicarAsync(Filme))).Ok);
-        Assert.Equal("-18.0", _simulador.Valor("071", 1));
-        Assert.True((await Rodar(_escritor.EscreverAsync(Banda, 3, -4.0m))).Ok);
-        _simulador.Definir("100", 3, "1");
-        var inicio = _simulador.Escritas.Count;
+        Assert.True((await t.Rodar(t._setups.AplicarAsync(Filme))).Ok);
+        Assert.Equal("-18.0", t._simulador.Valor("071", 1));
+        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Banda, 3, -4.0m))).Ok);
+        t._simulador.Definir("100", 3, "1");
+        var inicio = t._simulador.Escritas.Count;
 
-        var r = await Rodar(_setups.AplicarAsync(_setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Id));
+        var r = await t.Rodar(t._setups.AplicarAsync(t._setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Id));
 
         Assert.True(r.Ok, r.Mensagem);
         // A memória nasceu com a FILME em uso: lembra o Cinema, e a banda volta junto.
-        Assert.Equal(["*071*1*0.5*", Banda.CodificarEscrita(3, 0.0m)], AudioDesde(inicio));
-        var copia = CopiaAntes.DeJson(_guardadoCopia.Texto!)!;
+        Assert.Equal(["*071*1*0.5*", Banda.CodificarEscrita(3, 0.0m)], t.AudioDesde(inicio));
+        var copia = CopiaAntes.DeJson(t._guardadoCopia.Texto!)!;
         Assert.Null(copia.Operacao);
         Assert.Contains(copia.Valores, v => v is { Codigo: "071", Indice: 1, NoFio: "-18.0" });
-        var espelho = _estado.Copiar();
-        var memoria = _setups.Memoria(_setups.EmUso.IdMemoria)!;
+        var espelho = t._estado.Copiar();
+        var memoria = t._setups.Memoria(t._setups.EmUso.IdMemoria)!;
         Assert.Empty(Camadas.Diferentes(memoria.Regulagem, espelho));
         Assert.Empty(Camadas.Diferentes(CenarioFilme.Bandas, espelho));
-        Assert.Equal(1m, _estado.Valor("100", 3)!.Numero);
+        Assert.Equal(1m, t._estado.Valor("100", 3)!.Numero);
         Assert.Equal("SEM LIMITE", memoria.Nome);
     }
 

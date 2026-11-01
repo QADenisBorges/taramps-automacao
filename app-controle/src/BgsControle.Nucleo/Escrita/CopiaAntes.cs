@@ -454,13 +454,27 @@ public sealed class CopiaAntes
         if (_estado.Lendo || !_estado.Pronto)
             return ResultadoCopia.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura);
 
-        var (escritas, ilegiveis) = Diferencas(copia, _estado.Copiar());
+        var atual = _estado.Copiar();
+        var (escritas, ilegiveis) = Diferencas(copia, atual);
         if (ilegiveis > 0)
         {
             // Voltar só uma parte daria "voltou" sem ter voltado: nada sai.
             _log.Evento($"{acao}: {ilegiveis} valores da cópia ilegíveis ({descricao})");
             return ResultadoCopia.Falha(MsgCopiaIlegivel(ilegiveis));
         }
+        // A cerca na volta (história 13a, decisão do Denis de 31/10/2026): a volta nunca é recusada; o
+        // limitador de cada saída calibrada e com limite volta em min(cópia, teto), com o teto calculado no
+        // corte da própria cópia. O resto da cópia fica igual.
+        var tetos = _escritor.TetosNaVolta(escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), (Valor?)e.Valor)).ToArray());
+        if (tetos is null || ComTetos(escritas, tetos, atual) is not var (comTetos, escritos))
+        {
+            _log.Evento($"{acao}: {Rendimento.Cerca.MsgFalhou} ({descricao})");
+            return ResultadoCopia.Falha(Rendimento.Cerca.MsgFalhou);
+        }
+        foreach (var t in escritos)
+            _log.Evento($"{acao}: o limitador de {t.Saida} volta no teto, {t.Teto.ToString("0.0", CultureInfo.InvariantCulture)} dB, e não no valor da cópia");
+        escritas = comTetos;
+
         if (escritas.Count > 0 && _sessao.Conferir(escritas[0].Quadro) is { } motivo)
         {
             // Recusado antes de mexer em qualquer parâmetro (chave desligada, só leitura).
@@ -473,7 +487,7 @@ public sealed class CopiaAntes
         string? ultimoMotivo = null;
         foreach (var e in escritas)
         {
-            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
+            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true, loteConferido: true);
             if (!r.Ok || r.Diferente)
             {
                 falhas++;
@@ -488,6 +502,39 @@ public sealed class CopiaAntes
                 : $"{falhas} ajustes não voltaram: {ultimoMotivo}");
         }
         return ResultadoCopia.Sucesso;
+    }
+
+    /// <summary>
+    /// O lote da volta com os limitadores no teto (história 13a): os do teto vão primeiro (baixar o
+    /// limitador antes de mexer no corte é o lado seguro), no lugar do valor da cópia; o resto fica na
+    /// ordem. Um canal que o aparelho já tem no teto só perde a escrita da cópia. Devolve também os tetos
+    /// escritos de fato (para o log). Null se um teto não dá para codificar.
+    /// </summary>
+    private static (List<Escrita> Lote, List<Rendimento.TetoNaVolta> Escritos)? ComTetos(List<Escrita> escritas,
+        IReadOnlyList<Rendimento.TetoNaVolta> tetos, IReadOnlyDictionary<Endereco, Valor> atual)
+    {
+        if (tetos.Count == 0)
+            return (escritas, []);
+        if (Catalogo.ParametroDe(Rendimento.Cerca.CodigoLimitador) is not { } limitador)
+            return null;
+        var primeiro = new List<Escrita>();
+        var escritos = new List<Rendimento.TetoNaVolta>();
+        foreach (var t in tetos)
+        {
+            var quadro = Codificar(limitador, t.Endereco.Indice, new Valor { NoFio = "", Numero = t.Teto, Exibicao = "" });
+            if (quadro is null || Catalogo.EscritaDeAudio(quadro) is not { } noFio
+                || limitador.Decodificar(noFio.NoFio).Valor is not { } valor)
+                return null;
+            // O aparelho já está no teto: só sai o valor da cópia (acima dele).
+            if (!(atual.TryGetValue(t.Endereco, out var agora) && Iguais(agora, valor)))
+            {
+                primeiro.Add(new Escrita(limitador, t.Endereco.Indice, valor, quadro));
+                escritos.Add(t);
+            }
+        }
+        var trocados = tetos.Select(t => t.Endereco).ToHashSet();
+        primeiro.AddRange(escritas.Where(e => !trocados.Contains(new Endereco(e.Parametro.Codigo, e.Indice))));
+        return (primeiro, escritos);
     }
 
     /// <summary>

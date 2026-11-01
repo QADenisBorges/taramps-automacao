@@ -340,6 +340,16 @@ public sealed record SaidaApp(int Mestre, IReadOnlyList<int> Canais, string Nome
     public bool Par => Canais.Count > 1;
 }
 
+/// <summary>
+/// Um alto-falante passivo no caminho de um canal do processador: o módulo que o alimenta e o canal
+/// (a partir de 1) ou o bridge em que ele está ligado (<see cref="Ligacoes.Caminhos"/>).
+/// </summary>
+public sealed record CaminhoAltoFalante(Equipamento AltoFalante, Equipamento Modulo, int? CanalModulo, Bridge? Bridge)
+{
+    /// <summary>No bridge: o ceifamento e o ganho são os da ponte.</summary>
+    public bool Ponte => Bridge is not null;
+}
+
 /// <summary>O corte lido de um canal: a frequência de cada filtro, ou null com o filtro em OFF (ou sem leitura).</summary>
 public sealed record CorteCanal(decimal? PassaAlta, decimal? PassaBaixa);
 
@@ -855,6 +865,53 @@ public static class Ligacoes
     {
         var alcance = Seguir(lista, canais);
         return lista.Where(e => alcance.Equipamentos.Contains(e.Id)).ToArray();
+    }
+
+    /// <summary>
+    /// O caminho do canal do processador (0 a 3) até os alto-falantes passivos (história 13a): cada um
+    /// que o canal alimenta, direto ou pela cadeia do grupo 3, com o módulo e o canal ou o bridge em que
+    /// ele está ligado, na ordem de criação.
+    /// </summary>
+    internal static IReadOnlyList<CaminhoAltoFalante> Caminhos(IReadOnlyList<Equipamento> lista, int canal)
+    {
+        var alcance = Seguir(lista, [canal]);
+        var modulos = lista.Where(e => e.Grupo == GrupoEquipamento.Amplificador)
+            .GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
+        var caminhos = new List<CaminhoAltoFalante>();
+        foreach (var e in lista.Where(e => e.Grupo == GrupoEquipamento.AltoFalante && alcance.Equipamentos.Contains(e.Id)))
+        {
+            if (e.Ligado is { } l && modulos.TryGetValue(l.IdModulo, out var modulo))
+                caminhos.Add(new CaminhoAltoFalante(e, modulo, l.Canal, l.Bridge));
+        }
+        return caminhos;
+    }
+
+    /// <summary>
+    /// Os alto-falantes passivos que nenhum canal do processador alcança (história 13a), com o motivo:
+    /// desligados, ligados a um equipamento que não é amplificador, ou num canal ou ponte do módulo sem
+    /// sinal do processador. Ficam fora da conta dos limites, na ordem de criação.
+    /// </summary>
+    internal static IReadOnlyList<(Equipamento AltoFalante, string Motivo)> ForaDosCaminhos(IReadOnlyList<Equipamento> lista)
+    {
+        var alcance = Seguir(lista, Enumerable.Range(0, CanaisProcessador).ToArray());
+        var porId = lista.GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
+        var fora = new List<(Equipamento, string)>();
+        foreach (var e in lista.Where(e => e.Grupo == GrupoEquipamento.AltoFalante && !alcance.Equipamentos.Contains(e.Id)))
+        {
+            string motivo;
+            if (e.Ligado is not { } l)
+                motivo = "Desligado: não está em nenhum canal de módulo.";
+            else if (!porId.TryGetValue(l.IdModulo, out var m))
+                motivo = "Ligado a um equipamento que não existe mais.";
+            else if (m.Grupo != GrupoEquipamento.Amplificador)
+                motivo = $"Ligado ao {m.Nome}, que não é amplificador.";
+            else if (l.Bridge is { } b)
+                motivo = $"A ponte {b.Rotulo} do {m.Nome} não recebe sinal do processador.";
+            else
+                motivo = $"O canal {l.Canal} do {m.Nome} não recebe sinal do processador.";
+            fora.Add((e, motivo));
+        }
+        return fora;
     }
 
     /// <summary>Os canais do processador (0 a 3) que alimentam o equipamento, em ordem.</summary>

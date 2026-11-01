@@ -12,6 +12,7 @@ using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Porta;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
@@ -1574,5 +1575,198 @@ public sealed class PortaTestes : IDisposable
 
         Assert.Equal(3, _porta.AjustesSeguidos);
         Assert.Null(_confirmacoes.Atual);
+    }
+
+    // ----------------------------------------------------------------- os limites e a cerca (13a)
+
+    /// <summary>O passa-alta das JBL em 200 Hz (o LR24 da FILME): o curso do cone fica acima do térmico. Vai como App.</summary>
+    private async Task JblEm200Hz()
+    {
+        using (Origem.Como(OrigemComando.App))
+        {
+            foreach (var canal in new[] { 0, 1 })
+                Assert.True((await Rodar(_escritor.EscreverAsync(Catalogo.ParametroDe("040")!, canal, 200m))).Ok);
+        }
+    }
+
+    [Fact]
+    public async Task Limites_traz_as_JBL_em_menos_6_8_dB_pelo_termico_e_o_Sub_na_ponte_pelo_curso_estimado()
+    {
+        var chave = await Pronto();
+        await JblEm200Hz();
+
+        var r = await Pedir("GET", "/limites", chave: chave);
+
+        Assert.Equal(200, r.Status);
+        var saidas = Json(r).GetProperty("saidas").EnumerateArray().ToArray();
+        Assert.Equal(["JBL L", "JBL R", "Sub"], saidas.Select(s => s.GetProperty("saida").GetString()));
+        foreach (var jbl in saidas.Take(2))
+        {
+            Assert.True(jbl.GetProperty("calibrada").GetBoolean());
+            Assert.Equal(-6.8m, jbl.GetProperty("teto").GetDecimal());
+            Assert.InRange(jbl.GetProperty("tetoV").GetDouble(), 17.8, 18.0);
+            Assert.Equal("termico", jbl.GetProperty("manda").GetString());
+            Assert.False(jbl.GetProperty("estimado").GetBoolean());
+            var termico = jbl.GetProperty("termico");
+            Assert.Equal("verificado", termico.GetProperty("selo").GetString());
+            Assert.Equal("√(80 W × 4 Ω) = 17,9 V", termico.GetProperty("conta").GetString());
+            Assert.Equal(JsonValueKind.Null, termico.GetProperty("falta").ValueKind);
+            Assert.Equal("estimado", jbl.GetProperty("excursao").GetProperty("selo").GetString());
+            Assert.InRange(jbl.GetProperty("ceifamento").GetProperty("v").GetDouble(), 22.9, 23.1);
+        }
+        var sub = saidas[2];
+        Assert.Equal([2, 3], sub.GetProperty("canais").EnumerateArray().Select(c => c.GetInt32()));
+        Assert.Equal("excursao", sub.GetProperty("manda").GetString());
+        Assert.True(sub.GetProperty("estimado").GetBoolean());
+        Assert.Equal(-7.8m, sub.GetProperty("teto").GetDecimal());
+        Assert.InRange(sub.GetProperty("excursao").GetProperty("v").GetDouble(), 32.4, 33.9);
+        Assert.Contains("ponte 3+4", sub.GetProperty("ceifamento").GetProperty("conta").GetString());
+        Assert.Equal(JsonValueKind.Null, sub.GetProperty("aviso").ValueKind);
+        var cerca = sub.GetProperty("cerca").EnumerateArray().ToArray();
+        Assert.Equal([2, 3], cerca.Select(c => c.GetProperty("canal").GetInt32()));
+        Assert.All(cerca, c => Assert.Equal(-7.8m, c.GetProperty("teto").GetDecimal()));
+        Assert.Empty(Json(r).GetProperty("foraDaConta").EnumerateArray());
+    }
+
+    /// <summary>
+    /// Uma porta com o Casa 2.1 da FILME com os equipamentos dados (um segundo gerente de Setups, que liga a
+    /// cerca no escritor), conectada, aberta e pareada: devolve a porta (para descartar) e a chave.
+    /// </summary>
+    private async Task<(PortaComandos Porta, string Chave)> PortaComOCasa(IReadOnlyList<Equipamento> equipamentos)
+    {
+        var dados = CenarioFilme.Dados with { Setups = [CasaDoDenis.SetupCasa with { Equipamentos = equipamentos }] };
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio),
+            new GerentePlaylists(new TextoMemoria(), _log), _chaves, new TextoMemoria(GerenteSetups.ParaJson(dados)), new TextoMemoria(), _log, _relogio);
+        var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
+        await Conectar();
+        await AndarAte(() => setups.Conferido && !setups.Ocupado);
+        await LigarPorta(porta);
+        var chave = Json(await Pedir("POST", "/parear", $$"""{"codigo":"{{porta.Pareamento.Codigo}}","nome":"Claude"}""", porta: porta))
+            .GetProperty("chave").GetString()!;
+        return (porta, chave);
+    }
+
+    [Fact]
+    public async Task Limites_mostra_o_duto_que_protege_o_aviso_do_teto_abaixo_de_menos_48_e_o_alto_falante_fora_da_conta()
+    {
+        // O Sub sem Bl nem Qes (o caso 2: dutada com Fb 51 Hz e BT24 em 40 Hz), a JBL L com 1 mW (teto uns
+        // −55,8 dB) e um tweeter solto.
+        var lista = CasaDoDenis.EquipamentosCasa
+            .Select(e => e.Id switch
+            {
+                CasaDoDenis.IdSubCasa => e with { Dados = e.Dados with { Bl = null, Qes = null } },
+                CasaDoDenis.IdJblL => e with { Dados = e.Dados with { PotenciaRms = new DadoTecnico(0.001m, OrigemDado.Oficial) } },
+                _ => e,
+            })
+            .Append(new Equipamento("tweeter-solto", GrupoEquipamento.AltoFalante, "tweeter", "Tweeter solto"))
+            .ToArray();
+        var (porta, chave) = await PortaComOCasa(lista);
+        using var _ = porta;
+
+        var r = await Pedir("GET", "/limites", chave: chave, porta: porta);
+
+        Assert.Equal(200, r.Status);
+        var saidas = Json(r).GetProperty("saidas").EnumerateArray().ToArray();
+        var sub = saidas.Single(s => s.GetProperty("saida").GetString() == "Sub");
+        Assert.Equal("infinito", sub.GetProperty("excursao").GetProperty("v").GetString());
+        Assert.Equal("estimado", sub.GetProperty("excursao").GetProperty("selo").GetString());
+        Assert.Equal("ceifamento", sub.GetProperty("manda").GetString());
+        var jbl = saidas.Single(s => s.GetProperty("saida").GetString() == "JBL L");
+        Assert.Equal(LimiteSaida.MsgAbaixoDoMinimo, jbl.GetProperty("aviso").GetString());
+        Assert.True(jbl.GetProperty("teto").GetDecimal() < -48m);
+        Assert.Equal(-48m, jbl.GetProperty("cerca")[0].GetProperty("teto").GetDecimal());
+        var fora = Assert.Single(Json(r).GetProperty("foraDaConta").EnumerateArray());
+        Assert.Equal("Tweeter solto", fora.GetProperty("altoFalante").GetString());
+        Assert.Equal("Desligado: não está em nenhum canal de módulo.", fora.GetProperty("motivo").GetString());
+    }
+
+    [Fact]
+    public async Task Aplicar_memoria_acima_do_teto_recebe_409_com_a_mensagem_e_nada_sai()
+    {
+        // O Casa 2.1 com a JBL L de 10 W: T = 6,3 V, teto perto de −15,9 dB; a FILME tem o limitador dela em −15 dB.
+        var fraca = CasaDoDenis.EquipamentosCasa
+            .Select(e => e.Id == CasaDoDenis.IdJblL
+                ? e with { Dados = e.Dados with { PotenciaRms = new DadoTecnico(10m, OrigemDado.Oficial) } }
+                : e)
+            .ToArray();
+        var (porta, chave) = await PortaComOCasa(fraca);
+        using var _ = porta;
+        using (Origem.Como(OrigemComando.App))
+            Assert.True((await Rodar(_escritor.EscreverAsync(Catalogo.ParametroDe("071")!, 0, -20.0m))).Ok);
+        var inicio = _simulador.Escritas.Count;
+
+        var pedido = Pedir("POST", "/memoria/aplicar", """{"memoria":"FILME"}""", chave, porta: porta);
+        await EsperarSemAndar(() => _confirmacoes.Atual is not null);
+        _confirmacoes.Confirmar();
+        var r = await Rodar(pedido);
+
+        Assert.Equal(409, r.Status);
+        Assert.StartsWith("Limite: JBL L, −15,", Motivo(r));
+        Assert.EndsWith("dB, pelo térmico.", Motivo(r));
+        Assert.DoesNotContain(_simulador.Escritas.Skip(inicio), e => Catalogo.EscritaDeAudio(e) is not null);
+        Assert.Equal("-20.0", _simulador.Valor("071", 0));
+    }
+
+    [Fact]
+    public async Task Limites_sem_Setup_em_uso_e_uma_lista_vazia()
+    {
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio),
+            new GerentePlaylists(new TextoMemoria(), _log), _chaves, new TextoMemoria(), new TextoMemoria(), _log, _relogio);
+        using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
+        await Conectar();
+        await AndarAte(() => setups.Conferido && !setups.Ocupado);
+        await LigarPorta(porta);
+        var chave = Json(await Pedir("POST", "/parear", $$"""{"codigo":"{{porta.Pareamento.Codigo}}","nome":"Claude"}""", porta: porta))
+            .GetProperty("chave").GetString()!;
+
+        var r = await Pedir("GET", "/limites", chave: chave, porta: porta);
+
+        Assert.Equal(200, r.Status);
+        Assert.Empty(Json(r).GetProperty("saidas").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Ajuste_do_limitador_em_OFF_recebe_409_com_a_mensagem_e_nada_sai()
+    {
+        var chave = await Pronto();
+        var inicio = _simulador.Escritas.Count;
+
+        var r = await Pedir("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":0.5}""", chave);
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal("Limite: JBL L, o limitador não pode ficar desligado.", Motivo(r));
+        Assert.DoesNotContain(_simulador.Escritas.Skip(inicio), e => e.StartsWith("*071*", StringComparison.Ordinal));
+        Assert.Equal("-15.0", _simulador.Valor("071", 0));
+    }
+
+    [Fact]
+    public async Task Ajuste_do_limitador_0_1_dB_acima_do_teto_recebe_409_e_no_teto_passa()
+    {
+        var chave = await Pronto();
+        await JblEm200Hz();
+
+        var acima = await PedirRodando("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":-6.7}""", chave);
+
+        Assert.Equal(409, acima.Status);
+        Assert.Equal("Limite: JBL L, −6,8 dB, pelo térmico.", Motivo(acima));
+        Assert.Equal("-15.0", _simulador.Valor("071", 0));
+
+        var noTeto = await PedirRodando("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":-6.8}""", chave);
+
+        Assert.Equal(200, noTeto.Status);
+        Assert.Equal("-6.8", _simulador.Valor("071", 0));
+    }
+
+    [Fact]
+    public async Task A_ajuda_descreve_os_limites_e_a_cerca()
+    {
+        var chave = await Pronto();
+
+        var texto = Json(await Pedir("GET", "/ajuda", chave: chave)).GetProperty("texto").GetString()!;
+
+        Assert.Contains("GET  /limites", texto);
+        Assert.Contains("A cerca do limitador", texto);
     }
 }

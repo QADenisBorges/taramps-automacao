@@ -495,6 +495,10 @@ public sealed class TelasParte1Testes : IDisposable
     public async Task Filtro_em_OFF_a_frequencia_some_e_volta_com_o_tipo()
     {
         await _b.Conectar();
+        // História 13a: sem passa-alta, o curso do cone da JBL L baixa o teto (~−19 dB); o limitador desce antes.
+        var baixar = _b.Escritor.EscreverAsync(Catalogo.ParametroDe("071")!, 0, -20.0m);
+        await _b.Rodar(baixar);
+        Assert.True((await baixar).Ok);
         var x = _t.Audio.Tela(FuncaoAudio.Crossover);
         var freq = x.Vista[0];
         var tipo = x.Vista[1].Controle;

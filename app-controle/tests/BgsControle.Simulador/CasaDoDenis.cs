@@ -156,6 +156,23 @@ public static class CasaDoDenis
         VolumeCaixa = new DadoTecnico(3.5m, OrigemDado.Estimado, FonteEstimadoJbl),
     };
 
+    /// <summary>
+    /// História 13a: os equipamentos do Casa 2.1 sem calibração (o ganho do módulo, por canal e em ponte,
+    /// só digitado): o app sabe os volts, não o dB do limitador, e a cerca não vale.
+    /// </summary>
+    public static IReadOnlyList<Equipamento> EquipamentosSemCalibracao { get; } = EquipamentosCasa
+        .Select(e => e.Id == IdModuloCasa
+            ? e with
+            {
+                Dados = e.Dados with
+                {
+                    Ganho = new DadoTecnico(19.5m, OrigemDado.Digitado),
+                    GanhoPonte = new DadoTecnico(40.5m, OrigemDado.Digitado),
+                },
+            }
+            : e)
+        .ToArray();
+
     /// <summary>Os 3 modelos da base (só os dados oficiais): JBL 4TRMS80, Protech Light 8" e SD800.4 EVO.</summary>
     public static IReadOnlyList<ModeloGuardado> Modelos { get; } =
     [

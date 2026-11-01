@@ -6,6 +6,7 @@ using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Player;
 using BgsControle.Nucleo.Presets;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
 
@@ -260,6 +261,9 @@ public sealed class GerenteSetups
         presets.AoAplicar = AoAplicarPresetAsync;
         presets.Mudou += Notificar; // um preset renomeado muda o "Preset: Cinema" das memórias
         _link.Mudou += _ => Notificar(); // as saídas do app dependem do link
+        // História 13a: a cerca do limitador, no Setup em uso e nas saídas com o link que vale agora.
+        _escritor.Cerca = escritas => Cerca.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
+        _escritor.CercaNaVolta = escritas => Cerca.NaVolta(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
 
         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
         _copia.Registrar(TipoAplicarMemoria,
@@ -527,6 +531,16 @@ public sealed class GerenteSetups
         SetupEmUso is { } setup
             ? Ligacoes.Saidas(setup.Equipamentos, _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34))
             : Ligacoes.Saidas([], false, false);
+
+    /// <summary>
+    /// O limite físico de cada saída do Setup em uso (história 13a), com o corte e o limitador do espelho
+    /// agora. Sem Setup em uso, nenhum.
+    /// </summary>
+    public IReadOnlyList<LimiteSaida> LimitesEmUso =>
+        SetupEmUso is { } setup ? LimiteFisico.Calcular(setup.Equipamentos, SaidasEmUso, _estado.Valor) : [];
+
+    /// <summary>Os alto-falantes passivos do Setup em uso que ficam fora da conta dos limites, com o motivo (história 13a).</summary>
+    public IReadOnlyList<AltoFalanteFora> ForaDaContaEmUso => LimiteFisico.ForaDaConta(SetupEmUso?.Equipamentos);
 
     /// <summary>As saídas de um Setup guardado, com o link tirado das ligações dele (vazio se o Setup não existe).</summary>
     public IReadOnlyList<SaidaApp> Saidas(string? idSetup) =>
@@ -980,7 +994,7 @@ public sealed class GerenteSetups
             {
                 (var alvo, sumiu) = Alvo(ativa);
                 var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
-                aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
+                aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
                 if (!aplicado.Ok)
                     return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
             }
@@ -1580,7 +1594,7 @@ public sealed class GerenteSetups
 
         var op = new OperacaoPendente(tipo, memoria.Id, $"Aplicar a memória {memoria.Nome}", memoria.Nome);
         var (alvo, sumiu) = Alvo(memoria);
-        var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
+        var aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
         if (!aplicado.Ok)
             return ResultadoSetup.Falha(aplicado.Motivo!);
 
@@ -2015,7 +2029,7 @@ public sealed class GerenteSetups
     /// sucesso, a marca da cópia continua (quem chamou conclui, ou deixa pela metade); com
     /// <see cref="Aplicado.Iniciou"/> falso, não havia o que escrever e nenhuma marca começou.
     /// </summary>
-    private async Task<Aplicado> AplicarAlvoAsync(IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
+    private async Task<Aplicado> AplicarAlvoAsync(Setup setup, IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
     {
         if (!SessaoAberta)
             return Aplicado.Falha(Sessao.MotivoSemConexao);
@@ -2038,6 +2052,25 @@ public sealed class GerenteSetups
             _log.Recusado(escritas[0].Quadro, motivo);
             return Aplicado.Falha(motivo);
         }
+        // A cerca confere o lote inteiro antes da primeira escrita: com uma recusa, nada sai. O lote é do
+        // Setup que ele aplica (no escolher Setup, ainda não é o em uso), com o link tirado das ligações
+        // dele (o link automático, D1). Uma falha no cálculo recusa.
+        string? cerca;
+        try
+        {
+            cerca = Cerca.Conferir(setup.Equipamentos, Ligacoes.Saidas(setup.Equipamentos), _estado.Copiar(),
+                escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), (Valor?)e.Valor)));
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"{op.Descricao}: falha ao conferir o limite ({e.GetType().Name})");
+            cerca = Cerca.MsgFalhou;
+        }
+        if (cerca is not null)
+        {
+            _log.Evento($"{op.Descricao}: recusado pela cerca ({cerca})");
+            return Aplicado.Falha(cerca);
+        }
         var copia = await _copia.IniciarAsync(op, manterCopia: refazendo);
         if (!copia.Ok)
             return Aplicado.Falha(copia.Motivo!);
@@ -2045,9 +2078,16 @@ public sealed class GerenteSetups
         _log.Evento($"{op.Descricao}: {escritas.Count} ajustes diferentes");
         var falhas = 0;
         string? ultimo = null;
-        foreach (var e in escritas)
+        // O lote conferido inteiro não é conferido de novo escrita a escrita: o limitador sai primeiro e o
+        // passa-alta por último, para uma falha no meio não deixar o corte novo com o limitador de antes.
+        foreach (var e in escritas.OrderBy(e => e.Parametro.Codigo switch
+                 {
+                     Cerca.CodigoLimitador => 0,
+                     Cerca.CodigoPassaAlta or Cerca.CodigoFiltroPassaAlta => 2,
+                     _ => 1,
+                 }))
         {
-            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
+            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true, loteConferido: true);
             if (!r.Ok || r.Diferente)
             {
                 falhas++;

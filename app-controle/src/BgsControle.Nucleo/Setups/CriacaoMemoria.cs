@@ -631,6 +631,18 @@ public sealed class CriacaoMemoria : IDisposable
                 anotar = !_escreveu;
                 _escreveu = true;
             }
+            // A cerca antes de anotar a etapa: um ajuste recusado não deixa marca (o escritor confere de novo).
+            // Um valor que não decodifica vai como desconhecido.
+            if (_escritor.ConferirCerca(p, indice, novo is null ? null : p.Decodificar(novo).Valor, espelhar: true) is { } cerca)
+            {
+                lock (_trava)
+                {
+                    if (anotar && _geracao == geracao)
+                        _escreveu = false;
+                }
+                _log.Recusado(q, cerca);
+                return ResultadoAjusteCriacao.Falha(cerca);
+            }
             // A marca diz que algum ajuste pode ter saído antes de sair o primeiro (regra 6).
             if (anotar && !await _copia.AnotarEtapaAsync(EtapaAjustes))
             {

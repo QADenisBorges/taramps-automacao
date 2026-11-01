@@ -1,0 +1,2012 @@
+diff --git a/app-controle/src/BgsControle.App/MauiProgram.cs b/app-controle/src/BgsControle.App/MauiProgram.cs
+index 1102fb8..373b3a6 100644
+--- a/app-controle/src/BgsControle.App/MauiProgram.cs
++++ b/app-controle/src/BgsControle.App/MauiProgram.cs
+@@ -348,7 +348,8 @@ public static class MauiProgram
+         app.Services.GetRequiredService<GerentePresets>();
+         // Os Setups cedo (com os presets e as playlists): a conferência roda na primeira leitura de cada
+         // conexão, os tipos "aplicar-memoria-celular", "aplicar-setup" e "manter-calibracao" ficam
+-        // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas.
++        // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas. História 13a: é ele que
++        // liga a cerca do limitador no escritor (como a cópia antes liga o bloqueio), antes de qualquer escrita.
+         app.Services.GetRequiredService<GerenteSetups>();
+         // História 9d: a criação da memória cedo: o tipo "criar-memoria" precisa estar registrado na CopiaAntes antes
+         // da primeira leitura (uma criação interrompida volta como "aplicado pela metade").
+diff --git a/app-controle/src/BgsControle.Nucleo/Escrita/CopiaAntes.cs b/app-controle/src/BgsControle.Nucleo/Escrita/CopiaAntes.cs
+index 5325bc8..7a31393 100644
+--- a/app-controle/src/BgsControle.Nucleo/Escrita/CopiaAntes.cs
++++ b/app-controle/src/BgsControle.Nucleo/Escrita/CopiaAntes.cs
+@@ -468,12 +468,19 @@ public sealed class CopiaAntes
+             return ResultadoCopia.Falha(motivo);
+         }
+ 
++        // A cerca confere o lote inteiro antes da primeira escrita: com uma recusa, nada sai.
++        if (_escritor.ConferirCerca(escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), e.Valor)).ToArray()) is { } cerca)
++        {
++            _log.Evento($"{acao}: recusado pela cerca ({cerca}; {descricao})");
++            return ResultadoCopia.Falha(cerca);
++        }
++
+         _log.Evento($"{acao}: {escritas.Count} ajustes diferentes ({descricao})");
+         var falhas = 0;
+         string? ultimoMotivo = null;
+         foreach (var e in escritas)
+         {
+-            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
++            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true, loteConferido: true);
+             if (!r.Ok || r.Diferente)
+             {
+                 falhas++;
+diff --git a/app-controle/src/BgsControle.Nucleo/Escrita/Escritor.cs b/app-controle/src/BgsControle.Nucleo/Escrita/Escritor.cs
+index 8d3847f..e330153 100644
+--- a/app-controle/src/BgsControle.Nucleo/Escrita/Escritor.cs
++++ b/app-controle/src/BgsControle.Nucleo/Escrita/Escritor.cs
+@@ -1,5 +1,6 @@
+ using BgsControle.Nucleo.Leitura;
+ using BgsControle.Nucleo.Registro;
++using BgsControle.Nucleo.Rendimento;
+ using BgsControle.Nucleo.Seguranca;
+ using BgsControle.Nucleo.Uso;
+ 
+@@ -98,6 +99,62 @@ public sealed class Escritor
+     /// </summary>
+     internal Func<string?>? Bloqueio { get; set; }
+ 
++    /// <summary>
++    /// A cerca do limitador (<see cref="Rendimento.Cerca"/>, história 13a): para as escritas que vão sair
++    /// (a pedida e a cópia do link, ou um lote inteiro), o motivo da recusa, ou null. Vale para toda origem,
++    /// também com <c>daCopia</c>: a tela, a porta, a criação, o aplicar, a reaplicação, a volta à cópia e o
++    /// desfazer. Um lote conferido inteiro antes da primeira escrita (<c>loteConferido</c>) não é conferido
++    /// de novo escrita a escrita.
++    /// </summary>
++    internal Func<IReadOnlyList<(Endereco Endereco, Valor Valor)>, string?>? Cerca { get; set; }
++
++    /// <summary>A recusa da <see cref="Cerca"/> para as escritas, ou null. Uma falha ao conferir recusa.</summary>
++    internal string? ConferirCerca(IReadOnlyList<(Endereco Endereco, Valor Valor)> escritas)
++    {
++        if (Cerca is not { } cerca || !escritas.Any(e => Rendimento.Cerca.Toca(e.Endereco.Codigo)))
++            return null;
++        try
++        {
++            return cerca(escritas);
++        }
++        catch (Exception e)
++        {
++            _log.Evento($"falha ao conferir o limite ({e.GetType().Name})");
++            return Rendimento.Cerca.MsgFalhou;
++        }
++    }
++
++    /// <summary>
++    /// A recusa da cerca para um valor (como o aparelho o devolve) e, com <paramref name="espelhar"/>, a
++    /// cópia do link, ou null: quem precisa saber antes de mexer em outra coisa (a criação da memória).
++    /// </summary>
++    internal string? ConferirCerca(Parametro parametro, int? indice, Valor valor, bool espelhar) =>
++        CercaDoPedido(parametro, indice, valor, espelhar, loteConferido: false);
++
++    /// <summary>A recusa da cerca para o pedido e a cópia do link dele, ou null.</summary>
++    private string? CercaDoPedido(Parametro parametro, int? indice, Valor? esperado, bool espelhar, bool loteConferido)
++    {
++        if (loteConferido || esperado is null || !Rendimento.Cerca.Toca(parametro.Codigo))
++            return null;
++        var escritas = new List<(Endereco, Valor)> { (new Endereco(parametro.Codigo, indice), esperado) };
++        if (espelhar)
++        {
++            int? outro;
++            try
++            {
++                outro = Espelho?.Invoke(parametro, indice);
++            }
++            catch (Exception e)
++            {
++                _log.Evento($"falha ao conferir o link ({e.GetType().Name})");
++                return Rendimento.Cerca.MsgFalhou;
++            }
++            if (outro is { } canal && canal != indice)
++                escritas.Add((new Endereco(parametro.Codigo, canal), esperado));
++        }
++        return ConferirCerca(escritas);
++    }
++
+     /// <summary>O motivo do <see cref="Bloqueio"/> agora, ou null.</summary>
+     internal string? MotivoBloqueio()
+     {
+@@ -131,16 +188,19 @@ public sealed class Escritor
+     /// Com <paramref name="daCopia"/> (o Voltar à cópia, o aplicar de uma memória ou preset e os ajustes da criação
+     /// da memória, que andam com a marca da cópia), passa pelo <see cref="Bloqueio"/>.
+     /// </summary>
+-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, Valor valor, bool espelhar, bool daCopia = false)
++    /// <remarks>Com <paramref name="loteConferido"/>, a escrita é de um lote que a <see cref="Cerca"/> já conferiu inteiro antes da primeira escrita.</remarks>
++    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, Valor valor, bool espelhar, bool daCopia = false,
++        bool loteConferido = false)
+     {
+         if (valor.Numero is { } n)
+-            return EscreverAsync(parametro, indice, n, espelhar, daCopia);
++            return EscreverAsync(parametro, indice, n, espelhar, daCopia, loteConferido);
+         if (valor.Texto is { } t)
+-            return EscreverAsync(parametro, indice, t, espelhar, daCopia);
++            return EscreverAsync(parametro, indice, t, espelhar, daCopia, loteConferido);
+         return Task.FromResult(ResultadoEscrita.Falha(MsgIlegivel));
+     }
+ 
+-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, decimal valor, bool espelhar, bool daCopia = false)
++    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, decimal valor, bool espelhar, bool daCopia = false,
++        bool loteConferido = false)
+     {
+         string quadro;
+         try
+@@ -151,10 +211,11 @@ public sealed class Escritor
+         {
+             return Task.FromResult(ResultadoEscrita.Falha(e.Message));
+         }
+-        return Pedir(parametro, indice, quadro, espelhar, daCopia);
++        return Pedir(parametro, indice, quadro, espelhar, daCopia, loteConferido);
+     }
+ 
+-    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, string texto, bool espelhar, bool daCopia = false)
++    internal Task<ResultadoEscrita> EscreverAsync(Parametro parametro, int? indice, string texto, bool espelhar, bool daCopia = false,
++        bool loteConferido = false)
+     {
+         string quadro;
+         try
+@@ -165,10 +226,10 @@ public sealed class Escritor
+         {
+             return Task.FromResult(ResultadoEscrita.Falha(e.Message));
+         }
+-        return Pedir(parametro, indice, quadro, espelhar, daCopia);
++        return Pedir(parametro, indice, quadro, espelhar, daCopia, loteConferido);
+     }
+ 
+-    private async Task<ResultadoEscrita> Pedir(Parametro parametro, int? indice, string quadro, bool espelhar, bool daCopia)
++    private async Task<ResultadoEscrita> Pedir(Parametro parametro, int? indice, string quadro, bool espelhar, bool daCopia, bool loteConferido)
+     {
+         if (Catalogo.EscritaDeAudio(quadro) is not { } escrita)
+         {
+@@ -180,9 +241,12 @@ public sealed class Escritor
+         var esperado = parametro.Decodificar(escrita.NoFio).Valor;
+         if (!daCopia && MotivoBloqueio() is { } bloqueio)
+             return Recusar(quadro, bloqueio);
++        // A cerca, antes da fila: vale para toda origem, também com daCopia.
++        if (CercaDoPedido(parametro, indice, esperado, espelhar, loteConferido) is { } cerca)
++            return Recusar(quadro, cerca);
+         // A origem ambiente de quem pediu (tela, IA ou app) vai junto até o envio: a fila roda em
+         // outra tarefa, e um pedido mais novo de outra origem pode tomar o lugar deste.
+-        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, Origem.Atual);
++        var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, loteConferido, Origem.Atual);
+         var endereco = new Endereco(parametro.Codigo, indice);
+         var tcs = new TaskCompletionSource<ResultadoEscrita>(TaskCreationOptions.RunContinuationsAsynchronously);
+         bool iniciar;
+@@ -357,6 +421,9 @@ public sealed class Escritor
+             // Conferido de novo com a porta: um pedido da fila não entra no meio de uma memória.
+             if (!pedido.DaCopia && MotivoBloqueio() is { } bloqueio)
+                 return Recusar(pedido.Quadro, bloqueio);
++            // A cerca de novo, com a porta: o estado agora já tem as escritas que saíram antes desta.
++            if (CercaDoPedido(pedido.Parametro, pedido.Indice, pedido.Esperado, pedido.Espelhar, pedido.LoteConferido) is { } cerca)
++                return Recusar(pedido.Quadro, cerca);
+ 
+             var consulta = new Consulta(pedido.Parametro, pedido.Indice);
+             var (envio, resposta) = await EnviarEEsperarAsync(pedido.Quadro, consulta, _tempos.PrazoEco);
+@@ -476,7 +543,8 @@ public sealed class Escritor
+         alvo?.Resposta.TrySetResult(null);
+     }
+ 
+-    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia, OrigemComando Origem);
++    private sealed record Pedido(Parametro Parametro, int? Indice, string Quadro, Valor? Esperado, bool Espelhar, bool DaCopia, bool LoteConferido,
++        OrigemComando Origem);
+ 
+     /// <summary>Quem espera uma escrita, com a origem de quem pediu.</summary>
+     private sealed record Espera(TaskCompletionSource<ResultadoEscrita> Tcs, OrigemComando Origem);
+diff --git a/app-controle/src/BgsControle.Nucleo/Porta/PortaComandos.cs b/app-controle/src/BgsControle.Nucleo/Porta/PortaComandos.cs
+index a144811..9f90cdc 100644
+--- a/app-controle/src/BgsControle.Nucleo/Porta/PortaComandos.cs
++++ b/app-controle/src/BgsControle.Nucleo/Porta/PortaComandos.cs
+@@ -5,6 +5,7 @@ using BgsControle.Nucleo.Aparelho;
+ using BgsControle.Nucleo.Escrita;
+ using BgsControle.Nucleo.Gerador;
+ using BgsControle.Nucleo.Registro;
++using BgsControle.Nucleo.Rendimento;
+ using BgsControle.Nucleo.Seguranca;
+ using BgsControle.Nucleo.Setups;
+ using BgsControle.Nucleo.Uso;
+@@ -552,6 +553,7 @@ public sealed class PortaComandos : IDisposable
+                 "/catalogo" => new RespostaPorta(200, JsonPorta.Ok(EscreverCatalogo)),
+                 "/eventos" => RespostaEventos(pedido),
+                 "/historico" => RespostaHistorico(pedido),
++                "/limites" => new RespostaPorta(200, JsonPorta.Ok(EscreverLimites)),
+                 "/criacao" when _criacao is not null => new RespostaPorta(200, JsonPorta.Ok(EscreverCriacao)),
+                 _ => Recusa(404, MsgCaminho),
+             };
+@@ -1192,6 +1194,63 @@ public sealed class PortaComandos : IDisposable
+         w.WriteEndArray();
+     }
+ 
++    /// <summary>
++    /// O <c>GET /limites</c> (história 13a): por saída do Setup em uso, os canais, se está calibrada, o teto
++    /// (dB do limitador ou null) e em volts, o que manda, o selo e cada limite com o valor, o selo, a conta e
++    /// a falta. Sem Setup em uso, a lista vazia.
++    /// </summary>
++    private void EscreverLimites(Utf8JsonWriter w)
++    {
++        w.WriteStartArray("saidas");
++        foreach (var l in _setups.LimitesEmUso)
++        {
++            w.WriteStartObject();
++            w.WriteString("saida", l.Nome);
++            w.WriteStartArray("canais");
++            foreach (var c in l.Canais)
++                w.WriteNumberValue(c);
++            w.WriteEndArray();
++            w.WriteString("altoFalante", l.AltoFalante);
++            w.WriteBoolean("calibrada", l.Calibrada);
++            if (l.TetoDb is { } teto)
++                w.WriteNumber("teto", teto);
++            else
++                w.WriteNull("teto");
++            if (l.TetoV is { } tetoV)
++                w.WriteNumber("tetoV", Math.Round(tetoV, 2));
++            else
++                w.WriteNull("tetoV");
++            w.WriteString("manda", l.Manda is { } manda ? LimiteFisico.ChaveLimite(manda) : null);
++            w.WriteBoolean("estimado", l.Estimado);
++            w.WriteString("semLimite", l.SemLimite);
++            EscreverLimite(w, "termico", l.Termico);
++            EscreverLimite(w, "excursao", l.Excursao);
++            EscreverLimite(w, "ceifamento", l.Ceifamento);
++            w.WriteEndObject();
++        }
++        w.WriteEndArray();
++    }
++
++    private static void EscreverLimite(Utf8JsonWriter w, string nome, Limite? limite)
++    {
++        if (limite is null)
++        {
++            w.WriteNull(nome);
++            return;
++        }
++        w.WriteStartObject(nome);
++        if (limite.Infinito)
++            w.WriteString("v", "infinito");
++        else if (limite.V is { } v)
++            w.WriteNumber("v", Math.Round(v, 2));
++        else
++            w.WriteNull("v");
++        w.WriteString("selo", limite.Selo);
++        w.WriteString("conta", limite.Conta);
++        w.WriteString("falta", limite.Falta);
++        w.WriteEndObject();
++    }
++
+     private static void EscreverCatalogo(Utf8JsonWriter w)
+     {
+         w.WriteStartArray("parametros");
+@@ -1362,6 +1421,7 @@ public sealed class PortaComandos : IDisposable
+         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
+         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
+         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
++        GET  /limites: o limite físico de cada saída do Setup em uso (lista vazia sem Setup em uso), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido), teto (o limiar máximo do limitador em dB, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta).
+         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
+         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
+         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.
+@@ -1393,6 +1453,7 @@ public sealed class PortaComandos : IDisposable
+         O toque do usuário na tela nunca é recusado: ele pausa a IA, que retoma depois de 10 s sem toques. Um ajuste que o usuário acabou de mexer é recusado pela porta por 10 s ("o usuário está mexendo nisso.").
+         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
+         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
++        A cerca do limitador: numa saída calibrada e com limite, uma escrita do limitador (071) ou do passa-alta (040, 042) que deixe o limitador OFF ou acima do teto (veja GET /limites) é recusada com 409 e a conta ("Limite da JBL L: −6,8 dB, pelo térmico."), sem nada enviado: no /ajuste, no /criacao/ajuste e no /memoria/aplicar (o lote inteiro é conferido antes da primeira escrita). Para baixar o passa-alta, baixe o limitador antes. A cerca não tem chave.
+         Com firmware diferente do R003, só os GET respondem.
+         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).
+         Códigos: 400 corpo ou campo inválido; 401 sem chave ou chave errada; 403 fora da rede local; 404 caminho desconhecido; 409 recusa do app (com o motivo); 413 corpo acima de 64 KB; 431 cabeçalho grande demais; 500 erro inesperado no app.
+diff --git a/app-controle/src/BgsControle.Nucleo/Rendimento/Cerca.cs b/app-controle/src/BgsControle.Nucleo/Rendimento/Cerca.cs
+new file mode 100644
+index 0000000..d4665a7
+--- /dev/null
++++ b/app-controle/src/BgsControle.Nucleo/Rendimento/Cerca.cs
+@@ -0,0 +1,90 @@
++using BgsControle.Nucleo.Escrita;
++using BgsControle.Nucleo.Setups;
++
++namespace BgsControle.Nucleo.Rendimento;
++
++/// <summary>
++/// A cerca do limitador (spec-rendimento CAP-2, história 13a): uma escrita que deixe uma saída calibrada
++/// e com limite com o limitador OFF ou com o limiar acima do teto é recusada antes de qualquer envio. Ela
++/// confere o estado como ficaria depois da escrita (o espelho com a escrita, ou o lote inteiro, por cima)
++/// em toda saída que a escrita toca: as escritas do limitador (<c>071</c>) e do passa-alta (<c>040</c> e
++/// <c>042</c>, que mudam o X). Sem nível em uso, o teto é min(T, X, C) (os níveis são da 13c). Não tem
++/// chave nem exceção. É ligada no <see cref="Escritor"/> pelo <see cref="GerenteSetups"/>, como o bloqueio
++/// da cópia antes.
++/// </summary>
++public static class Cerca
++{
++    public const string CodigoLimitador = "071";
++    public const string CodigoPassaAlta = "040";
++    public const string CodigoFiltroPassaAlta = "042";
++
++    /// <summary>O OFF do limitador no fio (<c>071</c> = 0,5).</summary>
++    public const decimal LimitadorOff = 0.5m;
++
++    public const string MsgFalhou = "Não consegui conferir o limite da saída. Nada foi enviado.";
++
++    /// <summary>"Limite da JBL L: −6,8 dB, pelo térmico."</summary>
++    public static string MsgLimite(string saida, decimal teto, TipoLimite manda) =>
++        $"Limite da {saida}: {LimiteFisico.Db(teto)} dB, pelo {LimiteFisico.NomeLimite(manda)}.";
++
++    /// <summary>"Limite da JBL L: o limitador não pode ficar desligado."</summary>
++    public static string MsgOff(string saida) => $"Limite da {saida}: o limitador não pode ficar desligado.";
++
++    /// <summary>A escrita deste código toca o limite de uma saída: o limitador, o passa-alta e o tipo dele.</summary>
++    public static bool Toca(string codigo) => codigo is CodigoLimitador or CodigoPassaAlta or CodigoFiltroPassaAlta;
++
++    /// <summary>
++    /// Confere as escritas (uma, com a cópia do link, ou um lote inteiro) contra o estado como ficaria
++    /// depois delas. Devolve a mensagem da primeira saída recusada, ou null. Sem equipamentos (sem Setup em
++    /// uso), ou sem escrita que toque um limite, passa.
++    /// </summary>
++    /// <param name="equipamentos">Os equipamentos do Setup, ou null.</param>
++    /// <param name="saidas">As saídas do app (o link que vale).</param>
++    /// <param name="espelho">O estado do aparelho agora.</param>
++    /// <param name="escritas">O que vai ser escrito, na ordem (o último valor de um endereço vale).</param>
++    public static string? Conferir(IReadOnlyList<Equipamento>? equipamentos, IReadOnlyList<SaidaApp> saidas,
++        IReadOnlyDictionary<Endereco, Valor> espelho, IEnumerable<(Endereco Endereco, Valor Valor)> escritas)
++    {
++        var lista = escritas.ToArray();
++        var canais = lista
++            .Where(e => Toca(e.Endereco.Codigo) && e.Endereco.Indice is not null)
++            .Select(e => e.Endereco.Indice!.Value)
++            .ToHashSet();
++        if (canais.Count == 0 || equipamentos is null || equipamentos.Count == 0)
++            return null;
++
++        var depois = new Dictionary<Endereco, Valor>(espelho);
++        foreach (var (endereco, valor) in lista)
++            depois[endereco] = valor;
++        Valor? Ler(Endereco e) => depois.GetValueOrDefault(e);
++
++        var nomes = Ligacoes.NomesNaTela(saidas);
++        for (var i = 0; i < saidas.Count; i++)
++        {
++            var saida = saidas[i];
++            if (!saida.Canais.Any(canais.Contains))
++                continue;
++            var limite = LimiteFisico.CalcularSaida(equipamentos, saida, nomes[i], Ler);
++            if (Recusa(limite, Ler) is { } motivo)
++                return motivo;
++        }
++        return null;
++    }
++
++    /// <summary>A recusa da saída no estado dado (limitador OFF ou acima do teto em algum canal dela), ou null.</summary>
++    public static string? Recusa(LimiteSaida limite, Func<Endereco, Valor?> ler)
++    {
++        if (!limite.Cercada || limite.TetoDb is not { } teto || limite.Manda is not { } manda)
++            return null;
++        foreach (var canal in limite.Canais)
++        {
++            if (ler(new Endereco(CodigoLimitador, canal))?.Numero is not { } limiar)
++                continue;
++            if (limiar == LimitadorOff)
++                return MsgOff(limite.Nome);
++            if (limiar > teto)
++                return MsgLimite(limite.Nome, teto, manda);
++        }
++        return null;
++    }
++}
+diff --git a/app-controle/src/BgsControle.Nucleo/Rendimento/LimiteFisico.cs b/app-controle/src/BgsControle.Nucleo/Rendimento/LimiteFisico.cs
+new file mode 100644
+index 0000000..ded0861
+--- /dev/null
++++ b/app-controle/src/BgsControle.Nucleo/Rendimento/LimiteFisico.cs
+@@ -0,0 +1,384 @@
++using System.Globalization;
++using System.Text;
++using BgsControle.Nucleo.Escrita;
++using BgsControle.Nucleo.Setups;
++
++namespace BgsControle.Nucleo.Rendimento;
++
++/// <summary>Os três limites físicos de uma saída (spec-rendimento CAP-1).</summary>
++public enum TipoLimite
++{
++    /// <summary>T = √(P_RMS × Z).</summary>
++    Termico,
++
++    /// <summary>X: o cone no Xmax na pior frequência, com o passa-alta da saída.</summary>
++    Excursao,
++
++    /// <summary>C: o ceifamento do canal ou da ponte do módulo.</summary>
++    Ceifamento,
++}
++
++/// <summary>
++/// Um limite em tensão RMS de um tom contínuo, com a conta e o selo. <see cref="V"/> null e
++/// <see cref="Infinito"/> falso: não dá para calcular (falta dado; o motivo em <see cref="Falta"/>), e ele
++/// fica de fora do mínimo.
++/// </summary>
++/// <param name="Tipo">Térmico, excursão ou ceifamento.</param>
++/// <param name="V">Em volts RMS, ou null.</param>
++/// <param name="Infinito">O duto protege o cone (caso 2 da excursão): fica de fora do mínimo.</param>
++/// <param name="Estimado">Algum dado da conta não é verificado (oficial ou medido), ou a conta é a estimativa dos casos 2 e 3.</param>
++/// <param name="Conta">A conta, para a tela e a porta, ou null sem o dado.</param>
++/// <param name="Falta">O dado que falta ("Falta a Fb da caixa do Sub."), ou null.</param>
++public sealed record Limite(TipoLimite Tipo, double? V, bool Infinito, bool Estimado, string? Conta, string? Falta)
++{
++    /// <summary>Tem valor (em volts ou infinito).</summary>
++    public bool Calculado => V is not null || Infinito;
++
++    /// <summary>"verificado" ou "estimado".</summary>
++    public string Selo => Estimado ? LimiteFisico.SeloEstimado : LimiteFisico.SeloVerificado;
++
++    /// <summary>"térmico", "curso do cone" ou "ceifamento do módulo" (a mensagem da cerca).</summary>
++    public string Nome => LimiteFisico.NomeLimite(Tipo);
++}
++
++/// <summary>
++/// O limite de um alto-falante passivo pelo caminho de um canal do processador: T, X (com o passa-alta
++/// desse canal) e C, o que manda, o teto em volts e, com o ganho medido do módulo, em dB do limitador.
++/// </summary>
++/// <param name="Canal">O canal do processador (0 a 3).</param>
++/// <param name="Ganho">O ganho do módulo (no bridge, o da ponte) com a origem "medido", ou null (sem calibração).</param>
++public sealed record LimiteCaminho(
++    CaminhoAltoFalante Caminho,
++    int Canal,
++    Limite Termico,
++    Limite Excursao,
++    Limite Ceifamento,
++    decimal? Ganho,
++    TipoLimite? Manda,
++    double? TetoV,
++    decimal? TetoDb);
++
++/// <summary>
++/// O limite físico de uma saída do app (história 13a): o do alto-falante que manda (o menor teto entre
++/// os alto-falantes passivos dela), com T, X e C, a conta, o selo e a falta de cada um. Sem alto-falante
++/// passivo ou sem nenhum dos três limites, a saída fica "sem limite" (<see cref="SemLimite"/>), e a cerca
++/// não vale ali. Sem o ganho medido, fica "sem calibração": os volts sim, o dB não.
++/// </summary>
++/// <param name="Nome">O nome da saída na tela ("JBL L", "Sub · CH3").</param>
++/// <param name="AltoFalante">O alto-falante que manda, ou null.</param>
++/// <param name="Manda">O menor de T, X e C, ou null sem limite.</param>
++/// <param name="TetoV">O teto em volts RMS, ou null sem limite.</param>
++/// <param name="TetoDb">O teto do limitador em dB (arredondado para baixo, no passo de 0,1), ou null sem calibração ou sem limite.</param>
++/// <param name="Calibrada">Todos os alto-falantes com limite têm o ganho do módulo medido.</param>
++/// <param name="SemLimite">O motivo de a saída ficar sem limite, ou null.</param>
++public sealed record LimiteSaida(
++    SaidaApp Saida,
++    string Nome,
++    string? AltoFalante,
++    Limite? Termico,
++    Limite? Excursao,
++    Limite? Ceifamento,
++    TipoLimite? Manda,
++    double? TetoV,
++    decimal? TetoDb,
++    bool Calibrada,
++    string? SemLimite)
++{
++    /// <summary>Os canais da saída (0 a 3).</summary>
++    public IReadOnlyList<int> Canais => Saida.Canais;
++
++    /// <summary>O limite que manda leva o selo "estimado".</summary>
++    public bool Estimado => Manda switch
++    {
++        TipoLimite.Termico => Termico?.Estimado ?? false,
++        TipoLimite.Excursao => Excursao?.Estimado ?? false,
++        TipoLimite.Ceifamento => Ceifamento?.Estimado ?? false,
++        _ => false,
++    };
++
++    /// <summary>A cerca vale aqui: calibrada e com teto em dB.</summary>
++    public bool Cercada => Calibrada && TetoDb is not null;
++}
++
++/// <summary>
++/// O cálculo do limite físico (spec-rendimento CAP-1, <c>limites-e-niveis.md</c>): das fichas do Setup e
++/// do corte de cada saída, o térmico, a excursão (com os três casos de dado faltando) e o ceifamento, e a
++/// conversão para o limitador: dB = 20·log10(V / (2,0 × ganho)). Puro: o estado do aparelho entra por um
++/// leitor de endereço (o espelho agora; a memória na 13c).
++/// </summary>
++public static class LimiteFisico
++{
++    public const string SeloVerificado = "verificado";
++    public const string SeloEstimado = "estimado";
++
++    /// <summary>A referência da escala do limitador: 0 dB = 2,0 V na entrada do módulo (MAPA §7).</summary>
++    public const double ReferenciaLimitador = 2.0;
++
++    /// <summary>A margem do caso 3 da excursão: min(T, C) − 3 dB.</summary>
++    public const double MargemCaso3Db = 3.0;
++
++    public const string MsgSemAltoFalante = "Sem alto-falante passivo: o app não sabe o limite desta saída.";
++
++    private static readonly CultureInfo Fio = CultureInfo.InvariantCulture;
++
++    /// <summary>"térmico", "curso do cone" ou "ceifamento do módulo".</summary>
++    public static string NomeLimite(TipoLimite tipo) => tipo switch
++    {
++        TipoLimite.Termico => "térmico",
++        TipoLimite.Excursao => "curso do cone",
++        _ => "ceifamento do módulo",
++    };
++
++    /// <summary>"termico", "excursao" ou "ceifamento" (a porta).</summary>
++    public static string ChaveLimite(TipoLimite tipo) => tipo switch
++    {
++        TipoLimite.Termico => "termico",
++        TipoLimite.Excursao => "excursao",
++        _ => "ceifamento",
++    };
++
++    // ------------------------------------------------------------------ por Setup
++
++    /// <summary>Os limites das saídas, na ordem delas. Sem equipamentos (sem Setup em uso), nenhum.</summary>
++    public static IReadOnlyList<LimiteSaida> Calcular(IReadOnlyList<Equipamento>? equipamentos, IReadOnlyList<SaidaApp> saidas,
++        Func<Endereco, Valor?> ler)
++    {
++        if (equipamentos is null || equipamentos.Count == 0)
++            return [];
++        var nomes = Ligacoes.NomesNaTela(saidas);
++        return saidas.Select((s, i) => CalcularSaida(equipamentos, s, nomes[i], ler)).ToArray();
++    }
++
++    /// <summary>O limite de uma saída: o menor entre os alto-falantes passivos que os canais dela alimentam.</summary>
++    public static LimiteSaida CalcularSaida(IReadOnlyList<Equipamento> equipamentos, SaidaApp saida, string nome, Func<Endereco, Valor?> ler)
++    {
++        var caminhos = saida.Canais
++            .SelectMany(c => Ligacoes.Caminhos(equipamentos, c).Select(x => CalcularCaminho(x, c, PassaAltaDe(ler, c))))
++            .ToArray();
++        if (caminhos.Length == 0)
++            return new LimiteSaida(saida, nome, null, null, null, null, null, null, null, false, MsgSemAltoFalante);
++
++        var comTeto = caminhos.Where(c => c.TetoV is not null).ToArray();
++        if (comTeto.Length == 0)
++        {
++            var primeiro = caminhos[0];
++            var faltas = new[] { primeiro.Termico.Falta, primeiro.Excursao.Falta, primeiro.Ceifamento.Falta }
++                .OfType<string>().Distinct().ToArray();
++            var motivo = $"Sem nenhum dos três limites do {primeiro.Caminho.AltoFalante.Nome}." + (faltas.Length > 0 ? " " + string.Join(" ", faltas) : "");
++            return new LimiteSaida(saida, nome, primeiro.Caminho.AltoFalante.Nome, primeiro.Termico, primeiro.Excursao, primeiro.Ceifamento,
++                null, null, null, false, motivo);
++        }
++
++        var calibrada = comTeto.All(c => c.Ganho is not null);
++        var manda = calibrada
++            ? comTeto.OrderBy(c => c.TetoDb).ThenBy(c => c.TetoV).First()
++            : comTeto.OrderBy(c => c.TetoV).First();
++        return new LimiteSaida(saida, nome, manda.Caminho.AltoFalante.Nome, manda.Termico, manda.Excursao, manda.Ceifamento,
++            manda.Manda, manda.TetoV, calibrada ? manda.TetoDb : null, calibrada, null);
++    }
++
++    /// <summary>O passa-alta do canal no estado lido (o <c>042</c> e o <c>040</c>); sem leitura, sem filtro.</summary>
++    public static PassaAlta? PassaAltaDe(Func<Endereco, Valor?> ler, int canal) =>
++        PassaAlta.DoAparelho(ler(new Endereco("042", canal))?.Numero, ler(new Endereco("040", canal))?.Numero);
++
++    // ------------------------------------------------------------------ por alto-falante
++
++    /// <summary>T, X e C de um alto-falante pelo caminho de um canal, com o passa-alta desse canal (null = OFF).</summary>
++    public static LimiteCaminho CalcularCaminho(CaminhoAltoFalante caminho, int canal, PassaAlta? passaAlta)
++    {
++        var af = caminho.AltoFalante;
++        var t = Termico(af);
++        var c = Ceifamento(caminho);
++        var x = Excursao(af, passaAlta, t, c);
++
++        var ganhoDado = caminho.Ponte ? caminho.Modulo.Dados.GanhoPonte : caminho.Modulo.Dados.Ganho;
++        decimal? ganho = ganhoDado is { Origem: OrigemDado.Medido } g ? g.Valor : null;
++
++        TipoLimite? manda = null;
++        double? teto = null;
++        foreach (var l in new[] { t, x, c })
++        {
++            if (l.V is { } v && (teto is null || v < teto))
++            {
++                teto = v;
++                manda = l.Tipo;
++            }
++        }
++        decimal? tetoDb = teto is { } tv && ganho is { } gv ? ParaDb(tv, gv) : null;
++        return new LimiteCaminho(caminho, canal, t, x, c, ganho, manda, teto, tetoDb);
++    }
++
++    /// <summary>dB = 20·log10(V / (2,0 × ganho)), arredondado para baixo no passo do limitador (0,1).</summary>
++    public static decimal ParaDb(double volts, decimal ganho)
++    {
++        var db = 20 * Math.Log10(volts / (ReferenciaLimitador * (double)ganho));
++        // O arredondamento a 6 casas tira o ruído do double antes do piso (−67,999999… não vira −68,1).
++        return (decimal)Math.Floor(Math.Round(db * 10, 6)) / 10m;
++    }
++
++    /// <summary>T = √(PotenciaRms × Impedancia).</summary>
++    public static Limite Termico(Equipamento af)
++    {
++        var d = af.Dados;
++        var faltam = new List<string>();
++        if (d.PotenciaRms is null)
++            faltam.Add("a potência RMS");
++        if (d.Impedancia is null)
++            faltam.Add("a impedância");
++        if (faltam.Count > 0)
++            return new Limite(TipoLimite.Termico, null, false, true, null, MsgFalta(faltam, af.Nome));
++        var p = (double)d.PotenciaRms!.Valor;
++        var z = (double)d.Impedancia!.Valor;
++        var v = Math.Sqrt(p * z);
++        var conta = $"√({Num(d.PotenciaRms.Valor)} W × {Num(d.Impedancia.Valor)} Ω) = {Volts(v)} V";
++        return new Limite(TipoLimite.Termico, v, false, !(d.PotenciaRms.Verificado && d.Impedancia.Verificado), conta, null);
++    }
++
++    /// <summary>C = a tensão de ceifamento do canal do módulo; no bridge, a da ponte.</summary>
++    public static Limite Ceifamento(CaminhoAltoFalante caminho)
++    {
++        var m = caminho.Modulo;
++        var dado = caminho.Ponte ? m.Dados.TensaoCeifamentoPonte : m.Dados.TensaoCeifamentoCanal;
++        var onde = caminho.Bridge is { } b ? $"da ponte {b.Rotulo} do {m.Nome}" : $"do canal {caminho.CanalModulo} do {m.Nome}";
++        if (dado is null)
++            return new Limite(TipoLimite.Ceifamento, null, false, true, null, $"Falta a tensão de ceifamento {onde}.");
++        var v = (double)dado.Valor;
++        return new Limite(TipoLimite.Ceifamento, v, false, !dado.Verificado, $"Ceifamento {onde}: {Volts(v)} V", null);
++    }
++
++    /// <summary>
++    /// X pelos três casos (<c>limites-e-niveis.md</c>): 1) os dados completos dão X pela conta; 2) senão,
++    /// uma caixa dutada com Fb e passa-alta de pelo menos 24 dB/oit com 0,75·Fb ≤ fc ≤ 0,8·Fb dá X = ∞
++    /// (estimado); 3) senão, X = min(T, C) − 3 dB (estimado, com o dado que falta). Sem T nem C no caso 3,
++    /// não dá para calcular.
++    /// </summary>
++    public static Limite Excursao(Equipamento af, PassaAlta? passaAlta, Limite termico, Limite ceifamento)
++    {
++        var d = af.Dados;
++        var tipo = TipoDaCaixa(d.TipoCaixa?.Valor);
++        var faltam = new List<string>();
++        void Exigir(DadoTecnico? dado, string nome)
++        {
++            if (dado is null)
++                faltam.Add(nome);
++        }
++        Exigir(d.Re, "a Re");
++        Exigir(d.Fs, "a Fs");
++        Exigir(d.Qms, "o Qms");
++        Exigir(d.Vas, "o Vas");
++        Exigir(d.Sd, "o Sd");
++        Exigir(d.Xmax, "o Xmax");
++        if (d.Bl is null && d.Qes is null)
++            faltam.Add("o Bl ou o Qes");
++        if (tipo is null)
++            faltam.Add("o tipo da caixa (selada ou dutada)");
++        Exigir(d.VolumeCaixa, "o volume da caixa");
++        if (tipo == TipoCaixaModelo.Dutada)
++            Exigir(d.Fb, "a Fb da caixa");
++
++        if (faltam.Count == 0)
++            return ExcursaoPelaConta(af, tipo!.Value, passaAlta);
++
++        var falta = MsgFalta(faltam, af.Nome);
++        // Caso 2: o duto protege o cone com o subsônico logo abaixo da Fb.
++        if (tipo == TipoCaixaModelo.Dutada && d.Fb is { } fbDado && passaAlta is { Inclinacao: >= 24 } pa)
++        {
++            var fb = (double)fbDado.Valor;
++            if (pa.Frequencia >= 0.75 * fb && pa.Frequencia <= 0.8 * fb)
++            {
++                var conta = $"Caixa dutada com Fb de {Num(fbDado.Valor)} Hz e passa-alta {pa.Rotulo} em {Num((decimal)pa.Frequencia)} Hz " +
++                            "(entre 0,75 e 0,8 × Fb): o duto protege o cone.";
++                return new Limite(TipoLimite.Excursao, null, true, true, conta, falta);
++            }
++        }
++
++        // Caso 3: min(T, C) − 3 dB.
++        var base3 = new[] { termico, ceifamento }.Where(l => l.V is not null).Select(l => (l.Tipo, V: l.V!.Value)).ToArray();
++        if (base3.Length == 0)
++            return new Limite(TipoLimite.Excursao, null, false, true, null, falta);
++        var menor = base3.MinBy(b => b.V);
++        var v = menor.V * Math.Pow(10, -MargemCaso3Db / 20);
++        var conta3 = $"Sem a conta do cone: {NomeLimite(menor.Tipo)} ({Volts(menor.V)} V) − 3 dB = {Volts(v)} V";
++        return new Limite(TipoLimite.Excursao, v, false, true, conta3, falta);
++    }
++
++    private static Limite ExcursaoPelaConta(Equipamento af, TipoCaixaModelo tipo, PassaAlta? passaAlta)
++    {
++        var d = af.Dados;
++        var modelo = new AltoFalanteModelo(
++            Re: (double)d.Re!.Valor,
++            Fs: (double)d.Fs!.Valor,
++            Qms: (double)d.Qms!.Valor,
++            Vas: (double)d.Vas!.Valor / 1000,
++            Sd: (double)d.Sd!.Valor / 1e4,
++            Xmax: (double)d.Xmax!.Valor / 1000,
++            Bl: d.Bl is { } bl ? (double)bl.Valor : null,
++            Qes: d.Qes is { } qes ? (double)qes.Valor : null,
++            Le: d.Le is { } le ? (double)le.Valor / 1000 : 0);
++        var caixa = new CaixaModelo(tipo, (double)d.VolumeCaixa!.Valor / 1000, d.Fb is { } fb ? (double)fb.Valor : null);
++        var r = ModeloExcursao.TensaoNoXmax(modelo, caixa, passaAlta);
++
++        var usados = new List<DadoTecnico> { d.Re!, d.Fs!, d.Qms!, d.Vas!, d.Sd!, d.Xmax!, d.VolumeCaixa! };
++        usados.Add(d.Bl ?? d.Qes!);
++        if (d.Le is { } leUsado)
++            usados.Add(leUsado);
++        if (tipo == TipoCaixaModelo.Dutada)
++            usados.Add(d.Fb!);
++        var verificado = usados.All(u => u.Verificado) && d.TipoCaixa!.Verificado;
++
++        var caixaTexto = tipo == TipoCaixaModelo.Selada
++            ? $"caixa selada de {Num(d.VolumeCaixa!.Valor)} L"
++            : $"caixa dutada de {Num(d.VolumeCaixa!.Valor)} L com Fb de {Num(d.Fb!.Valor)} Hz";
++        var filtroTexto = passaAlta is { } pa ? $"passa-alta {pa.Rotulo} em {Num((decimal)pa.Frequencia)} Hz" : "sem passa-alta";
++        var conta = $"Xmax de {Num(d.Xmax!.Valor)} mm na pior frequência ({Num(decimal.Round((decimal)r.PiorFrequencia))} Hz), " +
++                    $"{caixaTexto}, {filtroTexto}: {Volts(r.Volts)} V";
++        return new Limite(TipoLimite.Excursao, r.Volts, false, !verificado, conta, null);
++    }
++
++    /// <summary>
++    /// O tipo da caixa no texto livre: começa com "selad" → selada; começa com "dutad", "duto" ou
++    /// "bass reflex" → dutada (sem diferença de caixa nem de acento); o resto, null (dado que falta).
++    /// </summary>
++    public static TipoCaixaModelo? TipoDaCaixa(string? texto)
++    {
++        var t = SemAcento(texto);
++        if (t.StartsWith("selad", StringComparison.Ordinal))
++            return TipoCaixaModelo.Selada;
++        if (t.StartsWith("dutad", StringComparison.Ordinal) || t.StartsWith("duto", StringComparison.Ordinal)
++            || t.StartsWith("bass reflex", StringComparison.Ordinal))
++            return TipoCaixaModelo.Dutada;
++        return null;
++    }
++
++    // ------------------------------------------------------------------ textos
++
++    /// <summary>"Falta a Fb da caixa do Sub." / "Faltam o Vas e o Sd do Sub."</summary>
++    private static string MsgFalta(IReadOnlyList<string> itens, string nome) =>
++        $"{(itens.Count == 1 ? "Falta" : "Faltam")} {Ligacoes.Lista(itens)} do {nome}.";
++
++    private static string SemAcento(string? texto)
++    {
++        if (string.IsNullOrWhiteSpace(texto))
++            return "";
++        var sem = new StringBuilder();
++        foreach (var c in texto.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD))
++        {
++            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
++                sem.Append(c);
++        }
++        return string.Join(' ', sem.ToString().Normalize(NormalizationForm.FormC).Split(' ', StringSplitOptions.RemoveEmptyEntries));
++    }
++
++    /// <summary>"17,9".</summary>
++    internal static string Volts(double v) => v.ToString("0.0", Fio).Replace('.', ',');
++
++    /// <summary>"3,5", "80", "1,75".</summary>
++    private static string Num(decimal v) => v.ToString("0.##", Fio).Replace('.', ',');
++
++    /// <summary>"−6,8", "+0,5", "0,0": vírgula, menos verdadeiro e sinal.</summary>
++    public static string Db(decimal db)
++    {
++        var texto = Math.Abs(db).ToString("0.0", Fio).Replace('.', ',');
++        return db < 0 ? "−" + texto : db > 0 ? "+" + texto : texto;
++    }
++}
+diff --git a/app-controle/src/BgsControle.Nucleo/Rendimento/ModeloExcursao.cs b/app-controle/src/BgsControle.Nucleo/Rendimento/ModeloExcursao.cs
+new file mode 100644
+index 0000000..a8a6268
+--- /dev/null
++++ b/app-controle/src/BgsControle.Nucleo/Rendimento/ModeloExcursao.cs
+@@ -0,0 +1,148 @@
++using System.Numerics;
++
++namespace BgsControle.Nucleo.Rendimento;
++
++/// <summary>A forma do filtro: Linkwitz-Riley ou Butterworth.</summary>
++public enum FormaFiltro
++{
++    Lr,
++    Bt,
++}
++
++/// <summary>
++/// O passa-alta (ou subsônico) de uma saída, só pelo módulo (história 13a): |BTn| = 1/√(1+(fc/f)^(2n)) e
++/// |LRn| = 1/(1+(fc/f)^n), com n = inclinação/6. Só o pico de |x| importa, e o módulo dessas formas é exato.
++/// </summary>
++/// <param name="Forma">LR ou BT.</param>
++/// <param name="Inclinacao">Em dB/oit (6 a 48).</param>
++/// <param name="Frequencia">A frequência de corte, em Hz.</param>
++public sealed record PassaAlta(FormaFiltro Forma, int Inclinacao, double Frequencia)
++{
++    /// <summary>n = inclinação/6.</summary>
++    public int Ordem => Inclinacao / 6;
++
++    /// <summary>"LR24", "BT24".</summary>
++    public string Rotulo => $"{(Forma == FormaFiltro.Lr ? "LR" : "BT")}{Inclinacao}";
++
++    /// <summary>|H(f)|.</summary>
++    public double Modulo(double f)
++    {
++        var r = Frequencia / f;
++        return Forma == FormaFiltro.Lr
++            ? 1 / (1 + Math.Pow(r, Ordem))
++            : 1 / Math.Sqrt(1 + Math.Pow(r, 2 * Ordem));
++    }
++
++    /// <summary>
++    /// O passa-alta do aparelho: o tipo (o índice do <c>042</c>, 0 = OFF) e a frequência (o <c>040</c>).
++    /// Null com o filtro em OFF, sem leitura ou com um índice que o catálogo não conhece: sem filtro, que é o
++    /// lado conservador.
++    /// </summary>
++    public static PassaAlta? DoAparelho(decimal? indice, decimal? frequencia)
++    {
++        if (indice is not { } i || frequencia is not { } f || f <= 0 || i != decimal.Truncate(i))
++            return null;
++        if (!Catalogo.Filtros.TryGetValue((int)i, out var rotulo) || rotulo.Length < 3)
++            return null;
++        var forma = rotulo.StartsWith("LR", StringComparison.Ordinal) ? FormaFiltro.Lr
++            : rotulo.StartsWith("BT", StringComparison.Ordinal) ? FormaFiltro.Bt
++            : (FormaFiltro?)null;
++        if (forma is null || !int.TryParse(rotulo[2..], System.Globalization.NumberStyles.None,
++                System.Globalization.CultureInfo.InvariantCulture, out var inclinacao))
++            return null;
++        return new PassaAlta(forma.Value, inclinacao, (double)f);
++    }
++}
++
++/// <summary>Selada ou dutada (o modelo da caixa).</summary>
++public enum TipoCaixaModelo
++{
++    Selada,
++    Dutada,
++}
++
++/// <summary>Os dados do alto-falante no SI (Ω, Hz, m³, m², m, T·m, H). Sem Bl, ele sai do Qes; sem Le, Le = 0.</summary>
++public sealed record AltoFalanteModelo(double Re, double Fs, double Qms, double Vas, double Sd, double Xmax, double? Bl, double? Qes, double Le);
++
++/// <summary>A caixa no SI: o tipo, o volume (m³) e, na dutada, a sintonia (Hz).</summary>
++public sealed record CaixaModelo(TipoCaixaModelo Tipo, double Volume, double? Fb);
++
++/// <summary>A tensão RMS de um tom em que o cone chega ao Xmax, e a pior frequência.</summary>
++public sealed record ResultadoExcursao(double Volts, double PiorFrequencia);
++
++/// <summary>
++/// O modelo eletromecânico da excursão (história 13a; <c>calculo_excursao_jbl.py</c> e
++/// <c>calculo_excursao_sub.py</c>): Cms = Vas/(ρc²Sd²), Mms = 1/((2πFs)²·Cms), Rms = 2πFs·Mms/Qms e, sem
++/// Bl, Bl = √(2πFs·Mms·Re/Qes). A selada é o pistão com a mola do ar da caixa; a dutada, o modelo de
++/// Small com Ze = Re + s·Le, perda Ql = 7 e o duto sintonizado na Fb. O filtro entra só pelo módulo, e a
++/// pior frequência sai de uma grade logarítmica de 10 Hz a 20 kHz.
++/// </summary>
++public static class ModeloExcursao
++{
++    /// <summary>A densidade do ar, em kg/m³.</summary>
++    public const double Rho = 1.204;
++
++    /// <summary>A velocidade do som, em m/s.</summary>
++    public const double C = 343.0;
++
++    /// <summary>A perda da caixa dutada.</summary>
++    public const double Ql = 7.0;
++
++    public const double FrequenciaMinima = 10;
++    public const double FrequenciaMaxima = 20000;
++    public const int Pontos = 4000;
++
++    /// <summary>A grade logarítmica de 10 Hz a 20 kHz, com <see cref="Pontos"/> pontos.</summary>
++    public static IReadOnlyList<double> Grade { get; } = Enumerable.Range(0, Pontos)
++        .Select(i => FrequenciaMinima * Math.Pow(FrequenciaMaxima / FrequenciaMinima, i / (double)(Pontos - 1)))
++        .ToArray();
++
++    /// <summary>A tensão RMS de um tom em que o cone chega ao Xmax na pior frequência, com o filtro (null = sem filtro).</summary>
++    public static ResultadoExcursao TensaoNoXmax(AltoFalanteModelo af, CaixaModelo caixa, PassaAlta? filtro)
++    {
++        var pior = 0.0;
++        var fPior = Grade[0];
++        foreach (var f in Grade)
++        {
++            var x = ExcursaoPorVolt(af, caixa, f) * (filtro?.Modulo(f) ?? 1.0);
++            if (x > pior)
++            {
++                pior = x;
++                fPior = f;
++            }
++        }
++        return new ResultadoExcursao(pior > 0 ? af.Xmax / pior : double.PositiveInfinity, fPior);
++    }
++
++    /// <summary>A excursão de pico (m) de um tom de 1 V RMS na frequência, sem filtro.</summary>
++    public static double ExcursaoPorVolt(AltoFalanteModelo af, CaixaModelo caixa, double f)
++    {
++        var cms = af.Vas / (Rho * C * C * af.Sd * af.Sd);
++        var ws = 2 * Math.PI * af.Fs;
++        var mms = 1 / (ws * ws * cms);
++        var rms = ws * mms / af.Qms;
++        var bl = af.Bl ?? Math.Sqrt(ws * mms * af.Re / (af.Qes ?? double.NaN));
++        var s = new Complex(0, 2 * Math.PI * f);
++        var ze = af.Re + s * af.Le;
++        var pico = Math.Sqrt(2);
++
++        if (caixa.Tipo == TipoCaixaModelo.Selada)
++        {
++            var kt = 1 / cms + Rho * C * C * af.Sd * af.Sd / caixa.Volume;
++            var x = bl * pico / ze / (mms * s * s + (rms + bl * bl / ze) * s + kt);
++            return x.Magnitude;
++        }
++
++        var fb = caixa.Fb ?? double.NaN;
++        var cab = caixa.Volume / (Rho * C * C);
++        var map = 1 / (Math.Pow(2 * Math.PI * fb, 2) * cab);
++        var ral = Ql / (2 * Math.PI * fb * cab);
++        var sd = af.Sd;
++        var pg = bl / (ze * sd);
++        var zae = bl * bl / (ze * sd * sd);
++        var zd = s * mms / (sd * sd) + 1 / (s * cms * sd * sd) + rms / (sd * sd);
++        var zb = 1 / (s * cab + 1 / ral + 1 / (s * map));
++        var ud = pg / (zae + zd + zb);
++        return pico * ud.Magnitude / (sd * s.Magnitude);
++    }
++}
+diff --git a/app-controle/src/BgsControle.Nucleo/Setups/CriacaoMemoria.cs b/app-controle/src/BgsControle.Nucleo/Setups/CriacaoMemoria.cs
+index 719260d..31f92eb 100644
+--- a/app-controle/src/BgsControle.Nucleo/Setups/CriacaoMemoria.cs
++++ b/app-controle/src/BgsControle.Nucleo/Setups/CriacaoMemoria.cs
+@@ -631,6 +631,18 @@ public sealed class CriacaoMemoria : IDisposable
+                 anotar = !_escreveu;
+                 _escreveu = true;
+             }
++            // A cerca antes de anotar a etapa: um ajuste recusado não deixa marca (o escritor confere de novo).
++            if (novo is not null && p.Decodificar(novo).Valor is { } pedido
++                && _escritor.ConferirCerca(p, indice, pedido, espelhar: true) is { } cerca)
++            {
++                lock (_trava)
++                {
++                    if (anotar && _geracao == geracao)
++                        _escreveu = false;
++                }
++                _log.Recusado(q, cerca);
++                return ResultadoAjusteCriacao.Falha(cerca);
++            }
+             // A marca diz que algum ajuste pode ter saído antes de sair o primeiro (regra 6).
+             if (anotar && !await _copia.AnotarEtapaAsync(EtapaAjustes))
+             {
+diff --git a/app-controle/src/BgsControle.Nucleo/Setups/Equipamentos.cs b/app-controle/src/BgsControle.Nucleo/Setups/Equipamentos.cs
+index e4a96c7..fcf2857 100644
+--- a/app-controle/src/BgsControle.Nucleo/Setups/Equipamentos.cs
++++ b/app-controle/src/BgsControle.Nucleo/Setups/Equipamentos.cs
+@@ -340,6 +340,16 @@ public sealed record SaidaApp(int Mestre, IReadOnlyList<int> Canais, string Nome
+     public bool Par => Canais.Count > 1;
+ }
+ 
++/// <summary>
++/// Um alto-falante passivo no caminho de um canal do processador: o módulo que o alimenta e o canal
++/// (a partir de 1) ou o bridge em que ele está ligado (<see cref="Ligacoes.Caminhos"/>).
++/// </summary>
++public sealed record CaminhoAltoFalante(Equipamento AltoFalante, Equipamento Modulo, int? CanalModulo, Bridge? Bridge)
++{
++    /// <summary>No bridge: o ceifamento e o ganho são os da ponte.</summary>
++    public bool Ponte => Bridge is not null;
++}
++
+ /// <summary>O corte lido de um canal: a frequência de cada filtro, ou null com o filtro em OFF (ou sem leitura).</summary>
+ public sealed record CorteCanal(decimal? PassaAlta, decimal? PassaBaixa);
+ 
+@@ -857,6 +867,25 @@ public static class Ligacoes
+         return lista.Where(e => alcance.Equipamentos.Contains(e.Id)).ToArray();
+     }
+ 
++    /// <summary>
++    /// O caminho do canal do processador (0 a 3) até os alto-falantes passivos (história 13a): cada um
++    /// que o canal alimenta, direto ou pela cadeia do grupo 3, com o módulo e o canal ou o bridge em que
++    /// ele está ligado, na ordem de criação.
++    /// </summary>
++    internal static IReadOnlyList<CaminhoAltoFalante> Caminhos(IReadOnlyList<Equipamento> lista, int canal)
++    {
++        var alcance = Seguir(lista, [canal]);
++        var modulos = lista.Where(e => e.Grupo == GrupoEquipamento.Amplificador)
++            .GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
++        var caminhos = new List<CaminhoAltoFalante>();
++        foreach (var e in lista.Where(e => e.Grupo == GrupoEquipamento.AltoFalante && alcance.Equipamentos.Contains(e.Id)))
++        {
++            if (e.Ligado is { } l && modulos.TryGetValue(l.IdModulo, out var modulo))
++                caminhos.Add(new CaminhoAltoFalante(e, modulo, l.Canal, l.Bridge));
++        }
++        return caminhos;
++    }
++
+     /// <summary>Os canais do processador (0 a 3) que alimentam o equipamento, em ordem.</summary>
+     public static IReadOnlyList<int> CanaisQueAlimentam(IReadOnlyList<Equipamento> lista, string idEquipamento) =>
+         Enumerable.Range(0, CanaisProcessador).Where(c => Seguir(lista, [c]).Equipamentos.Contains(idEquipamento)).ToArray();
+diff --git a/app-controle/src/BgsControle.Nucleo/Setups/GerenteSetups.cs b/app-controle/src/BgsControle.Nucleo/Setups/GerenteSetups.cs
+index 78467de..ca0e402 100644
+--- a/app-controle/src/BgsControle.Nucleo/Setups/GerenteSetups.cs
++++ b/app-controle/src/BgsControle.Nucleo/Setups/GerenteSetups.cs
+@@ -6,6 +6,7 @@ using BgsControle.Nucleo.Leitura;
+ using BgsControle.Nucleo.Player;
+ using BgsControle.Nucleo.Presets;
+ using BgsControle.Nucleo.Registro;
++using BgsControle.Nucleo.Rendimento;
+ using BgsControle.Nucleo.Seguranca;
+ using BgsControle.Nucleo.Uso;
+ 
+@@ -260,6 +261,8 @@ public sealed class GerenteSetups
+         presets.AoAplicar = AoAplicarPresetAsync;
+         presets.Mudou += Notificar; // um preset renomeado muda o "Preset: Cinema" das memórias
+         _link.Mudou += _ => Notificar(); // as saídas do app dependem do link
++        // História 13a: a cerca do limitador, no Setup em uso e nas saídas com o link que vale agora.
++        _escritor.Cerca = escritas => Cerca.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
+ 
+         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
+         _copia.Registrar(TipoAplicarMemoria,
+@@ -528,6 +531,13 @@ public sealed class GerenteSetups
+             ? Ligacoes.Saidas(setup.Equipamentos, _link.Ligado(ParCanais.Saidas12), _link.Ligado(ParCanais.Saidas34))
+             : Ligacoes.Saidas([], false, false);
+ 
++    /// <summary>
++    /// O limite físico de cada saída do Setup em uso (história 13a), com o corte e o limitador do espelho
++    /// agora. Sem Setup em uso, nenhum.
++    /// </summary>
++    public IReadOnlyList<LimiteSaida> LimitesEmUso =>
++        SetupEmUso is { } setup ? LimiteFisico.Calcular(setup.Equipamentos, SaidasEmUso, _estado.Valor) : [];
++
+     /// <summary>As saídas de um Setup guardado, com o link tirado das ligações dele (vazio se o Setup não existe).</summary>
+     public IReadOnlyList<SaidaApp> Saidas(string? idSetup) =>
+         Setup(idSetup) is { } setup ? Ligacoes.Saidas(setup.Equipamentos) : [];
+@@ -980,7 +990,7 @@ public sealed class GerenteSetups
+             {
+                 (var alvo, sumiu) = Alvo(ativa);
+                 var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
+-                aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
++                aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
+                 if (!aplicado.Ok)
+                     return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
+             }
+@@ -1580,7 +1590,7 @@ public sealed class GerenteSetups
+ 
+         var op = new OperacaoPendente(tipo, memoria.Id, $"Aplicar a memória {memoria.Nome}", memoria.Nome);
+         var (alvo, sumiu) = Alvo(memoria);
+-        var aplicado = await AplicarAlvoAsync(alvo, op, refazendo);
++        var aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
+         if (!aplicado.Ok)
+             return ResultadoSetup.Falha(aplicado.Motivo!);
+ 
+@@ -2015,7 +2025,7 @@ public sealed class GerenteSetups
+     /// sucesso, a marca da cópia continua (quem chamou conclui, ou deixa pela metade); com
+     /// <see cref="Aplicado.Iniciou"/> falso, não havia o que escrever e nenhuma marca começou.
+     /// </summary>
+-    private async Task<Aplicado> AplicarAlvoAsync(IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
++    private async Task<Aplicado> AplicarAlvoAsync(Setup setup, IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
+     {
+         if (!SessaoAberta)
+             return Aplicado.Falha(Sessao.MotivoSemConexao);
+@@ -2038,6 +2048,14 @@ public sealed class GerenteSetups
+             _log.Recusado(escritas[0].Quadro, motivo);
+             return Aplicado.Falha(motivo);
+         }
++        // A cerca confere o lote inteiro antes da primeira escrita (no Setup do lote, com o link dele):
++        // com uma recusa, nada sai.
++        if (Cerca.Conferir(setup.Equipamentos, Ligacoes.Saidas(setup.Equipamentos), _estado.Copiar(),
++                escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), e.Valor))) is { } cerca)
++        {
++            _log.Evento($"{op.Descricao}: recusado pela cerca ({cerca})");
++            return Aplicado.Falha(cerca);
++        }
+         var copia = await _copia.IniciarAsync(op, manterCopia: refazendo);
+         if (!copia.Ok)
+             return Aplicado.Falha(copia.Motivo!);
+@@ -2047,7 +2065,7 @@ public sealed class GerenteSetups
+         string? ultimo = null;
+         foreach (var e in escritas)
+         {
+-            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true);
++            var r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: false, daCopia: true, loteConferido: true);
+             if (!r.Ok || r.Diferente)
+             {
+                 falhas++;
+diff --git a/app-controle/tests/BgsControle.Nucleo.Testes/CercaTestes.cs b/app-controle/tests/BgsControle.Nucleo.Testes/CercaTestes.cs
+new file mode 100644
+index 0000000..87b143f
+--- /dev/null
++++ b/app-controle/tests/BgsControle.Nucleo.Testes/CercaTestes.cs
+@@ -0,0 +1,300 @@
++using System.Text.RegularExpressions;
++using BgsControle.Nucleo.Escrita;
++using BgsControle.Nucleo.Leitura;
++using BgsControle.Nucleo.Player;
++using BgsControle.Nucleo.Presets;
++using BgsControle.Nucleo.Registro;
++using BgsControle.Nucleo.Rendimento;
++using BgsControle.Nucleo.Seguranca;
++using BgsControle.Nucleo.Setups;
++using BgsControle.Nucleo.Uso;
++using BgsControle.Simulador;
++
++namespace BgsControle.Nucleo.Testes;
++
++/// <summary>
++/// História 13a, a cerca contra o processador simulado: com o Casa 2.1 da fixture calibrado em uso, uma
++/// escrita do limitador ou do passa-alta que deixe uma saída com o limitador OFF ou acima do teto é
++/// recusada antes de qualquer envio, venha de onde vier (o escritor, o link, o aplicar de uma memória), e
++/// a releitura fica igual. Uma linha da matriz por teste (a tela, a porta e a criação ficam nas bancadas
++/// delas).
++/// </summary>
++public sealed class CercaTestes : IDisposable
++{
++    private static readonly TemposSessao Tempos = new(
++        Scan: TimeSpan.FromSeconds(1),
++        TentativaConexao: TimeSpan.FromSeconds(1),
++        PausaEntreTentativas: TimeSpan.FromMilliseconds(1),
++        RespostaSenha: TimeSpan.FromSeconds(2),
++        PrazoSenha: TimeSpan.FromSeconds(60));
++
++    private static readonly TemposLeitura LeituraRapida = new(TimeSpan.Zero, TimeSpan.FromMilliseconds(100));
++    private static readonly Regex Senha = new(@"^\*000\*[0-9A-Z]{4}\*$");
++
++    private const string IdAlta = "memoria-alta";
++
++    private readonly RelogioFalso _relogio = new();
++    private readonly ProcessadorSimulado _simulador;
++    private readonly Chaves _chaves;
++    private readonly LogBle _log = new();
++    private readonly Sessao _sessao;
++    private readonly LeituraAutomatica _leitura;
++    private readonly EstadoAparelho _estado;
++    private readonly Escritor _escritor;
++    private readonly CopiaAntes _copia;
++    private readonly LinkCanais _link;
++    private readonly GerentePresets _presets;
++    private readonly GerenteSetups _setups;
++
++    private static Parametro Limitador => Catalogo.ParametroDe("071")!;
++    private static Parametro PassaAlta => Catalogo.ParametroDe("040")!;
++    private static Parametro Ganho => Catalogo.ParametroDe("081")!;
++
++    /// <summary>O Casa 2.1 com a FILME (ativa) e a ALTA: a FILME com o limitador da JBL L em −3 dB.</summary>
++    public CercaTestes() : this(Dados(CasaDoDenis.EquipamentosCasa))
++    {
++    }
++
++    private CercaTestes(DadosSetups dados)
++    {
++        _simulador = new ProcessadorSimulado(_relogio) { AtrasoSenha = TimeSpan.Zero, AtrasoLeitura = TimeSpan.Zero };
++        _chaves = new Chaves(new RepositorioMemoria());
++        _sessao = new Sessao(_simulador, new CofreFalso { Senha = "AB12" }, _log, Tempos, _chaves);
++        _leitura = new LeituraAutomatica(_sessao, new LeitorCompleto(_sessao, _log, LeituraRapida));
++        _estado = new EstadoAparelho(_sessao, _leitura);
++        _escritor = new Escritor(_sessao, _estado, _log, relogio: _relogio);
++        _copia = new CopiaAntes(_sessao, _estado, _escritor, _leitura, new TextoMemoria(), _log, _relogio);
++        _link = new LinkCanais(_sessao, _estado, _escritor, new TextoMemoria(), _log);
++        _presets = new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio);
++        _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _presets, new GerentePlaylists(new TextoMemoria(), _log),
++            _chaves, new TextoMemoria(GerenteSetups.ParaJson(dados)), new TextoMemoria(), _log, _relogio);
++    }
++
++    private static DadosSetups Dados(IReadOnlyList<Equipamento> equipamentos)
++    {
++        var alta = CenarioFilme.Memoria with
++        {
++            Id = IdAlta,
++            Nome = "ALTA",
++            Regulagem = CenarioFilme.Regulagem
++                .Select(v => v is { Codigo: "071", Indice: 0 } ? v with { NoFio = "-3.0" } : v)
++                .ToArray(),
++        };
++        return CenarioFilme.Dados with
++        {
++            Setups = [CasaDoDenis.SetupCasa with { Equipamentos = equipamentos }],
++            Memorias = [CenarioFilme.Memoria, alta],
++        };
++    }
++
++    /// <summary>Critério de aceite: nada além do catálogo chega ao simulador; nenhum 240, 241 ou 23N.</summary>
++    public void Dispose()
++    {
++        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*24", StringComparison.Ordinal) || e.StartsWith("*23", StringComparison.Ordinal));
++        Assert.All(_simulador.Escritas, e => Assert.True(Senha.IsMatch(e) || Catalogo.EhLeitura(e) || Catalogo.EscritaDeAudio(e) is not null, e));
++    }
++
++    // ----------------------------------------------------------------- apoio
++
++    private async Task Conectar()
++    {
++        await _chaves.Carregada;
++        await _copia.Carregada;
++        await _link.Carregada;
++        await _presets.Carregada;
++        await _setups.Carregada;
++        await _sessao.ConectarAsync();
++        Assert.Equal(EstadoSessao.Conectado, _sessao.Estado);
++        await AndarAte(() => _estado.Pronto && !_estado.Lendo && !_leitura.Lendo && !_copia.EmAndamento && _setups.Conferido);
++        Assert.Equal(CasaDoDenis.IdSetupCasa, _setups.SetupEmUso?.Id);
++    }
++
++    private async Task AndarAte(Func<bool> condicao)
++    {
++        for (var i = 0; i < 3000 && !condicao(); i++)
++        {
++            _relogio.Avancar(TimeSpan.FromMilliseconds(10));
++            await Task.Delay(1);
++        }
++        Assert.True(condicao(), "a condição não ficou verdadeira");
++    }
++
++    private async Task<T> Rodar<T>(Task<T> tarefa)
++    {
++        await AndarAte(() => tarefa.IsCompleted);
++        return await tarefa;
++    }
++
++    /// <summary>Uma escrita como o app (sem o "usuário mexendo").</summary>
++    private async Task<ResultadoEscrita> Escrever(Parametro p, int canal, decimal valor)
++    {
++        using (Origem.Como(OrigemComando.App))
++            return await Rodar(_escritor.EscreverAsync(p, canal, valor));
++    }
++
++    /// <summary>O passa-alta da JBL L em 200 Hz (LR24 da FILME): o curso do cone fica acima do térmico.</summary>
++    private async Task JblLEm200Hz() => Assert.True((await Escrever(PassaAlta, 0, 200m)).Ok);
++
++    private List<string> AudioDesde(int inicio) =>
++        _simulador.Escritas.Skip(inicio).Where(e => Catalogo.EscritaDeAudio(e) is not null).ToList();
++
++    /// <summary>A releitura completa traz o valor do simulador para o espelho.</summary>
++    private async Task Reler()
++    {
++        var retrato = await Rodar(_leitura.LerNovaAsync());
++        Assert.True(retrato?.Completo);
++    }
++
++    // ----------------------------------------------------------------- a matriz
++
++    [Fact]
++    public async Task Limitador_0_1_dB_acima_do_teto_e_recusado_sem_envio_e_a_releitura_fica_igual()
++    {
++        await Conectar();
++        await JblLEm200Hz();
++        var inicio = _simulador.Escritas.Count;
++
++        var r = await Escrever(Limitador, 0, -6.7m);
++
++        Assert.False(r.Ok);
++        Assert.Equal("Limite da JBL L: −6,8 dB, pelo térmico.", r.Motivo);
++        Assert.Empty(AudioDesde(inicio));
++        await Reler();
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++        Assert.Equal(-15.0m, _estado.Valor("071", 0)!.Numero);
++
++        var noTeto = await Escrever(Limitador, 0, -6.8m);
++
++        Assert.True(noTeto.Ok, noTeto.Motivo);
++        Assert.Equal("-6.8", _simulador.Valor("071", 0));
++    }
++
++    [Fact]
++    public async Task Limitador_OFF_e_recusado()
++    {
++        await Conectar();
++        var inicio = _simulador.Escritas.Count;
++
++        var r = await Escrever(Limitador, 1, Cerca.LimitadorOff);
++
++        Assert.False(r.Ok);
++        Assert.Equal("Limite da JBL R: o limitador não pode ficar desligado.", r.Motivo);
++        Assert.Empty(AudioDesde(inicio));
++        Assert.Equal("-18.0", _simulador.Valor("071", 1));
++    }
++
++    [Fact]
++    public async Task Baixar_o_corte_que_baixa_o_X_e_recusado_e_passa_depois_de_baixar_o_limitador()
++    {
++        await Conectar();
++        await JblLEm200Hz();
++        Assert.True((await Escrever(Limitador, 0, -6.8m)).Ok);
++        var inicio = _simulador.Escritas.Count;
++
++        var corte = await Escrever(PassaAlta, 0, 150m);
++
++        Assert.False(corte.Ok);
++        Assert.StartsWith("Limite da JBL L: −9,", corte.Motivo);
++        Assert.EndsWith("dB, pelo curso do cone.", corte.Motivo);
++        Assert.Empty(AudioDesde(inicio));
++        Assert.Equal("200", _simulador.Valor("040", 0));
++
++        Assert.True((await Escrever(Limitador, 0, -10.0m)).Ok);
++        var depois = await Escrever(PassaAlta, 0, 150m);
++
++        Assert.True(depois.Ok, depois.Motivo);
++        Assert.Equal("150", _simulador.Valor("040", 0));
++    }
++
++    [Fact]
++    public async Task O_link_confere_os_dois_canais_do_Sub_e_a_copia_do_link_passa()
++    {
++        await Conectar();
++        var inicio = _simulador.Escritas.Count;
++
++        var acima = await Escrever(Limitador, 2, -7.7m);
++
++        Assert.False(acima.Ok);
++        Assert.Equal("Limite da Sub: −7,8 dB, pelo curso do cone.", acima.Motivo);
++        Assert.Empty(AudioDesde(inicio));
++
++        var noTeto = await Escrever(Limitador, 2, -7.8m);
++
++        Assert.True(noTeto.Ok, noTeto.Motivo);
++        Assert.Null(noTeto.Aviso);
++        Assert.Equal("-7.8", _simulador.Valor("071", 2));
++        Assert.Equal("-7.8", _simulador.Valor("071", 3));
++    }
++
++    [Fact]
++    public async Task Outras_escritas_nao_passam_pela_cerca()
++    {
++        await Conectar();
++
++        // O ganho e o passa-baixa não mudam o limite (o EQ e o ganho não são vigiados).
++        Assert.True((await Escrever(Ganho, 0, 6.0m)).Ok);
++        Assert.True((await Escrever(Catalogo.ParametroDe("041")!, 0, 300m)).Ok);
++    }
++
++    [Fact]
++    public async Task Aplicar_uma_memoria_com_o_limitador_acima_do_teto_nao_envia_nada_e_falha_com_a_mensagem()
++    {
++        await Conectar();
++        Assert.True((await Escrever(Ganho, 0, 1.0m)).Ok); // algo diferente além do limitador
++        var inicio = _simulador.Escritas.Count;
++
++        var r = await Rodar(_setups.AplicarAsync(IdAlta));
++
++        Assert.False(r.Ok);
++        Assert.StartsWith("Limite da JBL L: ", r.Mensagem);
++        Assert.EndsWith("dB, pelo curso do cone.", r.Mensagem);
++        Assert.Empty(AudioDesde(inicio));
++        Assert.Null(_copia.PelaMetade); // nada pela metade
++        Assert.Null(_copia.Ultima?.Operacao);
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++        Assert.Equal("+1.0", _simulador.Valor("081", 0));
++    }
++
++    [Fact]
++    public async Task Aplicar_uma_memoria_dentro_do_teto_escreve_o_lote_inteiro()
++    {
++        await Conectar();
++        Assert.True((await Escrever(Limitador, 0, -20.0m)).Ok);
++
++        var r = await Rodar(_setups.AplicarAsync(CenarioFilme.IdMemoria));
++
++        Assert.True(r.Ok, r.Mensagem);
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++    }
++
++    [Fact]
++    public async Task Sem_calibracao_a_cerca_deixa_passar()
++    {
++        using var t = new CercaTestes(Dados(CasaDoDenis.EquipamentosSemCalibracao));
++        await t.Conectar();
++
++        var r = await t.Escrever(Limitador, 0, Cerca.LimitadorOff);
++
++        Assert.True(r.Ok, r.Motivo);
++        Assert.Equal("+0.5", t._simulador.Valor("071", 0));
++        var jbl = t._setups.LimitesEmUso.Single(l => l.Nome == "JBL L");
++        Assert.False(jbl.Calibrada);
++        Assert.Null(jbl.TetoDb);
++        Assert.NotNull(jbl.TetoV);
++    }
++
++    [Fact]
++    public async Task Os_limites_em_uso_seguem_o_corte_do_espelho()
++    {
++        await Conectar();
++        var antes = _setups.LimitesEmUso.Single(l => l.Nome == "JBL L");
++        Assert.Equal(TipoLimite.Excursao, antes.Manda); // LR24 em 150 Hz na FILME
++
++        await JblLEm200Hz();
++        var depois = _setups.LimitesEmUso.Single(l => l.Nome == "JBL L");
++
++        Assert.Equal(TipoLimite.Termico, depois.Manda);
++        Assert.Equal(-6.8m, depois.TetoDb);
++        Assert.Equal(["JBL L", "JBL R", "Sub"], _setups.LimitesEmUso.Select(l => l.Nome));
++    }
++}
+diff --git a/app-controle/tests/BgsControle.Nucleo.Testes/CriacaoTestes.cs b/app-controle/tests/BgsControle.Nucleo.Testes/CriacaoTestes.cs
+index a230750..77d6f24 100644
+--- a/app-controle/tests/BgsControle.Nucleo.Testes/CriacaoTestes.cs
++++ b/app-controle/tests/BgsControle.Nucleo.Testes/CriacaoTestes.cs
+@@ -387,6 +387,25 @@ public sealed class CriacaoTestes : IDisposable
+         Assert.Null(_copia.Ultima!.Operacao!.Etapa); // nenhum ajuste escrito
+     }
+ 
++    /// <summary>História 13a: a cerca vale na criação (o passa-alta da JBL L em 150 Hz na FILME: o teto é o do curso do cone).</summary>
++    [Fact]
++    public async Task Ajuste_do_limitador_acima_do_teto_da_409_nada_sai_e_nao_anota_a_etapa()
++    {
++        var chave = await Autorizada();
++
++        var r = await Ajuste(chave, codigo: "071", indice: 0, valor: -3.0m, frase: "Mais volume", motivo: "Pediu mais.");
++
++        Assert.Equal(409, r.Status);
++        Assert.StartsWith("Limite da JBL L: −9,", Motivo(r));
++        Assert.EndsWith("dB, pelo curso do cone.", Motivo(r));
++        Assert.DoesNotContain(_simulador.Escritas, e => e.StartsWith("*071*0*", StringComparison.Ordinal));
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++        Assert.Null(_copia.Ultima!.Operacao!.Etapa); // nenhum ajuste escrito
++
++        Assert.Equal(200, (await Ajuste(chave, codigo: "071", indice: 0, valor: -12.0m, frase: "Mais volume", motivo: "Pediu mais.")).Status);
++        Assert.Equal("-12.0", _simulador.Valor("071", 0));
++    }
++
+     [Fact]
+     public async Task Ajuste_do_ganho_da_saida_3_devolve_antes_novo_e_relido_vai_como_IA_e_o_espelho_mostra()
+     {
+diff --git a/app-controle/tests/BgsControle.Nucleo.Testes/LimiteFisicoTestes.cs b/app-controle/tests/BgsControle.Nucleo.Testes/LimiteFisicoTestes.cs
+new file mode 100644
+index 0000000..b345358
+--- /dev/null
++++ b/app-controle/tests/BgsControle.Nucleo.Testes/LimiteFisicoTestes.cs
+@@ -0,0 +1,296 @@
++using BgsControle.Nucleo.Escrita;
++using BgsControle.Nucleo.Rendimento;
++using BgsControle.Nucleo.Setups;
++using BgsControle.Simulador;
++
++namespace BgsControle.Nucleo.Testes;
++
++/// <summary>
++/// História 13a, o cálculo: o limite físico de cada saída (térmico, excursão com os três casos e
++/// ceifamento), a conta, o selo e a conversão para o limitador. Uma linha da matriz por teste, com os
++/// números do exemplo de <c>limites-e-niveis.md</c> (<c>memoria-spl.md</c> §12 e §13.2) dentro de 0,2 dB.
++/// </summary>
++public sealed class LimiteFisicoTestes
++{
++    private const int Lr24 = 3;
++    private const int Bt24 = 11;
++
++    /// <summary>A JBL do exemplo: a ficha oficial (Re 3,4), caixa selada de 3,5 L.</summary>
++    private static DadosTecnicos JblExemplo => CasaDoDenis.FichaJbl with
++    {
++        TipoCaixa = new DadoTexto("selada", OrigemDado.Medido),
++        VolumeCaixa = new DadoTecnico(3.5m, OrigemDado.Estimado),
++    };
++
++    /// <summary>O Sub do exemplo: a ficha da Protech, dutada de 28 L (volume estimado), Fb 51 Hz medida.</summary>
++    private static DadosTecnicos SubExemplo => CasaDoDenis.FichaSub with
++    {
++        TipoCaixa = new DadoTexto("dutada", OrigemDado.Medido),
++        VolumeCaixa = new DadoTecnico(28m, OrigemDado.Estimado),
++        Fb = new DadoTecnico(51m, OrigemDado.Medido),
++    };
++
++    /// <summary>O Casa 2.1 da fixture com as fichas dadas para a JBL (L e R), o Sub e o módulo.</summary>
++    private static IReadOnlyList<Equipamento> Casa(DadosTecnicos? jbl = null, DadosTecnicos? sub = null, DadosTecnicos? modulo = null) =>
++        CasaDoDenis.EquipamentosCasa.Select(e => e.Id switch
++        {
++            CasaDoDenis.IdJblL or CasaDoDenis.IdJblR => e with { Dados = jbl ?? JblExemplo },
++            CasaDoDenis.IdSubCasa => e with { Dados = sub ?? SubExemplo },
++            CasaDoDenis.IdModuloCasa when modulo is not null => e with { Dados = modulo },
++            _ => e,
++        }).ToArray();
++
++    /// <summary>O estado do aparelho: o passa-alta de cada canal (tipo e frequência) e o limitador.</summary>
++    private static Func<Endereco, Valor?> Estado(int filtroJbl = Lr24, decimal hzJbl = 200, int filtroSub = Bt24, decimal hzSub = 40)
++    {
++        var d = new Dictionary<Endereco, Valor>();
++        void Por(string codigo, int canal, string noFio) => d[new Endereco(codigo, canal)] = Catalogo.ParametroDe(codigo)!.Decodificar(noFio).Valor!;
++        for (var c = 0; c < 4; c++)
++        {
++            var jbl = c < 2;
++            Por("042", c, (jbl ? filtroJbl : filtroSub).ToString(System.Globalization.CultureInfo.InvariantCulture));
++            Por("040", c, (jbl ? hzJbl : hzSub).ToString(System.Globalization.CultureInfo.InvariantCulture));
++            Por("071", c, "-12.0");
++        }
++        return e => d.GetValueOrDefault(e);
++    }
++
++    private static IReadOnlyList<LimiteSaida> Limites(IReadOnlyList<Equipamento> equipamentos, Func<Endereco, Valor?> estado) =>
++        LimiteFisico.Calcular(equipamentos, Ligacoes.Saidas(equipamentos), estado);
++
++    private static LimiteSaida Saida(IReadOnlyList<LimiteSaida> limites, string nome) => limites.Single(l => l.Nome == nome);
++
++    /// <summary>Dois volts dentro de 0,2 dB.</summary>
++    private static void PertoDb(double esperado, double? real)
++    {
++        Assert.NotNull(real);
++        Assert.InRange(20 * Math.Log10(real!.Value / esperado), -0.2, 0.2);
++    }
++
++    // ----------------------------------------------------------------- a matriz
++
++    [Fact]
++    public void JBL_do_exemplo_com_LR24_em_200_Hz_da_o_teto_de_menos_6_8_dB_pelo_termico()
++    {
++        var jbl = Saida(Limites(Casa(), Estado()), "JBL L");
++
++        PertoDb(17.9, jbl.Termico!.V);
++        PertoDb(22.2, jbl.Excursao!.V);
++        PertoDb(23, jbl.Ceifamento!.V);
++        Assert.Equal(TipoLimite.Termico, jbl.Manda);
++        Assert.True(jbl.Calibrada);
++        Assert.InRange(jbl.TetoDb!.Value, -7.0m, -6.6m);
++        Assert.Equal(-6.8m, jbl.TetoDb);
++        PertoDb(17.9, jbl.TetoV);
++        Assert.False(jbl.Estimado); // o térmico vem da ficha oficial
++        Assert.Equal(LimiteFisico.SeloVerificado, jbl.Termico.Selo);
++        Assert.Equal(LimiteFisico.SeloEstimado, jbl.Excursao.Selo); // o volume da caixa é estimado
++        Assert.Equal("√(80 W × 4 Ω) = 17,9 V", jbl.Termico.Conta);
++        Assert.Contains("LR24 em 200 Hz", jbl.Excursao.Conta);
++        Assert.Contains("canal 1", jbl.Ceifamento.Conta);
++    }
++
++    [Fact]
++    public void JBL_com_LR24_em_150_Hz_o_curso_do_cone_manda()
++    {
++        var jbl = Saida(Limites(Casa(), Estado(hzJbl: 150)), "JBL R");
++
++        PertoDb(12.9, jbl.Excursao!.V);
++        Assert.Equal(TipoLimite.Excursao, jbl.Manda);
++        Assert.Equal(LimiteFisico.ParaDb(jbl.Excursao.V!.Value, 19.5m), jbl.TetoDb);
++        Assert.InRange((double)jbl.TetoDb!.Value, 20 * Math.Log10(12.9 / 39) - 0.2, 20 * Math.Log10(12.9 / 39) + 0.2);
++        Assert.True(jbl.Estimado);
++    }
++
++    [Fact]
++    public void Sub_do_exemplo_na_ponte_da_o_teto_do_X_estimado()
++    {
++        var sub = Saida(Limites(Casa(), Estado()), "Sub");
++
++        Assert.Equal([2, 3], sub.Canais);
++        PertoDb(42.4, sub.Termico!.V);
++        PertoDb(40, sub.Ceifamento!.V);
++        PertoDb(33.1, sub.Excursao!.V);
++        Assert.Equal(TipoLimite.Excursao, sub.Manda);
++        Assert.Equal(-7.8m, sub.TetoDb);
++        Assert.True(sub.Estimado); // o volume da caixa é estimado
++        Assert.Contains("ponte 3+4", sub.Ceifamento.Conta);
++        Assert.Contains("dutada de 28 L com Fb de 51 Hz", sub.Excursao.Conta);
++        Assert.Contains("BT24 em 40 Hz", sub.Excursao.Conta);
++    }
++
++    [Fact]
++    public void Caso_2_dutada_sem_Bl_nem_Qes_com_subsonico_logo_abaixo_da_Fb_da_X_infinito_e_manda_o_menor_de_T_e_C()
++    {
++        var sub = Saida(Limites(Casa(sub: SubExemplo with { Bl = null, Qes = null }), Estado()), "Sub");
++
++        Assert.True(sub.Excursao!.Infinito);
++        Assert.Null(sub.Excursao.V);
++        Assert.Equal(LimiteFisico.SeloEstimado, sub.Excursao.Selo);
++        Assert.Contains("o duto protege o cone", sub.Excursao.Conta);
++        Assert.Equal("Falta o Bl ou o Qes do Sub.", sub.Excursao.Falta);
++        Assert.Equal(TipoLimite.Ceifamento, sub.Manda); // min(42,4; 40)
++        PertoDb(40, sub.TetoV);
++        Assert.Equal(LimiteFisico.ParaDb(40, 40.5m), sub.TetoDb);
++    }
++
++    [Theory]
++    [InlineData(30)] // abaixo de 0,75 × Fb: o subsônico não protege o cone
++    [InlineData(45)] // acima de 0,8 × Fb
++    public void Caso_2_so_vale_com_o_corte_entre_0_75_e_0_8_da_Fb(int hz)
++    {
++        var sub = Saida(Limites(Casa(sub: SubExemplo with { Bl = null, Qes = null }), Estado(hzSub: hz)), "Sub");
++
++        Assert.False(sub.Excursao!.Infinito);
++        PertoDb(40 * Math.Pow(10, -3.0 / 20), sub.Excursao.V); // o caso 3
++    }
++
++    [Fact]
++    public void Caso_2_pede_pelo_menos_24_dB_por_oitava()
++    {
++        var bt12 = 9;
++        var sub = Saida(Limites(Casa(sub: SubExemplo with { Bl = null, Qes = null }), Estado(filtroSub: bt12)), "Sub");
++
++        Assert.False(sub.Excursao!.Infinito);
++    }
++
++    [Fact]
++    public void Caso_3_dutada_sem_Fb_da_o_menor_de_T_e_C_menos_3_dB_estimado_com_o_aviso()
++    {
++        var sub = Saida(Limites(Casa(sub: SubExemplo with { Fb = null }), Estado()), "Sub");
++
++        PertoDb(40 * Math.Pow(10, -3.0 / 20), sub.Excursao!.V);
++        Assert.Equal(LimiteFisico.SeloEstimado, sub.Excursao.Selo);
++        Assert.Equal("Falta a Fb da caixa do Sub.", sub.Excursao.Falta);
++        Assert.Equal(TipoLimite.Excursao, sub.Manda);
++        Assert.True(sub.Estimado);
++    }
++
++    [Fact]
++    public void Caso_3_sem_o_tipo_da_caixa_e_sem_volume()
++    {
++        var jbl = Saida(Limites(Casa(jbl: CasaDoDenis.FichaJbl), Estado()), "JBL L");
++
++        Assert.Equal("Faltam o tipo da caixa (selada ou dutada) e o volume da caixa do JBL L.", jbl.Excursao!.Falta);
++        PertoDb(17.9 * Math.Pow(10, -3.0 / 20), jbl.Excursao.V);
++        Assert.Equal(TipoLimite.Excursao, jbl.Manda);
++    }
++
++    [Fact]
++    public void Sem_calibracao_mostra_os_volts_e_o_dB_fica_null()
++    {
++        var modulo = CasaDoDenis.EquipamentosSemCalibracao.Single(e => e.Id == CasaDoDenis.IdModuloCasa).Dados;
++        var limites = Limites(Casa(modulo: modulo), Estado());
++
++        Assert.All(limites, l =>
++        {
++            Assert.False(l.Calibrada);
++            Assert.Null(l.TetoDb);
++            Assert.NotNull(l.TetoV);
++            Assert.False(l.Cercada);
++        });
++        PertoDb(17.9, Saida(limites, "JBL L").TetoV);
++    }
++
++    [Fact]
++    public void O_Re_medido_da_fixture_da_X_de_22_9_V_e_o_teto_continua_pelo_termico()
++    {
++        var limites = LimiteFisico.Calcular(CasaDoDenis.EquipamentosCasa, Ligacoes.Saidas(CasaDoDenis.EquipamentosCasa), Estado());
++        var jbl = Saida(limites, "JBL L");
++
++        PertoDb(22.9, jbl.Excursao!.V);
++        Assert.Equal(TipoLimite.Termico, jbl.Manda);
++        Assert.Equal(-6.8m, jbl.TetoDb);
++    }
++
++    [Fact]
++    public void Sem_passa_alta_o_filtro_nao_entra()
++    {
++        var com = Saida(Limites(Casa(), Estado()), "JBL L");
++        var sem = Saida(Limites(Casa(), Estado(filtroJbl: 0)), "JBL L");
++
++        Assert.True(sem.Excursao!.V < com.Excursao!.V);
++        Assert.Contains("sem passa-alta", sem.Excursao.Conta);
++    }
++
++    [Fact]
++    public void Sem_nenhum_dos_tres_a_saida_fica_sem_limite_com_o_motivo()
++    {
++        var vazio = DadosTecnicos.Nenhum;
++        var modulo = CasaDoDenis.FichaModulo with { TensaoCeifamentoCanal = null, TensaoCeifamentoPonte = null };
++        var jbl = Saida(Limites(Casa(jbl: vazio, modulo: modulo), Estado()), "JBL L");
++
++        Assert.Null(jbl.TetoV);
++        Assert.Null(jbl.Manda);
++        Assert.False(jbl.Cercada);
++        Assert.Contains("Faltam a potência RMS e a impedância do JBL L.", jbl.SemLimite);
++    }
++
++    [Fact]
++    public void Um_canal_so_com_caixa_ativa_fica_sem_limite()
++    {
++        Equipamento[] lista =
++        [
++            new("ativa", GrupoEquipamento.AmplificaETocam, "caixa ativa 2 vias", "Ativa")
++            {
++                Entradas = [new Entrada(1, FonteSinal.DoCanal(0))],
++            },
++        ];
++        var limites = LimiteFisico.Calcular(lista, Ligacoes.Saidas(lista), _ => null);
++
++        Assert.Equal(LimiteFisico.MsgSemAltoFalante, limites[0].SemLimite);
++        Assert.Null(limites[0].TetoDb);
++        Assert.Equal(LimiteFisico.MsgSemAltoFalante, limites[1].SemLimite); // CH2: nada
++    }
++
++    [Fact]
++    public void Sem_Setup_nenhum_limite()
++    {
++        Assert.Empty(LimiteFisico.Calcular(null, Ligacoes.Saidas([], false, false), _ => null));
++    }
++
++    [Theory]
++    [InlineData("selada", TipoCaixaModelo.Selada)]
++    [InlineData("  Selada pequena", TipoCaixaModelo.Selada)]
++    [InlineData("DUTADA", TipoCaixaModelo.Dutada)]
++    [InlineData("duto frontal", TipoCaixaModelo.Dutada)]
++    [InlineData("Bass Reflex", TipoCaixaModelo.Dutada)]
++    [InlineData("radiador passivo", null)]
++    [InlineData("", null)]
++    public void O_tipo_da_caixa_e_texto_livre(string texto, TipoCaixaModelo? esperado)
++    {
++        Assert.Equal(esperado, LimiteFisico.TipoDaCaixa(texto));
++    }
++
++    [Fact]
++    public void O_filtro_entra_so_pelo_modulo()
++    {
++        var lr24 = PassaAlta.DoAparelho(Lr24, 200)!;
++        var bt24 = PassaAlta.DoAparelho(Bt24, 40)!;
++
++        Assert.Equal((FormaFiltro.Lr, 24), (lr24.Forma, lr24.Inclinacao));
++        Assert.Equal((FormaFiltro.Bt, 24), (bt24.Forma, bt24.Inclinacao));
++        Assert.Equal(0.5, lr24.Modulo(200), 6); // LR: −6 dB no corte
++        Assert.Equal(1 / Math.Sqrt(2), bt24.Modulo(40), 6); // BT: −3 dB no corte
++        Assert.Null(PassaAlta.DoAparelho(0, 200)); // OFF
++        Assert.Null(PassaAlta.DoAparelho(null, 200)); // sem leitura
++    }
++
++    [Theory]
++    [InlineData(17.8885, 19.5, "-6.8")]
++    [InlineData(39.0, 19.5, "0.0")]
++    [InlineData(33.06, 40.5, "-7.8")]
++    public void A_conversao_arredonda_para_baixo_no_passo_de_0_1(double volts, double ganho, string esperado)
++    {
++        Assert.Equal(decimal.Parse(esperado, System.Globalization.CultureInfo.InvariantCulture), LimiteFisico.ParaDb(volts, (decimal)ganho));
++    }
++
++    [Fact]
++    public void Um_dado_so_digitado_leva_o_selo_estimado()
++    {
++        var jbl = Saida(Limites(Casa(jbl: JblExemplo with { PotenciaRms = new DadoTecnico(80m, OrigemDado.Digitado) }), Estado()), "JBL L");
++
++        Assert.Equal(LimiteFisico.SeloEstimado, jbl.Termico!.Selo);
++        Assert.True(jbl.Estimado);
++    }
++}
+diff --git a/app-controle/tests/BgsControle.Nucleo.Testes/PortaTestes.cs b/app-controle/tests/BgsControle.Nucleo.Testes/PortaTestes.cs
+index 97371a9..4ffd04e 100644
+--- a/app-controle/tests/BgsControle.Nucleo.Testes/PortaTestes.cs
++++ b/app-controle/tests/BgsControle.Nucleo.Testes/PortaTestes.cs
+@@ -1575,4 +1575,112 @@ public sealed class PortaTestes : IDisposable
+         Assert.Equal(3, _porta.AjustesSeguidos);
+         Assert.Null(_confirmacoes.Atual);
+     }
++
++    // ----------------------------------------------------------------- os limites e a cerca (13a)
++
++    /// <summary>O passa-alta das JBL em 200 Hz (o LR24 da FILME): o curso do cone fica acima do térmico. Vai como App.</summary>
++    private async Task JblEm200Hz()
++    {
++        using (Origem.Como(OrigemComando.App))
++        {
++            foreach (var canal in new[] { 0, 1 })
++                Assert.True((await Rodar(_escritor.EscreverAsync(Catalogo.ParametroDe("040")!, canal, 200m))).Ok);
++        }
++    }
++
++    [Fact]
++    public async Task Limites_traz_as_JBL_em_menos_6_8_dB_pelo_termico_e_o_Sub_na_ponte_pelo_curso_estimado()
++    {
++        var chave = await Pronto();
++        await JblEm200Hz();
++
++        var r = await Pedir("GET", "/limites", chave: chave);
++
++        Assert.Equal(200, r.Status);
++        var saidas = Json(r).GetProperty("saidas").EnumerateArray().ToArray();
++        Assert.Equal(["JBL L", "JBL R", "Sub"], saidas.Select(s => s.GetProperty("saida").GetString()));
++        foreach (var jbl in saidas.Take(2))
++        {
++            Assert.True(jbl.GetProperty("calibrada").GetBoolean());
++            Assert.Equal(-6.8m, jbl.GetProperty("teto").GetDecimal());
++            Assert.InRange(jbl.GetProperty("tetoV").GetDouble(), 17.8, 18.0);
++            Assert.Equal("termico", jbl.GetProperty("manda").GetString());
++            Assert.False(jbl.GetProperty("estimado").GetBoolean());
++            var termico = jbl.GetProperty("termico");
++            Assert.Equal("verificado", termico.GetProperty("selo").GetString());
++            Assert.Equal("√(80 W × 4 Ω) = 17,9 V", termico.GetProperty("conta").GetString());
++            Assert.Equal(JsonValueKind.Null, termico.GetProperty("falta").ValueKind);
++            Assert.Equal("estimado", jbl.GetProperty("excursao").GetProperty("selo").GetString());
++            Assert.InRange(jbl.GetProperty("ceifamento").GetProperty("v").GetDouble(), 22.9, 23.1);
++        }
++        var sub = saidas[2];
++        Assert.Equal([2, 3], sub.GetProperty("canais").EnumerateArray().Select(c => c.GetInt32()));
++        Assert.Equal("excursao", sub.GetProperty("manda").GetString());
++        Assert.True(sub.GetProperty("estimado").GetBoolean());
++        Assert.Equal(-7.8m, sub.GetProperty("teto").GetDecimal());
++        Assert.InRange(sub.GetProperty("excursao").GetProperty("v").GetDouble(), 32.4, 33.9);
++        Assert.Contains("ponte 3+4", sub.GetProperty("ceifamento").GetProperty("conta").GetString());
++    }
++
++    [Fact]
++    public async Task Limites_sem_Setup_em_uso_e_uma_lista_vazia()
++    {
++        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
++            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(), _log, _relogio),
++            new GerentePlaylists(new TextoMemoria(), _log), _chaves, new TextoMemoria(), new TextoMemoria(), _log, _relogio);
++        using var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
++        await Conectar();
++        await AndarAte(() => setups.Conferido && !setups.Ocupado);
++        await LigarPorta(porta);
++        var chave = Json(await Pedir("POST", "/parear", $$"""{"codigo":"{{porta.Pareamento.Codigo}}","nome":"Claude"}""", porta: porta))
++            .GetProperty("chave").GetString()!;
++
++        var r = await Pedir("GET", "/limites", chave: chave, porta: porta);
++
++        Assert.Equal(200, r.Status);
++        Assert.Empty(Json(r).GetProperty("saidas").EnumerateArray());
++    }
++
++    [Fact]
++    public async Task Ajuste_do_limitador_em_OFF_recebe_409_com_a_mensagem_e_nada_sai()
++    {
++        var chave = await Pronto();
++        var inicio = _simulador.Escritas.Count;
++
++        var r = await Pedir("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":0.5}""", chave);
++
++        Assert.Equal(409, r.Status);
++        Assert.Equal("Limite da JBL L: o limitador não pode ficar desligado.", Motivo(r));
++        Assert.DoesNotContain(_simulador.Escritas.Skip(inicio), e => e.StartsWith("*071*", StringComparison.Ordinal));
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++    }
++
++    [Fact]
++    public async Task Ajuste_do_limitador_0_1_dB_acima_do_teto_recebe_409_e_no_teto_passa()
++    {
++        var chave = await Pronto();
++        await JblEm200Hz();
++
++        var acima = await PedirRodando("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":-6.7}""", chave);
++
++        Assert.Equal(409, acima.Status);
++        Assert.Equal("Limite da JBL L: −6,8 dB, pelo térmico.", Motivo(acima));
++        Assert.Equal("-15.0", _simulador.Valor("071", 0));
++
++        var noTeto = await PedirRodando("POST", "/ajuste", """{"codigo":"071","indice":0,"valor":-6.8}""", chave);
++
++        Assert.Equal(200, noTeto.Status);
++        Assert.Equal("-6.8", _simulador.Valor("071", 0));
++    }
++
++    [Fact]
++    public async Task A_ajuda_descreve_os_limites_e_a_cerca()
++    {
++        var chave = await Pronto();
++
++        var texto = Json(await Pedir("GET", "/ajuda", chave: chave)).GetProperty("texto").GetString()!;
++
++        Assert.Contains("GET  /limites", texto);
++        Assert.Contains("A cerca do limitador", texto);
++    }
+ }
+diff --git a/app-controle/tests/BgsControle.Nucleo.Testes/SetupsTestes.cs b/app-controle/tests/BgsControle.Nucleo.Testes/SetupsTestes.cs
+index 959330c..15a6d61 100644
+--- a/app-controle/tests/BgsControle.Nucleo.Testes/SetupsTestes.cs
++++ b/app-controle/tests/BgsControle.Nucleo.Testes/SetupsTestes.cs
+@@ -94,6 +94,13 @@ public sealed partial class SetupsTestes : IDisposable
+     /// <summary>O app sem nenhum arquivo: a primeira abertura (o app nasce zerado).</summary>
+     private static SetupsTestes SemArquivos(string? playlists = null) => new(null, null, playlists);
+ 
++    /// <summary>História 13a: o cenário da FILME com o Casa 2.1 sem calibração (a cerca não vale ali).</summary>
++    private static SetupsTestes ComFilmeSemCalibracao() =>
++        new(GerenteSetups.ParaJson(CenarioFilme.Dados with
++            {
++                Setups = [CasaDoDenis.SetupCasa with { Equipamentos = CasaDoDenis.EquipamentosSemCalibracao }],
++            }), null, presetsGuardado: CenarioFilme.PresetsJson, modelosGuardado: CenarioFilme.ModelosJson);
++
+     /// <summary>Só o Casa 2.1 da fixture (sem memórias) e os 3 modelos dela guardados.</summary>
+     private static SetupsTestes SoCasa(string? playlists = null) =>
+         new(CasaDoDenis.SetupsJson, null, playlists, modelosGuardado: CasaDoDenis.ModelosJson);
+@@ -1124,30 +1131,32 @@ public sealed partial class SetupsTestes : IDisposable
+     [Fact]
+     public async Task Aplicar_memoria_com_limiter_OFF_escreve_0_5_volta_as_bandas_do_preset_e_o_mute_nao_muda()
+     {
+-        await Conectar();
+-        Assert.True((await Rodar(_escritor.EscreverAsync(Limiter, 1, 0.5m))).Ok);
+-        Assert.True((await Rodar(_setups.CriarMemoriaAsync("SEM LIMITE"))).Ok);
+-        var off = Valor(_setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Regulagem, "071", 1)!;
++        // Desde a 13a, o limitador OFF só passa numa saída sem calibração (a cerca não vale ali).
++        using var t = ComFilmeSemCalibracao();
++        await t.Conectar();
++        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Limiter, 1, 0.5m))).Ok);
++        Assert.True((await t.Rodar(t._setups.CriarMemoriaAsync("SEM LIMITE"))).Ok);
++        var off = Valor(t._setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Regulagem, "071", 1)!;
+         Assert.Equal("OFF", Limiter.Decodificar(off).Valor!.Rotulo);
+-        Assert.True((await Rodar(_setups.AplicarAsync(Filme))).Ok);
+-        Assert.Equal("-18.0", _simulador.Valor("071", 1));
+-        Assert.True((await Rodar(_escritor.EscreverAsync(Banda, 3, -4.0m))).Ok);
+-        _simulador.Definir("100", 3, "1");
+-        var inicio = _simulador.Escritas.Count;
++        Assert.True((await t.Rodar(t._setups.AplicarAsync(Filme))).Ok);
++        Assert.Equal("-18.0", t._simulador.Valor("071", 1));
++        Assert.True((await t.Rodar(t._escritor.EscreverAsync(Banda, 3, -4.0m))).Ok);
++        t._simulador.Definir("100", 3, "1");
++        var inicio = t._simulador.Escritas.Count;
+ 
+-        var r = await Rodar(_setups.AplicarAsync(_setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Id));
++        var r = await t.Rodar(t._setups.AplicarAsync(t._setups.MemoriasDe(Casa).Single(m => m.Nome == "SEM LIMITE").Id));
+ 
+         Assert.True(r.Ok, r.Mensagem);
+         // A memória nasceu com a FILME em uso: lembra o Cinema, e a banda volta junto.
+-        Assert.Equal(["*071*1*0.5*", Banda.CodificarEscrita(3, 0.0m)], AudioDesde(inicio));
+-        var copia = CopiaAntes.DeJson(_guardadoCopia.Texto!)!;
++        Assert.Equal(["*071*1*0.5*", Banda.CodificarEscrita(3, 0.0m)], t.AudioDesde(inicio));
++        var copia = CopiaAntes.DeJson(t._guardadoCopia.Texto!)!;
+         Assert.Null(copia.Operacao);
+         Assert.Contains(copia.Valores, v => v is { Codigo: "071", Indice: 1, NoFio: "-18.0" });
+-        var espelho = _estado.Copiar();
+-        var memoria = _setups.Memoria(_setups.EmUso.IdMemoria)!;
++        var espelho = t._estado.Copiar();
++        var memoria = t._setups.Memoria(t._setups.EmUso.IdMemoria)!;
+         Assert.Empty(Camadas.Diferentes(memoria.Regulagem, espelho));
+         Assert.Empty(Camadas.Diferentes(CenarioFilme.Bandas, espelho));
+-        Assert.Equal(1m, _estado.Valor("100", 3)!.Numero);
++        Assert.Equal(1m, t._estado.Valor("100", 3)!.Numero);
+         Assert.Equal("SEM LIMITE", memoria.Nome);
+     }
+ 
+diff --git a/app-controle/tests/BgsControle.Simulador/CasaDoDenis.cs b/app-controle/tests/BgsControle.Simulador/CasaDoDenis.cs
+index 736c9d7..8b0796a 100644
+--- a/app-controle/tests/BgsControle.Simulador/CasaDoDenis.cs
++++ b/app-controle/tests/BgsControle.Simulador/CasaDoDenis.cs
+@@ -156,6 +156,23 @@ public static class CasaDoDenis
+         VolumeCaixa = new DadoTecnico(3.5m, OrigemDado.Estimado, FonteEstimadoJbl),
+     };
+ 
++    /// <summary>
++    /// História 13a: os equipamentos do Casa 2.1 sem calibração (o ganho do módulo, por canal e em ponte,
++    /// só digitado): o app sabe os volts, não o dB do limitador, e a cerca não vale.
++    /// </summary>
++    public static IReadOnlyList<Equipamento> EquipamentosSemCalibracao { get; } = EquipamentosCasa
++        .Select(e => e.Id == IdModuloCasa
++            ? e with
++            {
++                Dados = e.Dados with
++                {
++                    Ganho = new DadoTecnico(19.5m, OrigemDado.Digitado),
++                    GanhoPonte = new DadoTecnico(40.5m, OrigemDado.Digitado),
++                },
++            }
++            : e)
++        .ToArray();
++
+     /// <summary>Os 3 modelos da base (só os dados oficiais): JBL 4TRMS80, Protech Light 8" e SD800.4 EVO.</summary>
+     public static IReadOnlyList<ModeloGuardado> Modelos { get; } =
+     [
+diff --git a/app-controle/tests/BgsControle.Telas.Testes/ControleParametroViewModelTestes.cs b/app-controle/tests/BgsControle.Telas.Testes/ControleParametroViewModelTestes.cs
+index 9249c26..f6215f9 100644
+--- a/app-controle/tests/BgsControle.Telas.Testes/ControleParametroViewModelTestes.cs
++++ b/app-controle/tests/BgsControle.Telas.Testes/ControleParametroViewModelTestes.cs
+@@ -529,6 +529,49 @@ public sealed class ControleParametroViewModelTestes : IDisposable
+         Assert.Equal("−10,0 dB", c.TextoValor);
+     }
+ 
++    /// <summary>
++    /// História 13a, a cerca na tela: com o Casa 2.1 calibrado em uso e o passa-alta da JBL L em 200 Hz
++    /// (LR24), o teto é −6,8 dB pelo térmico. −6,7 é recusado com a conta, nada sai e a tela volta ao valor
++    /// do aparelho; −6,8 passa. O OFF também é recusado.
++    /// </summary>
++    [Fact]
++    public async Task Limitador_acima_do_teto_na_tela_mostra_a_conta_e_nada_sai()
++    {
++        var b = new Bancada(setups: true);
++        await b.Conectar();
++        var corte = b.Escritor.EscreverAsync(Catalogo.ParametroDe("040")!, 0, 200m);
++        await b.Rodar(corte);
++        Assert.True((await corte).Ok);
++        var c = b.Fabrica.Criar(Catalogo.ParametroDe("071")!, 0, null);
++        c.Expandir();
++        c.AbrirCampo();
++        c.TextoCampo = "-6,7";
++
++        await c.Confirmar.ExecutarAsync();
++        await b.Rodar(c.UltimaEscrita);
++
++        Assert.Equal("Limite da JBL L: −6,8 dB, pelo térmico.", c.Aviso);
++        Assert.Equal(0, b.EscritasDe("*071*0*"));
++        Assert.Equal("-15.0", b.Simulador.Valor("071", 0));
++        Assert.Equal("−15,0 dB", c.TextoValor);
++
++        await c.AlternarOff.ExecutarAsync();
++        await b.Rodar(c.UltimaEscrita);
++        Assert.Equal("Limite da JBL L: o limitador não pode ficar desligado.", c.Aviso);
++        Assert.Equal(0, b.EscritasDe("*071*0*"));
++
++        c.AbrirCampo();
++        c.TextoCampo = "-6,8";
++        await c.Confirmar.ExecutarAsync();
++        await b.Rodar(c.UltimaEscrita);
++
++        Assert.Null(c.Aviso);
++        Assert.Equal("-6.8", b.Simulador.Valor("071", 0));
++        Assert.Equal("−6,8 dB", c.TextoValor);
++        b.ConferirSoAudio();
++        Assert.Empty(b.Tela.Erros);
++    }
++
+     // ----------------------------------------------------------------- travas
+ 
+     [Fact]
+diff --git a/app-controle/tests/BgsControle.Telas.Testes/TelasParte1Testes.cs b/app-controle/tests/BgsControle.Telas.Testes/TelasParte1Testes.cs
+index 425ca57..7eaf0c5 100644
+--- a/app-controle/tests/BgsControle.Telas.Testes/TelasParte1Testes.cs
++++ b/app-controle/tests/BgsControle.Telas.Testes/TelasParte1Testes.cs
+@@ -495,6 +495,10 @@ public sealed class TelasParte1Testes : IDisposable
+     public async Task Filtro_em_OFF_a_frequencia_some_e_volta_com_o_tipo()
+     {
+         await _b.Conectar();
++        // História 13a: sem passa-alta, o curso do cone da JBL L baixa o teto (~−19 dB); o limitador desce antes.
++        var baixar = _b.Escritor.EscreverAsync(Catalogo.ParametroDe("071")!, 0, -20.0m);
++        await _b.Rodar(baixar);
++        Assert.True((await baixar).Ok);
+         var x = _t.Audio.Tela(FuncaoAudio.Crossover);
+         var freq = x.Vista[0];
+         var tipo = x.Vista[1].Controle;
