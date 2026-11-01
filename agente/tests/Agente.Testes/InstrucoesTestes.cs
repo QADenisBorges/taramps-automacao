@@ -15,6 +15,8 @@ public sealed partial class InstrucoesTestes
 
     private const string SoPorta = "Bash(porta:*)";
 
+    private const string Aprende = "Bash(aprendizado:*)";
+
     private static string Pasta(string nome) => Path.Combine(Caminhos.Agente, nome);
 
     private static string Rel(string arquivo) => Path.GetRelativePath(Caminhos.Agente, arquivo).Replace('\\', '/');
@@ -163,19 +165,44 @@ public sealed partial class InstrucoesTestes
     }
 
     [Fact]
-    public void As_ferramentas_de_cada_skill_sao_so_a_porta_e_a_ficha_tecnica_le_a_web()
+    public void As_ferramentas_de_cada_skill_sao_a_porta_a_objetivo_e_a_receita_aprendem_e_a_ficha_tecnica_le_a_web()
     {
         foreach (var skill in Skills)
         {
             var (campos, _) = Ler(Path.Combine(Pasta(LancadorClaude.PastaSkills), skill, "SKILL.md"));
             var ferramentas = campos["allowed-tools"].Split([',', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries).Order().ToArray();
-            string[] esperadas = skill == "ficha-tecnica" ? [SoPorta, "WebFetch", "WebSearch"] : [SoPorta];
+            // A ferramenta aprendizado (história 14e) só na objetivo e na receita: ela só toca a pasta local.
+            string[] esperadas = skill switch
+            {
+                "ficha-tecnica" => [SoPorta, "WebFetch", "WebSearch"],
+                "objetivo" or "receita" => [SoPorta, Aprende],
+                _ => [SoPorta],
+            };
             Assert.True(esperadas.Order().SequenceEqual(ferramentas), $"{skill}: {campos["allowed-tools"]}");
         }
-        // A configuração do serviço dá à tarefa o mesmo que a skill dela pede.
+        // A configuração do serviço dá à tarefa o mesmo que as skills dela pedem.
         var config = Caminhos.Config.Lancador;
-        Assert.Equal([SoPorta], config.FerramentasDe("criar-memoria"));
+        Assert.Equal([SoPorta, Aprende], config.FerramentasDe("criar-memoria"));
         Assert.Equal([SoPorta, "WebSearch", "WebFetch"], config.FerramentasDe("ficha-tecnica"));
+    }
+
+    [Fact]
+    public void A_objetivo_le_o_perfil_a_receita_diz_as_variaveis_e_a_tarefa_e_a_base_citam_a_ferramenta()
+    {
+        var objetivo = File.ReadAllText(Path.Combine(Pasta(LancadorClaude.PastaSkills), "objetivo", "SKILL.md"));
+        var receita = File.ReadAllText(Path.Combine(Pasta(LancadorClaude.PastaSkills), "receita", "SKILL.md"));
+        var criar = LancadorClaude.Prompt(Caminhos.Agente, "criar-memoria");
+        var baseMd = File.ReadAllText(Path.Combine(Pasta(LancadorClaude.PastaInstrucoes), LancadorClaude.ArquivoBase));
+
+        Assert.Contains("\"acao\":\"situacao\"", objetivo);
+        Assert.Contains("\"acao\":\"perfil\"", objetivo);
+        Assert.Contains("A memória manda", objetivo);
+        Assert.Contains("\"acao\":\"variaveis\"", receita);
+        Assert.All(new[] { "situacao", "perfil", "variaveis" }, a => Assert.Contains($"\"acao\":\"{a}\"", criar));
+        Assert.Contains("`aprendizado`", baseMd);
+        Assert.Contains("`aprendizado`", criar);
+        // Nenhuma camada manda o Agente gravar o registro ou o perfil: isso é do serviço.
+        Assert.All(ArquivosDasCamadas(), a => Assert.DoesNotContain("registros/", File.ReadAllText(a)));
     }
 
     [Fact]

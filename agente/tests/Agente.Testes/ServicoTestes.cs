@@ -315,6 +315,13 @@ public sealed class ServicoTestes
         Assert.False(bancada.Criacao.Aberta);
         Assert.Contains(bancada.Porta.Eventos(), e => e.Tipo == CriacaoMemoria.EventoCancelada && e.Criacao?.Por == CriacaoMemoria.PorPorta);
         Assert.True(servico.Tem("Tarefa terminada (DELETE /tarefa).")); // não havia tarefa antes deste Agente
+
+        // O registro da criação que o próprio serviço cancelou (história 14e).
+        await servico.EsperarLinha("Aprendizado: registro", Longo);
+        var (_, registro) = Assert.Single(Aprendizado.LerRegistros(local.Local));
+        Assert.Equal("cancelada", registro["fim"]!.GetValue<string>());
+        Assert.Equal(CriacaoMemoria.PorPorta, registro["por"]!.GetValue<string>());
+        Assert.True(registro["semPalavras"]!["cancelou"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -356,6 +363,136 @@ public sealed class ServicoTestes
         Assert.False(servico.Tem("Tarefa terminada"));
         var estado = await FerramentaPorta.ExecutarAsync("""{"acao":"ler","alvo":"/estado"}""", local.Local);
         Assert.Equal("outra tarefa", estado.Corpo!["ia"]!["tarefa"]!.GetValue<string>());
+    }
+
+    // ------------------------------------------------------------------ o aprendizado (história 14e)
+
+    /// <summary>
+    /// Uma criação pelo lado do usuário com o roteiro <c>aprende-musica</c>: o toque, "Música", a 2ª resposta, o "Como
+    /// ficou?" aprovado e o Salvar com o nome. Espera o Agente terminar e o registro sair.
+    /// </summary>
+    private static async Task CriarESalvarAsync(Bancada bancada, ServicoRodando servico, string nome, int n)
+    {
+        var c = bancada.Criacao;
+        Assert.True(c.Pedir().Ok);
+        await Esperar.Ate(() => c.PerguntaAtual is { Numero: 1 }, Longo, "a 1ª pergunta");
+        Assert.True(c.Responder(0).Ok); // "Música"
+        await Esperar.Ate(() => c.PerguntaAtual is { Numero: 2 }, Longo, "a 2ª pergunta");
+        Assert.True(c.Responder(2).Ok);
+        await Esperar.Ate(() => c.ComoFicou.Count == 1, Longo, "o \"Como ficou?\" chegar");
+        Assert.True(c.AvaliarSom().Ok);
+        Assert.True(c.PodeSalvar().Ok);
+        Assert.True((await c.SalvarAsync(nome)).Ok);
+        await Esperar.Ate(() => servico.Quantas("Agente terminou: código 0") == n, Longo, "o Agente terminar");
+        await Esperar.Ate(() => servico.Quantas("Aprendizado: registro") == n, Longo, "o registro sair");
+    }
+
+    private static async Task<JsonObject> PerfilAsync(string local, string situacao)
+    {
+        var (codigo, saida) = await PortaCli.RodarCruAsync(["--json", new JsonObject { ["acao"] = "perfil", ["situacao"] = situacao }.ToJsonString()],
+            null, local, "aprendizado.dll");
+        Assert.True(codigo == 0, saida);
+        return JsonNode.Parse(saida)!.AsObject();
+    }
+
+    [Fact]
+    public async Task Duas_criacoes_de_musica_salvas_em_memorias_diferentes_dao_dois_registros_e_o_perfil_musica_com_grave_4()
+    {
+        await using var bancada = await Bancada.ProntaAsync();
+        using var local = new LocalTemporario();
+        await ParearAsync(bancada, local.Local);
+        await using var servico = new ServicoRodando(Caminhos.Config, ModeloFalso("aprende-musica", local.Local), local.Local);
+        await servico.EsperarLinha("Começando do evento");
+
+        await CriarESalvarAsync(bancada, servico, "TESTE A", 1);
+        Assert.Single(Aprendizado.LerRegistros(local.Local));
+        Assert.Empty((await PerfilAsync(local.Local, "música"))["variaveis"]!.AsObject()); // depois de uma só, nada muda
+
+        await CriarESalvarAsync(bancada, servico, "TESTE B", 2);
+
+        var registros = Aprendizado.LerRegistros(local.Local).Select(r => r.Registro).ToArray();
+        Assert.Equal(2, registros.Length);
+        Assert.All(registros, r =>
+        {
+            Assert.Equal("salva", r["fim"]!.GetValue<string>());
+            Assert.Equal("musica", r["situacao"]!["chave"]!.GetValue<string>());
+            Assert.Equal(4.0, r["variaveis"]!["grave"]!.GetValue<double>());
+            Assert.False(string.IsNullOrEmpty(r["memoria"]!["id"]?.GetValue<string>()));
+            Assert.Equal(2, r["dialogo"]!.AsArray().Count);
+            Assert.Equal("Música", r["dialogo"]![0]!["resposta"]!.GetValue<string>());
+            var ajuste = Assert.Single(r["ajustes"]!.AsArray())!;
+            Assert.Equal("081", ajuste["codigo"]!.GetValue<string>());
+            Assert.Equal(4.0m, Numero(ajuste["relido"]!.GetValue<string>()));
+            Assert.True(Assert.Single(r["comoFicou"]!.AsArray())!["salvar"]!.GetValue<bool>());
+            Assert.Equal(0, r["semPalavras"]!["rodadasRefino"]!.GetValue<int>());
+        });
+        Assert.Equal(["TESTE A", "TESTE B"], registros.Select(r => r["memoria"]!["nome"]!.GetValue<string>()));
+        Assert.NotEqual(registros[0]["memoria"]!["id"]!.GetValue<string>(), registros[1]["memoria"]!["id"]!.GetValue<string>());
+
+        var musica = await PerfilAsync(local.Local, "Música");
+        Assert.Equal(4.0, musica["variaveis"]!["grave"]!.GetValue<double>());
+        Assert.Empty((await PerfilAsync(local.Local, "filme"))["variaveis"]!.AsObject());
+        Assert.True(servico.Tem("Aprendizado: perfil musica refeito."));
+        Assert.False(File.Exists(Aprendizado.CaminhoAgora(local.Local))); // o agora sai no fim
+        bancada.NadaDeMemoriaDoAparelho();
+    }
+
+    [Fact]
+    public async Task Um_agora_que_sobrou_de_antes_sai_no_pedido_e_nao_entra_no_registro()
+    {
+        await using var bancada = await Bancada.ProntaAsync();
+        using var local = new LocalTemporario();
+        await ParearAsync(bancada, local.Local);
+        // Um agora.json de uma criação que não chegou ao fim (o serviço parado, por exemplo).
+        Assert.True(Aprendizado.Executar("""{"acao":"situacao","nome":"filme"}""", local.Local).Ok);
+        Assert.True(Aprendizado.Executar("""{"acao":"variaveis","valores":{"agudo":3}}""", local.Local).Ok);
+        await using var servico = new ServicoRodando(Caminhos.Config, ModeloFalso("aprende-musica", local.Local), local.Local);
+        await servico.EsperarLinha("Começando do evento");
+
+        await CriarESalvarAsync(bancada, servico, "TESTE A", 1);
+
+        var (_, registro) = Assert.Single(Aprendizado.LerRegistros(local.Local));
+        Assert.Equal("musica", registro["situacao"]!["chave"]!.GetValue<string>());
+        Assert.False(registro["variaveis"]!.AsObject().ContainsKey("agudo"));
+        Assert.Equal(4.0, registro["variaveis"]!["grave"]!.GetValue<double>());
+    }
+
+    [Fact]
+    public async Task O_ajuste_a_mao_depois_de_salvar_entra_no_registro_quando_a_proxima_criacao_abre()
+    {
+        await using var bancada = await Bancada.ProntaAsync();
+        using var local = new LocalTemporario();
+        await ParearAsync(bancada, local.Local);
+        await using var servico = new ServicoRodando(Caminhos.Config, ModeloFalso("aprende-musica", local.Local), local.Local);
+        await servico.EsperarLinha("Começando do evento");
+
+        await CriarESalvarAsync(bancada, servico, "TESTE A", 1); // o 081[2] salvo em 4,0
+        var (caminho, _) = Assert.Single(Aprendizado.LerRegistros(local.Local));
+
+        // Depois de salvar, o 081[2] vai para 5,5 fora da criação.
+        var mao = await FerramentaPorta.ExecutarAsync("""{"acao":"pedir","metodo":"POST","alvo":"/ajuste","corpo":{"codigo":"081","indice":2,"valor":5.5}}""", local.Local);
+        Assert.True(mao.Ok, mao.Motivo);
+
+        // A próxima criação abre: o registro da TESTE A ganha o ajuste à mão.
+        Assert.True(bancada.Criacao.Pedir().Ok);
+        await Esperar.Ate(() => bancada.Criacao.PerguntaAtual is { Numero: 1 }, Longo, "a 1ª pergunta");
+        await Esperar.Ate(() => JsonNode.Parse(File.ReadAllText(caminho))!["ajustesDepois"]!.AsArray().Count == 1, Longo, "o ajuste à mão no registro");
+        var depois = JsonNode.Parse(File.ReadAllText(caminho))!["ajustesDepois"]![0]!;
+        Assert.Equal("081", depois["codigo"]!.GetValue<string>());
+        Assert.Equal(2, depois["indice"]!.GetValue<int>());
+        Assert.Equal(4.0, depois["salvo"]!.GetValue<double>());
+        Assert.Equal(5.5, depois["agora"]!.GetValue<double>());
+
+        // O usuário diz "Música" e cancela a segunda: o registro dela sai com o fim "cancelada", e o perfil não conta.
+        Assert.True(bancada.Criacao.Responder(0).Ok);
+        await Esperar.Ate(() => bancada.Criacao.PerguntaAtual is { Numero: 2 }, Longo, "a 2ª pergunta");
+        Assert.True((await bancada.Criacao.CancelarAsync(CriacaoMemoria.PorUsuario)).Ok);
+        await Esperar.Ate(() => servico.Quantas("Aprendizado: registro") == 2, Longo, "o registro da cancelada");
+        var cancelada = Aprendizado.LerRegistros(local.Local)[1].Registro;
+        Assert.Equal("cancelada", cancelada["fim"]!.GetValue<string>());
+        Assert.Equal("musica", cancelada["situacao"]!["chave"]!.GetValue<string>());
+        Assert.Equal("TESTE A", cancelada["somAntes"]!.GetValue<string>());
+        Assert.True(cancelada["semPalavras"]!["cancelou"]!.GetValue<bool>());
     }
 
     private sealed class LancadorQueAbreEFalha(string local) : ILancadorAgente

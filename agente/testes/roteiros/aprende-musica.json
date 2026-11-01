@@ -1,0 +1,31 @@
+{
+  "descricao": "Criação que aprende (história 14e): abre, pergunta o uso, diz a situação \"música\" e lê o perfil dela pela ferramenta aprendizado, pergunta o grave, aplica o grave em 4 dB, diz a variável grave = 4, fecha com o resumo e o \"Como ficou?\" e espera o usuário. Só dados genéricos.",
+  "passos": [
+    { "id": "abrir", "pedir": { "metodo": "POST", "alvo": "/criacao/abrir" } },
+    { "id": "pergunta-1", "pedir": { "metodo": "POST", "alvo": "/criacao/pergunta", "corpo": {
+        "texto": "Para que é esta memória?",
+        "respostas": ["Música", "Filme", "Conversa"],
+        "ultima": false } } },
+    { "id": "resposta-1", "esperar": { "tipos": ["criacao-resposta"], "prazoS": 600 } },
+    { "id": "situacao", "aprender": { "acao": "situacao", "nome": "música" } },
+    { "id": "perfil", "aprender": { "acao": "perfil", "situacao": "música" } },
+    { "id": "pergunta-2", "pedir": { "metodo": "POST", "alvo": "/criacao/pergunta", "corpo": {
+        "texto": "Quanto grave você quer sentir?",
+        "respostas": ["Pouco", "Na medida", "Bastante"],
+        "ultima": true } } },
+    { "id": "resposta-2", "esperar": { "tipos": ["criacao-resposta"], "prazoS": 600 } },
+    { "id": "ajuste-grave", "pedir": { "metodo": "POST", "alvo": "/criacao/ajuste", "corpo": {
+        "codigo": "081", "indice": 2, "valor": 4.0,
+        "frase": "Mais corpo no grave",
+        "motivo": "Exemplo do roteiro: o ganho da saída 3 sobe para 4 dB." } } },
+    { "id": "variaveis", "aprender": { "acao": "variaveis", "valores": { "grave": 4.0 } } },
+    { "id": "resumo", "pedir": { "metodo": "POST", "alvo": "/criacao/resumo" } },
+    { "id": "como-ficou", "pedir": { "metodo": "POST", "alvo": "/criacao/como-ficou", "corpo": {
+        "respostas": ["Quero mais grave", "Está alto demais"] } } },
+    { "id": "resposta-como-ficou", "esperar": { "tipos": ["criacao-como-ficou"], "prazoS": 600 },
+      "se": [ { "campo": "salvar", "igual": "true", "ir": "esperar-salvar" } ] },
+    { "id": "cancelar", "pedir": { "metodo": "POST", "alvo": "/criacao/cancelar" }, "ir": "fim" },
+    { "id": "esperar-salvar", "esperar": { "tipos": ["criacao-salva", "criacao-cancelada", "criacao-interrompida"], "prazoS": 600 } },
+    { "id": "fim", "fim": true }
+  ]
+}

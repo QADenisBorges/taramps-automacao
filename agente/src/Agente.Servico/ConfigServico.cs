@@ -126,7 +126,7 @@ public sealed record ConfigLancador
 
     /// <summary>
     /// A tarefa → as ferramentas liberadas para o Agente (o <c>{ferramentas}</c> dos argumentos), com o padrão em
-    /// <see cref="FerramentasPadrao"/>: só a <c>porta</c>.
+    /// <see cref="FerramentasPadrao"/>: só a <c>porta</c> (o <c>servico.config.json</c> acrescenta o <c>aprendizado</c>).
     /// </summary>
     public Dictionary<string, List<string>> Ferramentas { get; init; } = new() { [FerramentasPadrao] = ["Bash(porta:*)"] };
 

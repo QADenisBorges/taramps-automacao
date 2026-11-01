@@ -23,6 +23,10 @@ namespace Agente.Servico;
 /// vão ao log.</item>
 /// <item><b>Queda da porta:</b> nova tentativa a cada <see cref="ConfigServico.EsperaQueda"/>, com uma linha no log a cada
 /// mudança de estado.</item>
+/// <item><b>Aprendizado</b> (história 14e, <see cref="Aprendizado"/>): do <c>criacao-pedida</c> ao fim, o serviço lê o
+/// <c>GET /criacao</c> a cada volta e guarda o último com a criação aberta, e anota o "Como ficou?" e a escuta. Na primeira
+/// leitura aberta, confere o ajuste à mão da memória em uso. No fim (<c>criacao-salva</c>, <c>criacao-cancelada</c> ou
+/// <c>criacao-interrompida</c>), grava o registro, apaga o <c>agora.json</c> e, se salva, refaz o perfil da situação.</item>
 /// </list>
 /// Fala com a porta pelo mesmo caminho da ferramenta (<see cref="FerramentaPorta.PedirAsync"/>), com o pareamento de
 /// <c>porta.json</c>.
@@ -36,6 +40,9 @@ public sealed class ServicoAgente : IDisposable
     public const string MsgConectado = "Porta conectada.";
     public const string MsgSemUltimo = "A porta respondeu ao /eventos sem o \"ultimo\".";
     public const string MsgCriacaoCancelada = "Criação aberta cancelada (POST /criacao/cancelar).";
+
+    /// <summary>O evento do toque em "+ Nova memória": começa o acompanhamento da criação (história 14e).</summary>
+    public const string CriacaoPedida = "criacao-pedida";
 
     /// <summary>As etapas em que a criação fica sem dono quando o Agente acaba: aí ela é cancelada.</summary>
     public static IReadOnlyList<string> EtapasDoAgente { get; } = ["perguntas", "ajustando", "resumo"];
@@ -70,6 +77,7 @@ public sealed class ServicoAgente : IDisposable
     private bool _releitura;
     private Task? _agente;
     private int _lancamentos;
+    private AcompanhamentoCriacao? _acompanhada;
 
     public ServicoAgente(ConfigServico config, ILancadorAgente lancador, LogServico log, string pastaLocal, ClientePorta? cliente = null)
     {
@@ -199,13 +207,133 @@ public sealed class ServicoAgente : IDisposable
             // Na releitura, só o que é mais novo que o último visto (pela hora; sem hora, pelo número).
             if (releitura && !(vistaAntes is null || (e.Hora is { } h ? h > vistaAntes : e.N > cursor)))
                 continue;
+            if (e.Tipo is not null)
+                await AcompanharEventoAsync(e.Tipo, e.Evento, cancelar);
             if (e.Tipo is not null && _config.Gatilhos.TryGetValue(e.Tipo, out var tarefa))
                 Acordar(e.Tipo, tarefa, e.Evento, cancelar);
         }
         Guardar(novoCursor, maiorHora);
         lock (_trava)
             _releitura = false;
+        await AcompanharCriacaoAsync(cancelar);
         return true;
+    }
+
+    // ------------------------------------------------------------------ o aprendizado (história 14e)
+
+    /// <summary>
+    /// Um evento da criação: o <c>criacao-pedida</c> que vai acordar um Agente começa o acompanhamento (e tira um
+    /// <c>agora.json</c> que sobrou); o "Como ficou?" e a escuta são anotados; o fim grava o registro.
+    /// </summary>
+    private async Task AcompanharEventoAsync(string tipo, JsonObject evento, CancellationToken cancelar)
+    {
+        try
+        {
+            if (tipo == CriacaoPedida)
+            {
+                lock (_trava)
+                {
+                    if (_agente is not null)
+                        return; // o pedido vai ser ignorado: a criação de agora segue
+                    _acompanhada = new AcompanhamentoCriacao();
+                }
+                Aprendizado.ApagarAgora(_pastaLocal);
+            }
+            else if (Aprendizado.FimDoEvento.TryGetValue(tipo, out var fim))
+            {
+                await GravarFimAsync(fim, evento, cancelar);
+            }
+            else
+            {
+                AcompanhamentoCriacao? acompanhada;
+                lock (_trava)
+                    acompanhada = _acompanhada;
+                acompanhada?.Anotar(tipo, evento);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Escrever($"Aprendizado: não consegui tratar o {tipo} ({e.GetType().Name}: {e.Message}).");
+        }
+    }
+
+    /// <summary>O registro da criação que terminou; depois, o <c>agora.json</c> sai e, se salva, o perfil é refeito.</summary>
+    private async Task GravarFimAsync(string fim, JsonObject evento, CancellationToken cancelar)
+    {
+        AcompanhamentoCriacao? acompanhada;
+        lock (_trava)
+        {
+            acompanhada = _acompanhada;
+            _acompanhada = null;
+        }
+        var estado = await LerAsync("/estado", cancelar);
+        var agora = Aprendizado.LerAgora(_pastaLocal);
+        var hora = Hora(evento["hora"]) ?? DateTimeOffset.Now;
+        var registro = Aprendizado.MontarRegistro(fim, evento, acompanhada?.Ultima, acompanhada?.ComoFicou ?? [], acompanhada?.Escutas ?? [],
+            estado, agora, hora);
+        var caminho = Aprendizado.GravarRegistro(_pastaLocal, registro, hora);
+        Aprendizado.ApagarAgora(_pastaLocal);
+        _log.Escrever($"Aprendizado: registro {Path.GetFileName(caminho)} ({fim}).");
+        if (fim == Aprendizado.FimSalva && Texto((registro["situacao"] as JsonObject)?["chave"]) is { Length: > 0 } chave
+            && Aprendizado.RefazerPerfil(_pastaLocal, chave))
+            _log.Escrever($"Aprendizado: perfil {chave} refeito.");
+    }
+
+    /// <summary>
+    /// Com uma criação acompanhada: o <c>GET /criacao</c> (guardado se aberta). Na primeira leitura aberta, confere o ajuste à
+    /// mão da memória em uso. Fechada, sem Agente e nunca vista aberta, o acompanhamento acaba (o Agente não a abriu).
+    /// </summary>
+    private async Task AcompanharCriacaoAsync(CancellationToken cancelar)
+    {
+        AcompanhamentoCriacao? acompanhada;
+        lock (_trava)
+            acompanhada = _acompanhada;
+        if (acompanhada is null)
+            return;
+        try
+        {
+            // Antes da conferência, o /estado vem primeiro: um ajuste da criação entre as duas leituras aparece nos ajustes
+            // dela (com o antes), nunca como ajuste à mão.
+            var estado = acompanhada.Conferida ? null : await LerAsync("/estado", cancelar);
+            var criacao = await LerAsync("/criacao", cancelar);
+            if (criacao is null)
+                return;
+            if (acompanhada.Guardar(criacao))
+            {
+                if (acompanhada.Conferida || estado is null)
+                    return;
+                acompanhada.Conferida = true;
+                var diferencas = Aprendizado.ConferirAjustesDepois(_pastaLocal, criacao, estado);
+                if (diferencas > 0)
+                    _log.Escrever($"Aprendizado: {diferencas} ajuste(s) à mão depois da memória em uso.");
+                return;
+            }
+            lock (_trava)
+            {
+                if (_acompanhada == acompanhada && !acompanhada.VistaAberta && _agente is null)
+                    _acompanhada = null;
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            _log.Escrever($"Aprendizado: não consegui acompanhar a criação ({e.GetType().Name}: {e.Message}).");
+        }
+    }
+
+    /// <summary>Um GET da porta: o corpo, ou null (recusa, sem resposta ou o prazo de <see cref="PrazoAntes"/>).</summary>
+    private async Task<JsonObject?> LerAsync(string alvo, CancellationToken cancelar)
+    {
+        try
+        {
+            using var prazo = CancellationTokenSource.CreateLinkedTokenSource(cancelar);
+            prazo.CancelAfter(PrazoAntes);
+            var r = await FerramentaPorta.PedirAsync(_pastaLocal, "GET", alvo, null, _cliente, prazo.Token);
+            return r.Ok ? r.Corpo as JsonObject : null;
+        }
+        catch (OperationCanceledException) when (!cancelar.IsCancellationRequested)
+        {
+            return null;
+        }
     }
 
     private void MudarConexao(Conexao nova, string? motivo)
@@ -354,6 +482,13 @@ public sealed class ServicoAgente : IDisposable
     private async Task CancelarCriacaoSemDonoAsync(CancellationToken cancelar)
     {
         var criacao = await FerramentaPorta.PedirAsync(_pastaLocal, "GET", "/criacao", null, _cliente, cancelar);
+        if (criacao.Ok)
+        {
+            AcompanhamentoCriacao? acompanhada;
+            lock (_trava)
+                acompanhada = _acompanhada;
+            acompanhada?.Guardar(criacao.Corpo as JsonObject); // a última leitura antes do cancelar, para o registro
+        }
         var etapa = Texto((criacao.Corpo as JsonObject)?["etapa"]);
         if (!criacao.Ok || etapa is null || !EtapasDoAgente.Contains(etapa))
             return;

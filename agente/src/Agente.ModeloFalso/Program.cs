@@ -6,7 +6,7 @@ using Agente.Porta;
 
 // O modelo falso (história 14a): roda um roteiro gravado pela ferramenta porta, sem chamar modelo nenhum.
 //   Agente.ModeloFalso --roteiro testes/roteiros/criacao-basica.json [--porta <porta.dll>] [--local <pasta .local>]
-//                      [--evento <json do evento que acordou o Agente>]
+//                      [--evento <json do evento que acordou o Agente>] [--aprendizado <aprendizado.dll>]
 // Código de saída: 0 no fim do roteiro, 1 num passo que falhou, 2 num roteiro ou num evento inválido.
 
 Console.OutputEncoding = new UTF8Encoding(false);
@@ -15,10 +15,14 @@ string? caminhoRoteiro = null;
 var porta = FerramentaProcesso.PortaAoLado;
 string? local = null;
 string? textoEvento = null;
+var aprendizado = AprendizadoProcesso.AoLado;
 for (var i = 0; i + 1 < args.Length; i += 2)
 {
     switch (args[i])
     {
+        case "--aprendizado":
+            aprendizado = args[i + 1];
+            break;
         case "--roteiro":
             caminhoRoteiro = args[i + 1];
             break;
@@ -36,7 +40,7 @@ for (var i = 0; i + 1 < args.Length; i += 2)
 
 if (caminhoRoteiro is null)
 {
-    Console.Error.WriteLine("Uso: Agente.ModeloFalso --roteiro <arquivo.json> [--porta <porta.dll>] [--local <pasta>] [--evento <json>]");
+    Console.Error.WriteLine("Uso: Agente.ModeloFalso --roteiro <arquivo.json> [--porta <porta.dll>] [--local <pasta>] [--evento <json>] [--aprendizado <aprendizado.dll>]");
     return 2;
 }
 
@@ -66,5 +70,6 @@ if (textoEvento is not null)
 }
 
 var pastaLocal = local is null ? null : PastaLocal.Resolver(local);
-var executor = new ExecutorRoteiro(new FerramentaProcesso(porta, pastaLocal), Console.Out, evento: evento);
+var executor = new ExecutorRoteiro(new FerramentaProcesso(porta, pastaLocal), Console.Out, evento: evento,
+    aprendizado: new AprendizadoProcesso(aprendizado, pastaLocal));
 return await executor.RodarAsync(roteiro);

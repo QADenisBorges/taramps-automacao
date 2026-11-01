@@ -7,7 +7,8 @@ namespace Agente.ModeloFalso;
 
 /// <summary>
 /// O lançador do modelo falso: em vez do Claude Code, um processo (este executável) roda o roteiro gravado da tarefa,
-/// chamando a mesma ferramenta <c>porta</c>. O serviço o trata igual ao de verdade (prazo, fim, código de saída). O evento
+/// chamando a mesma ferramenta <c>porta</c> (e a <c>aprendizado</c>, nos passos <c>aprender</c>). O serviço o trata igual ao
+/// de verdade (prazo, fim, código de saída). O evento
 /// que acordou o Agente vai em <c>--evento &lt;json&gt;</c> (o roteiro o usa com <c>"{evento.&lt;campo&gt;}"</c>).
 /// </summary>
 /// <param name="roteiros">A tarefa → o caminho do roteiro.</param>
@@ -27,6 +28,8 @@ public sealed class LancadorModeloFalso(IReadOnlyDictionary<string, string> rote
         inicio.ArgumentList.Add(Path.GetFullPath(roteiro));
         inicio.ArgumentList.Add("--porta");
         inicio.ArgumentList.Add(FerramentaProcesso.PortaAoLado);
+        inicio.ArgumentList.Add("--aprendizado");
+        inicio.ArgumentList.Add(AprendizadoProcesso.AoLado);
         if (evento is not null)
         {
             inicio.ArgumentList.Add("--evento");

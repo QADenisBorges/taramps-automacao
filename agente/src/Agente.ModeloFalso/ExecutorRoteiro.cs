@@ -12,6 +12,15 @@ public interface IFerramenta
 }
 
 /// <summary>
+/// Quem chama a ferramenta <c>aprendizado</c> (história 14e): a entrada e a saída em JSON, que já traz o <c>ok</c> (no
+/// processo de verdade, o executável <c>aprendizado</c>).
+/// </summary>
+public interface IFerramentaAprendizado
+{
+    Task<JsonObject> RodarAsync(JsonObject entrada, CancellationToken cancelar);
+}
+
+/// <summary>
 /// Roda um <see cref="Roteiro"/> pela ferramenta da porta, como o modelo de verdade faria: cada <c>pedir</c> é uma chamada
 /// da ferramenta e cada <c>esperar</c> lê o <c>/eventos</c> por ela, a partir do evento atual de quando o roteiro começou.
 /// <para>
@@ -20,7 +29,8 @@ public interface IFerramenta
 /// Sem o evento, ou sem o campo, o pedido não vai e conta como recusado.
 /// </para>
 /// </summary>
-public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, TimeSpan? intervaloEspera = null, JsonObject? evento = null)
+public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, TimeSpan? intervaloEspera = null, JsonObject? evento = null,
+    IFerramentaAprendizado? aprendizado = null)
 {
     /// <summary>O começo da marca de um campo do evento: <c>{evento.idEquipamento}</c>.</summary>
     public const string MarcaEvento = "{evento.";
@@ -81,6 +91,20 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
                 }
                 resultado = r.ParaObjeto();
             }
+            else if (passo.Aprender is { } aprender)
+            {
+                var r = await AprenderAsync(aprender, cancelar);
+                var ok = r["ok"] is JsonValue v && v.TryGetValue<bool>(out var b) && b;
+                var motivo = r["motivo"] is JsonValue m && m.TryGetValue<string>(out var t) ? t : null;
+                Escrever($"{nome}: aprendizado {Valor(aprender, "acao")} -> {(ok ? "ok" : "recusado")} {motivo}".TrimEnd());
+                if (!ok)
+                {
+                    if (passo.SeFalhar is null)
+                        return Falhou;
+                    proximo = passo.SeFalhar;
+                }
+                resultado = r;
+            }
             else
             {
                 var espera = passo.Esperar!;
@@ -109,6 +133,28 @@ public sealed class ExecutorRoteiro(IFerramenta ferramenta, TextWriter log, Time
         }
         Escrever("roteiro terminou");
         return Terminou;
+    }
+
+    /// <summary>
+    /// O passo <c>aprender</c>: o JSON (com os campos do evento trocados, como no <c>pedir</c>) vai à ferramenta
+    /// <c>aprendizado</c>. Sem a ferramenta, ou sem o campo do evento, sai uma recusa.
+    /// </summary>
+    private async Task<JsonObject> AprenderAsync(JsonObject entrada, CancellationToken cancelar)
+    {
+        if (aprendizado is null)
+            return Recusa("O modelo falso está sem a ferramenta aprendizado.");
+        JsonObject trocada;
+        try
+        {
+            trocada = (JsonObject)TrocarEvento(entrada, evento)!;
+        }
+        catch (CampoDoEventoException e)
+        {
+            return Recusa(e.Message);
+        }
+        return await aprendizado.RodarAsync(trocada, cancelar);
+
+        static JsonObject Recusa(string motivo) => new() { ["ok"] = false, ["motivo"] = motivo };
     }
 
     private Task<RespostaFerramenta> PedirAsync(PedidoPasso pedir, CancellationToken cancelar)

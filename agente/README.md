@@ -6,6 +6,8 @@ Esta pasta tem três peças, em .NET 10 (solução `BgsAgente.slnx`, fora de `ap
 - **`porta`** (`src/Porta.Cli`): a ferramenta da porta. JSON na entrada, JSON numa linha na saída.
 - **`servico`** (`src/Servico`): escuta o `/eventos` e acorda um Agente por vez.
 - **modelo falso** (`src/Agente.ModeloFalso`): roteiros gravados no lugar do modelo, pela mesma `porta`.
+- **`aprendizado`** (`src/Aprendizado.Cli`, história 14e): a ferramenta do aprendizado, só na pasta local (veja
+  "O aprendizado").
 
 E as **instruções em camadas** do Agente (história 14d), versionadas aqui (veja "As instruções em camadas").
 
@@ -19,9 +21,10 @@ usuário). Para usar outra, passe `--local <pasta>` ou defina `AGENTE_LOCAL`.
 cd agente
 dotnet build BgsAgente.slnx
 dotnet publish src/Porta.Cli -c Release -o "%LOCALAPPDATA%\BgsAgente\bin"
+dotnet publish src/Aprendizado.Cli -c Release -o "%LOCALAPPDATA%\BgsAgente\bin"
 ```
 
-O `publish` põe o `porta` em `bin`, dentro da pasta local. O serviço põe essa pasta no PATH do Agente
+O `publish` põe o `porta` e o `aprendizado` em `bin`, dentro da pasta local. O serviço põe essa pasta no PATH do Agente
 (`pastaPorta` no `servico.config.json`, relativa à pasta local).
 
 ## Parear
@@ -93,8 +96,8 @@ O lançador fica em `lancador`, no `servico.config.json`:
   você" (o JSON do evento) no fim; o `{tarefa}` vira o nome dela; e o `{ferramentas}`, as ferramentas da tarefa,
   separadas por espaço. O exemplo é o Claude Code em modo não interativo
   (`claude -p "<prompt>" --output-format json --allowedTools "{ferramentas}"`).
-- **Ferramentas por tarefa** (`lancador.ferramentas`): a tarefa → a lista. A chave `"*"` é o padrão, só a porta
-  (`["Bash(porta:*)"]`); a `ficha-tecnica` tem `Bash(porta:*) WebSearch WebFetch`, porque a ficha precisa da fonte
+- **Ferramentas por tarefa** (`lancador.ferramentas`): a tarefa → a lista. A chave `"*"` é o padrão, a porta e o
+  aprendizado (`["Bash(porta:*)", "Bash(aprendizado:*)"]`; o `aprendizado` só toca a pasta local); a `ficha-tecnica` tem `Bash(porta:*) WebSearch WebFetch`, porque a ficha precisa da fonte
   com o endereço, e sem ler a web o modelo teria de inventá-lo. A web só lê: nada nela escreve no app. Sem o `"*"`,
   ou com uma lista vazia ou um item vazio, o serviço para (código 2), como nas outras configurações inválidas.
   No Windows, o `comando` precisa ser um executável (`claude.exe`); se ele não estiver no PATH, use o caminho
@@ -133,8 +136,8 @@ da pasta de trabalho fica):
 - Cada `SKILL.md` tem o frontmatter `name` (igual à pasta), `description` (quando usar, até 1024 caracteres) e
   `allowed-tools`, e o corpo com `## Entrega` (o que a skill devolve) e `## Fontes` (os arquivos de `conhecimento/`).
 - **Só a porta:** toda skill fala com o app só pela ferramenta `porta` (`allowed-tools: Bash(porta:*)`; a
-  ficha-tecnica acrescenta `WebSearch` e `WebFetch`). Nenhuma camada manda usar outro caminho até o app, e todo alvo
-  citado existe no `GET /ajuda`.
+  ficha-tecnica acrescenta `WebSearch` e `WebFetch`, e a objetivo e a receita, `Bash(aprendizado:*)`, que só toca a
+  pasta local). Nenhuma camada manda usar outro caminho até o app, e todo alvo citado existe no `GET /ajuda`.
 - Uma regra de áudio sem fonte conferível fica fora. Nada do sistema de quem usa (Setup, fichas, memórias, regulagens
   antigas) entra nas camadas: o caso é lido pela porta.
 - Os testes (`InstrucoesTestes`) conferem a estrutura, sem modelo: as skills, as fontes, só a porta, as ferramentas e
@@ -148,6 +151,8 @@ Um roteiro (`testes/roteiros/*.json`) é uma lista de passos, só com dados gen�
   `"{evento.<campo>}"` vira o valor do campo do evento que acordou o Agente (o `--evento`), com o tipo dele; sem o
   evento ou sem o campo, o pedido não vai e conta como recusado.
 - `esperar`: um evento do `/eventos` de um dos `tipos`, com o prazo em `prazoS`.
+- `aprender`: o JSON vai à ferramenta `aprendizado` (`{"aprender":{"acao":"situacao","nome":"música"}}`), com os
+  `"{evento.<campo>}"` trocados como no `pedir`. A saída dela é o resultado; um `ok:false` conta como recusado.
 - `fim`: termina o roteiro.
 
 Depois de cada passo, o `se` ramifica pelo resultado (`{"campo":"texto","igual":"...","ir":"<id>"}`). O `ir` muda o
@@ -159,6 +164,71 @@ dotnet run --project src/Agente.ModeloFalso -- --roteiro testes/roteiros/criacao
 dotnet run --project src/Agente.ModeloFalso -- --roteiro testes/roteiros/ficha-basica.json --evento '{"tipo":"ficha-pedida","idEquipamento":"<id>"}'
 ```
 
+## O aprendizado
+
+O Agente aprende por arquivos (spec-agente-memoria CAP-7, história 14e). Tudo fica em `aprendizado/`, dentro da pasta
+local, fora do repositório, e começa vazio: sem a pasta, tudo funciona e o perfil volta vazio. **O Agente só diz a
+situação e as variáveis; o registro e a regra do perfil são do serviço, em código** (`src/Agente.Servico/Aprendizado.cs`).
+
+### A ferramenta `aprendizado`
+
+Como a `porta`: JSON na entrada (`--json`, o primeiro argumento ou o stdin), um JSON numa linha na saída, código 0 no ok
+e 1 na recusa (`{"ok":false,"motivo":"..."}`). A pasta é a `--local <pasta>`, a `AGENTE_LOCAL` ou
+`%LOCALAPPDATA%\BgsAgente`. Ela nunca fala com o app.
+
+```
+aprendizado --json '{"acao":"situacao","nome":"música"}'
+aprendizado --json '{"acao":"variaveis","valores":{"grave":4.0,"cobertura":"varios"}}'
+aprendizado --json '{"acao":"outro","texto":"som de show","variavel":"grave"}'
+aprendizado --json '{"acao":"perfil","situacao":"música"}'
+```
+
+- `situacao`: a situação da criação de agora, com as palavras do usuário (texto livre, de 1 a 40 caracteres). A chave é
+  o nome em minúsculas, sem acento, sem espaço nas pontas e com os espaços internos colapsados ("Música " e "musica"
+  são a mesma situação). Os nomes das variáveis passam pela mesma chave.
+- `variaveis`: junta as variáveis da criação de agora (número ou texto); uma chamada nova troca o valor da mesma variável.
+- `outro`: liga um "Outro…" (o texto livre do usuário) a uma variável conhecida.
+- `perfil`: `{"ok":true,"situacao":"musica","variaveis":{...},"outros":[...]}`; sem perfil, as listas vazias.
+- Tudo da criação de agora vai para `aprendizado/agora.json`. Um JSON inválido, uma ação desconhecida, um nome vazio ou
+  um valor que não é número nem texto dão a recusa com o motivo.
+
+### Os registros
+
+No fim de cada criação (`criacao-salva`, `criacao-cancelada` ou `criacao-interrompida`, vistos no `/eventos`), o
+serviço grava `aprendizado/registros/<hora UTC>-<n>.json` e apaga o `agora.json`. Do `criacao-pedida` ao fim, ele lê o
+`GET /criacao` a cada volta e guarda o último com a criação aberta. O registro traz:
+
+- o `fim` (salva, cancelada ou interrompida; o `por` do cancelamento) e, se salva, a `memoria` (o nome vem do evento; o
+  id, da memória com esse nome no `/estado`);
+- o `dialogo` resumido: cada pergunta, com a resposta e o `doOutro`;
+- o proposto × o que ficou: os `ajustes` de cada rodada (código, índice, antes, valor e relido) e o `somAntes`;
+- as `escutas` (o "1 ou 2") e o `comoFicou` (o positivo é o `salvar:true`; o negativo, o texto do refino);
+- o retorno sem palavras (`semPalavras`): o número de rodadas de refino e se cancelou;
+- o `contexto`: a hora do fim, e o `nivel` e o `master` da memória em uso no `/estado`;
+- a `situacao`, as `variaveis` e os `outros` do `agora.json`.
+
+Uma criação sem o `GET /criacao` lido grava o registro com o que tiver.
+
+**O ajuste à mão depois:** quando uma criação nova abre, se a memória em uso tem um registro salvo, o serviço compara o
+que aquele registro salvou (o último relido de cada ajuste) com o som de agora (o `/estado`, ou o antes do primeiro
+ajuste da criação nova, se ela já mexeu ali). Cada diferença maior que 0,05 entra no registro antigo em `ajustesDepois`
+(o código, o índice, o valor salvo e o de agora).
+
+### O perfil
+
+Depois de gravar um registro salvo, o serviço refaz `aprendizado/perfis/<chave>.json` (uma chave com espaço ou símbolo
+vira hífens e um resumo dela no nome do arquivo):
+
+- só contam os registros salvos da mesma situação; o perfil de uma situação nunca muda com registros de outra;
+- uma variável entra quando dois ou mais registros, de memórias diferentes (ids diferentes), têm a mesma escolha:
+  números a até 1 dB um do outro (o valor é a média) ou o mesmo texto;
+- com mais de um grupo, vale o grupo com mais memórias e, no empate, o mais recente; uma memória que repete a mesma
+  escolha conta uma vez só;
+- os "Outro…" entram como opção só quando têm a `variavel`.
+
+A skill objetivo lê o perfil depois da resposta que diz a situação e o usa como ponto de partida, com dúvida: a memória
+manda. A receita diz as variáveis antes do resumo.
+
 ## Testes
 
 ```
@@ -167,4 +237,4 @@ dotnet test tests/Agente.Testes
 
 Os testes sobem a `PortaComandos` do núcleo do app sobre o `ProcessadorSimulado`, numa porta livre de localhost. O
 serviço roda no próprio processo dos testes; a ferramenta `porta` e o modelo falso rodam como processos de verdade.
-Cada teste usa uma pasta local temporária. Nenhum teste chama o modelo de verdade.
+Cada teste usa uma pasta local temporária (o aprendizado também). Nenhum teste chama o modelo de verdade.

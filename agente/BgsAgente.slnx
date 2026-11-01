@@ -3,6 +3,7 @@
     <Project Path="src/Agente.Porta/Agente.Porta.csproj" />
     <Project Path="src/Porta.Cli/Porta.Cli.csproj" />
     <Project Path="src/Agente.Servico/Agente.Servico.csproj" />
+    <Project Path="src/Aprendizado.Cli/Aprendizado.Cli.csproj" />
     <Project Path="src/Servico/Servico.csproj" />
     <Project Path="src/Agente.ModeloFalso/Agente.ModeloFalso.csproj" />
   </Folder>

@@ -1,7 +1,7 @@
 ---
 name: objetivo
 description: Use ao criar uma memória, antes de cada pergunta ao usuário. Monta a ficha de variáveis (fenômenos como objetivo, cobertura, posição de quem ouve, ambiente, tom, voz, dinâmica e cansaço, cada uma só se o Setup permitir), tira o padrão de cada uma da física e do Setup lido na porta, com a dúvida, escolhe a próxima pergunta pela maior dúvida vezes impacto, manda uma pergunta por vez (POST /criacao/pergunta) e diz quando parar, quando nenhuma resposta muda um ajuste em mais de 1 dB nem uma rota.
-allowed-tools: Bash(porta:*)
+allowed-tools: Bash(porta:*) Bash(aprendizado:*)
 ---
 
 # Objetivo: a ficha de variáveis e a próxima pergunta
@@ -28,19 +28,42 @@ Na criação de uma memória, do começo até a resposta à última pergunta. A 
    | cansaço | agudo, teto | as sessões são longas (pergunte) |
 
 3. Dê a cada variável um padrão, tirado da física e do Setup, e uma dúvida: o quanto as respostas possíveis mudam os
-   ajustes (em dB) ou se mudam uma rota. Nenhum padrão vem de memória do aparelho, de regulagem antiga ou de outro caso.
+   ajustes (em dB) ou se mudam uma rota. Nenhum padrão vem de memória do aparelho, de regulagem antiga ou de outro caso;
+   o perfil da situação (passo 5) é o único ponto de partida aprendido.
 4. A primeira pergunta é o objetivo, com respostas montadas para aquele Setup e ambiente (um carro, uma caixa ao ar
    livre, uma sala…), nunca uma lista fixa de usos.
-5. Depois, pergunte a variável de maior dúvida × impacto: a que mais muda os números entre uma resposta e outra.
-6. Uma pergunta por vez: `POST /criacao/pergunta` com `texto`, de 3 a 4 `respostas` e `ultima`. O celular acrescenta
+5. **O perfil da situação.** Depois da resposta que diz a situação (o nome que o usuário dá ao uso ou à memória, com as
+   palavras dele, nunca de uma lista fixa), guarde-a e leia o perfil dela pela ferramenta `aprendizado`, que só toca a
+   pasta local, nunca o app:
+
+   ```
+   aprendizado <<'FIM'
+   {"acao":"situacao","nome":"<as palavras do usuário>"}
+   FIM
+   aprendizado <<'FIM'
+   {"acao":"perfil","situacao":"<as palavras do usuário>"}
+   FIM
+   ```
+
+   Texto que vem do usuário vai sempre pelo stdin, num heredoc com o `'FIM'` entre aspas (um apóstrofo nas palavras dele
+   quebraria o `--json '...'`). Uma recusa (`ok:false`) traz o motivo: um nome de mais de 40 caracteres, por exemplo,
+   volta encurtado (com as palavras dele) numa chamada nova; não insista com a mesma chamada.
+
+   O perfil (`variaveis` e `outros`) é o ponto de partida das variáveis: o padrão, com a dúvida dele. A memória manda: o
+   que o usuário responde nesta criação vale sobre o perfil, e um perfil vazio não muda nada. Os `outros` do perfil podem
+   virar respostas da pergunta da variável deles.
+6. Depois, pergunte a variável de maior dúvida × impacto: a que mais muda os números entre uma resposta e outra.
+7. Uma pergunta por vez: `POST /criacao/pergunta` com `texto`, de 3 a 4 `respostas` e `ultima`. O celular acrescenta
    o "Outro…". Espere o `criacao-resposta` no `/eventos` antes da próxima. Um "Outro…" (`doOutro`) é texto livre: ligue-o
-   a uma variável; se não ligar, pergunte de novo, de outro jeito. Um `criacao-resposta` com o `numero` menor que o da
+   a uma variável (`{"acao":"outro","texto":"<o que ele escreveu>","variavel":"<a variável>"}` pela ferramenta
+   `aprendizado`, no heredoc do passo 5); se
+   não ligar, pergunte de novo, de outro jeito. Um `criacao-resposta` com o `numero` menor que o da
    última é o ‹ do usuário: as perguntas depois dela saíram; refaça a ficha a partir dessa resposta e mande a próxima
    de novo.
-7. Pare quando nenhuma resposta possível mudar um ajuste em mais de 1 dB nem uma rota: essa pergunta vai com
+8. Pare quando nenhuma resposta possível mudar um ajuste em mais de 1 dB nem uma rota: essa pergunta vai com
    `"ultima":true`, e a resposta a ela autoriza aplicar (skill receita). Passar de 8 perguntas mostra a ficha larga
    demais (o teto do sinal de sucesso da CAP-2, em `spec-agente-memoria/SPEC.md`).
-8. Os textos vão para a tela: palavras de quem ouve, sem jargão e sem a palavra "IA".
+9. Os textos vão para a tela: palavras de quem ouve, sem jargão e sem a palavra "IA".
 
 ## Entrega
 

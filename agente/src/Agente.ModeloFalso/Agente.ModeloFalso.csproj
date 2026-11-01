@@ -13,6 +13,8 @@
     <ProjectReference Include="..\Agente.Servico\Agente.Servico.csproj" />
     <!-- A ferramenta "porta" vai junto, na mesma pasta: o roteiro a chama como processo. -->
     <ProjectReference Include="..\Porta.Cli\Porta.Cli.csproj" />
+    <!-- A ferramenta "aprendizado" (história 14e) também vai junto: o passo "aprender" a chama como processo. -->
+    <ProjectReference Include="..\Aprendizado.Cli\Aprendizado.Cli.csproj" />
   </ItemGroup>
 
 </Project>

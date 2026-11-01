@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Agente.Porta\Agente.Porta.csproj" />
     <ProjectReference Include="..\..\src\Porta.Cli\Porta.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Aprendizado.Cli\Aprendizado.Cli.csproj" />
     <ProjectReference Include="..\..\src\Agente.Servico\Agente.Servico.csproj" />
     <ProjectReference Include="..\..\src\Agente.ModeloFalso\Agente.ModeloFalso.csproj" />
     <ProjectReference Include="..\..\src\Servico\Servico.csproj" />

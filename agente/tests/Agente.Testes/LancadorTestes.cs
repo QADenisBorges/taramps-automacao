@@ -136,7 +136,8 @@ public sealed class LancadorTestes
         var criar = lancador.InicioPara("criar-memoria").ArgumentList;
 
         Assert.Equal(["--allowedTools", "Bash(porta:*) WebSearch WebFetch", "xBash(porta:*) WebSearch WebFetchx"], ficha);
-        Assert.Equal(["--allowedTools", "Bash(porta:*)", "xBash(porta:*)x"], criar);
+        // O "*" do servico.config.json: a porta e o aprendizado (história 14e).
+        Assert.Equal(["--allowedTools", "Bash(porta:*) Bash(aprendizado:*)", "xBash(porta:*) Bash(aprendizado:*)x"], criar);
         // O padrão do código (sem a lista no JSON) também é só a porta.
         Assert.Equal(["Bash(porta:*)"], new ConfigLancador().FerramentasDe("qualquer"));
         Assert.Contains(LancadorClaude.MarcaFerramentas, new ConfigLancador().Argumentos);

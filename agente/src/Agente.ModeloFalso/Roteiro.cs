@@ -22,7 +22,9 @@ public sealed class RoteiroInvalidoException(string mensagem) : Exception(mensag
 /// }
 /// </code>
 /// Cada passo é um <c>pedir</c> (um pedido à porta; a saída da ferramenta é o resultado), um <c>esperar</c> (um evento do
-/// <c>/eventos</c> de um dos <c>tipos</c>, com um prazo; o evento é o resultado) ou um <c>fim</c>. Depois do passo, o primeiro
+/// <c>/eventos</c> de um dos <c>tipos</c>, com um prazo; o evento é o resultado), um <c>aprender</c> (o JSON vai à ferramenta
+/// <c>aprendizado</c>, história 14e; a saída dela é o resultado, e o <c>ok:false</c> conta como recusa) ou um <c>fim</c>.
+/// Depois do passo, o primeiro
 /// ramo do <c>se</c> cujo <c>campo</c> (um caminho com pontos no resultado, como <c>corpo.etapa</c>) for <c>igual</c> manda
 /// para o passo <c>ir</c>; senão vale o <c>ir</c> do passo, ou o passo seguinte. Um <c>pedir</c> recusado vai ao
 /// <c>seFalhar</c> (sem ele, o roteiro falha) e um <c>esperar</c> vencido ao <c>seVencer</c> (idem). Um esperar que vê a
@@ -88,9 +90,12 @@ public sealed record Roteiro
         {
             var p = Passos[i];
             var nome = p.Id ?? $"#{i + 1}";
-            var tipos = (p.Pedir is null ? 0 : 1) + (p.Esperar is null ? 0 : 1) + (p.Fim ? 1 : 0);
+            var tipos = (p.Pedir is null ? 0 : 1) + (p.Esperar is null ? 0 : 1) + (p.Aprender is null ? 0 : 1) + (p.Fim ? 1 : 0);
             if (tipos != 1)
-                throw new RoteiroInvalidoException($"O passo {nome} precisa de um, e só um, entre pedir, esperar e fim.");
+                throw new RoteiroInvalidoException($"O passo {nome} precisa de um, e só um, entre pedir, esperar, aprender e fim.");
+            if (p.Aprender is { } aprender
+                && !(aprender["acao"] is JsonValue acao && acao.TryGetValue<string>(out var texto) && !string.IsNullOrWhiteSpace(texto)))
+                throw new RoteiroInvalidoException($"O passo {nome} manda à ferramenta aprendizado um JSON com a \"acao\".");
             if (p.Pedir is { } pedir)
             {
                 if (string.IsNullOrWhiteSpace(pedir.Alvo) || !pedir.Alvo.StartsWith('/'))
@@ -123,6 +128,9 @@ public sealed record Passo
     public PedidoPasso? Pedir { get; init; }
 
     public EsperaPasso? Esperar { get; init; }
+
+    /// <summary>A entrada da ferramenta <c>aprendizado</c> (história 14e), como <c>{"acao":"situacao","nome":"música"}</c>.</summary>
+    public JsonObject? Aprender { get; init; }
 
     public bool Fim { get; init; }
 

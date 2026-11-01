@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    O executável "aprendizado" (história 14e): JSON na entrada (a opção json ou o stdin), JSON numa linha na saída.
+    Só toca a pasta local (aprendizado/agora.json e a leitura dos perfis); nunca fala com o app.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>aprendizado</AssemblyName>
+    <RootNamespace>Aprendizado.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agente.Servico\Agente.Servico.csproj" />
+  </ItemGroup>
+
+</Project>

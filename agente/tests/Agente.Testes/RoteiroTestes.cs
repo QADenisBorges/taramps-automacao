@@ -337,6 +337,85 @@ public sealed class RoteiroTestes
         Assert.Equal("testes/roteiros/ficha-basica.json", Caminhos.Config.Lancador.Roteiros["ficha-tecnica"]);
     }
 
+    // ------------------------------------------------------------------ o aprender (história 14e)
+
+    /// <summary>Uma ferramenta aprendizado de mentira: as entradas ficam anotadas e a saída é a dada.</summary>
+    private sealed class AprendizadoFalso(Func<JsonObject, JsonObject>? responder = null) : IFerramentaAprendizado
+    {
+        public List<JsonObject> Entradas { get; } = [];
+
+        public Task<JsonObject> RodarAsync(JsonObject entrada, CancellationToken cancelar)
+        {
+            Entradas.Add(entrada);
+            return Task.FromResult(responder?.Invoke(entrada) ?? new JsonObject { ["ok"] = true });
+        }
+    }
+
+    [Fact]
+    public async Task O_aprender_roda_a_ferramenta_aprendizado_com_o_JSON_e_ramifica_pelo_resultado()
+    {
+        var roteiro = Roteiro.DeJson("""
+            { "passos": [
+              { "aprender": { "acao": "situacao", "nome": "música" } },
+              { "aprender": { "acao": "perfil", "situacao": "{evento.situacao}" },
+                "se": [ { "campo": "variaveis.grave", "igual": "4", "ir": "com-perfil" } ] },
+              { "id": "sem-perfil", "pedir": { "alvo": "/sem-perfil" }, "ir": "fim" },
+              { "id": "com-perfil", "pedir": { "alvo": "/com-perfil" } },
+              { "id": "fim", "fim": true }
+            ] }
+            """);
+        var aprendizado = new AprendizadoFalso(e => e["acao"]!.GetValue<string>() == "perfil"
+            ? new JsonObject { ["ok"] = true, ["situacao"] = "musica", ["variaveis"] = new JsonObject { ["grave"] = 4 }, ["outros"] = new JsonArray() }
+            : new JsonObject { ["ok"] = true });
+        var f = new FerramentaFalsa();
+        var evento = new JsonObject { ["tipo"] = "criacao-pedida", ["situacao"] = "Música" };
+
+        Assert.Equal(ExecutorRoteiro.Terminou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido, evento, aprendizado).RodarAsync(roteiro));
+
+        Assert.Equal(2, aprendizado.Entradas.Count);
+        Assert.Equal("música", aprendizado.Entradas[0]["nome"]!.GetValue<string>());
+        Assert.Equal("Música", aprendizado.Entradas[1]["situacao"]!.GetValue<string>()); // o campo do evento, como no pedir
+        Assert.Equal(["/com-perfil"], Alvos(f));
+    }
+
+    [Fact]
+    public async Task Um_aprender_recusado_sem_seFalhar_falha_o_roteiro_e_com_seFalhar_segue()
+    {
+        var recusa = new AprendizadoFalso(_ => new JsonObject { ["ok"] = false, ["motivo"] = "não" });
+        var semDesvio = Roteiro.DeJson("""{ "passos": [ { "aprender": { "acao": "x" } }, { "pedir": { "alvo": "/depois" } } ] }""");
+        var comDesvio = Roteiro.DeJson("""{ "passos": [ { "aprender": { "acao": "x" }, "seFalhar": "d" }, { "pedir": { "alvo": "/pulado" } }, { "id": "d", "pedir": { "alvo": "/desvio" } } ] }""");
+        var f = new FerramentaFalsa();
+
+        Assert.Equal(ExecutorRoteiro.Falhou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido, aprendizado: recusa).RodarAsync(semDesvio));
+        Assert.Empty(f.Entradas);
+        Assert.Equal(ExecutorRoteiro.Terminou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido, aprendizado: recusa).RodarAsync(comDesvio));
+        Assert.Equal(["/desvio"], Alvos(f));
+        // Sem a ferramenta, o aprender conta como recusado.
+        Assert.Equal(ExecutorRoteiro.Falhou, await new ExecutorRoteiro(f, TextWriter.Null, Rapido).RodarAsync(semDesvio));
+    }
+
+    [Theory]
+    [InlineData("""{ "passos": [ { "aprender": { "acao": "situacao" }, "pedir": { "alvo": "/a" } } ] }""")]
+    [InlineData("""{ "passos": [ { "aprender": { "nome": "música" } } ] }""")]
+    [InlineData("""{ "passos": [ { "aprender": { "acao": " " } } ] }""")]
+    [InlineData("""{ "passos": [ { "aprender": { "acao": 1 } } ] }""")]
+    public void Um_aprender_mal_formado_e_recusado(string json) =>
+        Assert.Throws<RoteiroInvalidoException>(() => Roteiro.DeJson(json));
+
+    [Fact]
+    public void O_roteiro_que_aprende_diz_a_situacao_musica_le_o_perfil_e_diz_o_grave_4_antes_do_resumo()
+    {
+        var r = Roteiro.Carregar(Caminhos.Roteiro("aprende-musica"));
+
+        var aprender = r.Passos.Where(p => p.Aprender is not null).Select(p => p.Aprender!).ToArray();
+        Assert.Equal(["situacao", "perfil", "variaveis"], aprender.Select(a => a["acao"]!.GetValue<string>()));
+        Assert.Equal("música", aprender[0]["nome"]!.GetValue<string>());
+        Assert.Equal(4.0, aprender[2]["valores"]!["grave"]!.GetValue<double>());
+        Assert.True(r.Indice("variaveis") < r.Indice("resumo"));
+        var ajuste = Assert.Single(r.Passos, p => p.Pedir?.Alvo == "/criacao/ajuste").Pedir!.Corpo!;
+        Assert.Equal(4.0, ajuste["valor"]!.GetValue<double>());
+    }
+
     [Fact]
     public void O_prompt_de_uma_tarefa_fora_da_pasta_tarefas_e_recusado() =>
         Assert.Throws<ArgumentException>(() => LancadorClaude.Prompt(Caminhos.Agente, "../segredo"));

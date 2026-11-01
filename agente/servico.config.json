@@ -15,10 +15,10 @@
     "tipo": "claude",
     "comando": "claude",
     "argumentos": ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "{ferramentas}"],
-    // A tarefa → as ferramentas liberadas. "*" vale para as outras: só a porta. A ficha técnica lê a web (só leitura)
-    // para achar a ficha e o endereço da fonte.
+    // A tarefa → as ferramentas liberadas. "*" vale para as outras: a porta e o aprendizado (história 14e; só toca a
+    // pasta local, nunca o app). A ficha técnica lê a web (só leitura) para achar a ficha e o endereço da fonte.
     "ferramentas": {
-      "*": ["Bash(porta:*)"],
+      "*": ["Bash(porta:*)", "Bash(aprendizado:*)"],
       "ficha-tecnica": ["Bash(porta:*)", "WebSearch", "WebFetch"]
     },
     "pastaPorta": "bin",

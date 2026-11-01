@@ -1,7 +1,7 @@
 ---
 name: receita
 description: Use depois da resposta à última pergunta, ou de uma mudança pedida no refino, para transformar as variáveis em ajustes na ordem da física (cerca, rota, ganho, corte, atraso e fase, depois tom, por último dinâmica). Cada ajuste vai com frase, valor de antes, valor novo e motivo (POST /criacao/ajuste), dentro da cerca; a rota é decisão com motivo, nunca padrão. Fecha com o resumo e o Como ficou.
-allowed-tools: Bash(porta:*)
+allowed-tools: Bash(porta:*) Bash(aprendizado:*)
 ---
 
 # Receita: das variáveis aos ajustes
@@ -34,7 +34,13 @@ pediram (só o que muda).
 5. Uma recusa traz o motivo. A da cerca diz o teto: refaça abaixo dele, com o teto no motivo. Não insista no mesmo.
 6. Um valor pedido pelo usuário (uma potência, por exemplo) vai com o pedido, o calculado (a tensão) e o recomendado,
    cada um com o motivo; o que não se sabe vai como estimativa.
-7. No fim, `POST /criacao/resumo` e o "Como ficou?" (`POST /criacao/como-ficou`) com 2 ou 3 respostas que já pensem no
+7. Antes do resumo, diga as variáveis da criação (o valor final de cada uma na ficha, número ou texto) pela ferramenta
+   `aprendizado`, que só grava na pasta local: `aprendizado --json '{"acao":"variaveis","valores":{"grave":4.0,"cobertura":"varios"}}'`.
+   No refino, diga de novo só as que mudaram (a chamada nova troca o valor). Um valor de texto com palavras do usuário
+   vai pelo stdin, num heredoc com o `'FIM'` entre aspas (`aprendizado <<'FIM'`, o JSON, `FIM`), porque um apóstrofo
+   quebraria o `--json '...'`. Uma recusa (`ok:false`) traz o motivo (um valor que não é número nem texto, um nome
+   repetido): corrija o que ele diz e mande de novo; não insista com a mesma chamada. O registro e o perfil são do serviço.
+8. No fim, `POST /criacao/resumo` e o "Como ficou?" (`POST /criacao/como-ficou`) com 2 ou 3 respostas que já pensem no
    refino: uma de gosto e uma de queixa provável para aquele Setup.
 
 ## Entrega

@@ -21,10 +21,12 @@ interrompida.
    **medicao-assistida**.
 2. **Perguntar** (skill **objetivo**). Abra a criação (`POST /criacao/abrir`) e mande uma pergunta por vez
    (`POST /criacao/pergunta`), a primeira sempre o objetivo. A resposta chega no `/eventos` como `criacao-resposta`.
+   Quando uma resposta disser a situação, guarde-a e leia o perfil dela pela ferramenta `aprendizado`
+   (`{"acao":"situacao",...}` e `{"acao":"perfil",...}`): é o ponto de partida das variáveis, com dúvida.
    Pare quando nenhuma resposta mudar um ajuste em mais de 1 dB nem uma rota: essa vai como a última.
 3. **Aplicar** (skill **receita**). Depois da resposta à última pergunta, os ajustes na ordem da física
-   (`POST /criacao/ajuste`, cada um com a frase e o motivo), o resumo (`POST /criacao/resumo`) e o "Como ficou?"
-   (`POST /criacao/como-ficou`).
+   (`POST /criacao/ajuste`, cada um com a frase e o motivo), as variáveis pela ferramenta `aprendizado`
+   (`{"acao":"variaveis",...}`), o resumo (`POST /criacao/resumo`) e o "Como ficou?" (`POST /criacao/como-ficou`).
 4. **Refinar.** A resposta chega como `criacao-como-ficou`. Com `salvar:true`, só espere. Uma queixa vai à skill
    **diagnostico**; um gosto, à skill **escuta** (`POST /criacao/escuta`, com a escolha em `criacao-escuta`). A mudança
    volta pela skill **receita**, só o que muda, com um novo resumo e um novo "Como ficou?".
@@ -32,3 +34,25 @@ interrompida.
    `criacao-cancelada` ou `criacao-interrompida`. Você não salva: salvar é do usuário.
 
 Uma recusa da porta (`ok:false`) é uma regra do app: leia o motivo e não insista no mesmo pedido.
+
+**A ferramenta `aprendizado`** só toca a pasta local, nunca o app; o mesmo formato (JSON na entrada, um JSON numa linha
+na saída, com o `ok`):
+
+```
+aprendizado --json '{"acao":"variaveis","valores":{"grave":4.0,"cobertura":"varios"}}'
+aprendizado <<'FIM'
+{"acao":"situacao","nome":"<as palavras do usuário>"}
+FIM
+aprendizado <<'FIM'
+{"acao":"perfil","situacao":"<as palavras do usuário>"}
+FIM
+aprendizado <<'FIM'
+{"acao":"outro","texto":"<o Outro… dele>","variavel":"<a variável>"}
+FIM
+```
+
+Quando o JSON leva texto do usuário, mande-o pelo stdin, num heredoc com o `'FIM'` entre aspas: um apóstrofo nas
+palavras dele quebraria o `--json '...'`. Uma recusa (`ok:false`) traz o motivo (por exemplo, um nome de mais de 40
+caracteres: encurte e mande de novo); não insista com a mesma chamada.
+
+Você só diz a situação e as variáveis: o registro da criação e o perfil são gravados pelo serviço, no fim.
