@@ -324,6 +324,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
             };
             Salvar = B.CriarSalvarViewModel();
             Vm = new MemoriasViewModel(B.Setups!, B.Copia, B.Sessao, B.Chaves, B.Estado, Salvar, B.Tela, B.Relogio, Criacao, navegacao: Nav);
+            Vm.AvisoRapido += Avisos.Add;
         }
 
         public Bancada B { get; } = new(usoCompartilhado: true, setups: true);
@@ -332,6 +333,9 @@ public sealed class MemoriasViewModelTestes : IDisposable
         public SalvarViewModel Salvar { get; }
         public MemoriasViewModel Vm { get; }
         public List<string> Eventos { get; } = [];
+
+        /// <summary>História 14c: os avisos que a tela mandou ao aviso rápido da casca.</summary>
+        public List<string> Avisos { get; } = [];
 
         public int Pedidos
         {
@@ -377,6 +381,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
         await t.Vm.NovaMemoria.ExecutarAsync();
 
         Assert.Equal("Ligue o Controle pela rede em Aparelho.", t.Vm.Mensagem);
+        Assert.Equal(["Ligue o Controle pela rede em Aparelho."], t.Avisos); // história 14c: também no aviso rápido
         Assert.Equal(["aparelho"], t.Nav.Pedidos);
         Assert.Equal(0, t.Pedidos);
         Assert.False(t.Vm.EsperandoAgente);
@@ -415,6 +420,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
         await t.Andar(TimeSpan.FromSeconds(15));
         Assert.Null(t.Vm.Mensagem); // o prazo não vale mais
         Assert.Empty(t.Nav.Pedidos);
+        Assert.Empty(t.Avisos);
     }
 
     [Fact]
@@ -432,6 +438,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
 
         Assert.False(t.Vm.EsperandoAgente);
         Assert.Equal("Não deu para começar agora. Confira se o computador está ligado e no mesmo Wi-Fi.", t.Vm.Mensagem);
+        Assert.Equal([MemoriasViewModel.MsgSemResposta], t.Avisos); // história 14c: também no aviso rápido
         Assert.True(t.Vm.PodeNovaMemoria);
         Assert.False(t.Criacao.Aberta);
 
@@ -454,6 +461,7 @@ public sealed class MemoriasViewModelTestes : IDisposable
 
         Assert.False(t.Vm.EsperandoAgente);
         Assert.Equal(MemoriasViewModel.MsgLigueControle, t.Vm.Mensagem);
+        Assert.Empty(t.Avisos); // história 14c: quem desligou a chave já está nas Configurações; o aviso fica só nesta tela
 
         Assert.True((await t.B.Chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
         await t.Vm.NovaMemoria.ExecutarAsync();
@@ -463,6 +471,32 @@ public sealed class MemoriasViewModelTestes : IDisposable
 
         Assert.False(t.Vm.EsperandoAgente);
         Assert.Equal(ControleParametroViewModel.MsgSemConexao, t.Vm.Mensagem);
+        Assert.Empty(t.Avisos); // a conexão caída também fica só na tela
+    }
+
+    [Fact]
+    public async Task O_prazo_vencido_e_a_chave_desligada_vao_ao_aviso_rapido_da_casca()
+    {
+        using var t = new ComCriacao();
+        using var telas = new Telas11(t.B);
+        using var casca = new CascaViewModel(t.B.Sessao, telas.Conexao, telas.Setup, t.Vm, telas.Inicio, telas.Mesa, telas.Audio, telas.Salvar,
+            t.B.Fabrica, telas.Nav, t.B.Tela, t.B.Relogio);
+        await t.Pronta();
+
+        // O prazo vencido.
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        await t.Andar(TimeSpan.FromSeconds(15.1));
+        Assert.Equal(MemoriasViewModel.MsgSemResposta, casca.AvisoRapido);
+        await t.Andar(TimeSpan.FromSeconds(2.7));
+        Assert.Null(casca.AvisoRapido);
+
+        // A chave desligada: o toque leva às Configurações, e o aviso vem junto.
+        Assert.True((await t.B.Chaves.DefinirAsync(Chave.ControlePelaRede, false, OrigemComando.Tela)).Ok);
+        await t.B.Tela.EsvaziarAsync();
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        await t.B.Tela.EsvaziarAsync();
+        Assert.Equal(MemoriasViewModel.MsgLigueControle, casca.AvisoRapido);
+        Assert.Equal(["aparelho"], t.Nav.Pedidos);
     }
 
     [Fact]

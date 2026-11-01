@@ -30,6 +30,8 @@ public enum PontoStatus
 /// "REAPLICANDO" da conferência ao conectar e, no topo, a faixa "DESLIGUE O MÓDULO AGORA" do gerador.
 /// História 10d: a criação da memória em tela toda, logo abaixo da folha de risco, e o aviso rápido de 2,6 s
 /// ("Memória MUSICA ORIG criada no Casa 2.1.") quando ela fecha.
+/// História 14c: a folha da proposta de ficha é uma folha global, como as do Rendimento; o aviso depois de salvar, o
+/// prazo vencido do "+ Nova memória" e a chave "Controle pela rede" desligada vão ao aviso rápido.
 /// Nenhuma tela mostra a IA (decisão do Denis, 30/10/2026).
 /// </summary>
 public sealed class CascaViewModel : TelaBase, IDisposable
@@ -50,7 +52,7 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme)? _camadas;
     private string? _avisoRapido;
     private ITimer? _prazoAviso;
-    private (bool Nivel, bool OutroPlayer)? _folhas;
+    private (bool Nivel, bool OutroPlayer, bool Ficha)? _folhas;
 
     public CascaViewModel(
         Sessao sessao,
@@ -69,10 +71,12 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         FolhaRiscoViewModel? folhaRisco = null,
         GeradorViewModel? gerador = null,
         ReaplicandoViewModel? reaplicando = null,
-        CriacaoMemoriaViewModel? criacao = null)
+        CriacaoMemoriaViewModel? criacao = null,
+        PropostaFichaViewModel? ficha = null)
         : base(despachante, relogio)
     {
         Criacao = criacao;
+        Ficha = ficha;
         Player = player;
         _folhaRisco = folhaRisco;
         _gerador = gerador;
@@ -116,6 +120,10 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             nivel.PropertyChanged += AoMudarFolhas;
             nivel.PediuOtimizar += IrAoOtimizar;
         }
+        // História 14c: a folha da proposta de ficha e o aviso depois de salvar; o prazo e a chave do "+ Nova memória".
+        if (Ficha is not null)
+            Ficha.PropertyChanged += AoMudarFicha;
+        _memorias.AvisoRapido += AoAvisar;
     }
 
     // ------------------------------------------------------------------ as folhas globais (história 13g)
@@ -126,19 +134,36 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     /// <summary>A folha "Outro app começou a tocar" está por cima de tudo.</summary>
     public bool FolhaOutroPlayerPorCima => _folhas?.OutroPlayer == true;
 
+    /// <summary>História 14c: a folha da proposta de ficha está por cima de tudo (abaixo da folha de risco).</summary>
+    public bool FolhaFichaPorCima => _folhas?.Ficha == true;
+
+    /// <summary>A folha da proposta de ficha (história 14c), ou null.</summary>
+    public PropostaFichaViewModel? Ficha { get; }
+
     /// <summary>
     /// Confere as folhas globais do Rendimento e pede à navegação quando mudam (ou sempre, com <paramref name="forcar"/>):
-    /// a do nível (uma só, qualquer que seja o chip que a abriu) e a do outro player.
+    /// a do nível (uma só, qualquer que seja o chip que a abriu) e a do outro player. História 14c: e a da proposta de
+    /// ficha.
     /// </summary>
     public void SincronizarFolhas(bool forcar = false)
     {
-        var agora = (Inicio.Nivel is { } n && (n.FolhaAberta || n.RiscoAberto), Player?.FolhaOutroPlayer == true);
+        var agora = (Inicio.Nivel is { } n && (n.FolhaAberta || n.RiscoAberto), Player?.FolhaOutroPlayer == true, Ficha?.Aberta == true);
         if (_folhas == agora && !forcar)
             return;
         _folhas = agora;
-        _nav.MostrarFolhas(agora.Item1, agora.Item2);
+        _nav.MostrarFolhas(agora.Item1, agora.Item2, agora.Item3);
         Avisar(nameof(FolhaNivelPorCima));
         Avisar(nameof(FolhaOutroPlayerPorCima));
+        Avisar(nameof(FolhaFichaPorCima));
+    }
+
+    /// <summary>História 14c: a folha da ficha sobe e desce; o aviso depois de salvar vai ao aviso rápido.</summary>
+    private void AoMudarFicha(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PropostaFichaViewModel.Aberta))
+            SincronizarFolhas();
+        else if (e.PropertyName == nameof(PropostaFichaViewModel.AvisoFinal) && Ficha?.AvisoFinal is { Length: > 0 } aviso)
+            MostrarAviso(aviso);
     }
 
     private void AoMudarFolhas(object? sender, PropertyChangedEventArgs e)
@@ -386,6 +411,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             nivel.PropertyChanged -= AoMudarFolhas;
             nivel.PediuOtimizar -= IrAoOtimizar;
         }
+        if (Ficha is not null)
+            Ficha.PropertyChanged -= AoMudarFicha;
+        _memorias.AvisoRapido -= AoAvisar;
         _prazoAviso?.Dispose();
     }
 }

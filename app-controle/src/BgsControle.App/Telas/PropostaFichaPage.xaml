@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha da proposta de ficha como camada global (história 14c; spec-agente-memoria, lado-do-app.md, "Proposta de ficha";
+    DESIGN, sheet). [ASSUMPTION] O UX não desenhou esta folha (questão 17 do UX de 30/10): o visual segue os tokens e fica
+    para a conferência no aparelho (12e).
+    Sobe por cima de qualquer tela quando uma proposta chega, logo abaixo da folha de risco. No topo, o título ("Ficha do
+    ABC 123"), o equipamento e a explicação. Cada dado: o rótulo e o valor proposto (ciano), a origem, o valor de agora
+    (quando há), a fonte, o aviso (o que não fechou) e "Usar" / "Recusar"; o usado fica com o contorno ciano e o recusado,
+    apagado. Depois, "Usar todos" e "Recusar todos", o erro, "Salvar" (com o anel de 18 px enquanto salva) e "Fechar". Tocar
+    no véu ou o Voltar do Android fecham sem gravar. A lista rola dentro da folha. Os textos vêm do PropostaFichaViewModel.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.PropostaFichaPage"
+             x:DataType="telas:PropostaFichaViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="Transparent">
+    <Grid>
+    <c:FolhaView Bgs="True" Aberta="{Binding Aberta}" Fechar="{Binding Fechar}">
+        <VerticalStackLayout Spacing="9">
+            <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding Titulo}" SemanticProperties.HeadingLevel="Level1" />
+            <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource text-chip}" Text="{Binding Equipamento}"
+                   IsVisible="{Binding Equipamento, Converter={StaticResource TemTexto}}" />
+            <Label Style="{StaticResource tipo-body}" Text="{Binding Explica}" />
+
+            <!-- Os dados, na ordem em que chegaram. -->
+            <VerticalStackLayout Spacing="9" BindableLayout.ItemsSource="{Binding Dados}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="telas:DadoPropostoViewModel">
+                        <Border Style="{StaticResource cartao-bgs}" Stroke="{StaticResource surface-1}" StrokeThickness="1.5">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding Usado}" Value="True">
+                                    <Setter Property="Stroke" Value="{StaticResource brand}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <VerticalStackLayout Spacing="6">
+                                <VerticalStackLayout Spacing="3">
+                                    <VerticalStackLayout.Triggers>
+                                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding Recusado}" Value="True">
+                                            <Setter Property="Opacity" Value="0.35" />
+                                        </DataTrigger>
+                                    </VerticalStackLayout.Triggers>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <Label Style="{StaticResource tipo-summary-item}" Text="{Binding Rotulo}" VerticalTextAlignment="Center" />
+                                        <Label Grid.Column="1" Style="{StaticResource tipo-summary-item}" TextColor="{StaticResource brand}"
+                                               Text="{Binding Valor}" VerticalTextAlignment="Center" />
+                                    </Grid>
+                                    <Label Style="{StaticResource tipo-hint}" Text="{Binding Origem}" />
+                                    <Label Style="{StaticResource tipo-hint}" TextColor="{StaticResource text-chip}" Text="{Binding TextoAtual}"
+                                           IsVisible="{Binding TextoAtual, Converter={StaticResource TemTexto}}" />
+                                    <Label Style="{StaticResource tipo-summary-reason}" Text="{Binding Fonte}" LineBreakMode="WordWrap" />
+                                    <Label Style="{StaticResource tipo-summary-reason}" TextColor="{StaticResource warning}" Text="{Binding Aviso}"
+                                           IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                                </VerticalStackLayout>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Style="{StaticResource botao-bgs-secundario}" BorderColor="{StaticResource brand}"
+                                            Text="{x:Static telas:PropostaFichaViewModel.TextoUsarBotao}" Command="{Binding Usar}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Usado}" Value="True">
+                                                <Setter Property="BorderWidth" Value="1.5" />
+                                                <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Button Grid.Column="1" Style="{StaticResource botao-bgs-secundario}"
+                                            Text="{x:Static telas:PropostaFichaViewModel.TextoRecusarBotao}" Command="{Binding Recusar}" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoUsarTodos}" Command="{Binding UsarTodos}" />
+                <Button Grid.Column="1" Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoRecusarTodos}" Command="{Binding RecusarTodos}" />
+            </Grid>
+            <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource warning}" Text="{Binding Erro}"
+                   IsVisible="{Binding Erro, Converter={StaticResource TemTexto}}" />
+            <Grid>
+                <Button Style="{StaticResource botao-fluxo}" Text="{Binding TextoSalvar}" Command="{Binding Salvar}" />
+                <c:AnelDuploView x:Name="AnelSalvar" WidthRequest="18" HeightRequest="18" HorizontalOptions="Start" VerticalOptions="Center"
+                                 Margin="18,0,0,0" IsVisible="{Binding Salvando}" />
+            </Grid>
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoFechar}" Command="{Binding Fechar}" />
+        </VerticalStackLayout>
+    </c:FolhaView>
+        <!-- O aviso rápido da casca: com outra proposta na fila, a folha fica e o aviso do Salvar aparece por cima dela. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
+    </Grid>
+</ContentPage>

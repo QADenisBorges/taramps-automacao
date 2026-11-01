@@ -7,6 +7,9 @@
     AvancarCanal, AplicandoTerminou). De baixo para cima: o palco (brilho, chão, horizonte, o anel grande e apagado e
     a frase com a linha do valor), a barra do fluxo e as telas (perguntas, resumo, "Como ficou?", Salvar), o
     Aplicando (véu, os anéis de neon da passagem, o esquema de ligação e o bloco APLICANDO) e a folha de cancelar.
+    História 14c: a escuta "1 ou 2" (só no refino) é uma tela como as perguntas, com o ✕ e sem o ‹: o texto, os botões
+    grandes "1" e "2" (o marcado, com "tocando agora", é a versão que toca) e, embaixo, "Prefiro o 1", "Prefiro o 2" e
+    "Tanto faz". [ASSUMPTION] O UX não desenhou a escuta (questão 17 do UX de 30/10): fica para a conferência no aparelho.
     Nenhum texto fala de quem manda as perguntas.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -41,6 +44,23 @@
             <Setter Property="FontSize" Value="14" />
             <Setter Property="r:Tipo.Peso" Value="600" />
             <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        <!-- História 14c: os botões "1" e "2" da escuta (quadrados, de 120 px no mínimo; a página iguala a altura à largura). -->
+        <Style x:Key="botao-versao" TargetType="Button" BasedOn="{StaticResource botao-base}">
+            <Setter Property="MinimumHeightRequest" Value="120" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="FontSize" Value="44" />
+            <Setter Property="BackgroundColor" Value="{StaticResource surface-1}" />
+            <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            <Setter Property="BorderColor" Value="{StaticResource brand}" />
+        </Style>
+        <Style x:Key="tocando-versao" TargetType="Label" BasedOn="{StaticResource tipo-hint}">
+            <Setter Property="TextColor" Value="{StaticResource brand}" />
+            <Setter Property="HorizontalOptions" Value="Center" />
+            <Setter Property="VerticalOptions" Value="End" />
+            <Setter Property="Margin" Value="0,0,0,18" />
+            <Setter Property="InputTransparent" Value="True" />
         </Style>
     </ContentPage.Resources>
 
@@ -194,6 +214,67 @@
                                IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
                     </VerticalStackLayout>
                 </ScrollView>
+
+                <!-- A escuta "1 ou 2" (história 14c): tocar no "1" ou no "2" troca o som ao vivo; enquanto escreve, os botões
+                     apagam (0,35) e o anel de 18 px gira. "Prefiro" e "Tanto faz" escolhem e a criação segue. -->
+                <Grid x:Name="BlocoEscuta" RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding FaseEscuta}">
+                    <ScrollView>
+                        <VerticalStackLayout Spacing="14" Padding="0,22,0,8">
+                            <Label Style="{StaticResource tipo-question}" Text="{Binding TextoEscuta}" SemanticProperties.HeadingLevel="Level2" />
+                            <Grid x:Name="BotoesEscuta" ColumnDefinitions="*,*" ColumnSpacing="12">
+                                <Grid.Triggers>
+                                    <DataTrigger TargetType="Grid" Binding="{Binding Escrevendo}" Value="True">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </DataTrigger>
+                                </Grid.Triggers>
+                                <Grid>
+                                    <Button Style="{StaticResource botao-versao}" Text="{Binding TextoBotao1}" Command="{Binding Ouvir1}" IsEnabled="{Binding PodeTocarEscuta}"
+                                            SemanticProperties.Description="{Binding DescricaoBotao1}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Marcado1}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource brand-12}" />
+                                                <Setter Property="BorderWidth" Value="1.5" />
+                                                <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Label Style="{StaticResource tocando-versao}" Text="{Binding TextoTocando}" IsVisible="{Binding Marcado1}"
+                                           AutomationProperties.IsInAccessibleTree="False" />
+                                </Grid>
+                                <Grid Grid.Column="1">
+                                    <Button Style="{StaticResource botao-versao}" Text="{Binding TextoBotao2}" Command="{Binding Ouvir2}" IsEnabled="{Binding PodeTocarEscuta}"
+                                            SemanticProperties.Description="{Binding DescricaoBotao2}">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding Marcado2}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource brand-12}" />
+                                                <Setter Property="BorderWidth" Value="1.5" />
+                                                <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                    <Label Style="{StaticResource tocando-versao}" Text="{Binding TextoTocando}" IsVisible="{Binding Marcado2}"
+                                           AutomationProperties.IsInAccessibleTree="False" />
+                                </Grid>
+                            </Grid>
+                            <Grid HeightRequest="18">
+                                <c:AnelDuploView x:Name="AnelEscuta" WidthRequest="18" HeightRequest="18" HorizontalOptions="Center"
+                                                 IsVisible="{Binding Escrevendo}" />
+                            </Grid>
+                            <Label Style="{StaticResource tipo-body}" TextColor="{StaticResource apoio}" Text="{Binding AvisoEscuta}"
+                                   IsVisible="{Binding AvisoEscuta, Converter={StaticResource TemTexto}}" />
+                        </VerticalStackLayout>
+                    </ScrollView>
+                    <VerticalStackLayout Grid.Row="1" Spacing="8">
+                        <VerticalStackLayout.Triggers>
+                            <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding Escrevendo}" Value="True">
+                                <Setter Property="Opacity" Value="0.35" />
+                            </DataTrigger>
+                        </VerticalStackLayout.Triggers>
+                        <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoPrefiro1}" Command="{Binding Prefiro1}" IsEnabled="{Binding PodeTocarEscuta}" />
+                        <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoPrefiro2}" Command="{Binding Prefiro2}" IsEnabled="{Binding PodeTocarEscuta}" />
+                        <Button Style="{StaticResource botao-fluxo-secundario}" Text="{Binding TextoTantoFaz}" Command="{Binding TantoFaz}" IsEnabled="{Binding PodeTocarEscuta}" />
+                    </VerticalStackLayout>
+                </Grid>
 
                 <!-- O resumo: "Pronto. Ouça um pouco.", a lista com ✓, o valor e o motivo, e "Avaliar o som". -->
                 <Grid RowDefinitions="*,Auto" RowSpacing="12" IsVisible="{Binding FaseResumo}">

@@ -425,13 +425,13 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         _outro.Disparar();
         await AndarAte(() => _playerVm.FolhaOutroPlayer && _player.Estado == EstadoPlayer.Pausado);
         Assert.True(casca.FolhaOutroPlayerPorCima);
-        Assert.Equal((false, true), telas.Nav.Folhas);
+        Assert.Equal((false, true, false), telas.Nav.Folhas);
         Assert.Equal("Outro app começou a tocar. O som foi mutado.", _playerVm.TextoOutroPlayer);
         Assert.Equal("Voltar ao player do app", _playerVm.TextoVoltar);
         await _playerVm.VoltarAoPlayer.ExecutarAsync();
         await _b.Tela.EsvaziarAsync();
         Assert.False(_playerVm.FolhaOutroPlayer);
-        Assert.Equal((false, false), telas.Nav.Folhas);
+        Assert.Equal((false, false, false), telas.Nav.Folhas);
         SemIa(_playerVm);
     }
 }

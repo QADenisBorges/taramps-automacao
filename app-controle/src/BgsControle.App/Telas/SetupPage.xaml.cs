@@ -11,12 +11,14 @@ public partial class SetupPage : ContentPage
 {
     private readonly EquipamentosViewModel _vm;
 
-    public SetupPage(EquipamentosViewModel vm, EsquemaViewModel esquema)
+    public SetupPage(EquipamentosViewModel vm, EsquemaViewModel esquema, CascaViewModel? casca = null)
     {
         InitializeComponent();
         _vm = vm;
         BindingContext = vm;
         LugarDoEsquema.Content = new EsquemaView(esquema);
+        // História 14c: o aviso da proposta de ficha salva aparece aqui também.
+        EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
     private async void AoVoltar(object? sender, EventArgs e)

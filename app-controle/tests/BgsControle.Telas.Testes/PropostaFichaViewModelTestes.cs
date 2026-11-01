@@ -157,6 +157,8 @@ public sealed class PropostaFichaViewModelTestes : IDisposable
 
         Assert.Equal(["44 Hz", "0,5", null], _vm.Dados.Select(d => d.ValorAtual));
         Assert.Equal(["medido ✓", "digitado", null], _vm.Dados.Select(d => d.OrigemAtual));
+        // História 14c: o texto do valor de agora na folha.
+        Assert.Equal(["Agora: 44 Hz (medido ✓)", "Agora: 0,5 (digitado)", null], _vm.Dados.Select(d => d.TextoAtual));
         Assert.True(_vm.Dados[0].AtualMedido);
 
         await _vm.UsarTodos.ExecutarAsync();
@@ -177,6 +179,56 @@ public sealed class PropostaFichaViewModelTestes : IDisposable
         await _b.Rodar(_vm.Salvar.ExecutarAsync());
 
         Assert.Equal(new DadoTecnico(46m, OrigemDado.Oficial, Fonte), Equipamento(id).Dados.Fs);
+    }
+
+    // ----------------------------------------------------------------- história 14c: a folha global na casca
+
+    /// <summary>A casca do app com a folha da proposta de ficha (as outras telas como no app).</summary>
+    private CascaViewModel Casca(Telas11 telas) =>
+        new(_b.Sessao, telas.Conexao, telas.Setup, telas.Memorias, telas.Inicio, telas.Mesa, telas.Audio, telas.Salvar, _b.Fabrica, telas.Nav,
+            _b.Tela, _b.Relogio, telas.PlayerTela, telas.FolhaRisco, telas.Gerador, telas.Reaplicando, ficha: _vm);
+
+    [Fact]
+    public async Task A_folha_da_ficha_sobe_na_casca_e_o_aviso_depois_de_salvar_vai_ao_aviso_rapido()
+    {
+        using var telas = new Telas11(_b);
+        using var casca = Casca(telas);
+        casca.SincronizarFolhas(forcar: true);
+        Assert.False(casca.FolhaFichaPorCima);
+        Assert.Equal((false, false, false), telas.Nav.Folhas);
+
+        await ComProposta();
+
+        Assert.True(casca.FolhaFichaPorCima);
+        Assert.Equal((false, false, true), telas.Nav.Folhas);
+
+        await _vm.Dados[0].Usar.ExecutarAsync();
+        await _vm.Dados[2].Usar.ExecutarAsync();
+        await _b.Rodar(_vm.Salvar.ExecutarAsync());
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(casca.FolhaFichaPorCima);
+        Assert.Equal((false, false, false), telas.Nav.Folhas);
+        Assert.Equal("2 dados salvos na ficha do Woofer extra.", casca.AvisoRapido);
+        await _b.Andar(TimeSpan.FromSeconds(2.7), passoMs: 100);
+        Assert.Null(casca.AvisoRapido);
+    }
+
+    [Fact]
+    public async Task Fechar_a_folha_da_ficha_a_tira_da_casca_sem_aviso()
+    {
+        using var telas = new Telas11(_b);
+        using var casca = Casca(telas);
+        casca.SincronizarFolhas(forcar: true);
+        await ComProposta();
+        Assert.Equal((false, false, true), telas.Nav.Folhas);
+
+        await _vm.Fechar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+
+        Assert.False(casca.FolhaFichaPorCima);
+        Assert.Equal((false, false, false), telas.Nav.Folhas);
+        Assert.Null(casca.AvisoRapido);
     }
 
     [Fact]

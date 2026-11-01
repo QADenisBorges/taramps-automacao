@@ -22,6 +22,13 @@ public partial class MemoriasPage : ContentPage
         Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
+    /// <summary>História 14c: com o movimento reduzido, o anel do "+ Nova memória" gira devagar.</summary>
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        AnelNovaMemoria.Lento = Plataforma.Movimento.Reduzido();
+    }
+
     private void AoVoltar(object? sender, EventArgs e) => _ = Navigation.PopAsync();
 
     protected override bool OnBackButtonPressed()

@@ -217,7 +217,7 @@ public sealed class ArquiteturaTestes
         Assert.Contains(xamls, f => Path.GetFileName(f) == "CriacaoPage.xaml");
         // História 13g: as telas do Rendimento entram na varredura.
         foreach (var nome in new[] { "CalibracaoPage.xaml", "TesteSecoPage.xaml", "NivelFolhaView.xaml", "LimiteSaidaView.xaml",
-                     "ContaLimiteView.xaml", "ChipNivelView.xaml", "ExtraAoVivoView.xaml" })
+                     "ContaLimiteView.xaml", "ChipNivelView.xaml", "ExtraAoVivoView.xaml", "PropostaFichaPage.xaml" })
             Assert.Contains(xamls, f => Path.GetFileName(f) == nome);
         Assert.DoesNotContain(xamls, f => Path.GetFileName(f) is "IaAtivaPage.xaml" or "IaPelaRedePage.xaml" or "HistoricoPage.xaml"
             or "ConfirmacaoIaPage.xaml");
@@ -283,6 +283,49 @@ public sealed class ArquiteturaTestes
         }
         SemIa(PortaComandos.TituloContinuar, "título do Continuar");
         SemIa(PortaComandos.RiscoContinuar, "risco do Continuar");
+    }
+
+    /// <summary>Os caminhos de todo <c>{Binding X}</c> dos atributos de um XAML do App.</summary>
+    private static HashSet<string> Ligacoes(string arquivo)
+    {
+        var app = Path.Combine(Raiz().FullName, "src", "BgsControle.App");
+        var caminho = Directory.GetFiles(app, arquivo, SearchOption.AllDirectories)
+            .Single(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj"));
+        var ligacao = new Regex(@"\{Binding\s+(?:Path=)?(?<caminho>[\w.]+)", RegexOptions.CultureInvariant);
+        return XDocument.Load(caminho).Descendants().SelectMany(e => e.Attributes())
+            .SelectMany(a => ligacao.Matches(a.Value).Select(m => m.Groups["caminho"].Value))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// História 14c: as telas do lado do app do Agente ligam os comandos e os estados dos ViewModels da 14b: a escuta "1 ou
+    /// 2" na criação, a folha da proposta de ficha e a espera do "+ Nova memória". Cada nome ligado existe no ViewModel.
+    /// </summary>
+    [Fact]
+    public void As_telas_do_Agente_ligam_os_comandos_dos_ViewModels()
+    {
+        void Confere(string arquivo, Type[] tipos, params string[] nomes)
+        {
+            var ligacoes = Ligacoes(arquivo);
+            foreach (var nome in nomes)
+            {
+                Assert.True(ligacoes.Contains(nome), $"{arquivo} não liga {nome}");
+                Assert.True(tipos.Any(t => t.GetProperty(nome) is not null), $"{nome} não existe em {string.Join(", ", tipos.Select(t => t.Name))}");
+            }
+        }
+
+        Confere("CriacaoPage.xaml", [typeof(CriacaoMemoriaViewModel)],
+            "Ouvir1", "Ouvir2", "Prefiro1", "Prefiro2", "TantoFaz", "FaseEscuta", "TextoEscuta", "Marcado1", "Marcado2", "TextoTocando",
+            "DescricaoBotao1", "DescricaoBotao2", "Escrevendo", "AvisoEscuta");
+        Confere("PropostaFichaPage.xaml", [typeof(PropostaFichaViewModel), typeof(DadoPropostoViewModel)],
+            "Usar", "Recusar", "UsarTodos", "RecusarTodos", "Salvar", "Fechar", "Aberta", "Dados", "Salvando", "Erro", "Usado", "Recusado");
+        Confere("MemoriasPage.xaml", [typeof(MemoriasViewModel)], "EsperandoAgente", "NovaMemoria", "MotivoTravaNovaMemoria");
+
+        // A folha nova não tem texto escrito à mão: todo Text vem do ViewModel ou de x:Static.
+        var folha = Directory.GetFiles(Path.Combine(Raiz().FullName, "src", "BgsControle.App"), "PropostaFichaPage.xaml", SearchOption.AllDirectories)
+            .Single(f => !f.Split(Path.DirectorySeparatorChar).Any(p => p is "bin" or "obj"));
+        Assert.All(XDocument.Load(folha).Descendants().SelectMany(e => e.Attributes()).Where(a => a.Name.LocalName == "Text"),
+            a => Assert.StartsWith("{", a.Value, StringComparison.Ordinal));
     }
 
     [Fact]

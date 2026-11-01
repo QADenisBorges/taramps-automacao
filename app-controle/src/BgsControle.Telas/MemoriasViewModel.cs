@@ -302,6 +302,14 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
 
     public bool PodeNovaMemoria => _criacao is not null && MotivoTravaNovaMemoria is null;
 
+    /// <summary>
+    /// História 14c: um aviso para o aviso rápido de 2,6 s da casca: o prazo do pedido vencido (<see cref="MsgSemResposta"/>)
+    /// e a chave "Controle pela rede" desligada (<see cref="MsgLigueControle"/>). A chave desligada leva às Configurações,
+    /// e o <see cref="Mensagem"/> desta tela sairia junto com ela; o aviso da casca acompanha o usuário. Chega na thread da
+    /// tela.
+    /// </summary>
+    public event Action<string>? AvisoRapido;
+
     private string? MotivoTravaAparelho(Chave chave)
     {
         if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
@@ -376,6 +384,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         if (!_chaves.Ligada(Chave.ControlePelaRede))
         {
             Mensagem = MsgLigueControle;
+            AvisoRapido?.Invoke(MsgLigueControle);
             _navegacao?.AbrirAparelho();
             return;
         }
@@ -408,6 +417,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
             _prazo = null;
         }
         Mensagem = MsgSemResposta;
+        AvisoRapido?.Invoke(MsgSemResposta);
         Atualizar();
     }
 

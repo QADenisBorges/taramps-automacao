@@ -4,13 +4,14 @@ namespace BgsControle.App.Telas;
 
 /// <summary>
 /// Navegação: o Voltar do Android fecha a folha dos resets (ou a do risco da chave "Controle pela
-/// rede") antes de sair. A folha da chave é a das Chaves de acesso.
+/// rede") antes de sair. A folha da chave é a das Chaves de acesso. História 14c: o aviso rápido da casca aparece aqui
+/// também (o "+ Nova memória" com a chave desligada traz o usuário até aqui).
 /// </summary>
 public partial class ConfiguracoesPage : ContentPage
 {
     private readonly ConfiguracoesViewModel _vm;
 
-    public ConfiguracoesPage(ConfiguracoesViewModel vm)
+    public ConfiguracoesPage(ConfiguracoesViewModel vm, CascaViewModel? casca = null)
     {
         InitializeComponent();
         _vm = vm;
@@ -18,6 +19,7 @@ public partial class ConfiguracoesPage : ContentPage
         FolhaChave.BindingContext = vm.ControlePelaRede?.Chaves;
         CampoNome.Keyboard = Keyboard.Create(KeyboardFlags.CapitalizeCharacter);
         BindingContext = vm;
+        Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
     protected override bool OnBackButtonPressed()

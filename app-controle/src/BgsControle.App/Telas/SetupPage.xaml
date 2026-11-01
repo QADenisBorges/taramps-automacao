@@ -341,5 +341,8 @@
                 <Button Style="{StaticResource botao-secundario}" Text="{x:Static telas:EquipamentosViewModel.TextoCancelar}" Command="{Binding CancelarTirar}" />
             </VerticalStackLayout>
         </c:FolhaView>
+        <!-- O aviso rápido da casca (história 14c): o "2 dados salvos na ficha do …" da proposta de ficha, pedida ao salvar um
+             equipamento aqui. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
     </Grid>
 </ContentPage>

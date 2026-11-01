@@ -124,10 +124,10 @@ public interface INavegacao
 
     /// <summary>
     /// As folhas globais do Rendimento (história 13g), por cima de qualquer tela e abaixo da folha de risco do app: a folha
-    /// "Nível da memória" (com a de risco do Máximo) e a folha "Outro app começou a tocar". Mostra as que valem e tira as
-    /// outras.
+    /// "Nível da memória" (com a de risco do Máximo) e a folha "Outro app começou a tocar". História 14c: e a folha da
+    /// proposta de ficha, por cima delas. Mostra as que valem e tira as outras.
     /// </summary>
-    void MostrarFolhas(bool nivel, bool outroPlayer);
+    void MostrarFolhas(bool nivel, bool outroPlayer, bool fichaProposta);
 
     /// <summary>‹ numa tela cheia.</summary>
     void Voltar();

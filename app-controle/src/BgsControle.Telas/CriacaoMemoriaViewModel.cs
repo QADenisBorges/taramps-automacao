@@ -555,6 +555,11 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// <summary>O botão "2" está marcado (a versão 2 toca).</summary>
     public bool Marcado2 => VersaoMarcada == 2;
 
+    /// <summary>
+    /// História 14c: "tocando agora", embaixo do número marcado, na fase da escuta (segue a versão que toca); senão null.
+    /// </summary>
+    public string? TextoTocando => VersaoMarcada is null ? null : TextoTocandoAgora;
+
     /// <summary>"1".</summary>
     public string TextoBotao1 => TextoVersao1;
 
@@ -1154,6 +1159,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         Avisar(nameof(VersaoMarcada));
         Avisar(nameof(Marcado1));
         Avisar(nameof(Marcado2));
+        Avisar(nameof(TextoTocando));
         Avisar(nameof(DescricaoBotao1));
         Avisar(nameof(DescricaoBotao2));
         Avisar(nameof(AvisoEscuta));

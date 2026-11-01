@@ -31,6 +31,9 @@ namespace BgsControle.App;
 /// seja o chip que a abriu) e a do outro player. Uma tela cheia já na pilha, mas não no topo, volta ao topo (as de cima
 /// saem).
 /// </para>
+/// <para>
+/// História 14c: a folha da proposta de ficha, também global, depois da do outro player e antes da folha de risco.
+/// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
 {
@@ -39,7 +42,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private readonly SemaphoreSlim _porCima = new(1, 1);
     private (bool Setup, bool Metade) _pedido;
     private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme) _camadas;
-    private (bool Nivel, bool OutroPlayer) _folhas;
+    private (bool Nivel, bool OutroPlayer, bool Ficha) _folhas;
     private (string Nome, Func<Page> Criar)? _esperando;
 
     private static INavigation? Navegacao => Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation;
@@ -148,10 +151,10 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
         Reconciliar();
     }
 
-    /// <summary>As folhas globais do Rendimento (história 13g): a do nível e a do outro player.</summary>
-    public void MostrarFolhas(bool nivel, bool outroPlayer)
+    /// <summary>As folhas globais: a do nível e a do outro player (história 13g) e a da proposta de ficha (história 14c).</summary>
+    public void MostrarFolhas(bool nivel, bool outroPlayer, bool fichaProposta)
     {
-        _folhas = (nivel, outroPlayer);
+        _folhas = (nivel, outroPlayer, fichaProposta);
         Reconciliar();
     }
 
@@ -178,6 +181,8 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                     queremos.Add(servicos.GetRequiredService<NivelFolhaPage>());
                 if (_folhas.OutroPlayer)
                     queremos.Add(servicos.GetRequiredService<OutroPlayerPage>());
+                if (_folhas.Ficha)
+                    queremos.Add(servicos.GetRequiredService<PropostaFichaPage>());
                 if (folhaRisco)
                     queremos.Add(servicos.GetRequiredService<FolhaRiscoPage>());
                 if (reaplicando)

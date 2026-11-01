@@ -1259,6 +1259,7 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         Assert.Equal(("Prefiro o 1", "Prefiro o 2", "Tanto faz"), (_vm.TextoPrefiro1, _vm.TextoPrefiro2, _vm.TextoTantoFaz));
         Assert.True(_vm.Marcado1);
         Assert.False(_vm.Marcado2);
+        Assert.Equal("tocando agora", _vm.TextoTocando); // história 14c: embaixo do número marcado
         Assert.Equal("Ouvir a versão 1, tocando agora", _vm.DescricaoBotao1);
         Assert.Null(_vm.AvisoEscuta);
         Assert.True(_vm.PodeFechar);
@@ -1269,6 +1270,7 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
 
         Assert.True(_vm.Marcado2);
         Assert.False(_vm.Marcado1);
+        Assert.Equal((2, "tocando agora"), (_vm.VersaoMarcada, _vm.TextoTocando));
         Assert.Equal("+5.0", _b.Simulador.Valor("081", 0));
         Assert.Equal(_criacao.Escuta!.Master2, _b.Estado.Valor("080")!.Numero);
 
@@ -1295,6 +1297,7 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         Assert.Equal("+2.0", _b.Simulador.Valor("081", 0));
         Assert.True(_vm.Ajustando);
         Assert.Equal(FaseCriacao.Palco, _vm.Fase); // com a animação, os ajustes da escolha entram no palco
+        Assert.Null(_vm.TextoTocando); // história 14c: fora da escuta, sem "tocando agora"
         Assert.Equal("Grave como está", _vm.AjusteDoPalco!.Frase);
         Assert.Contains(_vm.AjustesDaRodada, l => l.Frase == "Grave como está");
         Assert.Null(_vm.TextoEscuta);

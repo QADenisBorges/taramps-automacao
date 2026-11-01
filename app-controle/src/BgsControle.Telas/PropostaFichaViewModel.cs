@@ -22,6 +22,7 @@ public sealed class DadoPropostoViewModel : TelaBase
         DadoAtual = atual;
         ValorAtual = atual is null ? null : PropostaFichaViewModel.Texto(atual.Valor, unidade);
         OrigemAtual = atual is null ? null : DadoViewModel.TextoSelo(atual.Origem);
+        TextoAtual = ValorAtual is null ? null : PropostaFichaViewModel.TextoAgoraDe(ValorAtual, OrigemAtual!);
         Usar = new Comando(() =>
         {
             Escolha = true;
@@ -56,6 +57,9 @@ public sealed class DadoPropostoViewModel : TelaBase
 
     /// <summary>A origem do valor de agora ("medido ✓", "digitado"), ou null.</summary>
     public string? OrigemAtual { get; }
+
+    /// <summary>História 14c: "Agora: 44 Hz (medido ✓)" na folha, quando a ficha já tem valor; senão null.</summary>
+    public string? TextoAtual { get; }
 
     /// <summary>
     /// O valor de agora foi medido na instalação: "Usar todos" não o troca (só o "Usar" deste dado, o toque do usuário).
@@ -99,7 +103,8 @@ public sealed class DadoPropostoViewModel : TelaBase
 /// tinha, cada dado com o rótulo, o valor, a origem, a fonte e o aviso, com "Usar" e "Recusar" por dado e "Usar todos" /
 /// "Recusar todos". Cada dado mostra, ao lado, o valor que a ficha tem agora e a origem dele; "Usar todos" não troca um valor
 /// medido (só o "Usar" daquele dado). Só o "Salvar" grava, e só os usados, na ficha do equipamento e na base de modelos; o
-/// recusado fica em branco (o que a ficha já tem não muda). Fechar sem salvar não grava nada. A XAML é da história 14c.
+/// recusado fica em branco (o que a ficha já tem não muda). Fechar sem salvar não grava nada. A XAML (PropostaFichaPage,
+/// uma folha global da casca) é da história 14c.
 /// </summary>
 public sealed class PropostaFichaViewModel : TelaBase, IDisposable
 {
@@ -110,6 +115,9 @@ public sealed class PropostaFichaViewModel : TelaBase, IDisposable
     public const string TextoSalvarBotao = "Salvar";
     public const string TextoFecharBotao = "Fechar";
     public const string TextoExplica = "Confira cada dado. Só o que você usar entra na ficha; o que recusar fica em branco.";
+
+    /// <summary>História 14c: "Agora: 44 Hz (medido ✓)", o valor que a ficha tem agora, ao lado do proposto.</summary>
+    public static string TextoAgoraDe(string valor, string origem) => $"Agora: {valor} ({origem})";
 
     /// <summary>"Ficha do ABC 123".</summary>
     public static string TituloDe(string modelo) => $"Ficha do {modelo}";

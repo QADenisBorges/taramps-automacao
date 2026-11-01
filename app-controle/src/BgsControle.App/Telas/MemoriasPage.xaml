@@ -84,15 +84,28 @@
                             Command="{Binding AbrirCriar}" />
                     <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaCriar}"
                            IsVisible="{Binding MotivoTravaCriar, Converter={StaticResource TemTexto}}" />
-                    <!-- + Nova memória (história 10d): o pedido vai à porta; a criação aparece quando abre. -->
-                    <Button Style="{StaticResource chip-bgs}" HorizontalOptions="Start" Margin="0,6,0,0"
-                            Text="{x:Static telas:MemoriasViewModel.TextoNovaMemoria}" Command="{Binding NovaMemoria}">
-                        <Button.Triggers>
-                            <DataTrigger TargetType="Button" Binding="{Binding PodeNovaMemoria}" Value="False">
-                                <Setter Property="Opacity" Value="0.35" />
-                            </DataTrigger>
-                        </Button.Triggers>
-                    </Button>
+                    <!-- + Nova memória (história 10d): o pedido vai à porta; a criação aparece quando abre. História 14c
+                         ([ASSUMPTION] a regra do spinner do EXPERIENCE): enquanto o app espera a criação abrir, o anel duplo
+                         de 18 px fica à esquerda do texto, e o motivo ("Começando a nova memória…") embaixo. -->
+                    <Grid HorizontalOptions="Start" Margin="0,6,0,0">
+                        <Button Style="{StaticResource chip-bgs}"
+                                Text="{x:Static telas:MemoriasViewModel.TextoNovaMemoria}" Command="{Binding NovaMemoria}">
+                            <Button.Triggers>
+                                <MultiTrigger TargetType="Button">
+                                    <MultiTrigger.Conditions>
+                                        <BindingCondition Binding="{Binding PodeNovaMemoria}" Value="False" />
+                                        <BindingCondition Binding="{Binding EsperandoAgente}" Value="False" />
+                                    </MultiTrigger.Conditions>
+                                    <Setter Property="Opacity" Value="0.35" />
+                                </MultiTrigger>
+                                <DataTrigger TargetType="Button" Binding="{Binding EsperandoAgente}" Value="True">
+                                    <Setter Property="Padding" Value="42,0,16,0" />
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                        <c:AnelDuploView x:Name="AnelNovaMemoria" WidthRequest="18" HeightRequest="18" HorizontalOptions="Start"
+                                         VerticalOptions="Center" Margin="16,0,0,0" IsVisible="{Binding EsperandoAgente}" />
+                    </Grid>
                     <Label Style="{StaticResource tipo-detalhe}" Text="{Binding MotivoTravaNovaMemoria}"
                            IsVisible="{Binding MotivoTravaNovaMemoria, Converter={StaticResource TemTexto}}" />
                 </VerticalStackLayout>

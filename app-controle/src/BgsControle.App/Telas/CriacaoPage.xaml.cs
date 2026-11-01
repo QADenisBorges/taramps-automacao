@@ -19,7 +19,9 @@ namespace BgsControle.App.Telas;
 /// <item>o Aplicando: 0,7 s por canal, 1 s parado e 0,3 s de saída, e
 /// <see cref="CriacaoMemoriaViewModel.AplicandoTerminou"/>. Sem a animação (ou com o movimento reduzido), o Aplicando
 /// entra num fade de 0,3 s e os canais seguem os ajustes relidos;</item>
-/// <item>o resumo: os itens sobem um depois do outro, 0,07 s entre eles.</item>
+/// <item>o resumo: os itens sobem um depois do outro, 0,07 s entre eles;</item>
+/// <item>a escuta "1 ou 2" (história 14c) entra como uma pergunta (0,32 s, de 28 px pela direita; com o movimento
+/// reduzido, um fade de 0,3 s), e o palco e o Aplicando somem. Depois da escolha, a fase que vem anima como as outras.</item>
 /// </list>
 /// O desfoque usa o RenderEffect do Android 12 ou mais novo; abaixo, a frase só anda. O Voltar do Android vai ao
 /// <see cref="CriacaoMemoriaViewModel.Voltar"/>.
@@ -43,6 +45,12 @@ public partial class CriacaoPage : ContentPage
         vm.PropertyChanged += AoMudar;
         SizeChanged += (_, _) => Posicionar();
         Frase.SizeChanged += (_, _) => MoverHorizonte(animado: true);
+        // Os botões "1" e "2" da escuta ficam quadrados (120 px no mínimo).
+        BotoesEscuta.SizeChanged += (_, _) =>
+        {
+            if (BotoesEscuta.Width > 0)
+                BotoesEscuta.HeightRequest = Math.Max(120, (BotoesEscuta.Width - BotoesEscuta.ColumnSpacing) / 2);
+        };
     }
 
     protected override void OnAppearing()
@@ -52,6 +60,7 @@ public partial class CriacaoPage : ContentPage
         _vm.MovimentoReduzido = reduzido;
         AnelChao.Lento = reduzido;
         AnelAplicando.Lento = reduzido;
+        AnelEscuta.Lento = reduzido;
         // O OnAppearing volta quando uma camada de cima (a folha de risco, o REAPLICANDO, o alarme) sai: a fase que
         // já anda não recomeça; só sincroniza se a tela ficou para trás.
         AplicarFase(_vm.Fase);
@@ -60,6 +69,11 @@ public partial class CriacaoPage : ContentPage
         {
             BlocoPergunta.Opacity = 1;
             BlocoPergunta.TranslationX = 0;
+        }
+        if (!this.AnimationIsRunning("escuta"))
+        {
+            BlocoEscuta.Opacity = 1;
+            BlocoEscuta.TranslationX = 0;
         }
     }
 
@@ -142,7 +156,33 @@ public partial class CriacaoPage : ContentPage
                 Palco.IsVisible = false;
                 Aplicando.IsVisible = false;
                 break;
+            case FaseCriacao.Escuta:
+                // História 14c: a escuta entra como uma pergunta; o palco e o Aplicando somem.
+                Palco.IsVisible = false;
+                Aplicando.IsVisible = false;
+                _ = EntrarEscutaAsync();
+                break;
         }
+    }
+
+    /// <summary>A escuta entra como uma pergunta (0,32 s, de 28 px pela direita); com o movimento reduzido, um fade de 0,3 s.</summary>
+    private async Task EntrarEscutaAsync()
+    {
+        this.AbortAnimation("escuta");
+        if (_vm.MovimentoReduzido)
+        {
+            BlocoEscuta.TranslationX = 0;
+            BlocoEscuta.Opacity = 0;
+            await Animar("escuta", t => BlocoEscuta.Opacity = t, 300, Easing.SinInOut);
+            return;
+        }
+        BlocoEscuta.TranslationX = 28;
+        BlocoEscuta.Opacity = 0;
+        await Animar("escuta", t =>
+        {
+            BlocoEscuta.TranslationX = 28 * (1 - t);
+            BlocoEscuta.Opacity = t;
+        }, 320, Curvas.Entrada);
     }
 
     private async Task EntrarPerguntaAsync(bool voltando)

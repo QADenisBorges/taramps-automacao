@@ -5,7 +5,7 @@
     da própria linha, com o valor relido do aparelho; o nome do produto que vale no ✓; Senha ›; Voltímetro e
     clip ›; a chave "Controle pela rede", com o código de pareamento embaixo dela), ACESSO (Chaves de acesso) e o
     Avançado recolhido com o reset de áudio e o reset de fábrica (travados com a chave desligada; com ela, a folha
-    do risco). Travado diz por quê. Nenhuma linha mostra a IA (decisão do Denis, 30/10/2026).
+    do risco). Travado diz por quê. O aviso rápido da casca aparece aqui também (história 14c). Nenhuma linha mostra a IA (decisão do Denis, 30/10/2026).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -397,5 +397,9 @@
                         Command="{Binding DesistirFolha}" />
             </VerticalStackLayout>
         </c:FolhaView>
+
+        <!-- O aviso rápido da casca (2,6 s; história 14c): a chave "Controle pela rede" desligada traz o usuário até aqui
+             pelo "+ Nova memória", e o aviso vem junto. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
     </Grid>
 </ContentPage>
