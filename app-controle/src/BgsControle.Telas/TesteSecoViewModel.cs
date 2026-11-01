@@ -25,6 +25,15 @@ public sealed class TesteSecoViewModel : TelaBase, IDisposable
     public const string TextoConcluir = "Concluir";
     public const string TextoAvisoDetalhe = "O app toca os trechos mais fortes da playlist e escuta o clip. O som não chega aos alto-falantes.";
 
+    /// <summary>O TalkBack do anel duplo enquanto o teste anda (história 13g).</summary>
+    public const string DescricaoAndando = "Teste a seco andando";
+
+    /// <summary>O TalkBack do ‹ com o teste fechado.</summary>
+    public const string DescricaoVoltar = "Voltar";
+
+    /// <summary>"Fechar", com o teste fechado (sem poder começar).</summary>
+    public const string TextoFechar = "Fechar";
+
     /// <summary>"Trecho 3 de 8".</summary>
     public static string TextoProgresso(int atual, int total) => $"Trecho {atual} de {total}";
 
@@ -142,8 +151,12 @@ public sealed class TesteSecoViewModel : TelaBase, IDisposable
                 return;
             _mensagem = value;
             Avisar();
+            Avisar(nameof(MensagemNaTela));
         }
     }
+
+    /// <summary>A <see cref="Mensagem"/> sem repetir a instrução do passo (história 13g).</summary>
+    public string? MensagemNaTela => Mensagem == Instrucao ? null : Mensagem;
 
     // ------------------------------------------------------------------ os botões
 
@@ -164,6 +177,21 @@ public sealed class TesteSecoViewModel : TelaBase, IDisposable
     public bool PodeCancelar => Etapa is EtapaTesteSeco.Aviso or EtapaTesteSeco.Preparar or EtapaTesteSeco.Tocando;
 
     public bool PodeConcluir => Etapa == EtapaTesteSeco.Resultado;
+
+    /// <summary>O passo 1: o aviso, com o Confirmar e o Cancelar (história 13g).</summary>
+    public bool NoAviso => Etapa == EtapaTesteSeco.Aviso;
+
+    /// <summary>O passo 2: o preparo e os trechos tocando, com o anel e o Cancelar.</summary>
+    public bool Andando => Etapa is EtapaTesteSeco.Preparar or EtapaTesteSeco.Tocando;
+
+    /// <summary>O passo 3: o resultado, com o Concluir.</summary>
+    public bool NoResultado => Etapa == EtapaTesteSeco.Resultado;
+
+    /// <summary>O teste não abriu (o motivo em <see cref="MotivoTrava"/> ou na <see cref="Mensagem"/>), com o Fechar.</summary>
+    public bool Fechado => Etapa == EtapaTesteSeco.Fechado;
+
+    /// <summary>Há clips no resultado.</summary>
+    public bool TemClips => _teste.Clips.Count > 0;
 
     // ------------------------------------------------------------------ ações
 
@@ -206,6 +234,7 @@ public sealed class TesteSecoViewModel : TelaBase, IDisposable
                      nameof(Etapa), nameof(Aberto), nameof(MotivoTrava), nameof(Instrucao), nameof(Detalhe), nameof(TextoTrecho),
                      nameof(TrechosFeitos), nameof(TotalTrechos), nameof(Progresso), nameof(TextoDoProgresso), nameof(TextoMaster),
                      nameof(LinhasClips), nameof(Validado), nameof(Ocupado), nameof(PodeConfirmar), nameof(PodeCancelar), nameof(PodeConcluir),
+                     nameof(NoAviso), nameof(Andando), nameof(NoResultado), nameof(Fechado), nameof(TemClips), nameof(MensagemNaTela),
                  })
             Avisar(nome);
     }

@@ -23,6 +23,33 @@ public sealed record LinhaNivel(NivelRendimento? Nivel, string Nome, string Text
     string? AvisoGanho, bool Escolhida, string? Selo = null);
 
 /// <summary>
+/// Uma linha da folha na tela (história 13g): a <see cref="LinhaNivel"/> e o toque, que escolhe o nível (no Extra, o
+/// <see cref="NivelViewModel.EscolherExtra"/>; numa linha apagada, mostra o motivo).
+/// </summary>
+public sealed class ItemNivel(LinhaNivel linha, Comando tocar)
+{
+    public LinhaNivel Linha { get; } = linha;
+
+    /// <summary>"Alto · até 16 V nas JBL L e JBL R · qualquer fonte".</summary>
+    public string Texto => Linha.Texto;
+
+    /// <summary>A linha está apagada (opacidade 0,35), com o motivo embaixo.</summary>
+    public bool Apagada => !Linha.Pode;
+
+    public string? Motivo => Linha.Motivo;
+
+    /// <summary>O selo "estimado" da linha do Extra, ou null.</summary>
+    public string? Selo => Linha.Selo;
+
+    public string? AvisoGanho => Linha.AvisoGanho;
+
+    /// <summary>É o nível da memória em uso (a linha em ciano).</summary>
+    public bool Escolhida => Linha.Escolhida;
+
+    public Comando Tocar { get; } = tocar;
+}
+
+/// <summary>
 /// A folha "Nível da memória" (história 13c; <c>telas-rendimento.md</c>, "Nível da memória" e "Aviso do Máximo"; sem
 /// XAML, que é da 13g): uma linha por nível, do Baixo ao Máximo, com o teto em volts da saída que manda e a fonte, e o
 /// Extra apagado com o pé da análise da playlist (história 13d): "Analisando a playlist." durante a análise, "Falta o
@@ -42,6 +69,15 @@ public sealed class NivelViewModel : TelaBase, IDisposable
     public const string TextoCancelarBotao = FolhaRiscoViewModel.TextoCancelarBotao;
     public const string MsgSemMemoria = "Sem memória do celular em uso.";
     public const string MsgMemoriaMudou = "A memória em uso mudou. Escolha o nível de novo.";
+
+    /// <summary>"Fechar" (a folha; história 13g).</summary>
+    public const string TextoFecharBotao = "Fechar";
+
+    /// <summary>O chip da memória sem nível (história 13g).</summary>
+    public const string TextoChipSemNivel = "Sem nível ›";
+
+    /// <summary>"Nível: Alto ›" (o chip no cartão da memória em uso; história 13g).</summary>
+    public static string TextoChipDe(NivelRendimento nivel) => $"Nível: {Niveis.Nome(nivel)} ›";
 
     /// <summary>"Alto · até 16 V nas JBL L e JBL R · qualquer fonte".</summary>
     public static string TextoLinha(NivelRendimento nivel, double? tetoV, IReadOnlyList<string> saidas)
@@ -72,7 +108,9 @@ public sealed class NivelViewModel : TelaBase, IDisposable
     private readonly EstadoAparelho _estado;
     private readonly AnalisePlaylist? _analise;
     private readonly LogBle? _log;
+    private readonly INavegacao? _nav;
     private IReadOnlyList<LinhaNivel>? _linhas;
+    private IReadOnlyList<ItemNivel>? _itens;
     private bool _folhaAberta;
     private bool _riscoAberto;
     private string? _memoriaDoRisco;
@@ -80,13 +118,22 @@ public sealed class NivelViewModel : TelaBase, IDisposable
     private bool _descartado;
 
     public NivelViewModel(GerenteSetups setups, EstadoAparelho estado, IDespachante despachante, TimeProvider relogio,
-        AnalisePlaylist? analise = null, LogBle? log = null)
+        AnalisePlaylist? analise = null, LogBle? log = null, INavegacao? nav = null)
         : base(despachante, relogio)
     {
         _setups = setups;
         _estado = estado;
         _analise = analise;
         _log = log;
+        _nav = nav;
+        Calibrar = new Comando(() =>
+        {
+            if (CanalSemCalibracao is not { } canal)
+                return;
+            RiscoAberto = false;
+            FolhaAberta = false;
+            _nav?.AbrirCalibracao(canal);
+        });
         Abrir = new Comando(() => FolhaAberta = true);
         Fechar = new Comando(() =>
         {
@@ -142,6 +189,33 @@ public sealed class NivelViewModel : TelaBase, IDisposable
     /// <summary>As linhas: Baixo, Médio, Alto, Máximo e o Extra (apagado).</summary>
     public IReadOnlyList<LinhaNivel> Linhas => _linhas ??= Montar();
 
+    /// <summary>As linhas na tela, cada uma com o toque (história 13g).</summary>
+    public IReadOnlyList<ItemNivel> Itens => _itens ??= Linhas
+        .Select(l => new ItemNivel(l, l.Nivel is { } n ? new Comando(() => Escolher.ExecutarAsync(n)) : EscolherExtra))
+        .ToArray();
+
+    // ------------------------------------------------------------------ o chip e a faixa de sem calibração (história 13g)
+
+    /// <summary>Há memória do celular em uso: o chip aparece no cartão dela.</summary>
+    public bool MostrarChip => _setups.MemoriaEmUso is not null;
+
+    /// <summary>"Nível: Alto ›" ou "Sem nível ›", ou null sem memória do celular em uso.</summary>
+    public string? TextoChip => _setups.MemoriaEmUso is null ? null
+        : _setups.NivelEmUso is { } n ? TextoChipDe(n) : TextoChipSemNivel;
+
+    /// <summary>O canal mestre da primeira saída do Setup em uso sem calibração, ou null.</summary>
+    private int? CanalSemCalibracao =>
+        _setups.SetupEmUso is null ? null : SaidaTela.EmUso(_setups).FirstOrDefault(s => s.AvisoCalibracao is not null)?.Canal;
+
+    /// <summary>"Sem calibração: o app não sabe a tensão." com alguma saída sem o ganho medido, ou null.</summary>
+    public string? FaixaCalibracao => CanalSemCalibracao is null ? null : SemCalibracao.MsgAviso;
+
+    /// <summary>"Calibrar ›".</summary>
+    public string TextoCalibrar => LimiteSaidaViewModel.TextoCalibrar;
+
+    /// <summary>Fecha a folha e abre a calibração guiada da primeira saída sem calibração.</summary>
+    public Comando Calibrar { get; }
+
     /// <summary>O nível da memória em uso, ou null (sem nível).</summary>
     public NivelRendimento? NivelEscolhido => _setups.NivelEmUso;
 
@@ -156,6 +230,9 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     /// <summary>"Sem nível".</summary>
     public string TextoSemNivelBotao => TextoSemNivel;
+
+    /// <summary>"Fechar".</summary>
+    public string TextoFechar => TextoFecharBotao;
 
     /// <summary>A frase do último escolher ("Nível Alto na FILME.", "Calibre a saída JBL L."), ou null.</summary>
     public string? Mensagem
@@ -359,7 +436,12 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         if (_descartado)
             return;
         _linhas = null;
+        _itens = null;
         Avisar(nameof(Linhas));
+        Avisar(nameof(Itens));
+        Avisar(nameof(MostrarChip));
+        Avisar(nameof(TextoChip));
+        Avisar(nameof(FaixaCalibracao));
         Avisar(nameof(Memoria));
         Avisar(nameof(MotivoSemMemoria));
         Avisar(nameof(NivelEscolhido));

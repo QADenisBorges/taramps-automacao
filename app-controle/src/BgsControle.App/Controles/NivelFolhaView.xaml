@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha "Nível da memória" (história 13g; telas-rendimento.md, "Nível da memória" e "Aviso do Máximo"; DESIGN, sheet),
+    no visual do BGS Sound: sobe do pé pelo chip "Nível: Alto ›" do cartão da memória em uso ([ASSUMPTION] o lugar, até a
+    Roda e o Salvar). Uma linha por nível com o teto e a fonte ("Alto · até 16 V nas … · qualquer fonte"); a apagada
+    (opacidade 0,35) mostra o motivo; o Extra com o selo "estimado"; o nível em uso em ciano; o selo "revalidar" com o
+    motivo; a faixa "Sem calibração" com "Calibrar ›"; "Sem nível" e Fechar. Por cima dela, a folha de risco do Máximo,
+    no visual da folha de risco do app, com Confirmar e Cancelar. A raiz deixa o toque passar quando as duas estão
+    fechadas. Os textos vêm do NivelViewModel.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Controles.NivelFolhaView"
+             x:DataType="telas:NivelViewModel"
+             InputTransparent="True"
+             CascadeInputTransparent="False">
+    <Grid InputTransparent="True" CascadeInputTransparent="False">
+
+        <!-- A escolha do nível. -->
+        <c:FolhaView Bgs="True" Aberta="{Binding FolhaAberta}" Fechar="{Binding Fechar}">
+            <VerticalStackLayout Spacing="9">
+                <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding Titulo}" SemanticProperties.HeadingLevel="Level1" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding Memoria}"
+                       IsVisible="{Binding Memoria, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding MotivoSemMemoria}"
+                       IsVisible="{Binding MotivoSemMemoria, Converter={StaticResource TemTexto}}" />
+
+                <!-- O selo "revalidar", com o motivo. -->
+                <HorizontalStackLayout Spacing="8" IsVisible="{Binding SeloRevalidar, Converter={StaticResource TemTexto}}">
+                    <Border BackgroundColor="{StaticResource brand-10}" Stroke="{StaticResource brand-33}" StrokeThickness="1"
+                            StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="10,0" VerticalOptions="Center">
+                        <Label Style="{StaticResource tipo-chip}" TextColor="{StaticResource brand}" Text="{Binding SeloRevalidar}"
+                               VerticalTextAlignment="Center" />
+                    </Border>
+                    <Label Style="{StaticResource tipo-body}" Text="{Binding MotivoRevalidar}" VerticalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+                </HorizontalStackLayout>
+
+                <!-- Sem calibração: a faixa e "Calibrar ›". -->
+                <Border Style="{StaticResource cartao-bgs}" IsVisible="{Binding FaixaCalibracao, Converter={StaticResource TemTexto}}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Label Style="{StaticResource tipo-body-forte}" Text="{Binding FaixaCalibracao}" VerticalTextAlignment="Center" />
+                        <Button Grid.Column="1" Style="{StaticResource botao-bgs}" Text="{Binding TextoCalibrar}" Command="{Binding Calibrar}" />
+                    </Grid>
+                </Border>
+
+                <!-- Uma linha por nível. -->
+                <VerticalStackLayout Spacing="9" BindableLayout.ItemsSource="{Binding Itens}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:ItemNivel">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="16,10" MinimumHeightRequest="56"
+                                    BackgroundColor="{StaticResource surface-1}">
+                                <VerticalStackLayout Spacing="4" VerticalOptions="Center">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Label Style="{StaticResource tipo-answer}" Text="{Binding Texto}" LineBreakMode="WordWrap">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding Escolhida}" Value="True">
+                                                    <Setter Property="TextColor" Value="{StaticResource brand}" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <Border Grid.Column="1" BackgroundColor="{StaticResource surface-2}" StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center"
+                                                IsVisible="{Binding Selo, Converter={StaticResource TemTexto}}">
+                                            <Label Style="{StaticResource tipo-chip}" Text="{Binding Selo}" VerticalTextAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+                                    <Label Style="{StaticResource tipo-hint}" Text="{Binding Motivo}"
+                                           IsVisible="{Binding Motivo, Converter={StaticResource TemTexto}}" />
+                                    <Label Style="{StaticResource tipo-hint}" Text="{Binding AvisoGanho}"
+                                           IsVisible="{Binding AvisoGanho, Converter={StaticResource TemTexto}}" />
+                                </VerticalStackLayout>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding Escolhida}" Value="True">
+                                        <Setter Property="BackgroundColor" Value="{StaticResource brand-12}" />
+                                        <Setter Property="Stroke" Value="{StaticResource brand}" />
+                                        <Setter Property="StrokeThickness" Value="1.5" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border" Binding="{Binding Apagada}" Value="True">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Tocar}" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding Mensagem}"
+                       IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoSemNivelBotao}" Command="{Binding SemNivel}"
+                        IsVisible="{Binding MostrarChip}" />
+                <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoFechar}" Command="{Binding Fechar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+
+        <!-- A folha de risco do Máximo, no visual da folha de risco do app (FolhaRiscoPage). -->
+        <c:FolhaView Aberta="{Binding RiscoAberto}" Fechar="{Binding Cancelar}">
+            <VerticalStackLayout Spacing="12">
+                <Label Style="{StaticResource tipo-titulo-folha}" Text="{Binding TituloDoRisco}" SemanticProperties.HeadingLevel="Level1" />
+                <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 14" Padding="14,10">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Label Text="⚠" TextColor="{StaticResource parar}" FontSize="18" VerticalTextAlignment="Center" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-texto-risco}" Text="{Binding Risco}" />
+                    </Grid>
+                </Border>
+                <Button Style="{StaticResource botao-principal}" Text="{Binding TextoConfirmar}" Command="{Binding Confirmar}" />
+                <Button Style="{StaticResource botao-secundario}" Text="{Binding TextoCancelar}" Command="{Binding Cancelar}" />
+            </VerticalStackLayout>
+        </c:FolhaView>
+    </Grid>
+</ContentView>

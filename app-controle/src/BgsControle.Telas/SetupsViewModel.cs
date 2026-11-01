@@ -340,6 +340,7 @@ public sealed class ConfiguracoesViewModel : TelaBase
         AbrirSenha = new Comando(nav.AbrirSenha);
         AbrirMonitoracao = new Comando(nav.AbrirMonitoracao);
         AbrirChaves = new Comando(nav.AbrirChaves);
+        AbrirCalibracao = new Comando(() => nav.AbrirCalibracao(null));
         AlternarAvancado = new Comando(() => AvancadoAberto = !AvancadoAberto);
         Voltar = new Comando(nav.Voltar);
     }
@@ -357,6 +358,14 @@ public sealed class ConfiguracoesViewModel : TelaBase
     public string TituloChaves => "Chaves de acesso";
     public string DescricaoChaves => "Ligar e desligar as chaves de cada operação";
 
+    /// <summary>A calibração guiada (história 13g; [ASSUMPTION] "Ajustes › Medir › Calibrar" vira Configurações até a Roda existir).</summary>
+    public const string TituloCalibrarTexto = "Calibrar saídas";
+
+    public const string DescricaoCalibrarTexto = "O ganho do módulo e o nível do Bluetooth, com o multímetro";
+
+    public string TituloCalibrar => TituloCalibrarTexto;
+    public string DescricaoCalibrar => DescricaoCalibrarTexto;
+
     /// <summary>O grupo Aparelho (remote out, Bluetooth de áudio, nome, resets), ou null.</summary>
     public AparelhoViewModel? Aparelho { get; }
 
@@ -369,6 +378,9 @@ public sealed class ConfiguracoesViewModel : TelaBase
     public Comando AbrirSenha { get; }
     public Comando AbrirMonitoracao { get; }
     public Comando AbrirChaves { get; }
+
+    /// <summary>"Calibrar saídas": a calibração guiada, na escolha da saída.</summary>
+    public Comando AbrirCalibracao { get; }
 
     /// <summary>O Avançado (reset de áudio e de fábrica) vem recolhido; lembra enquanto o app está aberto.</summary>
     public bool AvancadoAberto

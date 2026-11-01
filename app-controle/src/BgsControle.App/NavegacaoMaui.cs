@@ -25,6 +25,10 @@ namespace BgsControle.App;
 /// História 10d: a criação da memória em tela toda entra como camada, logo abaixo da folha de risco (que continua
 /// por cima dela durante a criação).
 /// </para>
+/// <para>
+/// História 13g: as telas cheias do Rendimento, a calibração guiada (com a saída, ela já abre no passo 1) e o teste a
+/// seco (abre o passo 1, o aviso).
+/// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
 {
@@ -41,7 +45,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     {
         if (!_ajustes.TryGetValue(canal, out var pagina))
         {
-            pagina = new AjusteSaidaPage(servicos.GetRequiredService<AjustesSaida>().Tela(canal));
+            pagina = new AjusteSaidaPage(servicos.GetRequiredService<AjustesSaida>().Tela(canal), servicos.GetRequiredService<CascaViewModel>());
             _ajustes[canal] = pagina;
         }
         return pagina;
@@ -51,7 +55,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     {
         if (!_funcoes.TryGetValue(funcao, out var pagina))
         {
-            pagina = new FuncaoPage(servicos.GetRequiredService<AudioViewModel>().Tela(funcao));
+            pagina = new FuncaoPage(servicos.GetRequiredService<AudioViewModel>().Tela(funcao), servicos.GetRequiredService<CascaViewModel>());
             _funcoes[funcao] = pagina;
         }
         return pagina;
@@ -79,6 +83,24 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     public void AbrirMonitoracao() => Empurrar("Voltímetro e clip", servicos.GetRequiredService<MonitoracaoPage>);
 
     public void AbrirChaves() => Empurrar("Chaves de acesso", servicos.GetRequiredService<ChavesPage>);
+
+    public void AbrirCalibracao(int? canal) => Empurrar("Calibração", () =>
+    {
+        // Com a saída (o "Calibrar ›" de uma faixa), a calibração dela abre no passo 1; uma já aberta segue como está.
+        var tela = servicos.GetRequiredService<CalibracaoViewModel>();
+        if (canal is { } c && !tela.Aberta)
+            tela.Escolher.Execute(c);
+        return servicos.GetRequiredService<CalibracaoPage>();
+    });
+
+    public void AbrirTesteSeco() => Empurrar("Teste a seco", () =>
+    {
+        // O passo 1 (o aviso); sem poder abrir, a tela mostra o motivo.
+        var tela = servicos.GetRequiredService<TesteSecoViewModel>();
+        if (!tela.Aberto)
+            tela.Abrir.Execute(null);
+        return servicos.GetRequiredService<TesteSecoPage>();
+    });
 
     public void AbrirConexao() => MainThread.BeginInvokeOnMainThread(async () =>
     {

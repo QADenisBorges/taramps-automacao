@@ -4,6 +4,9 @@
     pílula de status e a engrenagem (no Início, em duas linhas, com o seletor de Setup), os destinos Início ·
     Mesa · Áudio · Player (trocar não perde o estado de cada um) e a barra inferior. A lista de memórias ("…") e
     a folha de presets do chip sobem por cima como folhas.
+    História 13g: a folha do nível (pelo chip "Nível: Alto ›" do Início) com a de risco do Máximo, e a folha "Outro app
+    começou a tocar. O som foi mutado." com "Voltar ao player do app". O aviso rápido também mostra a recusa da cerca e o
+    aviso do volume do Extra.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -121,6 +124,19 @@
         <!-- A folha de presets do chip "Preset: Cinema ▾" (Início). -->
         <c:FolhaView Aberta="{Binding Inicio.Presets.FolhaAberta}" Fechar="{Binding Inicio.Presets.FecharFolha}">
             <c:PresetsFolhaView BindingContext="{Binding Inicio.Presets}" />
+        </c:FolhaView>
+
+        <!-- A folha do nível da memória em uso e a de risco do Máximo (história 13g). -->
+        <c:NivelFolhaView BindingContext="{Binding Inicio.Nivel}" />
+
+        <!-- O outro player no Extra (história 13g): o som foi mutado; "Voltar ao player do app" fecha a folha. -->
+        <c:FolhaView Bgs="True" Aberta="{Binding Player.FolhaOutroPlayer}" Fechar="{Binding Player.VoltarAoPlayer}">
+            <VerticalStackLayout Spacing="9" BindingContext="{Binding Player}">
+                <Label x:DataType="telas:PlayerViewModel" Style="{StaticResource tipo-sheet-title}" Text="{Binding TextoOutroPlayer}"
+                       SemanticProperties.HeadingLevel="Level1" />
+                <Button x:DataType="telas:PlayerViewModel" Style="{StaticResource botao-bgs}" Text="{Binding TextoVoltar}"
+                        Command="{Binding VoltarAoPlayer}" />
+            </VerticalStackLayout>
         </c:FolhaView>
 
         <!-- O aviso rápido (história 10d): "Memória MUSICA ORIG criada no Casa 2.1." por 2,6 s ao fechar a criação. -->

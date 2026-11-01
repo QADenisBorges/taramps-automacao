@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha "A conta" do limite da saída (história 13g; telas-rendimento.md, "Limite da saída"; DESIGN, sheet,
+    summary-list): o alto-falante que manda e o ganho do módulo (o que leva os volts ao dB do limitador); os três limites,
+    cada um com o valor, o selo (e "manda" no menor), a conta, os dados usados com a origem e o dado que falta; e
+    Fechar. Os textos vêm do LimiteSaidaViewModel.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.ContaLimiteView"
+             x:DataType="telas:LimiteSaidaViewModel">
+    <VerticalStackLayout Spacing="9">
+        <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding Titulo}" SemanticProperties.HeadingLevel="Level1" />
+        <Label Style="{StaticResource tipo-body-forte}" Text="{Binding AltoFalante}"
+               IsVisible="{Binding AltoFalante, Converter={StaticResource TemTexto}}" />
+        <Label Style="{StaticResource tipo-body}" Text="{Binding Ganho}"
+               IsVisible="{Binding Ganho, Converter={StaticResource TemTexto}}" />
+
+        <Border BackgroundColor="{StaticResource surface-1}" StrokeThickness="0" StrokeShape="RoundRectangle 14">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Limites}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="telas:LinhaContaLimite">
+                        <VerticalStackLayout Padding="14,10" Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                <Label Style="{StaticResource tipo-summary-item}" Text="{Binding Nome}" VerticalTextAlignment="Center" />
+                                <Label Grid.Column="1" Style="{StaticResource tipo-summary-item}" TextColor="{StaticResource brand}"
+                                       Text="{Binding Valor}" VerticalTextAlignment="Center" />
+                                <Border Grid.Column="2" BackgroundColor="{StaticResource surface-2}" StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="8,0" VerticalOptions="Center">
+                                    <Label Style="{StaticResource tipo-chip}" Text="{Binding Selo}" VerticalTextAlignment="Center" />
+                                </Border>
+                            </Grid>
+                            <Label Style="{StaticResource tipo-chip}" TextColor="{StaticResource brand}" Text="{Binding TextoManda}"
+                                   IsVisible="{Binding Manda}" />
+                            <Label Style="{StaticResource tipo-summary-reason}" TextColor="{StaticResource text-primary}" Text="{Binding Conta}"
+                                   IsVisible="{Binding Conta, Converter={StaticResource TemTexto}}" />
+                            <Label Style="{StaticResource tipo-hint}" Text="{x:Static telas:LimiteSaidaViewModel.RotuloDados}"
+                                   IsVisible="{Binding TemDados}" />
+                            <Label Style="{StaticResource tipo-summary-reason}" Text="{Binding TextoDados}" IsVisible="{Binding TemDados}" />
+                            <Label Style="{StaticResource tipo-summary-reason}" Text="{Binding Falta}"
+                                   IsVisible="{Binding Falta, Converter={StaticResource TemTexto}}" />
+                            <BoxView HeightRequest="1" Color="{StaticResource divider}" Margin="0,6,0,0" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </Border>
+
+        <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoBotaoFechar}" Command="{Binding FecharConta}" />
+    </VerticalStackLayout>
+</ContentView>

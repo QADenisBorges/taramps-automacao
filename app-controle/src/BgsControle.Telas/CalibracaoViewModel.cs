@@ -54,6 +54,15 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
     public const string TextoConcluir = "Concluir";
     public const string TextoUnidade = "V";
 
+    /// <summary>O TalkBack do anel duplo enquanto um passo anda (história 13g).</summary>
+    public const string DescricaoOcupado = "Calibrando a saída";
+
+    /// <summary>O TalkBack do ‹ da tela da calibração.</summary>
+    public const string DescricaoVoltar = "Voltar";
+
+    /// <summary>A dica do campo dos volts.</summary>
+    public const string DicaVolts = "Ex.: 12,4";
+
     /// <summary>De quanto em quanto a contagem regressiva se atualiza.</summary>
     public static readonly TimeSpan PassoContagem = TimeSpan.FromMilliseconds(250);
 
@@ -224,8 +233,12 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
                 return;
             _mensagem = value;
             Avisar();
+            Avisar(nameof(MensagemNaTela));
         }
     }
+
+    /// <summary>A <see cref="Mensagem"/> sem repetir a instrução (no fim, a frase do núcleo já é a instrução; história 13g).</summary>
+    public string? MensagemNaTela => Mensagem == Instrucao ? null : Mensagem;
 
     /// <summary>Um passo anda (preparando a saída, gravando, voltando ao som de antes): o anel duplo.</summary>
     public bool Ocupado => _calibracao.Ocupado;
@@ -323,6 +336,24 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
     /// <summary>No fim: fecha a calibração.</summary>
     public Comando Concluir { get; }
 
+    /// <summary>A escolha da saída (nenhuma calibração aberta): a lista aparece.</summary>
+    public bool NaEscolha => !Aberta;
+
+    /// <summary>O passo 1 ("Já desliguei").</summary>
+    public bool NoDesligar => Etapa == EtapaCalibracao.Desligar;
+
+    /// <summary>O passo 2 ("Seguir").</summary>
+    public bool NoMultimetro => Etapa == EtapaCalibracao.Multimetro;
+
+    /// <summary>O passo 3, com o tom: "Digitar a leitura".</summary>
+    public bool NoTom => Etapa == EtapaCalibracao.Tom;
+
+    /// <summary>O passo 5 ("Tocar o tom").</summary>
+    public bool NoBluetooth => Etapa == EtapaCalibracao.Bluetooth;
+
+    /// <summary>O fim ("Concluir").</summary>
+    public bool NoFim => Etapa == EtapaCalibracao.Fim;
+
     /// <summary>O Cancelar aparece em todo passo aberto, menos no fim.</summary>
     public bool PodeCancelar => Aberta && Etapa != EtapaCalibracao.Fim;
 
@@ -404,6 +435,8 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
                      nameof(MotivoTrava), nameof(Etapa), nameof(Aberta), nameof(Titulo), nameof(Passo), nameof(Instrucao), nameof(Detalhe),
                      nameof(Ocupado), nameof(PedeVolts), nameof(Tocando), nameof(Contagem), nameof(TextoContagem), nameof(PodeTocarDeNovo),
                      nameof(AvisoBluetoothMedido), nameof(PodeMedirBluetoothDeNovo), nameof(AvisoSaidaDoSom), nameof(PodeCancelar),
+                     nameof(NaEscolha), nameof(NoDesligar), nameof(NoMultimetro), nameof(NoTom), nameof(NoBluetooth), nameof(NoFim),
+                     nameof(MensagemNaTela),
                  })
             Avisar(nome);
     }

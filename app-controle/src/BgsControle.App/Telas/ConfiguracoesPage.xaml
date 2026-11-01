@@ -77,6 +77,18 @@
                                     <TapGestureRecognizer Command="{Binding AbrirPresets}" />
                                 </Grid.GestureRecognizers>
                             </Grid>
+                            <BoxView HeightRequest="1" Color="{StaticResource sup-3}" />
+                            <!-- História 13g: a calibração guiada ([ASSUMPTION] "Ajustes › Medir › Calibrar" até a Roda existir). -->
+                            <Grid Style="{StaticResource linha}" ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout VerticalOptions="Center">
+                                    <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding TituloCalibrar}" />
+                                    <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoCalibrar}" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="1" Style="{StaticResource seta}" />
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding AbrirCalibracao}" />
+                                </Grid.GestureRecognizers>
+                            </Grid>
                         </VerticalStackLayout>
                     </Border>
 

@@ -4,6 +4,8 @@
     nome da saída na cor dela; o ganho no giratório, com − e + grandes; à vista o passa-alta, o passa-baixa e o
     limitador; em Avançado o atraso, a fase, o EQ de saída, o ataque, a liberação, o Auto e o mute. O Salvar
     fica fixo no pé.
+    História 13g: logo abaixo do limitador, o limite da saída (o teto, o que manda e o selo; um toque abre a folha "A
+    conta") e, sem calibração, a faixa com "Calibrar ›"; a recusa da cerca também aparece no aviso rápido da casca.
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -77,6 +79,9 @@
                     <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding Vista}"
                                          BindableLayout.ItemTemplate="{StaticResource ItemControle}" />
 
+                    <!-- O limite da saída, perto do limitador (história 13g). -->
+                    <c:LimiteSaidaView BindingContext="{Binding Limite}" />
+
                     <!-- Avançado. -->
                     <Border StrokeShape="RoundRectangle 18" Stroke="{StaticResource sup-2}" StrokeThickness="1" Padding="14,0">
                         <VerticalStackLayout>
@@ -120,5 +125,13 @@
         </Grid>
 
         <c:SalvarFolhaView BindingContext="{Binding Salvar}" />
+
+        <!-- A folha "A conta" do limite da saída (história 13g). -->
+        <c:FolhaView Bgs="True" Aberta="{Binding Limite.ContaAberta}" Fechar="{Binding Limite.FecharConta}">
+            <c:ContaLimiteView BindingContext="{Binding Limite}" />
+        </c:FolhaView>
+
+        <!-- O aviso rápido da casca (a recusa da cerca), também aqui. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
     </Grid>
 </ContentPage>

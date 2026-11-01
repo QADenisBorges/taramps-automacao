@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O teste a seco do Extra (história 13g; telas-rendimento.md, "Teste a seco"; DESIGN, flow-top-bar,
+    button-flow-primary/secondary, spinner-dual-ring), no visual do BGS Sound, em tela cheia, um passo por tela. Entra pelo
+    "Fazer o teste a seco ›" do Player, com a análise da playlist pronta.
+    1) "O módulo vai ser desligado.", o que o teste faz, Confirmar e Cancelar.
+    2) Os trechos tocando ("Faixa 2 de 3: menos 6, trecho 1"), o trecho no total e o master, o anel duplo e o Cancelar.
+    3) O resultado (o teto validado, ou o clip na faixa e na saída), os clips e o Concluir.
+    Sem poder abrir, o motivo e Fechar. A tecla Voltar faz o Cancelar no passo 2 e fecha nos passos 1 e 3. Os textos vêm
+    do TesteSecoViewModel.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.TesteSecoPage"
+             x:DataType="telas:TesteSecoViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource bg}">
+    <Grid RowDefinitions="52,*,Auto">
+
+        <!-- A barra do fluxo: ‹ só com o teste fechado. -->
+        <Grid ColumnDefinitions="48,*,48" Padding="8,2,8,0">
+            <Button Style="{StaticResource botao-barra-fluxo}" Text="‹" FontSize="28" Clicked="AoVoltar" IsVisible="{Binding Fechado}"
+                    SemanticProperties.Description="{x:Static telas:TesteSecoViewModel.DescricaoVoltar}" />
+            <Label Grid.Column="1" Style="{StaticResource tipo-flow-title}" Text="{Binding Titulo}" VerticalTextAlignment="Center"
+                   SemanticProperties.HeadingLevel="Level1" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,22,16,8" Spacing="10">
+                <Label Style="{StaticResource tipo-question}" Text="{Binding Instrucao}"
+                       IsVisible="{Binding Instrucao, Converter={StaticResource TemTexto}}" SemanticProperties.HeadingLevel="Level2" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding Detalhe}"
+                       IsVisible="{Binding Detalhe, Converter={StaticResource TemTexto}}" />
+
+                <!-- Passo 2: o trecho no total e o master do teste. -->
+                <Label Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource brand}" Text="{Binding TextoDoProgresso}"
+                       IsVisible="{Binding TextoDoProgresso, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding TextoMaster}"
+                       IsVisible="{Binding TextoMaster, Converter={StaticResource TemTexto}}" />
+                <c:AnelDuploView WidthRequest="120" HeightRequest="120" HorizontalOptions="Center" Margin="0,18,0,0"
+                                 IsVisible="{Binding Andando}"
+                                 SemanticProperties.Description="{x:Static telas:TesteSecoViewModel.DescricaoAndando}" />
+
+                <!-- Passo 3: os clips (a faixa e a saída). -->
+                <Border BackgroundColor="{StaticResource surface-1}" StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="14,10"
+                        IsVisible="{Binding TemClips}">
+                    <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding LinhasClips}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Label Style="{StaticResource tipo-summary-item}" Text="{Binding .}" />
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Sem poder abrir: o motivo. -->
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding MotivoTrava}"
+                       IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding MensagemNaTela}"
+                       IsVisible="{Binding MensagemNaTela, Converter={StaticResource TemTexto}}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Os botões do passo. -->
+        <VerticalStackLayout Grid.Row="2" Padding="16,0,16,14" Spacing="10">
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:TesteSecoViewModel.TextoConfirmar}"
+                    Command="{Binding Confirmar}" IsVisible="{Binding PodeConfirmar}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:TesteSecoViewModel.TextoConcluir}"
+                    Command="{Binding Concluir}" IsVisible="{Binding PodeConcluir}" />
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:TesteSecoViewModel.TextoCancelar}"
+                    Command="{Binding Cancelar}" IsVisible="{Binding PodeCancelar}" />
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:TesteSecoViewModel.TextoFechar}"
+                    Clicked="AoVoltar" IsVisible="{Binding Fechado}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

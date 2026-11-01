@@ -103,7 +103,13 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             _gerador.PropertyChanged += AoMudarCamadas;
         if (Criacao is not null)
             Criacao.PropertyChanged += AoMudarCriacao;
+        // História 13g: a recusa da cerca e o aviso do volume do Extra também vão ao aviso rápido.
+        _fabrica.RecusouNaCerca += AoAvisar;
+        if (Player is not null)
+            Player.AvisoRapido += AoAvisar;
     }
+
+    private void AoAvisar(string texto) => NaTela(() => MostrarAviso(texto));
 
     /// <summary>A criação da memória em tela toda (história 10d), ou null.</summary>
     public CriacaoMemoriaViewModel? Criacao { get; }
@@ -323,6 +329,9 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             _gerador.PropertyChanged -= AoMudarCamadas;
         if (Criacao is not null)
             Criacao.PropertyChanged -= AoMudarCriacao;
+        _fabrica.RecusouNaCerca -= AoAvisar;
+        if (Player is not null)
+            Player.AvisoRapido -= AoAvisar;
         _prazoAviso?.Dispose();
     }
 }

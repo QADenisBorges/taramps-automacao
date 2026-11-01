@@ -30,7 +30,12 @@ public partial class MemoriasPage : ContentPage
 
     protected override bool OnBackButtonPressed()
     {
-        if (_salvar.Aberta)
+        // História 13g: a folha de risco do Máximo e a do nível fecham antes.
+        if (_vm.Nivel is { RiscoAberto: true } risco)
+            risco.Cancelar.Execute(null);
+        else if (_vm.Nivel is { FolhaAberta: true } nivel)
+            nivel.Fechar.Execute(null);
+        else if (_salvar.Aberta)
             _salvar.Cancelar.Execute(null);
         else if (_vm.CriarAberto)
             _vm.CancelarCriar.Execute(null);

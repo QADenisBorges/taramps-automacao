@@ -1,5 +1,6 @@
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 
 namespace BgsControle.Telas;
@@ -101,6 +102,16 @@ public sealed class ControleParametroViewModel : TelaBase, ICampoEditavel, IDisp
     public const string MsgNaoNumero = "Escreva um número.";
     public const string PrefixoForaDaFaixa = "Fora da faixa: ";
 
+    /// <summary>
+    /// O começo das recusas da cerca do limitador (<see cref="Cerca"/>: "Limite: JBL L, −6,8 dB, pelo térmico.", o OFF, o
+    /// limitador ou o corte desconhecido). História 13g: essas recusas também vão ao aviso rápido da casca.
+    /// </summary>
+    public const string PrefixoCerca = "Limite: ";
+
+    /// <summary>A recusa veio da cerca do limitador (a conta, ou a falha ao conferir).</summary>
+    public static bool DaCerca(string? motivo) =>
+        motivo is not null && (motivo.StartsWith(PrefixoCerca, StringComparison.Ordinal) || motivo == Cerca.MsgFalhou);
+
     /// <summary>Segurar − ou +: a repetição começa depois disto.</summary>
     public static readonly TimeSpan InicioRepeticao = TimeSpan.FromMilliseconds(400);
 
@@ -119,6 +130,7 @@ public sealed class ControleParametroViewModel : TelaBase, ICampoEditavel, IDisp
     private readonly Escritor _escritor;
     private readonly GrupoControles? _grupo;
     private readonly Endereco _endereco;
+    private readonly Action<string>? _recusouNaCerca;
 
     private decimal? _localNumero; // pedido pelo usuário e ainda não confirmado
     private string? _localTexto;
@@ -147,9 +159,11 @@ public sealed class ControleParametroViewModel : TelaBase, ICampoEditavel, IDisp
         IDespachante despachante,
         TimeProvider relogio,
         GrupoControles? grupo = null,
-        string? titulo = null)
+        string? titulo = null,
+        Action<string>? recusouNaCerca = null)
         : base(despachante, relogio)
     {
+        _recusouNaCerca = recusouNaCerca;
         Parametro = parametro;
         Indice = indice;
         Titulo = titulo ?? TextosParametro.Titulo(parametro.Codigo, indice);
@@ -763,6 +777,9 @@ public sealed class ControleParametroViewModel : TelaBase, ICampoEditavel, IDisp
                     ? Frase(r.Motivo)
                     : r.Diferente && r.Valor is { } v ? $"O aparelho ficou em {Exibir(v)}" : r.Aviso;
                 Atualizar();
+                // História 13g: a recusa da cerca aparece aqui e também no aviso rápido da casca.
+                if (!r.Ok && DaCerca(r.Motivo))
+                    _recusouNaCerca?.Invoke(r.Motivo!);
             }
             finally
             {
@@ -868,9 +885,16 @@ public sealed class FabricaControles(
 {
     private readonly List<WeakReference<ControleParametroViewModel>> _criados = [];
 
+    /// <summary>
+    /// Um controle criado aqui teve a escrita recusada pela cerca do limitador (história 13g), com o motivo ("Limite: JBL
+    /// L, −6,8 dB, pelo térmico."). Chega na thread da tela; a casca mostra no aviso rápido.
+    /// </summary>
+    public event Action<string>? RecusouNaCerca;
+
     public ControleParametroViewModel Criar(Parametro parametro, int? indice, GrupoControles? grupo = null, string? titulo = null)
     {
-        var controle = new ControleParametroViewModel(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo, titulo);
+        var controle = new ControleParametroViewModel(parametro, indice, sessao, chaves, estado, escritor, despachante, relogio, grupo, titulo,
+            motivo => RecusouNaCerca?.Invoke(motivo));
         lock (_criados)
         {
             _criados.RemoveAll(r => !r.TryGetTarget(out _));

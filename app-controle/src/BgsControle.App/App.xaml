@@ -77,6 +77,19 @@
             <Color x:Key="scrim-sheet">#99000000</Color>
             <Color x:Key="ring-track">#14FFFFFF</Color>
 
+            <!-- O Rendimento (história 13g): os tokens do DESIGN.md do BGS Sound que ainda faltavam, pelos nomes de lá, e as
+                 transparências derivadas (o nome do token e a opacidade). -->
+            <Color x:Key="warning">#FFB020</Color>
+            <Color x:Key="text-on-dark">#FFFFFF</Color>
+            <Color x:Key="text-status">#8A8A90</Color>
+            <Color x:Key="divider">#1C1C20</Color>
+            <!-- O fio do button-outline (DESIGN, components.button-outline). -->
+            <Color x:Key="border-outline">#2A2A2E</Color>
+            <!-- Branco a 7 % (button-secondary), ciano a 10 % (a pílula) e a 33 % (a borda da pílula). -->
+            <Color x:Key="white-07">#12FFFFFF</Color>
+            <Color x:Key="brand-10">#1A3FD0FF</Color>
+            <Color x:Key="brand-33">#543FD0FF</Color>
+
             <!-- ============================================================ alvos de toque (DESIGN, spacing) -->
             <x:Double x:Key="alvo-min">44</x:Double>
             <x:Double x:Key="alvo-lista">52</x:Double>
@@ -310,6 +323,33 @@
                 <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
             </Style>
 
+            <!-- O Rendimento (história 13g; DESIGN do BGS Sound, typography). -->
+            <Style x:Key="tipo-title" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="18" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+            <Style x:Key="tipo-hint" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+            </Style>
+            <Style x:Key="tipo-chip" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="TextColor" Value="{StaticResource text-chip}" />
+            </Style>
+            <Style x:Key="tipo-player-title" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+            <Style x:Key="tipo-player-meta" TargetType="Label" BasedOn="{StaticResource tipo-base}">
+                <Setter Property="FontSize" Value="10.5" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+            </Style>
+            <Style x:Key="tipo-body-forte" TargetType="Label" BasedOn="{StaticResource tipo-body}">
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+            </Style>
+
             <!-- ============================================================ botões (DESIGN, components) -->
             <Style x:Key="botao-base" TargetType="Button">
                 <Setter Property="r:Tipo.Peso" Value="800" />
@@ -444,6 +484,68 @@
                 <Setter Property="TextColor" Value="{StaticResource text-chip}" />
                 <Setter Property="FontSize" Value="12.5" />
                 <Setter Property="r:Tipo.Peso" Value="600" />
+            </Style>
+
+            <!-- O Rendimento (história 13g; DESIGN, button-primary, button-secondary, button-outline e chip), com o alvo de
+                 48 dp (EXPERIENCE, Accessibility Floor). -->
+            <Style x:Key="chip-bgs-48" TargetType="Button" BasedOn="{StaticResource chip-bgs}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="CornerRadius" Value="24" />
+            </Style>
+            <Style x:Key="botao-bgs" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="BackgroundColor" Value="{StaticResource brand}" />
+                <Setter Property="TextColor" Value="{StaticResource on-brand}" />
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="EstadosBgs">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Property="BackgroundColor" Value="{StaticResource surface-2}" />
+                                    <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+            <Style x:Key="botao-bgs-secundario" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="BackgroundColor" Value="{StaticResource white-07}" />
+                <Setter Property="TextColor" Value="{StaticResource text-on-dark}" />
+            </Style>
+            <Style x:Key="botao-bgs-contorno" TargetType="Button" BasedOn="{StaticResource botao-base}">
+                <Setter Property="HeightRequest" Value="48" />
+                <Setter Property="CornerRadius" Value="24" />
+                <Setter Property="Padding" Value="22,0" />
+                <Setter Property="FontSize" Value="12.5" />
+                <Setter Property="r:Tipo.Peso" Value="600" />
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="BorderColor" Value="{StaticResource border-outline}" />
+                <Setter Property="BorderWidth" Value="1" />
+                <Setter Property="TextColor" Value="{StaticResource text-secondary}" />
+            </Style>
+            <Style x:Key="cartao-bgs" TargetType="Border">
+                <Setter Property="BackgroundColor" Value="{StaticResource surface-1}" />
+                <Setter Property="StrokeThickness" Value="0" />
+                <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+                <Setter Property="Padding" Value="14,12" />
+            </Style>
+            <Style x:Key="entrada-bgs" TargetType="Entry">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="{StaticResource text-primary}" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource text-secondary}" />
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="r:Tipo.Peso" Value="700" />
+                <Setter Property="MinimumHeightRequest" Value="48" />
+                <Setter Property="VerticalOptions" Value="Center" />
             </Style>
 
             <!-- ============================================================ superfícies -->

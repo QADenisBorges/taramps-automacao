@@ -17,12 +17,16 @@ public sealed class CartaoMemoriaCelularViewModel : TelaBase
     {
         Id = memoria.Id;
         _nome = memoria.Nome;
+        Nivel = tela.Nivel;
         Aplicar = new Comando(() => tela.AplicarAsync(Id));
         Renomear = new Comando(() => tela.AbrirRenomear(Id));
         Apagar = new Comando(() => tela.AbrirApagar(Id));
     }
 
     public string Id { get; }
+
+    /// <summary>A folha do nível (história 13g): o chip "Nível: Alto ›" aparece no cartão da memória em uso. Ou null.</summary>
+    public NivelViewModel? Nivel { get; }
 
     public string Nome
     {
@@ -133,9 +137,11 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         SalvarViewModel salvar,
         IDespachante despachante,
         TimeProvider relogio,
-        CriacaoMemoria? criacao = null)
+        CriacaoMemoria? criacao = null,
+        NivelViewModel? nivel = null)
         : base(despachante, relogio)
     {
+        Nivel = nivel;
         _setups = setups;
         _criacao = criacao;
         _copia = copia;
@@ -167,6 +173,9 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     }
 
     // ------------------------------------------------------------------ as memórias do celular
+
+    /// <summary>A folha do nível (história 13g), ou null.</summary>
+    public NivelViewModel? Nivel { get; }
 
     /// <summary>O Setup das memórias da lista: o em uso ou, sem ele, o último usado (só para mostrar).</summary>
     private Setup? SetupDaLista => _setups.SetupEmUso ?? _setups.Setup(_setups.UltimoSetup);

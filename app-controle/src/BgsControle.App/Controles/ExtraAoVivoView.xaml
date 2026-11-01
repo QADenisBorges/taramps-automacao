@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O Extra ao vivo (história 13g; telas-rendimento.md, "Extra ao vivo"; [ASSUMPTION] no topo do Player e no cartão do
+    Início, até o mini player e a Roda): "Extra: 13:52" em ciano (o que está tocando), "Extra: sem limite nesta faixa", o
+    motivo sem o modelo térmico, "Descansando: 38:04" com "Bluetooth travado", e o aviso de quando a trava não confirma.
+    Some fora do Extra. Os textos vêm do ExtraAoVivoViewModel.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.ExtraAoVivoView"
+             x:DataType="telas:ExtraAoVivoViewModel">
+    <Border Style="{StaticResource cartao-bgs}" BackgroundColor="{StaticResource surface-2}" IsVisible="{Binding Visivel}">
+        <VerticalStackLayout Spacing="4">
+            <Label Style="{StaticResource tipo-player-title}" TextColor="{StaticResource brand}" Text="{Binding TextoTempo}"
+                   IsVisible="{Binding TextoTempo, Converter={StaticResource TemTexto}}" />
+            <Label Style="{StaticResource tipo-player-meta}" Text="{Binding MotivoSemModelo}"
+                   IsVisible="{Binding MotivoSemModelo, Converter={StaticResource TemTexto}}" />
+            <HorizontalStackLayout Spacing="8" IsVisible="{Binding Descansando}">
+                <Label Style="{StaticResource tipo-player-title}" Text="{Binding TextoDescanso}" />
+                <Label Style="{StaticResource tipo-player-meta}" Text="{Binding TextoBluetooth}" VerticalTextAlignment="Center"
+                       IsVisible="{Binding TextoBluetooth, Converter={StaticResource TemTexto}}" />
+            </HorizontalStackLayout>
+            <Label Style="{StaticResource tipo-player-title}" Text="{Binding Aviso}"
+                   IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

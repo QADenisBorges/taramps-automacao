@@ -215,6 +215,10 @@ public sealed class ArquiteturaTestes
         Assert.Contains(xamls, f => Path.GetFileName(f) == "FolhaRiscoPage.xaml");
         Assert.Contains(xamls, f => Path.GetFileName(f) == "ReaplicandoPage.xaml");
         Assert.Contains(xamls, f => Path.GetFileName(f) == "CriacaoPage.xaml");
+        // História 13g: as telas do Rendimento entram na varredura.
+        foreach (var nome in new[] { "CalibracaoPage.xaml", "TesteSecoPage.xaml", "NivelFolhaView.xaml", "LimiteSaidaView.xaml",
+                     "ContaLimiteView.xaml", "ChipNivelView.xaml", "ExtraAoVivoView.xaml" })
+            Assert.Contains(xamls, f => Path.GetFileName(f) == nome);
         Assert.DoesNotContain(xamls, f => Path.GetFileName(f) is "IaAtivaPage.xaml" or "IaPelaRedePage.xaml" or "HistoricoPage.xaml"
             or "ConfirmacaoIaPage.xaml");
         foreach (var f in xamls)

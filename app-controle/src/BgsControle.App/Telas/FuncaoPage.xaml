@@ -134,5 +134,8 @@
 
         <!-- A folha do Salvar. -->
         <c:SalvarFolhaView BindingContext="{Binding Salvar}" />
+
+        <!-- O aviso rápido da casca (história 13g: a recusa da cerca do limitador e do corte), também aqui. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />
     </Grid>
 </ContentPage>

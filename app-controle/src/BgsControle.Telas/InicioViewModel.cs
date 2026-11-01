@@ -122,10 +122,14 @@ public sealed class InicioViewModel : TelaBase, IDisposable
         INavegacao nav,
         IDespachante despachante,
         TimeProvider relogio,
-        PresetsViewModel? presets = null)
+        PresetsViewModel? presets = null,
+        NivelViewModel? nivel = null,
+        ExtraAoVivoViewModel? extraAoVivo = null)
         : base(despachante, relogio)
     {
         Presets = presets;
+        Nivel = nivel;
+        ExtraAoVivo = extraAoVivo;
         AbrirPresets = new Comando(() => presets?.AbrirFolha.ExecutarAsync() ?? Task.CompletedTask);
         _setups = setups;
         _sessao = sessao;
@@ -228,6 +232,15 @@ public sealed class InicioViewModel : TelaBase, IDisposable
 
     /// <summary>Os presets (a folha do chip e a frase "Preset Rock aplicado na FILME."), ou null.</summary>
     public PresetsViewModel? Presets { get; }
+
+    /// <summary>
+    /// O nível da memória em uso (história 13g, [ASSUMPTION] o lugar até a Roda e o Salvar): o chip "Nível: Alto ›" no
+    /// cartão da memória em uso abre a folha "Nível da memória". Ou null.
+    /// </summary>
+    public NivelViewModel? Nivel { get; }
+
+    /// <summary>O Extra ao vivo no cartão da memória em uso (história 13g, [ASSUMPTION] até a Roda), ou null.</summary>
+    public ExtraAoVivoViewModel? ExtraAoVivo { get; }
 
     /// <summary>Tocar no chip "Preset: Cinema ▾": abre a folha de presets (história 11).</summary>
     public Comando AbrirPresets { get; }

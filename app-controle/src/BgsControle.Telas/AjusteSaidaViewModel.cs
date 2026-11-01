@@ -57,6 +57,7 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         _estado = estado;
         _link = link;
         Salvar = salvar;
+        Limite = new LimiteSaidaViewModel(canal, setups, estado, link, nav, despachante, relogio);
         _saida = SaidaAgora();
         _controles = Montar(_saida.Canal);
 
@@ -103,6 +104,12 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
     /// não tem o ganho medido. A tela deixa mexer; só a porta recusa.
     /// </summary>
     public string? AvisoCalibracao => _saida.AvisoCalibracao;
+
+    /// <summary>
+    /// O limite da saída, perto do limitador (história 13g): o teto, o que manda, o selo, a folha "A conta" e a faixa de
+    /// sem calibração com o "Calibrar ›".
+    /// </summary>
+    public LimiteSaidaViewModel Limite { get; }
 
     /// <summary>O ganho (−45,0 a +15,0 dB), no giratório: arrastar, − e + grandes, tocar no número para escrever.</summary>
     public ControleParametroViewModel Ganho => _controles.Ganho;
@@ -234,6 +241,7 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         _estado.Recarregou -= AoMudar;
         _estado.Mudou -= AoMudarValor;
         _link.Mudou -= AoMudarLink;
+        Limite.Dispose();
         Descartar(_controles);
     }
 }

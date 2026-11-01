@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A calibração guiada (história 13g; telas-rendimento.md, "Calibração guiada"; EXPERIENCE, uma pergunta por tela; DESIGN,
+    flow-top-bar, button-flow-primary/secondary, spinner-dual-ring), no visual do BGS Sound, em tela cheia, um passo por
+    tela. Entra por Configurações › "Calibrar saídas" (a escolha da saída) e pelo "Calibrar ›" das faixas de sem
+    calibração (a saída já escolhida) [ASSUMPTION: "Ajustes › Medir › Calibrar" vira Configurações até a Roda existir].
+    Em cima, a barra do fluxo: ‹ só na escolha, o título ("Calibrar JBL L"), o passo ("Passo 2 de 6") e ✕ (o Cancelar)
+    nos passos. No meio, a escolha das saídas ou a instrução do passo, a contagem do tom, o campo dos volts (teclado
+    numérico, com vírgula), os avisos e o anel duplo quando um passo anda. No pé, os botões do passo. A tecla Voltar do
+    Android segue o Cancelar (no fim, o Concluir). Os textos vêm do CalibracaoViewModel.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.CalibracaoPage"
+             x:DataType="telas:CalibracaoViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource bg}">
+    <Grid RowDefinitions="52,*,Auto">
+
+        <!-- A barra do fluxo. -->
+        <Grid ColumnDefinitions="48,*,48" Padding="8,2,8,0">
+            <Button Style="{StaticResource botao-barra-fluxo}" Text="‹" FontSize="28" Clicked="AoVoltar" IsVisible="{Binding NaEscolha}"
+                    SemanticProperties.Description="{x:Static telas:CalibracaoViewModel.DescricaoVoltar}" />
+            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                <Label Style="{StaticResource tipo-flow-title}" Text="{Binding Titulo}" SemanticProperties.HeadingLevel="Level1" />
+                <Label Style="{StaticResource tipo-flow-subtitle}" Text="{Binding Passo}"
+                       IsVisible="{Binding Passo, Converter={StaticResource TemTexto}}" />
+            </VerticalStackLayout>
+            <Button Grid.Column="2" Style="{StaticResource botao-barra-fluxo}" Text="✕" Command="{Binding Cancelar}"
+                    IsVisible="{Binding PodeCancelar}"
+                    SemanticProperties.Description="{x:Static telas:CalibracaoViewModel.TextoCancelar}" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16,22,16,8" Spacing="10">
+
+                <!-- A instrução: a da escolha, a do passo ou o fim. -->
+                <Label Style="{StaticResource tipo-question}" Text="{Binding Instrucao}" IsVisible="{Binding Aberta}"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding Instrucao}" IsVisible="{Binding NaEscolha}" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding Detalhe}"
+                       IsVisible="{Binding Detalhe, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding MotivoTrava}"
+                       IsVisible="{Binding MotivoTrava, Converter={StaticResource TemTexto}}" />
+
+                <!-- A escolha da saída. -->
+                <VerticalStackLayout Spacing="10" IsVisible="{Binding NaEscolha}" BindableLayout.ItemsSource="{Binding Saidas}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="telas:OpcaoSaidaCalibracao">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="18,10" MinimumHeightRequest="56"
+                                    BackgroundColor="{StaticResource surface-1}">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                        <Label Style="{StaticResource tipo-answer}" Text="{Binding Nome}" />
+                                        <Label Style="{StaticResource tipo-hint}" Text="{Binding Rotulo}" />
+                                        <Label Style="{StaticResource tipo-hint}" Text="{Binding Situacao}" />
+                                        <Label Style="{StaticResource tipo-hint}" Text="{Binding Motivo}"
+                                               IsVisible="{Binding Motivo, Converter={StaticResource TemTexto}}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="›" FontSize="18" TextColor="{StaticResource text-nav-inactive}"
+                                           VerticalTextAlignment="Center" />
+                                </Grid>
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border" Binding="{Binding Pode}" Value="False">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="AoEscolher" />
+                                </Border.GestureRecognizers>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <!-- O tom tocando: a contagem. -->
+                <Label Style="{StaticResource tipo-creation-phrase}" TextColor="{StaticResource brand}" Text="{Binding TextoContagem}"
+                       IsVisible="{Binding TextoContagem, Converter={StaticResource TemTexto}}" />
+
+                <!-- O campo dos volts (passos 4 e 6): o teclado numérico, com vírgula. -->
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="{Binding PedeVolts}">
+                    <Border HeightRequest="56" BackgroundColor="{StaticResource bg}" Stroke="{StaticResource brand}" StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 14" Padding="16,0">
+                        <Entry x:Name="CampoVolts" Style="{StaticResource entrada-bgs}" Text="{Binding TextoVolts}" Keyboard="Numeric"
+                               Placeholder="{x:Static telas:CalibracaoViewModel.DicaVolts}" ReturnType="Done"
+                               ReturnCommand="{Binding Confirmar}" />
+                    </Border>
+                    <Label Grid.Column="1" Style="{StaticResource tipo-title}" Text="{x:Static telas:CalibracaoViewModel.TextoUnidade}"
+                           VerticalTextAlignment="Center" />
+                </Grid>
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding ErroVolts}"
+                       IsVisible="{Binding ErroVolts, Converter={StaticResource TemTexto}}" />
+
+                <!-- Os avisos do Bluetooth. -->
+                <Label Style="{StaticResource tipo-body}" Text="{Binding AvisoBluetoothMedido}"
+                       IsVisible="{Binding AvisoBluetoothMedido, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding AvisoSaidaDoSom}"
+                       IsVisible="{Binding AvisoSaidaDoSom, Converter={StaticResource TemTexto}}" />
+
+                <!-- A frase do núcleo (uma recusa, "Confira a leitura…", o fim). -->
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding MensagemNaTela}"
+                       IsVisible="{Binding MensagemNaTela, Converter={StaticResource TemTexto}}" />
+
+                <!-- Um passo anda: o anel duplo, sem números. -->
+                <c:AnelDuploView WidthRequest="56" HeightRequest="56" HorizontalOptions="Center" Margin="0,12,0,0"
+                                 IsVisible="{Binding Ocupado}"
+                                 SemanticProperties.Description="{x:Static telas:CalibracaoViewModel.DescricaoOcupado}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Os botões do passo. -->
+        <VerticalStackLayout Grid.Row="2" Padding="16,0,16,14" Spacing="10">
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoJaDesliguei}"
+                    Command="{Binding JaDesliguei}" IsVisible="{Binding NoDesligar}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoSeguir}"
+                    Command="{Binding Seguir}" IsVisible="{Binding NoMultimetro}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoDigitar}"
+                    Command="{Binding Digitar}" IsVisible="{Binding NoTom}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoConfirmar}"
+                    Command="{Binding Confirmar}" IsVisible="{Binding PedeVolts}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoTocarTom}"
+                    Command="{Binding TocarTom}" IsVisible="{Binding NoBluetooth}" />
+            <Button Style="{StaticResource botao-fluxo}" Text="{x:Static telas:CalibracaoViewModel.TextoConcluir}"
+                    Command="{Binding Concluir}" IsVisible="{Binding NoFim}" />
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:CalibracaoViewModel.TextoTocarDeNovo}"
+                    Command="{Binding TocarDeNovo}" IsVisible="{Binding PodeTocarDeNovo}" />
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:CalibracaoViewModel.TextoMedirBluetoothDeNovo}"
+                    Command="{Binding MedirBluetoothDeNovo}" IsVisible="{Binding PodeMedirBluetoothDeNovo}" />
+            <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:CalibracaoViewModel.TextoCancelar}"
+                    Command="{Binding Cancelar}" IsVisible="{Binding PodeCancelar}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O chip "Nível: Alto ›" (ou "Sem nível ›") no cartão da memória em uso (história 13g; DESIGN, chip, com o alvo de
+    48 dp; [ASSUMPTION] o lugar, até a Roda e o Salvar): abre a folha "Nível da memória". Some sem memória do celular
+    em uso.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.ChipNivelView"
+             x:DataType="telas:NivelViewModel">
+    <Button Style="{StaticResource chip-bgs-48}" HorizontalOptions="Start" Text="{Binding TextoChip}" Command="{Binding Abrir}"
+            IsVisible="{Binding MostrarChip}" />
+</ContentView>

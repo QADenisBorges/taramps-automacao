@@ -145,6 +145,8 @@ internal sealed class NavegacaoFalsa : INavegacao
     public void AbrirSenha() => Pedidos.Add("senha");
     public void AbrirMonitoracao() => Pedidos.Add("monitoracao");
     public void AbrirChaves() => Pedidos.Add("chaves");
+    public void AbrirCalibracao(int? canal) => Pedidos.Add(canal is { } c ? $"calibracao:CH{c + 1}" : "calibracao");
+    public void AbrirTesteSeco() => Pedidos.Add("teste-seco");
 
     /// <summary>O último pedido das camadas: (criação da memória, folha de risco, "REAPLICANDO", alarme do gerador).</summary>
     public (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme)? Camadas { get; private set; }

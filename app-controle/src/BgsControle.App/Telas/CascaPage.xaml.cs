@@ -24,6 +24,22 @@ public partial class CascaPage : ContentPage
 
     protected override bool OnBackButtonPressed()
     {
+        // História 13g: a folha de risco do Máximo, a do nível e a do outro player fecham antes.
+        if (_vm.Inicio.Nivel is { RiscoAberto: true } risco)
+        {
+            risco.Cancelar.Execute(null);
+            return true;
+        }
+        if (_vm.Inicio.Nivel is { FolhaAberta: true } nivel)
+        {
+            nivel.Fechar.Execute(null);
+            return true;
+        }
+        if (_vm.Player is { FolhaOutroPlayer: true } player)
+        {
+            player.VoltarAoPlayer.Execute(null);
+            return true;
+        }
         if (_vm.Memorias.ListaAberta)
         {
             _vm.Memorias.FecharLista.Execute(null);

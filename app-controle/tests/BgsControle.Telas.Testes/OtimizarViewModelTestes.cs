@@ -160,6 +160,33 @@ public sealed class OtimizarViewModelTestes : IDisposable
         SemIa();
     }
 
+    /// <summary>
+    /// História 13g: o botão "Otimizar configuração na playlist" some com a memória otimizada, e o "Fazer o teste a seco ›"
+    /// só aparece (e só navega) com a análise pronta, abrindo o teste a seco em tela cheia.
+    /// </summary>
+    [Fact]
+    public async Task Fazer_o_teste_a_seco_so_navega_com_a_analise_pronta()
+    {
+        var nav = new NavegacaoFalsa();
+        using var vm = new OtimizarViewModel(_analise, _b.Setups!, _player, _b.Tela, _b.Relogio, nav);
+        await Pronto();
+        await Adicionar(("seno-3", -3));
+
+        Assert.True(vm.PodeOtimizar);
+        Assert.False(vm.PodeFazerTesteSeco);
+        Assert.Equal("Fazer o teste a seco ›", vm.TextoTesteSeco);
+        await vm.FazerTesteSeco.ExecutarAsync();
+        Assert.Empty(nav.Pedidos);
+
+        await vm.Otimizar.ExecutarAsync();
+        await Esperar(() => vm.Otimizada && !vm.Analisando && !_analise.Ocupada && vm.Resultado is not null);
+
+        Assert.False(vm.PodeOtimizar);
+        Assert.True(vm.PodeFazerTesteSeco);
+        await vm.FazerTesteSeco.ExecutarAsync();
+        Assert.Equal(["teste-seco"], nav.Pedidos);
+    }
+
     [Fact]
     public async Task Cancelar_desotimiza_para_a_analise_e_nada_e_gravado()
     {

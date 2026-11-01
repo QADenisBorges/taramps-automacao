@@ -16,18 +16,32 @@ public sealed class OtimizarViewModel : TelaBase, IDisposable
     public const string TextoOtimizarBotao = "Otimizar configuração na playlist";
     public const string TextoCancelarBotao = "Cancelar";
 
+    /// <summary>O pedido do teste a seco, com a análise pronta (história 13g).</summary>
+    public const string TextoTesteSecoBotao = "Fazer o teste a seco ›";
+
+    /// <summary>O TalkBack do anel duplo durante a análise.</summary>
+    public const string DescricaoAnalisando = "Analisando a playlist";
+
     private readonly AnalisePlaylist _analise;
     private readonly GerenteSetups _setups;
     private readonly Player _player;
+    private readonly INavegacao? _nav;
     private string? _mensagem;
     private bool _descartado;
 
-    public OtimizarViewModel(AnalisePlaylist analise, GerenteSetups setups, Player player, IDespachante despachante, TimeProvider relogio)
+    public OtimizarViewModel(AnalisePlaylist analise, GerenteSetups setups, Player player, IDespachante despachante, TimeProvider relogio,
+        INavegacao? nav = null)
         : base(despachante, relogio)
     {
         _analise = analise;
         _setups = setups;
         _player = player;
+        _nav = nav;
+        FazerTesteSeco = new Comando(() =>
+        {
+            if (PodeFazerTesteSeco)
+                _nav?.AbrirTesteSeco();
+        });
         Otimizar = new Comando(OtimizarAsync);
         Cancelar = new Comando(CancelarAsync);
         _analise.Mudou += AoMudar;
@@ -49,6 +63,9 @@ public sealed class OtimizarViewModel : TelaBase, IDisposable
 
     /// <summary>A memória da playlist já é otimizada (a análise segue sozinha a cada faixa nova).</summary>
     public bool Otimizada => _setups.Memoria(IdMemoria)?.Otimizada == true;
+
+    /// <summary>Há playlist de memória e ela ainda não é otimizada: o botão "Otimizar configuração na playlist" aparece (história 13g).</summary>
+    public bool PodeOtimizar => TemMemoria && !Otimizada;
 
     /// <summary>A análise anda: o anel duplo, sem números.</summary>
     public bool Analisando => Otimizada && _analise.Analisando(IdMemoria);
@@ -82,6 +99,18 @@ public sealed class OtimizarViewModel : TelaBase, IDisposable
 
     /// <summary>"O nível não chega ao teto: falta ganho na memória. Saída: JBL L." com a análise pronta, ou null.</summary>
     public string? Aviso => Analisando ? null : Teto?.Aviso;
+
+    /// <summary>"Fazer o teste a seco ›".</summary>
+    public string TextoTesteSeco => TextoTesteSecoBotao;
+
+    /// <summary>A análise está pronta, com o teto do Extra: o pedido do teste a seco aparece (história 13g).</summary>
+    public bool PodeFazerTesteSeco => Otimizada && Resultado is not null;
+
+    /// <summary>Abre o teste a seco em tela cheia.</summary>
+    public Comando FazerTesteSeco { get; }
+
+    /// <summary>"Analisando a playlist" (o TalkBack do anel).</summary>
+    public string TextoAnalisando => DescricaoAnalisando;
 
     /// <summary>A frase do último toque ("Calibre a saída JBL L."), ou null.</summary>
     public string? Mensagem
@@ -137,11 +166,13 @@ public sealed class OtimizarViewModel : TelaBase, IDisposable
             return;
         Avisar(nameof(TemMemoria));
         Avisar(nameof(Otimizada));
+        Avisar(nameof(PodeOtimizar));
         Avisar(nameof(Analisando));
         Avisar(nameof(PodeCancelar));
         Avisar(nameof(Resultado));
         Avisar(nameof(Motivo));
         Avisar(nameof(Aviso));
+        Avisar(nameof(PodeFazerTesteSeco));
     }
 
     public void Dispose()

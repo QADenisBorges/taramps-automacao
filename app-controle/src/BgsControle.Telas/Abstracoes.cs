@@ -93,6 +93,16 @@ public interface INavegacao
     void AbrirChaves();
 
     /// <summary>
+    /// A calibração guiada em tela cheia (história 13g): pela linha "Calibrar saídas" das Configurações (sem saída: a
+    /// escolha) ou pelo "Calibrar ›" de uma faixa de sem calibração (com o canal mestre da saída, 0 a 3: a calibração
+    /// dela já abre no passo 1).
+    /// </summary>
+    void AbrirCalibracao(int? canal);
+
+    /// <summary>O teste a seco do Extra em tela cheia (história 13g), pelo "Fazer o teste a seco ›" do Player.</summary>
+    void AbrirTesteSeco();
+
+    /// <summary>
     /// As telas que sobem por cima de tudo, sem barra: a escolha do Setup (Setup em dúvida ou Trocar de
     /// Setup) e a folha "Aplicado pela metade". Mostra as que valem e tira as outras.
     /// </summary>

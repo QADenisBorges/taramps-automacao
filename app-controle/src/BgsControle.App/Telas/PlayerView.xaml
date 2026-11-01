@@ -4,17 +4,24 @@
     da memória do celular em uso, sem abas. Em cima, "Playlist da FILME", Adicionar músicas e Editar (− remove,
     ≡ arrasta; Pronto sai). O aviso do topo (sem permissão, Bluetooth de áudio desligado, som pelo celular), a
     lista rolando e, fixos embaixo, a faixa atual, tocar/pausar e próxima.
+    História 13g: no topo, o Extra ao vivo ([ASSUMPTION] até o mini player e a Roda); na playlist da memória, "Otimizar
+    configuração na playlist" (o anel duplo sem números durante a análise e o Cancelar; depois o resultado com "Fazer o teste
+    a seco ›", ou o motivo); em cada faixa, quem está pesando ("−3,0 dB no teto", "Em análise", a falha) e a marca de clip
+    ("Clip na Sub aos 42,3 s"); a faixa em análise fica apagada.
 -->
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
              xmlns:r="clr-namespace:BgsControle.App.Recursos"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
              x:Class="BgsControle.App.Telas.PlayerView"
              x:DataType="telas:PlayerViewModel">
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Padding="16,8,16,12" RowSpacing="10">
 
         <!-- O título e as ações da playlist. -->
         <VerticalStackLayout Spacing="8">
+            <!-- O Extra ao vivo (história 13g). -->
+            <c:ExtraAoVivoView BindingContext="{Binding ExtraAoVivo}" />
             <Label Style="{StaticResource tipo-rotulo}" Text="PLAYER" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding TemMemoria}">
                 <Label Style="{StaticResource tipo-titulo-tela}" Text="{Binding Titulo}" VerticalTextAlignment="Center"
@@ -28,6 +35,32 @@
             </Grid>
             <Button Style="{StaticResource botao-medio}" Text="{x:Static telas:PlayerViewModel.TextoAdicionar}"
                     Command="{Binding Adicionar}" IsVisible="{Binding TemMemoria}" />
+
+            <!-- Otimizar na playlist (história 13g). -->
+            <ContentView BindingContext="{Binding Otimizar}">
+                <VerticalStackLayout x:DataType="telas:OtimizarViewModel" Spacing="8" IsVisible="{Binding TemMemoria}">
+                    <Button Style="{StaticResource botao-bgs}" Text="{Binding TextoOtimizar}" Command="{Binding Otimizar}"
+                            IsVisible="{Binding PodeOtimizar}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" IsVisible="{Binding Analisando}">
+                        <c:AnelDuploView WidthRequest="32" HeightRequest="32" VerticalOptions="Center"
+                                         SemanticProperties.Description="{Binding TextoAnalisando}" />
+                        <Label Grid.Column="1" Style="{StaticResource tipo-player-meta}" Text="{Binding TextoAnalisando}"
+                               VerticalTextAlignment="Center" />
+                        <Button Grid.Column="2" Style="{StaticResource botao-bgs-contorno}" Text="{Binding TextoCancelar}"
+                                Command="{Binding Cancelar}" IsVisible="{Binding PodeCancelar}" />
+                    </Grid>
+                    <Label Style="{StaticResource tipo-body-forte}" Text="{Binding Resultado}"
+                           IsVisible="{Binding Resultado, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-body}" Text="{Binding Aviso}"
+                           IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-body}" Text="{Binding Motivo}"
+                           IsVisible="{Binding Motivo, Converter={StaticResource TemTexto}}" />
+                    <Label Style="{StaticResource tipo-body}" Text="{Binding Mensagem}"
+                           IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
+                    <Button Style="{StaticResource botao-bgs-secundario}" HorizontalOptions="Start" Text="{Binding TextoTesteSeco}"
+                            Command="{Binding FazerTesteSeco}" IsVisible="{Binding PodeFazerTesteSeco}" />
+                </VerticalStackLayout>
+            </ContentView>
         </VerticalStackLayout>
 
         <!-- O aviso do topo, com o botão dele. -->
@@ -81,6 +114,11 @@
                                     </HorizontalStackLayout>
                                     <Label Style="{StaticResource tipo-detalhe}" TextColor="{StaticResource apagado}" Text="{Binding TextoIndisponivel}"
                                            IsVisible="{Binding Indisponivel}" />
+                                    <!-- Quem está pesando e a marca de clip (história 13g). -->
+                                    <Label Style="{StaticResource tipo-player-meta}" Text="{Binding TextoAnalise}"
+                                           IsVisible="{Binding TextoAnalise, Converter={StaticResource TemTexto}}" />
+                                    <Label Style="{StaticResource tipo-player-meta}" TextColor="{StaticResource text-primary}" Text="{Binding TextoMarca}"
+                                           IsVisible="{Binding TextoMarca, Converter={StaticResource TemTexto}}" />
                                     <VerticalStackLayout.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding Tocar}" />
                                     </VerticalStackLayout.GestureRecognizers>
@@ -98,6 +136,12 @@
                                 <Grid.GestureRecognizers>
                                     <DropGestureRecognizer AllowDrop="True" Drop="AoSoltar" />
                                 </Grid.GestureRecognizers>
+                                <!-- A faixa em análise fica apagada (não toca até terminar; história 13g). -->
+                                <Grid.Triggers>
+                                    <DataTrigger TargetType="Grid" Binding="{Binding EmAnalise}" Value="True">
+                                        <Setter Property="Opacity" Value="0.35" />
+                                    </DataTrigger>
+                                </Grid.Triggers>
                             </Grid>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>

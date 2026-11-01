@@ -303,7 +303,7 @@ public static class MauiProgram
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        // História 13b: a calibração guiada, um passo por tela (o XAML é da 13g).
+        // História 13b: a calibração guiada, um passo por tela (a CalibracaoPage e a TesteSecoPage, da 13g).
         builder.Services.AddSingleton(sp => new CalibracaoViewModel(
             sp.GetRequiredService<Calibracao>(),
             sp.GetRequiredService<GeradorSinal>(),
@@ -315,15 +315,17 @@ public static class MauiProgram
             sp.GetRequiredService<IAudioDoCelular>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        // História 13c: a folha "Nível da memória" (o XAML é da 13g).
+        // História 13c: a folha "Nível da memória" (a NivelFolhaView, da 13g).
         builder.Services.AddSingleton(sp => new NivelViewModel(
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<AnalisePlaylist>(),
-            sp.GetRequiredService<LogBle>()));
-        // História 13e: o teste a seco, um passo por tela (o XAML é da 13g).
+            sp.GetRequiredService<LogBle>(),
+            // História 13g: o "Calibrar ›" da faixa de sem calibração.
+            sp.GetRequiredService<INavegacao>()));
+        // História 13e: o teste a seco, um passo por tela (a CalibracaoPage e a TesteSecoPage, da 13g).
         builder.Services.AddSingleton(sp => new TesteSecoViewModel(
             sp.GetRequiredService<TesteSeco>(),
             sp.GetRequiredService<GerenteSetups>(),
@@ -333,18 +335,20 @@ public static class MauiProgram
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        // História 13f: o Extra ao vivo (o tempo de Extra e o descanso; o XAML é da 13g).
+        // História 13f: o Extra ao vivo (o tempo de Extra e o descanso; a ExtraAoVivoView, da 13g).
         builder.Services.AddSingleton(sp => new ExtraAoVivoViewModel(
             sp.GetRequiredService<TermicoExtra>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
-        // História 13d: "Otimizar configuração na playlist", no Player (sem XAML até a 13g).
+        // História 13d: "Otimizar configuração na playlist", no Player (o XAML, da 13g).
         builder.Services.AddSingleton(sp => new OtimizarViewModel(
             sp.GetRequiredService<AnalisePlaylist>(),
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<Player>(),
             sp.GetRequiredService<IDespachante>(),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            // História 13g: o "Fazer o teste a seco ›".
+            sp.GetRequiredService<INavegacao>()));
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
             sp.GetRequiredService<MonitorAparelho>(),
             sp.GetRequiredService<IDespachante>(),
@@ -455,6 +459,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ReaplicandoPage>();
         builder.Services.AddSingleton<AlarmeGeradorPage>();
         builder.Services.AddSingleton<CriacaoPage>();
+        // História 13g: as telas cheias do Rendimento (a calibração guiada e o teste a seco).
+        builder.Services.AddSingleton<CalibracaoPage>();
+        builder.Services.AddSingleton<TesteSecoPage>();
 
         var app = builder.Build();
         // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.

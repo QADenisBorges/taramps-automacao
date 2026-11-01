@@ -246,9 +246,13 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         IAudioDoCelular? audio = null,
         AnalisePlaylist? analise = null,
         LogBle? log = null,
-        FiscalExtra? fiscal = null)
+        FiscalExtra? fiscal = null,
+        ExtraAoVivoViewModel? extraAoVivo = null,
+        OtimizarViewModel? otimizar = null)
         : base(despachante, relogio)
     {
+        ExtraAoVivo = extraAoVivo;
+        Otimizar = otimizar;
         _aparelho = aparelho;
         _audio = audio;
         _analise = analise;
@@ -286,6 +290,20 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
             _fiscal.Mudou += AoMudarAlgo;
         Atualizar();
     }
+
+    // ------------------------------------------------------------------ o Rendimento no Player (história 13g)
+
+    /// <summary>O Extra ao vivo, no topo do Player ("Extra: 13:52", "Descansando: 38:04"), ou null.</summary>
+    public ExtraAoVivoViewModel? ExtraAoVivo { get; }
+
+    /// <summary>"Otimizar configuração na playlist", na playlist da memória, ou null.</summary>
+    public OtimizarViewModel? Otimizar { get; }
+
+    /// <summary>
+    /// Um aviso para o aviso rápido de 2,6 s da casca (história 13g): o do fiscal do Extra ("No Extra o volume fica no
+    /// máximo; use o master."). Chega na thread da tela.
+    /// </summary>
+    public event Action<string>? AvisoRapido;
 
     // ------------------------------------------------------------------ o fiscal do Extra (história 13e)
 
@@ -615,6 +633,7 @@ public sealed class PlayerViewModel : TelaBase, IDisposable
         {
             _fiscal.LimparAviso();
             Mensagem = avisoFiscal;
+            AvisoRapido?.Invoke(avisoFiscal);
         }
 
         // Um aviso novo do Player (nenhuma faixa disponível, por exemplo) aparece.

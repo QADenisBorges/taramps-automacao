@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    O limite da saída no Ajuste da saída, logo abaixo do limitador (história 13g; telas-rendimento.md, "Limite da saída" e
+    "Sem calibração"; [ASSUMPTION] o lugar): o rótulo, a linha do teto ("17,9 V · −6,8 dB · pelo térmico · verificado"),
+    a linha do nível em uso, o aviso do mínimo do limitador ou o motivo de não haver limite e a dica; um toque abre a
+    folha "A conta". Sem calibração, a faixa com "Calibrar ›" (a calibração guiada desta saída). Os textos vêm do
+    LimiteSaidaViewModel.
+-->
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             x:Class="BgsControle.App.Controles.LimiteSaidaView"
+             x:DataType="telas:LimiteSaidaViewModel">
+    <VerticalStackLayout Spacing="9" IsVisible="{Binding Visivel}">
+
+        <!-- Sem calibração: a faixa e "Calibrar ›". -->
+        <Border Style="{StaticResource cartao-bgs}" IsVisible="{Binding FaixaCalibracao, Converter={StaticResource TemTexto}}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding FaixaCalibracao}" VerticalTextAlignment="Center" />
+                <Button Grid.Column="1" Style="{StaticResource botao-bgs}" Text="{Binding TextoBotaoCalibrar}" Command="{Binding Calibrar}" />
+            </Grid>
+        </Border>
+
+        <!-- A linha do limite: um toque abre a conta. -->
+        <Border Style="{StaticResource cartao-bgs}" MinimumHeightRequest="56">
+            <VerticalStackLayout Spacing="4" VerticalOptions="Center">
+                <Label Style="{StaticResource tipo-rotulo}" Text="{Binding Rotulo}" />
+                <Label Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource text-primary}" Text="{Binding Linha}"
+                       IsVisible="{Binding Linha, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding TextoNivel}"
+                       IsVisible="{Binding TextoNivel, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body-forte}" Text="{Binding Aviso}"
+                       IsVisible="{Binding Aviso, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-body}" Text="{Binding MotivoSemLimite}"
+                       IsVisible="{Binding MotivoSemLimite, Converter={StaticResource TemTexto}}" />
+                <Label Style="{StaticResource tipo-hint}" Text="{Binding Dica}"
+                       IsVisible="{Binding Dica, Converter={StaticResource TemTexto}}" />
+            </VerticalStackLayout>
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding AbrirConta}" />
+            </Border.GestureRecognizers>
+        </Border>
+    </VerticalStackLayout>
+</ContentView>
