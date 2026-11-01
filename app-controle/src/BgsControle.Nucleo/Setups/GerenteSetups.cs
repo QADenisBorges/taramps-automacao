@@ -317,6 +317,13 @@ public sealed class GerenteSetups
     /// <summary>Os Setups, as memórias, a conferência ou o som em uso mudaram. Pode chegar em qualquer thread.</summary>
     public event Action? Mudou;
 
+    /// <summary>
+    /// História 14b: um equipamento salvo (adicionado ou editado) com um modelo sem ficha na base (fora dela, ou só com o nome, sem dado oficial nem de outra fonte), com a chave
+    /// "Controle pela rede" ligada: o pedido de ficha (<c>ficha-pedida</c> no <c>/eventos</c>, pela
+    /// <see cref="PropostaFicha"/>). Com a chave desligada, ou sem a base, nada. Pode chegar em qualquer thread.
+    /// </summary>
+    public event Action<PedidoFicha>? FichaPedida;
+
     // ------------------------------------------------------------------ o que está guardado
 
     public DadosSetups Dados
@@ -1991,13 +1998,37 @@ public sealed class GerenteSetups
                     _log.Evento($"setup: {MsgLinkNaoGuardado(motivoLink)}");
                 }
             }
+            // História 14b: o modelo sem ficha na base (fora dela, ou sem nenhum dado oficial ou de outra fonte), com a chave
+            // "Controle pela rede" ligada, pede a ficha (antes de a base o guardar). Salvar de novo pede de novo.
+            PedidoFicha? pedido = null;
+            if (m.Confirmado is { Modelo: { } modeloPedido } pedindo && Modelos is { } baseModelos && _chaves.Ligada(Chave.ControlePelaRede))
+            {
+                await baseModelos.Carregada;
+                if (baseModelos.Ficha(modeloPedido)?.Dados is not { Vazia: false })
+                    pedido = new PedidoFicha(setup.Id, pedindo.Id, modeloPedido, pedindo.Grupo, pedindo.Categoria);
+            }
             if (m.Confirmado is { Modelo: not null } confirmado && Modelos is { } modelos && !await modelos.GuardarAsync(confirmado))
                 frase = $"{frase} {MsgModeloNaoGuardado}";
+            if (pedido is not null)
+                PedirFicha(pedido);
             return TerminarEquipamento(new ResultadoEquipamento(true, null, frase, m.Id));
         }
         finally
         {
             _operacao.Release();
+        }
+    }
+
+    private void PedirFicha(PedidoFicha pedido)
+    {
+        _log.Evento($"equipamento: ficha pedida para o modelo {pedido.Modelo}");
+        try
+        {
+            FichaPedida?.Invoke(pedido);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha no pedido de ficha ({e.GetType().Name})");
         }
     }
 

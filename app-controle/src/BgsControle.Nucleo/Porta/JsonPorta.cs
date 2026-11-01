@@ -120,6 +120,23 @@ internal sealed class CorpoPedido
         return lista;
     }
 
+    /// <summary>Uma lista de objetos (os ajustes de uma versão da escuta, os dados de uma proposta). Falta, ou um item que não é objeto: 400.</summary>
+    public IReadOnlyList<CorpoPedido> ListaObjetos(string nome)
+    {
+        if (Campo(nome) is not { } v)
+            throw new PedidoInvalidoException($"Falta o campo \"{nome}\" (lista de objetos).");
+        if (v.ValueKind != JsonValueKind.Array)
+            throw new PedidoInvalidoException($"O campo \"{nome}\" tem de ser uma lista de objetos.");
+        var lista = new List<CorpoPedido>();
+        foreach (var item in v.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                throw new PedidoInvalidoException($"O campo \"{nome}\" tem de ser uma lista de objetos.");
+            lista.Add(new CorpoPedido(item.Clone()));
+        }
+        return lista;
+    }
+
     public bool Booleano(string nome)
     {
         if (Campo(nome) is not { } v)

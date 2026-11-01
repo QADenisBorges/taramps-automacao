@@ -47,6 +47,12 @@ public enum FaseCriacao
 
     /// <summary>"Salvar no Casa 2.1?", o nome, Salvar e "Ajustar mais".</summary>
     Salvar,
+
+    /// <summary>
+    /// A escuta "1 ou 2" (história 14b): o texto, os botões grandes "1" e "2" (que trocam o som ao vivo) e "Prefiro o 1",
+    /// "Prefiro o 2" e "Tanto faz", com ✕.
+    /// </summary>
+    Escuta,
 }
 
 /// <summary>
@@ -126,7 +132,10 @@ public sealed class OpcaoCriacao : TelaBase
 /// "Avaliar o som".</item>
 /// <item><b>Como ficou?:</b> "Ótimo, pode salvar" (do app), as respostas mandadas e "Outro…".</item>
 /// <item><b>Salvar:</b> o nome e Salvar (só aqui a memória nasce), ou "Ajustar mais".</item>
-/// <item><b>✕</b> (nas perguntas e no "Como ficou?"): a folha "Cancelar a nova memória?", com "Cancelar e
+/// <item><b>Escuta "1 ou 2"</b> (história 14b, só no refino): o texto, os botões grandes "1" e "2", que trocam o som ao
+/// vivo (a versão marcada é a que toca), e "Prefiro o 1", "Prefiro o 2" e "Tanto faz". Uma escrita que não confere mostra
+/// "O aparelho ficou com outro valor." (<see cref="AvisoEscuta"/>) e a escuta fica.</item>
+/// <item><b>✕</b> (nas perguntas, no "Como ficou?" e na escuta): a folha "Cancelar a nova memória?", com "Cancelar e
 /// voltar" e "Continuar criando".</item>
 /// </list>
 /// Nenhum texto menciona quem manda as perguntas.
@@ -157,6 +166,14 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     public const string DescricaoVoltar = "Voltar";
     public const string DescricaoCancelar = "Cancelar";
     public const string DescricaoAnel = "Aplicando";
+    public const string TextoVersao1 = "1";
+    public const string TextoVersao2 = "2";
+    public const string TextoPrefiro1Botao = "Prefiro o 1";
+    public const string TextoPrefiro2Botao = "Prefiro o 2";
+    public const string TextoTantoFazBotao = "Tanto faz";
+
+    /// <summary>O TalkBack de um botão da escuta: "Ouvir a versão 1, tocando agora" ou "Ouvir a versão 2".</summary>
+    public static string DescricaoVersao(int versao, bool tocando) => tocando ? $"Ouvir a versão {versao}, tocando agora" : $"Ouvir a versão {versao}";
 
     /// <summary>O tamanho máximo do nome da memória (a regra do núcleo).</summary>
     public const int TamanhoMaximoNome = BgsControle.Nucleo.Presets.GerentePresets.TamanhoMaximoNome;
@@ -248,6 +265,10 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     private readonly EstadoCanal[] _canais = new EstadoCanal[4];
     private int _canalAtual = -1;
 
+    // História 14b: a escuta "1 ou 2" que a tela mostra.
+    private EscutaCriacao? _escuta;
+    private int _escrevendo;
+
     public CriacaoMemoriaViewModel(CriacaoMemoria criacao, IDespachante despachante, TimeProvider relogio, GerenteSetups? setups = null,
         FolhaRiscoViewModel? folhaRisco = null, PreferenciasApp? preferencias = null)
         : base(despachante, relogio)
@@ -267,6 +288,11 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         Anterior = new Comando(VoltarPergunta);
         CancelarEVoltar = new Comando(CancelarEVoltarAsync);
         ContinuarCriando = new Comando(() => FolhaCancelarAberta = false);
+        Ouvir1 = new Comando(() => OuvirAsync(1));
+        Ouvir2 = new Comando(() => OuvirAsync(2));
+        Prefiro1 = new Comando(() => EscolherAsync(EscolhaEscuta.Um));
+        Prefiro2 = new Comando(() => EscolherAsync(EscolhaEscuta.Dois));
+        TantoFaz = new Comando(() => EscolherAsync(EscolhaEscuta.TantoFaz));
         _criacao.Mudou += AoMudar;
         _criacao.Aconteceu += AoAcontecer;
         if (_folhaRisco is not null)
@@ -300,6 +326,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     public bool FaseResumo => _fase == FaseCriacao.Resumo;
     public bool FaseComoFicou => _fase == FaseCriacao.ComoFicou;
     public bool FaseSalvar => _fase == FaseCriacao.Salvar;
+    public bool FaseEscuta => _fase == FaseCriacao.Escuta;
 
     /// <summary>A pergunta ou o "Como ficou?": a lista de respostas com "Outro…".</summary>
     public bool ComRespostas => _fase is FaseCriacao.Perguntas or FaseCriacao.ComoFicou;
@@ -313,8 +340,8 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// <summary>O nome do Setup; no "Como ficou?", "tocando agora".</summary>
     public string? SubtituloBarra => _fase == FaseCriacao.ComoFicou ? TextoTocandoAgora : _nomeSetup;
 
-    /// <summary>O ✕ aparece nas perguntas e no "Como ficou?".</summary>
-    public bool PodeFechar => _fase is FaseCriacao.Perguntas or FaseCriacao.ComoFicou;
+    /// <summary>O ✕ aparece nas perguntas, no "Como ficou?" e na escuta.</summary>
+    public bool PodeFechar => _fase is FaseCriacao.Perguntas or FaseCriacao.ComoFicou or FaseCriacao.Escuta;
 
     /// <summary>O ‹ aparece da 2ª pergunta em diante.</summary>
     public bool PodeVoltar => _fase == FaseCriacao.Perguntas && NumeroNaTela > 1;
@@ -514,6 +541,99 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// <summary>"Cancelar e voltar".</summary>
     public string TextoCancelarEVoltar => TextoCancelarEVoltarBotao;
 
+    // ------------------------------------------------------------------ a escuta "1 ou 2" (história 14b)
+
+    /// <summary>O texto da escuta ("Qual grave você prefere?"), na fase da escuta; senão null.</summary>
+    public string? TextoEscuta => _fase == FaseCriacao.Escuta ? _escuta?.Texto : null;
+
+    /// <summary>A versão que toca agora (1 ou 2), na fase da escuta; senão null.</summary>
+    public int? VersaoMarcada => _fase == FaseCriacao.Escuta ? _escuta?.Marcada : null;
+
+    /// <summary>O botão "1" está marcado (a versão 1 toca).</summary>
+    public bool Marcado1 => VersaoMarcada == 1;
+
+    /// <summary>O botão "2" está marcado (a versão 2 toca).</summary>
+    public bool Marcado2 => VersaoMarcada == 2;
+
+    /// <summary>"1".</summary>
+    public string TextoBotao1 => TextoVersao1;
+
+    /// <summary>"2".</summary>
+    public string TextoBotao2 => TextoVersao2;
+
+    /// <summary>O TalkBack do botão "1".</summary>
+    public string DescricaoBotao1 => DescricaoVersao(1, Marcado1);
+
+    /// <summary>O TalkBack do botão "2".</summary>
+    public string DescricaoBotao2 => DescricaoVersao(2, Marcado2);
+
+    /// <summary>"Prefiro o 1".</summary>
+    public string TextoPrefiro1 => TextoPrefiro1Botao;
+
+    /// <summary>"Prefiro o 2".</summary>
+    public string TextoPrefiro2 => TextoPrefiro2Botao;
+
+    /// <summary>"Tanto faz".</summary>
+    public string TextoTantoFaz => TextoTantoFazBotao;
+
+    /// <summary>"O aparelho ficou com outro valor." quando a última troca não conferiu; senão null.</summary>
+    public string? AvisoEscuta => _fase == FaseCriacao.Escuta ? _escuta?.Aviso : null;
+
+    /// <summary>"1": o som troca ao vivo para a versão 1.</summary>
+    public Comando Ouvir1 { get; }
+
+    /// <summary>"2": o som troca ao vivo para a versão 2.</summary>
+    public Comando Ouvir2 { get; }
+
+    /// <summary>"Prefiro o 1": o som fica na versão 1 e a criação segue.</summary>
+    public Comando Prefiro1 { get; }
+
+    /// <summary>"Prefiro o 2": o som fica na versão 2 e a criação segue.</summary>
+    public Comando Prefiro2 { get; }
+
+    /// <summary>"Tanto faz": o som volta à versão 1 e a criação segue.</summary>
+    public Comando TantoFaz { get; }
+
+    /// <summary>A troca ou a escolha está escrevendo no aparelho: "1", "2", "Prefiro" e "Tanto faz" ficam travados.</summary>
+    public bool Escrevendo => Volatile.Read(ref _escrevendo) > 0;
+
+    /// <summary>Os botões da escuta respondem (na escuta e sem escrita andando).</summary>
+    public bool PodeTocarEscuta => _fase == FaseCriacao.Escuta && !Escrevendo;
+
+    private Task OuvirAsync(int versao) => NaEscutaAsync(() => _criacao.OuvirAsync(versao));
+
+    private Task EscolherAsync(EscolhaEscuta escolha) => NaEscutaAsync(() => _criacao.EscolherAsync(escolha));
+
+    /// <summary>Um toque da escuta: um por vez; um toque que chega com a escuta já fechada não mostra nada.</summary>
+    private async Task NaEscutaAsync(Func<Task<ResultadoCriacao>> tocar)
+    {
+        if (_fase != FaseCriacao.Escuta || Interlocked.CompareExchange(ref _escrevendo, 1, 0) != 0)
+            return;
+        AvisarEscrevendo();
+        ResultadoCriacao r;
+        try
+        {
+            r = await tocar();
+        }
+        finally
+        {
+            Volatile.Write(ref _escrevendo, 0);
+            AvisarEscrevendo();
+        }
+        if (!r.Ok && r.Motivo == CriacaoMemoria.MsgSemEscuta)
+        {
+            Atualizar();
+            return;
+        }
+        Mostrar(r);
+    }
+
+    private void AvisarEscrevendo()
+    {
+        Avisar(nameof(Escrevendo));
+        Avisar(nameof(PodeTocarEscuta));
+    }
+
     /// <summary>"Continuar criando".</summary>
     public string TextoContinuarCriando => TextoContinuarCriandoBotao;
 
@@ -672,7 +792,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
     /// <summary>"Salvar", com o <see cref="NomeMemoria"/>.</summary>
     public Comando Salvar { get; }
 
-    /// <summary>O ✕: abre a folha "Cancelar a nova memória?" (só nas perguntas e no "Como ficou?").</summary>
+    /// <summary>O ✕: abre a folha "Cancelar a nova memória?" (só nas perguntas, no "Como ficou?" e na escuta).</summary>
     public Comando Fechar { get; }
 
     /// <summary>O ‹: a pergunta anterior, com a resposta dada marcada.</summary>
@@ -686,8 +806,8 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// A tecla Voltar do Android. Devolve se tratou: com a folha de cancelar aberta, "Continuar criando"; nas
-    /// perguntas, o ‹ (na 1ª, o ✕); no "Como ficou?", o ✕; no Salvar, "Ajustar mais"; no palco, na passagem, no
-    /// Aplicando e no resumo, nada (mas trata). Fechada, false.
+    /// perguntas, o ‹ (na 1ª, o ✕); no "Como ficou?" e na escuta, o ✕; no Salvar, "Ajustar mais"; no palco, na passagem,
+    /// no Aplicando e no resumo, nada (mas trata). Fechada, false.
     /// </summary>
     public bool Voltar()
     {
@@ -708,7 +828,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
             case FaseCriacao.Perguntas when PodeVoltar:
                 VoltarPergunta();
                 break;
-            case FaseCriacao.Perguntas or FaseCriacao.ComoFicou:
+            case FaseCriacao.Perguntas or FaseCriacao.ComoFicou or FaseCriacao.Escuta:
                 AbrirFolhaCancelar();
                 break;
             case FaseCriacao.Salvar:
@@ -908,6 +1028,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         EtapaCriacao.ComoFicou => FaseCriacao.ComoFicou,
         EtapaCriacao.Salvar => FaseCriacao.Salvar,
         EtapaCriacao.Ajustando => FaseCriacao.Aplicando,
+        EtapaCriacao.Escuta => FaseCriacao.Escuta,
         _ => FaseCriacao.Fechada,
     };
 
@@ -977,6 +1098,7 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
             _textoResumo = null;
         }
         _respostasComoFicou = etapa == EtapaCriacao.ComoFicou ? _criacao.ComoFicouAtual?.Respostas ?? [] : [];
+        _escuta = etapa == EtapaCriacao.Escuta ? _criacao.Escuta : null;
 
         AtualizarFase(etapa);
         AtualizarOpcoes();
@@ -1023,14 +1145,33 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         Avisar(nameof(TextoResumo));
         Avisar(nameof(LinhasResumo));
         Avisar(nameof(RespostasComoFicou));
+        AvisarEscuta();
+    }
+
+    private void AvisarEscuta()
+    {
+        Avisar(nameof(TextoEscuta));
+        Avisar(nameof(VersaoMarcada));
+        Avisar(nameof(Marcado1));
+        Avisar(nameof(Marcado2));
+        Avisar(nameof(DescricaoBotao1));
+        Avisar(nameof(DescricaoBotao2));
+        Avisar(nameof(AvisoEscuta));
     }
 
     /// <summary>
     /// A fase anda atrás da etapa: o palco, a passagem e o Aplicando só saem pelos sinais da página. O "Como
-    /// ficou?" e o Salvar só chegam por um toque do usuário (depois do resumo): neles, a tela segue a etapa.
+    /// ficou?" e o Salvar só chegam por um toque do usuário (depois do resumo): neles, a tela segue a etapa. A escuta
+    /// (história 14b) entra na hora; depois da escolha, a rodada segue no palco (com a animação) ou no Aplicando.
     /// </summary>
     private void AtualizarFase(EtapaCriacao etapa)
     {
+        if (etapa == EtapaCriacao.Escuta)
+        {
+            // A escuta entra na hora, e o palco guarda o que ainda não mostrou da rodada (volta a ele depois da escolha).
+            MudarFase(FaseCriacao.Escuta);
+            return;
+        }
         if (etapa is EtapaCriacao.Fechada or EtapaCriacao.Perguntas or EtapaCriacao.ComoFicou or EtapaCriacao.Salvar)
         {
             _fila.Clear();
@@ -1067,6 +1208,18 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
                 break;
             case FaseCriacao.Passagem:
                 break;
+            case FaseCriacao.Escuta:
+                // A escolha voltou aos ajustes da mesma rodada: os da versão escolhida entram no palco (com a animação).
+                if (etapa == EtapaCriacao.Ajustando && _comAnimacao)
+                {
+                    MudarFase(FaseCriacao.Palco);
+                    AtualizarFase(etapa);
+                }
+                else
+                {
+                    MudarFase(FaseDaEtapa(etapa));
+                }
+                break;
             case FaseCriacao.Aplicando:
                 // Com a animação, só o AplicandoTerminou sai daqui; sem, o resumo entra com a etapa.
                 if (!_comAnimacao && etapa != EtapaCriacao.Ajustando)
@@ -1102,6 +1255,8 @@ public sealed class CriacaoMemoriaViewModel : TelaBase, IDisposable
         Avisar(nameof(FaseResumo));
         Avisar(nameof(FaseComoFicou));
         Avisar(nameof(FaseSalvar));
+        Avisar(nameof(FaseEscuta));
+        Avisar(nameof(PodeTocarEscuta));
         Avisar(nameof(ComRespostas));
         Avisar(nameof(PodeFechar));
         Avisar(nameof(PodeVoltar));

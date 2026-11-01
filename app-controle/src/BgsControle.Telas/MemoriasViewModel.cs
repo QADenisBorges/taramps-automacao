@@ -106,6 +106,18 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     public const string MsgEmAndamento = "Uma operação está em andamento";
     public const string MsgVoltou = "O som voltou à cópia.";
 
+    /// <summary>História 14b: o "+ Nova memória" com a chave "Controle pela rede" desligada (leva à tela Aparelho).</summary>
+    public const string MsgLigueControle = "Ligue o Controle pela rede em Aparelho.";
+
+    /// <summary>História 14b: o pedido da nova memória sem resposta no prazo.</summary>
+    public const string MsgSemResposta = "Não deu para começar agora. Confira se o computador está ligado e no mesmo Wi-Fi.";
+
+    /// <summary>História 14b: o "+ Nova memória" travado enquanto o app espera a criação abrir (o anel duplo).</summary>
+    public const string MsgEsperando = "Começando a nova memória…";
+
+    /// <summary>História 14b: quanto o app espera a criação abrir depois do "+ Nova memória".</summary>
+    public static TimeSpan PrazoPedido { get; } = TimeSpan.FromSeconds(15);
+
     /// <summary>"Preset: Cinema".</summary>
     public static string TextoPresetDe(string nome) => $"Preset: {nome}";
 
@@ -116,6 +128,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     private readonly EstadoAparelho _estado;
     private readonly SalvarViewModel _salvar;
     private readonly CriacaoMemoria? _criacao;
+    private readonly INavegacao? _navegacao;
 
     private IReadOnlyList<CartaoMemoriaCelularViewModel> _cartoes = [];
     private string? _mensagem;
@@ -128,6 +141,12 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     private string? _apagar;
     private bool _agindo;
 
+    // História 14b: a espera depois do "+ Nova memória" (o anel duplo), com o prazo.
+    private readonly object _travaEspera = new();
+    private bool _esperando;
+    private long _geracaoEspera;
+    private ITimer? _prazo;
+
     public MemoriasViewModel(
         GerenteSetups setups,
         CopiaAntes copia,
@@ -138,10 +157,12 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         IDespachante despachante,
         TimeProvider relogio,
         CriacaoMemoria? criacao = null,
-        NivelViewModel? nivel = null)
+        NivelViewModel? nivel = null,
+        INavegacao? navegacao = null)
         : base(despachante, relogio)
     {
         Nivel = nivel;
+        _navegacao = navegacao;
         _setups = setups;
         _criacao = criacao;
         _copia = copia;
@@ -165,10 +186,14 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         _setups.Mudou += AoMudarAlgo;
         _copia.Mudou += AoMudarAlgo;
         _sessao.Mudou += AoMudarAlgo;
+        _sessao.Mudou += AoMudarSessao;
         _chaves.Mudou += AoMudarChave;
         _estado.Recarregou += AoMudarAlgo;
         if (_criacao is not null)
+        {
             _criacao.Mudou += AoMudarAlgo;
+            _criacao.Abriu += AoAbrirCriacao;
+        }
         Atualizar();
     }
 
@@ -242,8 +267,9 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     public bool PodeCriar => MotivoTravaCriar is null;
 
     /// <summary>
-    /// Por que "+ Nova memória" está travado, ou null: sem Setup em uso, na dúvida, no só leitura ou com uma
-    /// criação já aberta (história 10d).
+    /// Por que "+ Nova memória" está travado, ou null: sem Setup em uso, na dúvida, no só leitura, com uma criação já
+    /// aberta (história 10d) ou esperando a criação abrir depois do toque (história 14b). A chave "Controle pela rede"
+    /// desligada não trava: o toque mostra <see cref="MsgLigueControle"/> e leva à tela Aparelho.
     /// </summary>
     public string? MotivoTravaNovaMemoria
     {
@@ -255,7 +281,22 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
                 return ControleParametroViewModel.MsgSoLeitura;
             if (_criacao is { Aberta: true })
                 return CriacaoMemoria.MsgJaAberta;
+            if (EsperandoAgente)
+                return MsgEsperando;
             return null;
+        }
+    }
+
+    /// <summary>
+    /// História 14b: o app espera a criação abrir depois do "+ Nova memória" (a tela mostra o anel duplo). Acaba quando
+    /// ela abre (a camada da criação entra) ou no <see cref="PrazoPedido"/>, com <see cref="MsgSemResposta"/>.
+    /// </summary>
+    public bool EsperandoAgente
+    {
+        get
+        {
+            lock (_travaEspera)
+                return _esperando;
         }
     }
 
@@ -316,21 +357,72 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
 
     /// <summary>
     /// "+ Nova memória": pede a criação (o evento <c>criacao-pedida</c> na porta). A tela não abre a criação; ela
-    /// aparece quando o cliente pareado abre. Travado, nada sai e o motivo aparece.
+    /// aparece quando o cliente pareado abre. Travado, nada sai e o motivo aparece. História 14b: com a chave "Controle
+    /// pela rede" desligada, nada sai: <see cref="MsgLigueControle"/> e a tela Aparelho. Com ela ligada, o pedido sai e
+    /// começa a espera (<see cref="EsperandoAgente"/>), com o prazo de <see cref="PrazoPedido"/>; um 2º toque na espera
+    /// não faz nada.
     /// </summary>
     public Comando NovaMemoria { get; }
 
     private void PedirNovaMemoria()
     {
-        if (_criacao is null)
+        if (_criacao is null || EsperandoAgente)
             return;
         if (MotivoTravaNovaMemoria is { } motivo)
         {
             Mensagem = motivo;
             return;
         }
+        if (!_chaves.Ligada(Chave.ControlePelaRede))
+        {
+            Mensagem = MsgLigueControle;
+            _navegacao?.AbrirAparelho();
+            return;
+        }
         var r = _criacao.Pedir();
-        Mensagem = r.Ok ? null : r.Mensagem ?? r.Motivo;
+        if (!r.Ok)
+        {
+            Mensagem = r.Mensagem ?? r.Motivo;
+            return;
+        }
+        Mensagem = null;
+        lock (_travaEspera)
+        {
+            var geracao = ++_geracaoEspera;
+            _esperando = true;
+            _prazo?.Dispose();
+            _prazo = Relogio.CreateTimer(_ => NaTela(() => AoVencerPrazo(geracao)), null, PrazoPedido, Timeout.InfiniteTimeSpan);
+        }
+        Atualizar();
+    }
+
+    /// <summary>O prazo do pedido venceu sem a criação abrir: a espera acaba, com o texto.</summary>
+    private void AoVencerPrazo(long geracao)
+    {
+        lock (_travaEspera)
+        {
+            if (!_esperando || geracao != _geracaoEspera)
+                return;
+            _esperando = false;
+            _prazo?.Dispose();
+            _prazo = null;
+        }
+        Mensagem = MsgSemResposta;
+        Atualizar();
+    }
+
+    /// <summary>A criação abriu: a espera acaba (a camada da criação entra).</summary>
+    private void TerminarEspera()
+    {
+        lock (_travaEspera)
+        {
+            if (!_esperando)
+                return;
+            _esperando = false;
+            _geracaoEspera++;
+            _prazo?.Dispose();
+            _prazo = null;
+        }
     }
 
     // ------------------------------------------------------------------ criar memória do som atual
@@ -646,6 +738,33 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
     {
         if (chave is Chave.AplicarMemoriaCelular or Chave.AjustesAudio)
             NaTela(Atualizar);
+        // História 14b: a chave "Controle pela rede" desligada na espera: o pedido não tem mais quem atenda.
+        if (chave == Chave.ControlePelaRede && !_chaves.Ligada(Chave.ControlePelaRede))
+            NaTela(() => TerminarEsperaCom(MsgLigueControle));
+    }
+
+    /// <summary>História 14b: a conexão caiu na espera: ela acaba com o motivo da conexão.</summary>
+    private void AoMudarSessao()
+    {
+        if (_sessao.Estado != EstadoSessao.Conectado || !_sessao.SegurandoConexao)
+            NaTela(() => TerminarEsperaCom(ControleParametroViewModel.MsgSemConexao));
+    }
+
+    /// <summary>História 14b: a criação abriu: a espera acaba (mesmo que ela feche antes da tela atualizar).</summary>
+    private void AoAbrirCriacao()
+    {
+        TerminarEspera();
+        NaTela(Atualizar);
+    }
+
+    /// <summary>A espera acaba com o motivo (sem espera, nada).</summary>
+    private void TerminarEsperaCom(string motivo)
+    {
+        if (!EsperandoAgente)
+            return;
+        TerminarEspera();
+        Mensagem = motivo;
+        Atualizar();
     }
 
     private void Atualizar()
@@ -676,6 +795,7 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         Avisar(nameof(PodeCriar));
         Avisar(nameof(MotivoTravaNovaMemoria));
         Avisar(nameof(PodeNovaMemoria));
+        Avisar(nameof(EsperandoAgente));
         Avisar(nameof(Ocupado));
         Avisar(nameof(PelaMetade));
         Avisar(nameof(TextoPelaMetade));
@@ -688,9 +808,18 @@ public sealed class MemoriasViewModel : TelaBase, IDisposable
         _setups.Mudou -= AoMudarAlgo;
         _copia.Mudou -= AoMudarAlgo;
         _sessao.Mudou -= AoMudarAlgo;
+        _sessao.Mudou -= AoMudarSessao;
         _chaves.Mudou -= AoMudarChave;
         _estado.Recarregou -= AoMudarAlgo;
         if (_criacao is not null)
+        {
             _criacao.Mudou -= AoMudarAlgo;
+            _criacao.Abriu -= AoAbrirCriacao;
+        }
+        lock (_travaEspera)
+        {
+            _prazo?.Dispose();
+            _prazo = null;
+        }
     }
 }

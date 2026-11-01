@@ -777,4 +777,60 @@ public sealed class EquipamentosViewModelTestes : IDisposable
         Assert.Equal("Casa 2.1: 25 °C (padrão).", _vm.Mensagem);
         Assert.Null(_b.Setups.Setup(CasaDoDenis.IdSetupCasa)!.TemperaturaAmbiente);
     }
+
+    // ----------------------------------------------------------------- história 14b: o pedido de ficha
+
+    private async Task<List<PedidoFicha>> AdicionarSubAtivo(string modelo)
+    {
+        var pedidos = new List<PedidoFicha>();
+        _b.Setups!.FichaPedida += pedidos.Add;
+        await MostrarCasa();
+        await _vm.Adicionar.ExecutarAsync();
+        _vm.Grupo = GrupoEquipamento.AmplificaETocam;
+        _vm.EscolherCategoria("sub ativo");
+        _vm.Entradas[0].Fonte = _vm.Entradas[0].Opcoes[1];
+        _vm.Modelo = modelo;
+        await _vm.Confirmar.ExecutarAsync();
+        Assert.False(_vm.FolhaAberta);
+        return pedidos;
+    }
+
+    [Fact]
+    public async Task Salvar_o_equipamento_com_o_modelo_fora_da_base_e_a_chave_ligada_pede_a_ficha()
+    {
+        await _b.Chaves.DefinirAsync(BgsControle.Nucleo.Seguranca.Chave.ControlePelaRede, true, BgsControle.Nucleo.Seguranca.OrigemComando.Tela);
+
+        var pedidos = await AdicionarSubAtivo("ABC 123");
+
+        var p = Assert.Single(pedidos);
+        Assert.Equal(("ABC 123", GrupoEquipamento.AmplificaETocam, "sub ativo", CasaDoDenis.IdSetupCasa),
+            (p.Modelo, p.Grupo, p.Categoria, p.IdSetup));
+        Assert.Equal(_b.Setups!.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Nome == "Sub ativo").Id, p.IdEquipamento);
+    }
+
+    [Fact]
+    public async Task Salvar_com_a_chave_desligada_ou_com_o_modelo_da_base_nao_pede_a_ficha()
+    {
+        Assert.Empty(await AdicionarSubAtivo("ABC 123")); // a chave desligada
+
+        await _b.Chaves.DefinirAsync(BgsControle.Nucleo.Seguranca.Chave.ControlePelaRede, true, BgsControle.Nucleo.Seguranca.OrigemComando.Tela);
+        var pedidos = new List<PedidoFicha>();
+        _b.Setups!.FichaPedida += pedidos.Add;
+        _vm.Item("JBL R")!.Editar.Execute(null);
+        await _vm.Confirmar.ExecutarAsync(); // o modelo da JBL já está na base
+        Assert.Empty(pedidos);
+    }
+
+    /// <summary>Os campos que a proposta aceita são os da folha, menos o tipo da caixa (texto) e os canais (vêm das ligações).</summary>
+    [Fact]
+    public void Os_campos_da_proposta_sao_os_da_folha_de_cada_grupo()
+    {
+        foreach (var grupo in Enum.GetValues<GrupoEquipamento>())
+        {
+            var folha = EquipamentosViewModel.CamposDo(grupo)
+                .Where(c => c is not (EquipamentosViewModel.CampoTipoCaixa or EquipamentosViewModel.CampoCanais));
+            Assert.Equal(folha, PropostaFicha.CamposDo(grupo));
+        }
+        Assert.Equal(("Fs", "Hz"), EquipamentosViewModel.RotuloDoCampo("fs"));
+    }
 }

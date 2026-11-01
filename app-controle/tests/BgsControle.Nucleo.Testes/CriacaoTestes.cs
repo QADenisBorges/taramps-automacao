@@ -979,6 +979,457 @@ public sealed class CriacaoTestes : IDisposable
         Assert.Contains("as perguntas depois dela saem", texto);
     }
 
+    // ----------------------------------------------------------------- história 14b: a escuta "1 ou 2"
+
+    /// <summary>Até o refino: um ajuste, o resumo, "Avaliar o som" e uma resposta do "Como ficou?" (rodada 2, ajustando).</summary>
+    private async Task<string> NoRefino()
+    {
+        var chave = await Autorizada();
+        Assert.Equal(200, (await Ajuste(chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/resumo", null, chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/como-ficou", """{"respostas":["Quero mais impacto","Os graves embolaram"]}""", chave)).Status);
+        Assert.True(_criacao.AvaliarSom().Ok);
+        Assert.True(_criacao.ResponderComoFicou(1).Ok);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+        Assert.Equal(2, _criacao.Rodada);
+        return chave;
+    }
+
+    /// <summary>Um ajuste de uma versão: o ganho da JBL L (saída 1).</summary>
+    private static string GanhoJbl(decimal valor, string frase) =>
+        $$"""{"codigo":"081","indice":0,"valor":{{valor.ToString(CultureInfo.InvariantCulture)}},"frase":"{{frase}}","motivo":"Comparar o grave."}""";
+
+    private Task<RespostaPorta> Escuta(string chave, string versao1, string versao2) =>
+        Rodar(Pedir("POST", "/criacao/escuta",
+            $$"""{"texto":"Qual grave você prefere?","variavel":"grave","versao1":[{{versao1}}],"versao2":[{{versao2}}]}""", chave));
+
+    /// <summary>A escuta das versões com o ganho da JBL L em +2 e +5 aberta no refino.</summary>
+    private async Task<string> EscutaAberta()
+    {
+        var chave = await NoRefino();
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Grave como está"), GanhoJbl(5.0m, "Grave mais cheio"))).Status);
+        Assert.Equal(EtapaCriacao.Escuta, _criacao.Etapa);
+        return chave;
+    }
+
+    private string[] EscritasDeAudio() => _simulador.Escritas.Where(e => Catalogo.EscritaDeAudio(e) is not null).ToArray();
+
+    private decimal Master() => _estado.Valor("080")!.Numero!.Value;
+
+    /// <summary>O nível médio com o peso rosa só sobe e desce com o ganho: +2 dB e +5 dB numa saída dão 3 dB de diferença.</summary>
+    [Fact]
+    public void O_igualador_baixa_so_a_versao_mais_forte_pela_diferenca()
+    {
+        var cadeia = CasaDoDenis.LeituraFilme.ToDictionary(v => new Endereco(v.Codigo, v.Indice),
+            v => Catalogo.ParametroDe(v.Codigo)!.Decodificar(v.NoFio).Valor!);
+        Func<Endereco, Valor?> Com(decimal ganho)
+        {
+            var d = new Dictionary<Endereco, Valor>(cadeia) { [new Endereco("081", 0)] = Catalogo.ParametroDe("081")!.Decodificar(ganho.ToString("+0.0;-0.0", CultureInfo.InvariantCulture)).Valor! };
+            return e => d.GetValueOrDefault(e);
+        }
+        IReadOnlyList<IReadOnlyList<int>> saida = [[0]];
+
+        var (n1, f1) = Rendimento.Igualador.NivelMedio(Com(2.0m), saida);
+        var (n2, _) = Rendimento.Igualador.NivelMedio(Com(5.0m), saida);
+
+        Assert.Null(f1);
+        Assert.Equal(3.0, n2!.Value - n1!.Value, 6);
+        Assert.Equal((-10.0m, -13.0m), Rendimento.Igualador.Igualar(n1.Value, -10.0m, n2.Value, -10.0m));
+        Assert.Equal((-13.0m, -10.0m), Rendimento.Igualador.Igualar(n2.Value, -10.0m, n1.Value, -10.0m));
+        Assert.Equal((-10.0m, -10.0m), Rendimento.Igualador.Igualar(n1.Value, -10.0m, n1.Value, -10.0m));
+        // A mais forte precisaria do master abaixo de −80 dB: não dá para igualar.
+        Assert.Null(Rendimento.Igualador.Igualar(n1.Value, -79.0m, n2.Value, -79.0m));
+        // A versão mais forte já com o master 2 dB abaixo: ela desce só o que falta (1 dB).
+        Assert.Equal((-10.0m, -13.0m), Rendimento.Igualador.Igualar(n1.Value, -10.0m, n2.Value, -12.0m));
+    }
+
+    [Fact]
+    public async Task Escuta_no_refino_escreve_a_versao_1_com_o_volume_igualado_e_vai_a_escuta()
+    {
+        var chave = await NoRefino();
+        var masterAntes = Master();
+
+        var r = await Escuta(chave, GanhoJbl(2.0m, "Grave como está"), GanhoJbl(5.0m, "Grave mais cheio"));
+
+        Assert.Equal(200, r.Status);
+        var j = Json(r);
+        Assert.Equal("escuta", j.GetProperty("etapa").GetString());
+        Assert.Equal(1, j.GetProperty("escuta").GetProperty("marcada").GetInt32());
+        Assert.Equal(EtapaCriacao.Escuta, _criacao.Etapa);
+        Assert.Equal("+2.0", _simulador.Valor("081", 0)); // a versão 1 tocando
+        Assert.Equal(masterAntes, Master()); // a versão 1 é a mais fraca: o master dela fica
+        var e = _criacao.Escuta!;
+        Assert.Equal(1, e.Marcada);
+        Assert.Null(e.Aviso);
+        Assert.Equal(masterAntes, e.Master1);
+        // A versão 2 tem a JBL L 3 dB acima: a média das saídas com alto-falante sobe menos que 3 dB, e o master dela baixa.
+        Assert.InRange(masterAntes - e.Master2!.Value, 0.1m, 3.0m);
+        Assert.Equal(-0.8m, e.Master2); // a fixture do Casa 2.1: a JBL L 3 dB acima pesa 0,8 dB na média das três saídas
+        Assert.Equal(2, e.Rodada);
+
+        var estado = Json(await Pedir("GET", "/criacao", chave: chave));
+        Assert.Equal("escuta", estado.GetProperty("etapa").GetString());
+        var escuta = estado.GetProperty("escuta");
+        Assert.Equal("Qual grave você prefere?", escuta.GetProperty("texto").GetString());
+        Assert.Equal("grave", escuta.GetProperty("variavel").GetString());
+        Assert.Equal(1, escuta.GetProperty("marcada").GetInt32());
+        Assert.Equal(5.0m, escuta.GetProperty("versao2")[0].GetProperty("valor").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, estado.GetProperty("ultimaEscolha").ValueKind);
+    }
+
+    [Fact]
+    public async Task Escuta_fora_do_refino_da_409_com_outra_aberta_tambem_e_o_corpo_ruim_da_400()
+    {
+        var chave = await Autorizada(); // rodada 1: ainda não é o refino
+        var antes = EscritasDeAudio().Length;
+
+        var cedo = await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"));
+
+        Assert.Equal(409, cedo.Status);
+        Assert.Equal(CriacaoMemoria.MsgEscutaSoNoRefino, Motivo(cedo));
+        Assert.Equal(antes, EscritasDeAudio().Length);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+
+        Assert.Equal(200, (await Ajuste(chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/resumo", null, chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/como-ficou", """{"respostas":["Quero mais impacto","Os graves embolaram"]}""", chave)).Status);
+        Assert.True(_criacao.AvaliarSom().Ok);
+        Assert.True(_criacao.ResponderComoFicou(0).Ok);
+        antes = EscritasDeAudio().Length;
+
+        // O corpo ruim: 400, nada escrito.
+        Assert.Equal(400, (await Rodar(Pedir("POST", "/criacao/escuta", """{"texto":"Qual?","variavel":"grave","versao1":[],"versao2":[]}""", chave))).Status);
+        Assert.Equal(400, (await Escuta(chave, """{"codigo":"020","indice":3,"valor":1.0,"frase":"x","motivo":"y"}""", GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.Equal(400, (await Escuta(chave, GanhoJbl(2.0m, ""), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.Equal(400, (await Escuta(chave, GanhoJbl(2.0m, "Um") + "," + GanhoJbl(3.0m, "Um de novo"), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.Equal(antes, EscritasDeAudio().Length);
+
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        var outra = await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"));
+        Assert.Equal(409, outra.Status);
+        Assert.Equal(CriacaoMemoria.MsgEscutaAberta, Motivo(outra));
+        // Na escuta, nada de ajustes nem resumo.
+        var ajuste = await Ajuste(chave);
+        Assert.Equal(409, ajuste.Status);
+        Assert.Equal(CriacaoMemoria.MsgEscutaAberta, Motivo(ajuste));
+        Assert.Equal(409, (await Pedir("POST", "/criacao/resumo", null, chave)).Status);
+    }
+
+    [Fact]
+    public async Task Trocar_para_o_2_e_o_1_escreve_so_o_que_difere_e_a_releitura_diferente_avisa()
+    {
+        await EscutaAberta();
+        var masterAntes = Master();
+        var master2 = _criacao.Escuta!.Master2!.Value;
+        var antes = EscritasDeAudio().Length;
+
+        var dois = await Rodar(_criacao.OuvirAsync(2));
+
+        Assert.True(dois.Ok, dois.Motivo);
+        var escritas = EscritasDeAudio().Skip(antes).ToArray();
+        Assert.Equal(2, escritas.Length); // o ganho e o master: só o que difere
+        Assert.StartsWith("*080*", escritas[0]); // o master que baixa sai primeiro
+        Assert.Equal("*081*0*5.0*", escritas[1]);
+        Assert.Equal("+5.0", _simulador.Valor("081", 0));
+        Assert.Equal(master2, Master());
+        Assert.Equal(2, _criacao.Escuta!.Marcada);
+
+        antes = EscritasDeAudio().Length;
+        var um = await Rodar(_criacao.OuvirAsync(1));
+
+        Assert.True(um.Ok, um.Motivo);
+        escritas = EscritasDeAudio().Skip(antes).ToArray();
+        Assert.Equal(2, escritas.Length);
+        Assert.Equal("*081*0*2.0*", escritas[0]);
+        Assert.StartsWith("*080*", escritas[1]); // o master que sobe sai por último
+        Assert.Equal(masterAntes, Master());
+        Assert.Equal(1, _criacao.Escuta!.Marcada);
+
+        // Tocar de novo na que já toca: nada sai.
+        antes = EscritasDeAudio().Length;
+        Assert.True((await Rodar(_criacao.OuvirAsync(1))).Ok);
+        Assert.Equal(antes, EscritasDeAudio().Length);
+
+        // A releitura diferente: o aviso, e a escuta fica.
+        _simulador.EcosDiferentes["*081*0*5.0*"] = "#081#0#4.5#";
+        var diferente = await Rodar(_criacao.OuvirAsync(2));
+        Assert.False(diferente.Ok);
+        Assert.Equal(CriacaoMemoria.MsgOutroValor, diferente.Motivo);
+        Assert.Equal(CriacaoMemoria.MsgOutroValor, _criacao.Escuta!.Aviso);
+        Assert.Equal(EtapaCriacao.Escuta, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task Tanto_faz_volta_a_1_vai_ao_eventos_e_a_etapa_volta_a_ajustando_com_o_ajuste_no_resumo()
+    {
+        var chave = await EscutaAberta();
+        var masterAntes = Master();
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+        var ajustes = _criacao.Ajustes.Count;
+
+        var r = await Rodar(_criacao.EscolherAsync(EscolhaEscuta.TantoFaz));
+
+        Assert.True(r.Ok, r.Motivo);
+        Assert.Equal("+2.0", _simulador.Valor("081", 0));
+        Assert.Equal(masterAntes, Master());
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+        Assert.Equal(2, _criacao.Rodada);
+        Assert.Null(_criacao.Escuta);
+        var novo = Assert.Single(_criacao.Ajustes.Skip(ajustes)); // o master não mudou: só o ganho
+        Assert.Equal(("081", (int?)0, "Grave como está", 2), (novo.Codigo, novo.Indice, novo.Frase, novo.Rodada));
+        Assert.False(novo.Diferente);
+
+        var e = Assert.Single(await EventosJson(chave, CriacaoMemoria.EventoEscuta));
+        Assert.Equal("grave", e.GetProperty("variavel").GetString());
+        Assert.Equal("tanto-faz", e.GetProperty("escolha").GetString());
+        Assert.Equal(2, e.GetProperty("rodada").GetInt32());
+        var estado = Json(await Pedir("GET", "/criacao", chave: chave));
+        Assert.Equal("ajustando", estado.GetProperty("etapa").GetString());
+        Assert.Equal(JsonValueKind.Null, estado.GetProperty("escuta").ValueKind);
+        Assert.Equal("tanto-faz", estado.GetProperty("ultimaEscolha").GetProperty("escolha").GetString());
+
+        var resumo = await Pedir("POST", "/criacao/resumo", null, chave);
+        Assert.Equal(200, resumo.Status);
+        var linha = Json(resumo).GetProperty("resumo").EnumerateArray().Single(l => l.GetProperty("rotulo").GetString() == "Ganho da saída 1");
+        Assert.True(linha.GetProperty("daRodada").GetBoolean());
+        Assert.Equal("+2,0 dB", linha.GetProperty("valor").GetString());
+    }
+
+    [Fact]
+    public async Task Prefiro_o_2_fica_na_versao_2_com_o_master_de_antes_da_escuta_e_a_escolha_e_o_numero()
+    {
+        var chave = await EscutaAberta();
+        var masterAntes = Master();
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+        Assert.True(Master() < masterAntes); // a 2, mais forte, tocava com o master igualado
+
+        var r = await Rodar(_criacao.EscolherAsync(EscolhaEscuta.Dois));
+
+        Assert.True(r.Ok, r.Motivo);
+        Assert.Equal("+5.0", _simulador.Valor("081", 0));
+        Assert.Equal(masterAntes, Master()); // o master igualado só servia para comparar
+        var rodada = _criacao.Ajustes.Where(a => a.Rodada == 2).ToArray();
+        var ganho = Assert.Single(rodada);
+        Assert.Equal(("081", (int?)0, "Grave mais cheio"), (ganho.Codigo, ganho.Indice, ganho.Frase));
+        Assert.DoesNotContain(rodada, a => a.Codigo == "080");
+        Assert.Equal(2, Assert.Single(await EventosJson(chave, CriacaoMemoria.EventoEscuta)).GetProperty("escolha").GetInt32());
+        Assert.Equal(200, (await Pedir("POST", "/criacao/resumo", null, chave)).Status);
+    }
+
+    /// <summary>A cerca vale em cada versão inteira: o limitador da JBL L em −3 dB passa do teto (o do curso do cone, como na 13a).</summary>
+    [Fact]
+    public async Task Versao_acima_do_teto_da_409_com_a_mensagem_da_cerca_e_nada_e_escrito()
+    {
+        var chave = await NoRefino();
+        var antes = EscritasDeAudio().Length;
+
+        var r = await Escuta(chave,
+            """{"codigo":"071","indice":0,"valor":-12.0,"frase":"Limite como está","motivo":"Comparar."}""",
+            """{"codigo":"071","indice":0,"valor":-3.0,"frase":"Mais folga","motivo":"Comparar."}""");
+
+        Assert.Equal(409, r.Status);
+        Assert.StartsWith("Limite: JBL L, −9,", Motivo(r));
+        Assert.Equal(antes, EscritasDeAudio().Length);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+        Assert.Null(_criacao.Escuta);
+    }
+
+    [Fact]
+    public async Task O_X_na_escuta_volta_a_copia_de_antes_da_criacao_e_fecha()
+    {
+        var chave = await NoRefino();
+        var copia = _copia.Ultima!;
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+
+        var r = await Rodar(_criacao.CancelarAsync(CriacaoMemoria.PorUsuario));
+
+        Assert.True(r.Ok, r.Motivo);
+        Assert.Equal(EtapaCriacao.Fechada, _criacao.Etapa);
+        IgualACopia(copia);
+        Assert.Null(_copia.Ultima!.Operacao);
+        Assert.Empty(await EventosJson(chave, CriacaoMemoria.EventoEscuta));
+    }
+
+    [Fact]
+    public async Task A_ajuda_documenta_a_escuta_e_a_proposta_de_ficha()
+    {
+        await Conectar();
+        await Parear();
+
+        var texto = Json(await Pedir("GET", "/ajuda")).GetProperty("texto").GetString()!;
+
+        foreach (var trecho in new[] { "POST /criacao/escuta", "criacao-escuta", "A escuta só vale no refino.", "tanto-faz", "ficha-pedida",
+                     "POST /ficha/proposta", "O prazo da proposta acabou.", "outra-fonte" })
+            Assert.Contains(trecho, texto);
+    }
+
+    /// <summary>
+    /// Até o refino com um passo antes de abrir (depois de conectar e antes de parear): a última pergunta, um ajuste, o
+    /// resumo, "Avaliar o som" e uma resposta do "Como ficou?".
+    /// </summary>
+    private async Task<string> NoRefinoDepois(Func<Task> antes)
+    {
+        await Conectar();
+        await antes();
+        var chave = await Parear();
+        Assert.Equal(200, (await Pedir("POST", "/criacao/abrir", null, chave)).Status);
+        Assert.Equal(200, (await Pergunta(chave, ultima: true)).Status);
+        Assert.True(_criacao.Responder(0).Ok);
+        Assert.Equal(200, (await Ajuste(chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/resumo", null, chave)).Status);
+        Assert.Equal(200, (await Pedir("POST", "/criacao/como-ficou", """{"respostas":["Quero mais impacto","Os graves embolaram"]}""", chave)).Status);
+        Assert.True(_criacao.AvaliarSom().Ok);
+        Assert.True(_criacao.ResponderComoFicou(1).Ok);
+        Assert.Equal(2, _criacao.Rodada);
+        return chave;
+    }
+
+    private static string MasterVersao(decimal valor) =>
+        $$"""{"codigo":"080","valor":{{valor.ToString(CultureInfo.InvariantCulture)}},"frase":"Volume","motivo":"Comparar."}""";
+
+    private static string Saidas(IReadOnlyList<IReadOnlyList<int>> saidas) => string.Join("|", saidas.Select(s => string.Join("+", s)));
+
+    [Fact]
+    public void As_saidas_com_alto_falante_do_Casa_e_de_uma_lista_vazia()
+    {
+        var casa = CasaDoDenis.EquipamentosCasa;
+
+        Assert.Equal("0|1|2+3", Saidas(Rendimento.Igualador.SaidasComAltoFalante(casa, Ligacoes.Saidas(casa))));
+        // Sem equipamento que toca, cada canal do processador é uma saída.
+        Assert.Equal("0|1|2|3", Saidas(Rendimento.Igualador.SaidasComAltoFalante([], Ligacoes.Saidas([], false, false))));
+        Assert.Equal("0|1|2|3", Saidas(Rendimento.Igualador.SaidasComAltoFalante(null, Ligacoes.Saidas([], false, false))));
+    }
+
+    [Fact]
+    public async Task Escuta_com_um_canal_sem_calibracao_da_409_e_nada_e_escrito()
+    {
+        var chave = await NoRefino();
+        var semCalibracao = CasaDoDenis.EquipamentosSemCalibracao.Single(e => e.Id == CasaDoDenis.IdModuloCasa);
+        var modulo = _setups.Setup(CasaDoDenis.IdSetupCasa)!.Equipamentos.Single(e => e.Id == CasaDoDenis.IdModuloCasa);
+        Assert.True((await Rodar(_setups.EditarEquipamentoAsync(CasaDoDenis.IdSetupCasa, modulo with { Dados = semCalibracao.Dados }))).Ok);
+        var antes = EscritasDeAudio().Length;
+
+        var r = await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"));
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(Rendimento.SemCalibracao.Msg("JBL L"), Motivo(r));
+        Assert.Equal(antes, EscritasDeAudio().Length);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task Escuta_com_o_master_acima_do_nivel_em_uso_da_409_e_nada_e_escrito()
+    {
+        decimal conta = 0;
+        var chave = await NoRefinoDepois(async () =>
+        {
+            Assert.True((await Rodar(_setups.DefinirNivelBluetoothAsync(CasaDoDenis.IdSetupCasa, CasaDoDenis.NivelBluetoothCasa))).Ok);
+            Assert.True((await Rodar(_setups.DefinirNivelAsync(CenarioFilme.Memoria.Id, Rendimento.NivelRendimento.Alto))).Ok);
+            conta = _setups.ContaEmUso()!.Master!.Value;
+        });
+        var antes = EscritasDeAudio().Length;
+
+        var r = await Escuta(chave, MasterVersao(conta - 1.0m), MasterVersao(conta + 1.0m));
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(Rendimento.Niveis.MsgMasterAcima(Rendimento.NivelRendimento.Alto, _setups.ContaEmUso()!.Master!.Value), Motivo(r));
+        Assert.Equal(antes, EscritasDeAudio().Length);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task Escuta_com_os_dois_canais_do_link_diferentes_da_400_e_a_versao_3_nao_existe()
+    {
+        var chave = await NoRefino();
+
+        var link = await Escuta(chave,
+            """{"codigo":"081","indice":2,"valor":2.0,"frase":"Sub","motivo":"Comparar."},{"codigo":"081","indice":3,"valor":3.0,"frase":"Sub","motivo":"Comparar."}""",
+            GanhoJbl(5.0m, "Dois"));
+
+        Assert.Equal(400, link.Status);
+        Assert.Equal(CriacaoMemoria.MsgRepetidoLink("Ganho da saída 4", 1), Motivo(link));
+
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        var tres = await Rodar(_criacao.OuvirAsync(3));
+        Assert.False(tres.Ok);
+        Assert.Equal(CriacaoMemoria.MsgVersaoInvalida, tres.Motivo);
+    }
+
+    [Fact]
+    public async Task Igualar_abaixo_de_menos_80_dB_da_409_e_nada_e_escrito()
+    {
+        var chave = await NoRefino();
+        var antes = EscritasDeAudio().Length;
+
+        // A versão 1, mais forte, já pede o master no mínimo: igualar pediria menos ainda.
+        var r = await Escuta(chave, MasterVersao(-80.0m) + "," + GanhoJbl(5.0m, "Um"), MasterVersao(-80.0m) + "," + GanhoJbl(2.0m, "Dois"));
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(CriacaoMemoria.MsgSemIgualar, Motivo(r));
+        Assert.Equal(antes, EscritasDeAudio().Length);
+    }
+
+    [Fact]
+    public async Task Um_ajuste_da_versao_escolhida_igual_ao_de_antes_nao_entra_no_resumo()
+    {
+        var chave = await NoRefino();
+        var ganhoAntes = _estado.Valor("081", 0)!.Numero!.Value;
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(ganhoAntes, "Como está"), GanhoJbl(ganhoAntes - 3.0m, "Menos grave"))).Status);
+        var ajustes = _criacao.Ajustes.Count;
+
+        Assert.True((await Rodar(_criacao.EscolherAsync(EscolhaEscuta.Um))).Ok);
+
+        Assert.Equal(ajustes, _criacao.Ajustes.Count);
+        Assert.Equal(EtapaCriacao.Ajustando, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task DELETE_tarefa_na_escuta_interrompe_pela_metade_e_o_Voltar_a_copia_volta_ao_som_de_antes()
+    {
+        var chave = await NoRefino();
+        var copia = _copia.Ultima!;
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+
+        Assert.Equal(200, (await Pedir("DELETE", "/tarefa", null, chave)).Status);
+
+        Assert.Equal(EtapaCriacao.Fechada, _criacao.Etapa);
+        Assert.Single(EventosDaCriacao(CriacaoMemoria.EventoInterrompida));
+        Assert.NotNull(_copia.PelaMetade); // com ajuste escrito, a regra 6: pela metade
+        Assert.True((await Rodar(_copia.VoltarAsync())).Ok);
+        IgualACopia(copia);
+    }
+
+    [Fact]
+    public async Task Cancelar_pela_porta_na_escuta_volta_a_copia_de_antes_da_criacao()
+    {
+        var chave = await NoRefino();
+        var copia = _copia.Ultima!;
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+
+        var r = await Rodar(Pedir("POST", "/criacao/cancelar", null, chave));
+
+        Assert.Equal(200, r.Status);
+        Assert.True(Json(r).GetProperty("voltou").GetBoolean());
+        Assert.Equal(EtapaCriacao.Fechada, _criacao.Etapa);
+        IgualACopia(copia);
+    }
+
+    [Fact]
+    public async Task A_versao_1_da_porta_vai_ao_historico_como_IA_e_a_troca_do_usuario_como_App()
+    {
+        var chave = await NoRefino();
+
+        Assert.Equal(200, (await Escuta(chave, GanhoJbl(2.0m, "Um"), GanhoJbl(5.0m, "Dois"))).Status);
+        Assert.Contains(_historico.Entradas, e => e.Origem == OrigemComando.Ia && e.Enviado && e.Endereco == new Endereco("081", 0)
+                                                  && e.Valor is { } v && Camadas.Iguais("081", v, "+2.0"));
+        Assert.True((await Rodar(_criacao.OuvirAsync(2))).Ok);
+        Assert.Contains(_historico.Entradas, e => e.Origem == OrigemComando.App && e.Enviado && e.Endereco == new Endereco("081", 0)
+                                                  && e.Valor is { } v && Camadas.Iguais("081", v, "+5.0"));
+    }
+
     // ----------------------------------------------------------------- critério de aceite
 
     [Fact]

@@ -357,6 +357,17 @@ public sealed class EquipamentosViewModel : TelaBase, IDisposable
     /// <summary>As chaves dos campos que valem para o grupo.</summary>
     public static IReadOnlyList<string> CamposDo(GrupoEquipamento grupo) => SecoesDo(grupo).SelectMany(s => s.Campos).ToArray();
 
+    /// <summary>O rótulo e a unidade de um campo da ficha ("Fs", "Hz"), como na folha; um campo desconhecido fica com o nome.</summary>
+    public static (string Rotulo, string? Unidade) RotuloDoCampo(string campo)
+    {
+        foreach (var l in Linhas)
+        {
+            if (l.Nome == campo)
+                return (l.Rotulo, l.Unidade);
+        }
+        return (campo, null);
+    }
+
     /// <summary>"Tirar JBL R do Casa 2.1?"</summary>
     public static string MsgConfirmarTirar(string nome, string setup) => $"Tirar {nome} do {setup}?";
 

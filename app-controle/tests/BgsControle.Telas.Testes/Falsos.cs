@@ -145,6 +145,7 @@ internal sealed class NavegacaoFalsa : INavegacao
     public void AbrirSenha() => Pedidos.Add("senha");
     public void AbrirMonitoracao() => Pedidos.Add("monitoracao");
     public void AbrirChaves() => Pedidos.Add("chaves");
+    public void AbrirAparelho() => Pedidos.Add("aparelho");
     public void AbrirCalibracao(int? canal) => Pedidos.Add(canal is { } c ? $"calibracao:CH{c + 1}" : "calibracao");
     public void AbrirTesteSeco() => Pedidos.Add("teste-seco");
 

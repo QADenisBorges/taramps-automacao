@@ -87,6 +87,9 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
 
     public void AbrirChaves() => Empurrar("Chaves de acesso", servicos.GetRequiredService<ChavesPage>);
 
+    /// <summary>História 14b: a chave "Controle pela rede" fica no grupo APARELHO das Configurações.</summary>
+    public void AbrirAparelho() => AbrirConfiguracoes();
+
     public void AbrirCalibracao(int? canal) => Empurrar("Calibração", () =>
     {
         // Com a saída (o "Calibrar ›" de uma faixa), a calibração dela abre no passo 1; a de outra saída aberta não troca (a

@@ -13,10 +13,12 @@ using BgsControle.Nucleo.Uso;
 namespace BgsControle.Nucleo.Porta;
 
 /// <summary>
-/// Um evento para a IA consultar (<c>GET /eventos?desde=N</c>): pausou, retomou, parada, um comando da tela enviado
-/// ou um evento da criação da memória (<see cref="Criacao"/>: a resposta, o "Como ficou?", salva, cancelada, interrompida).
+/// Um evento para a IA consultar (<c>GET /eventos?desde=N</c>): pausou, retomou, parada, um comando da tela enviado,
+/// um evento da criação da memória (<see cref="Criacao"/>: a resposta, o "Como ficou?", a escuta, salva, cancelada,
+/// interrompida) ou o pedido de ficha (<see cref="Ficha"/>, história 14b).
 /// </summary>
-public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, EntradaHistorico? Comando, EventoCriacao? Criacao = null);
+public sealed record EventoPorta(long Numero, DateTimeOffset Hora, string Tipo, EntradaHistorico? Comando, EventoCriacao? Criacao = null,
+    PedidoFicha? Ficha = null);
 
 /// <summary>
 /// A porta de comandos da IA (CAP-12, <c>porta-de-comandos.md</c>): as cinco travas num lugar só.
@@ -60,6 +62,9 @@ public sealed class PortaComandos : IDisposable
     public const string MsgChaveDesligada = "A chave Controle pela rede está desligada.";
     public const string MsgErroInesperado = "Erro inesperado no app.";
 
+    /// <summary>A resposta do <c>/ficha/proposta</c> aceito (história 14b): a folha abre no celular.</summary>
+    public const string MsgPropostaNaTela = "Proposta na tela.";
+
     /// <summary>O <c>/ajuste</c> e o <c>/memoria/aplicar</c> comuns com a criação da memória aberta (CAP-18).</summary>
     public const string MsgCriacaoAberta = "Uma nova memória está sendo criada: os ajustes vão por /criacao/ajuste até salvar ou cancelar.";
 
@@ -98,6 +103,7 @@ public sealed class PortaComandos : IDisposable
     private readonly CriacaoMemoria? _criacao;
     private readonly AnalisePlaylist? _analise;
     private readonly TermicoExtra? _termico;
+    private readonly PropostaFicha? _ficha;
 
     private readonly object _trava = new();
     private readonly SemaphoreSlim _abrir = new(1, 1);
@@ -133,7 +139,8 @@ public sealed class PortaComandos : IDisposable
         int porta = PortaPadrao,
         CriacaoMemoria? criacao = null,
         AnalisePlaylist? analise = null,
-        TermicoExtra? termico = null)
+        TermicoExtra? termico = null,
+        PropostaFicha? ficha = null)
     {
         _sessao = sessao;
         _chaves = chaves;
@@ -154,6 +161,7 @@ public sealed class PortaComandos : IDisposable
         _criacao = criacao;
         _analise = analise;
         _termico = termico;
+        _ficha = ficha;
         _servidor = new ServidorHttp(porta, AtenderAsync, Triagem, log);
         _paradaVista = uso.Parada;
 
@@ -166,6 +174,8 @@ public sealed class PortaComandos : IDisposable
         _sessao.Mudou += AoMudarSessao;
         if (_criacao is not null)
             _criacao.Aconteceu += AoAcontecerCriacao;
+        if (_ficha is not null)
+            _ficha.Pedida += AoPedirFicha;
         // A chave pode já estar carregada (sem o aviso de agora): confere uma vez.
         Inicio = ServidorHttp.SemFluxo(AtualizarSeguroAsync);
     }
@@ -348,6 +358,9 @@ public sealed class PortaComandos : IDisposable
 
     private void AoRetomar() => Registrar("retomou", null);
 
+    /// <summary>História 14b: o pedido de ficha de um modelo fora da base (<c>ficha-pedida</c>).</summary>
+    private void AoPedirFicha(PedidoFicha pedido) => Registrar(PropostaFicha.EventoPedida, null, ficha: pedido);
+
     private void AoRegistrar(EntradaHistorico entrada)
     {
         if (entrada.Origem == OrigemComando.Tela && entrada.Enviado)
@@ -406,11 +419,11 @@ public sealed class PortaComandos : IDisposable
         }
     }
 
-    private void Registrar(string tipo, EntradaHistorico? comando, EventoCriacao? criacao = null)
+    private void Registrar(string tipo, EntradaHistorico? comando, EventoCriacao? criacao = null, PedidoFicha? ficha = null)
     {
         lock (_trava)
         {
-            _eventos.AddLast(new EventoPorta(++_ultimoEvento, _relogio.GetLocalNow(), tipo, comando, criacao));
+            _eventos.AddLast(new EventoPorta(++_ultimoEvento, _relogio.GetLocalNow(), tipo, comando, criacao, ficha));
             while (_eventos.Count > MaximoEventos)
                 _eventos.RemoveFirst();
         }
@@ -584,6 +597,8 @@ public sealed class PortaComandos : IDisposable
             ("POST", "/criacao/ajuste") when _criacao is not null => AjusteCriacao,
             ("POST", "/criacao/resumo") when _criacao is not null => ResumoCriacao,
             ("POST", "/criacao/como-ficou") when _criacao is not null => ComoFicouCriacao,
+            ("POST", "/criacao/escuta") when _criacao is not null => EscutaCriacao,
+            ("POST", "/ficha/proposta") when _ficha is not null => PropostaDeFicha,
             ("POST", "/criacao/cancelar") when _criacao is not null => CancelarCriacao,
             _ => null,
         };
@@ -591,8 +606,9 @@ public sealed class PortaComandos : IDisposable
             return Recusa(404, MsgCaminho);
         var op = montar(CorpoPedido.Ler(pedido.Corpo));
         // A dúvida do Setup bloqueia a IA (regra 5): nenhum POST até o Denis escolher na tela. O
-        // parar do gerador fica de fora: desligar o tom nunca é travado.
-        if (pedido.Metodo == "POST" && pedido.Caminho != "/gerador/parar" && _setups.MotivoBloqueioIa is { } duvida)
+        // parar do gerador fica de fora: desligar o tom nunca é travado. A proposta de ficha (história 14b) também: ela não
+        // mexe no aparelho (só abre a folha), e o equipamento se cadastra também sem o aparelho conectado.
+        if (pedido.Metodo == "POST" && pedido.Caminho is not ("/gerador/parar" or "/ficha/proposta") && _setups.MotivoBloqueioIa is { } duvida)
             return RecusaDaPorta(op, duvida);
         // Na criação da memória (CAP-18), só os ajustes dela: o /ajuste e o aplicar comuns esperam o fim.
         if (pedido.Caminho is "/ajuste" or "/memoria/aplicar" && _criacao is { Aberta: true })
@@ -603,7 +619,8 @@ public sealed class PortaComandos : IDisposable
     /// <summary>Firmware, a confirmação na tela e a operação, tudo como IA.</summary>
     private async Task<RespostaPorta> RodarAsync(Operacao op)
     {
-        if (_sessao.SoLeitura)
+        // A proposta de ficha (história 14b) não mexe no aparelho: o firmware não a recusa.
+        if (_sessao.SoLeitura && !op.SemAparelho)
             return RecusaDaPorta(op, MsgFirmware);
 
         using (Origem.Como(OrigemComando.Ia))
@@ -692,7 +709,7 @@ public sealed class PortaComandos : IDisposable
     /// <see cref="ContaSequencia"/>: um <c>/ajuste</c>, que entra na conta do Continuar.
     /// </summary>
     private sealed record Operacao(ComandoNaPorta? Comando, string? Quadro, PedidoConfirmacao? Confirmacao, Func<Task<RespostaPorta>> Executar,
-        Chave? ChaveAntes = null, bool ContaSequencia = false);
+        Chave? ChaveAntes = null, bool ContaSequencia = false, bool SemAparelho = false);
 
     private static bool Confirma(Chave chave) => ChavesPadrao.De(chave).ConfirmacaoIa == ConfirmacaoIa.Sempre;
 
@@ -983,8 +1000,128 @@ public sealed class PortaComandos : IDisposable
         EtapaCriacao.Resumo => "resumo",
         EtapaCriacao.ComoFicou => "como-ficou",
         EtapaCriacao.Salvar => "salvar",
+        EtapaCriacao.Escuta => "escuta",
         _ => "fechada",
     };
+
+    /// <summary>
+    /// História 14b: a escuta "1 ou 2", só no refino. As versões são listas de ajustes como o <c>/criacao/ajuste</c>
+    /// ({codigo, indice, valor, frase, motivo}); o app iguala o volume, confere cada versão inteira na cerca e na regra de
+    /// "sem calibração" (409 sem nada escrito) e escreve a versão 1. A escolha volta pelo <c>/eventos</c>.
+    /// </summary>
+    private Operacao EscutaCriacao(CorpoPedido corpo)
+    {
+        var texto = corpo.Texto("texto");
+        var variavel = corpo.Texto("variavel");
+        var versao1 = AjustesEscuta(corpo, "versao1");
+        var versao2 = AjustesEscuta(corpo, "versao2");
+        return OperacaoCriacao(async () => Criacao(await _criacao!.AbrirEscutaAsync(texto, variavel, versao1, versao2), w =>
+        {
+            EscreverEtapa(w);
+            EscreverEscuta(w);
+        }));
+    }
+
+    private static IReadOnlyList<AjusteEscuta> AjustesEscuta(CorpoPedido corpo, string nome)
+    {
+        var lista = new List<AjusteEscuta>();
+        foreach (var item in corpo.ListaObjetos(nome))
+        {
+            decimal? numero = null;
+            string? texto = null;
+            switch (item.Campo("valor"))
+            {
+                case { ValueKind: JsonValueKind.Number } v when v.TryGetDecimal(out var n):
+                    numero = n;
+                    break;
+                case { ValueKind: JsonValueKind.String } v:
+                    texto = v.GetString();
+                    break;
+                default:
+                    throw new PedidoInvalidoException($"Em \"{nome}\", o \"valor\" é um número (ou o texto da rota: \"a\", \"b\", \"a+b\").");
+            }
+            lista.Add(new AjusteEscuta(item.Texto("codigo"), item.InteiroOpcional("indice"), numero, texto, item.TextoOpcional("frase") ?? "",
+                item.TextoOpcional("motivo") ?? ""));
+        }
+        return lista;
+    }
+
+    /// <summary>A escuta aberta no JSON (<c>escuta</c>: texto, variável, versão marcada, aviso, masters e versões; ou null).</summary>
+    private void EscreverEscuta(Utf8JsonWriter w)
+    {
+        if (_criacao!.Escuta is not { } e)
+        {
+            w.WriteNull("escuta");
+            return;
+        }
+        w.WriteStartObject("escuta");
+        w.WriteString("texto", e.Texto);
+        w.WriteString("variavel", e.Variavel);
+        w.WriteNumber("marcada", e.Marcada);
+        w.WriteString("aviso", e.Aviso);
+        if (e.Master1 is { } m1)
+            w.WriteNumber("master1", m1);
+        else
+            w.WriteNull("master1");
+        if (e.Master2 is { } m2)
+            w.WriteNumber("master2", m2);
+        else
+            w.WriteNull("master2");
+        foreach (var (nome, versao) in new[] { ("versao1", e.Versao1), ("versao2", e.Versao2) })
+        {
+            w.WriteStartArray(nome);
+            foreach (var a in versao)
+            {
+                w.WriteStartObject();
+                w.WriteString("codigo", a.Codigo);
+                if (a.Indice is { } i)
+                    w.WriteNumber("indice", i);
+                else
+                    w.WriteNull("indice");
+                if (a.Numero is { } n)
+                    w.WriteNumber("valor", n);
+                else
+                    w.WriteString("valor", a.Texto);
+                w.WriteString("frase", a.Frase);
+                w.WriteString("motivo", a.Motivo);
+                w.WriteEndObject();
+            }
+            w.WriteEndArray();
+        }
+        w.WriteEndObject();
+    }
+
+    /// <summary>A escolha no JSON: 1 ou 2 como número, "tanto-faz" como texto.</summary>
+    private static void EscreverEscolha(Utf8JsonWriter w, string nome, string escolha)
+    {
+        if (escolha is "1" or "2")
+            w.WriteNumber(nome, escolha == "1" ? 1 : 2);
+        else
+            w.WriteString(nome, escolha);
+    }
+
+    // ------------------------------------------------------------------ a proposta de ficha (história 14b)
+
+    /// <summary>
+    /// A proposta de ficha para um equipamento com o pedido pendente (<c>ficha-pedida</c>): cada dado com o campo, o
+    /// valor, a origem (oficial ou outra-fonte), a fonte e o aviso. Vai para a folha do app; a porta nunca escreve a ficha.
+    /// </summary>
+    private Operacao PropostaDeFicha(CorpoPedido corpo)
+    {
+        var id = corpo.Texto("idEquipamento");
+        var dados = new List<DadoProposto>();
+        foreach (var item in corpo.ListaObjetos("dados"))
+        {
+            var campo = item.Texto("campo");
+            var origem = FichaJson.OrigemDe(item.Texto("origem")) ?? throw new PedidoInvalidoException(PropostaFicha.MsgOrigem(campo));
+            dados.Add(new DadoProposto(campo, item.Numero("valor"), origem, item.TextoOpcional("fonte") ?? "", item.TextoOpcional("aviso")));
+        }
+        return new Operacao(null, null, null, () =>
+        {
+            var r = _ficha!.Receber(id, dados);
+            return Task.FromResult(r.Ok ? Feito(MsgPropostaNaTela) : Recusa(r.Invalido ? 400 : 409, r.Motivo ?? MsgErroInesperado));
+        }, SemAparelho: true);
+    }
 
     private void EscreverEtapa(Utf8JsonWriter w)
     {
@@ -1035,13 +1172,29 @@ public sealed class PortaComandos : IDisposable
         w.WriteEndArray();
     }
 
-    /// <summary>O <c>GET /criacao</c>: a etapa, o Setup, as perguntas com as respostas, a rodada, os ajustes e o "Como ficou?".</summary>
+    /// <summary>
+    /// O <c>GET /criacao</c>: a etapa, o Setup, as perguntas com as respostas, a rodada, os ajustes, o "Como ficou?", a
+    /// escuta aberta e a última escolha (história 14b).
+    /// </summary>
     private void EscreverCriacao(Utf8JsonWriter w)
     {
         var c = _criacao!;
         EscreverEtapa(w);
         if (!c.Aberta)
             return;
+        EscreverEscuta(w);
+        if (c.UltimaEscolha is { } escolha)
+        {
+            w.WriteStartObject("ultimaEscolha");
+            w.WriteNumber("rodada", escolha.Rodada);
+            w.WriteString("variavel", escolha.Variavel);
+            EscreverEscolha(w, "escolha", escolha.Nome);
+            w.WriteEndObject();
+        }
+        else
+        {
+            w.WriteNull("ultimaEscolha");
+        }
         w.WriteStartObject("setup");
         w.WriteString("id", c.IdSetup);
         w.WriteString("nome", c.NomeSetup);
@@ -1604,6 +1757,14 @@ public sealed class PortaComandos : IDisposable
                     EscreverEntrada(w, c, comHora: false);
                 if (e.Criacao is { } criacao)
                     EscreverEventoCriacao(w, criacao);
+                if (e.Ficha is { } ficha)
+                {
+                    w.WriteString("idSetup", ficha.IdSetup);
+                    w.WriteString("idEquipamento", ficha.IdEquipamento);
+                    w.WriteString("modelo", ficha.Modelo);
+                    w.WriteString("grupo", FichaJson.NomeGrupo(ficha.Grupo));
+                    w.WriteString("categoria", ficha.Categoria);
+                }
                 w.WriteEndObject();
             }
             w.WriteEndArray();
@@ -1630,6 +1791,10 @@ public sealed class PortaComandos : IDisposable
             w.WriteString("memoria", e.Memoria);
         if (e.Motivo is not null)
             w.WriteString("motivo", e.Motivo);
+        if (e.Variavel is not null)
+            w.WriteString("variavel", e.Variavel);
+        if (e.Escolha is not null)
+            EscreverEscolha(w, "escolha", e.Escolha);
     }
 
     private RespostaPorta RespostaHistorico(PedidoPorta pedido)
@@ -1682,7 +1847,7 @@ public sealed class PortaComandos : IDisposable
         GET  /ajuda: este texto.
         GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), temperaturaAmbiente (°C, {"valor":35,"origem":"digitado"}, ou null: vale 25 °C) e temperaturaAmbienteUsada (°C), duvida, as memórias do celular dele com id, nome, emUso, o preset lembrado, nivel (o nível de rendimento: "baixo", "medio", "alto", "maximo" ou null) e master (o master guardado pelo nível para o preset em uso, ou null), e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
-        GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
+        GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado, os da criação da memória, criacao-*, e o pedido de ficha, ficha-pedida). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
         GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Em "extra", o teto do Extra da memória em uso com o preset em uso, pela análise da playlist (o "Otimizar configuração na playlist" do Player; só calculado, nunca aplicado): estado (falta, analisando, pronta ou indisponivel), master (o candidato, em dB, ou null), motivo, aviso (falta ganho), pesando (por faixa analisada com som: id, faixa e db, quanto ela tira do teto) e trechos (por faixa, na cadeia do preset em uso: id, faixa, situacao pronta, em-analise, falhou ou sem-som, o motivo da falha ou do sem som e os 2 trechos fortes de 10 s com inicio e fim em segundos). Ainda no "extra" (história 13e): validado (o master que passou no teste a seco, da memória em uso com o preset em uso, em dB, ou null; o teste a seco não roda pela porta), validadoVigente (false com a memória em "revalidar" ou a cadeia mudada depois do teste: aí o master do Extra é o menor entre o validado e o do pior caso; null sem validado), revalidar (true quando a ficha ou a calibração mudou, ou houve dois clips não previstos na mesma faixa) com o motivoRevalidar, e marcas (as faixas marcadas por um clip não previsto no uso do Extra: faixa, id, saida e segundos). Ainda no "extra" (história 13f, o modelo térmico): termicoPode (todo alto-falante passivo das saídas com os cinco dados térmicos; sem eles o Extra não se escolhe), termicoMotivo ("Falta o modelo térmico do Sub.", ou null), termicoSelo ("estimado" com algum dado térmico só digitado, ou null), termico (por alto-falante: altoFalante, temperatura estimada da bobina e maxima, em °C, e selo; null sem o modelo), tempoExtra (no Extra em uso e tocando, os segundos até a primeira bobina chegar à máxima, ou null), semLimite (true no Extra, tocando, quando nenhuma bobina chega à máxima com a faixa atual: tempoExtra fica null), descanso (os segundos que faltam do descanso depois do corte, com o Bluetooth travado, ou null; no descanso, o POST /aparelho/bluetooth {"ligado":true} e um /ajuste que tira o mute (100 = 0) são recusados com "Descansando: mm:ss.", na tela também), bluetoothTravado e avisoTermico ("Não consegui travar o Bluetooth. Desligue o módulo.", ou null). O nivel pode ser "extra". Uma falha no cálculo do extra dá estado indisponivel com o motivo, sem derrubar o resto. Uma falha no cálculo: 500.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b". No descanso do Extra (história 13f), tirar o mute (100 = 0) é recusado com "Descansando: mm:ss.".
@@ -1699,7 +1864,7 @@ public sealed class PortaComandos : IDisposable
         DELETE /tarefa: a IA terminou.
 
         Criação da memória (CAP-18), nos dois sentidos: a IA manda, o celular mostra e devolve as respostas pelo /eventos.
-        GET  /criacao: a etapa (fechada, perguntas, ajustando, resumo, como-ficou, salvar), se os ajustes estão autorizados, a rodada, o Setup, o somAntes, as perguntas com as respostas, os ajustes, o resumo e o "Como ficou?".
+        GET  /criacao: a etapa (fechada, perguntas, ajustando, escuta, resumo, como-ficou, salvar), se os ajustes estão autorizados, a rodada, o Setup, o somAntes, as perguntas com as respostas, os ajustes, o resumo, o "Como ficou?", a escuta aberta (escuta: texto, variavel, marcada 1 ou 2, aviso, master1, master2, versao1, versao2; ou null) e a última escolha (ultimaEscolha: rodada, variavel, escolha; ou null).
         POST /criacao/abrir: abre no Setup em uso (sem dúvida, conectado e com a leitura pronta); o app guarda a cópia de antes e a tarefa começa (o vigia de 30 s vale). Uma criação por vez.
         O toque no "+ Nova memória" do celular chega no /eventos como criacao-pedida (só com a criação fechada): abra com POST /criacao/abrir e mande a primeira pergunta. O celular não abre a criação sozinho.
         POST /criacao/pergunta {"texto":"Para que é esta memória?","respostas":["Música","Filme","Jogo"],"ultima":false}: de 3 a 4 respostas; o celular acrescenta "Outro…". Só antes dos ajustes e depois da resposta à anterior. A resposta chega no /eventos como criacao-resposta (numero, texto, doOutro).
@@ -1707,11 +1872,14 @@ public sealed class PortaComandos : IDisposable
         POST /criacao/ajuste {"codigo":"081","indice":2,"valor":2.0,"frase":"Mais corpo no sub","motivo":"..."}: só depois da resposta à última pergunta (ou ao "Como ficou?"), e só a regulagem (as 15 bandas, o preset de EQ, o link e o mute: 400). Volta antes, novo, relido e diferente; aqui, diferente do /ajuste, relido é o valor que o aparelho confirmou, e semEco diz que ele veio da releitura. Com o link ligado, se a outra saída não acompanhou, o resumo dá 409 até um ajuste ali acompanhar. Não conta para o Continuar.
         POST /criacao/resumo: termina a rodada, se todo ajuste foi relido igual ao pedido (senão 409); volta o resumo, com os da rodada em destaque (daRodada).
         POST /criacao/como-ficou {"respostas":["Quero mais impacto","Os graves embolaram"]}: de 2 a 3 respostas, depois do resumo; o celular mostra "Ótimo, pode salvar" antes e "Outro…" depois. A resposta chega como criacao-como-ficou (texto, doOutro, salvar, rodada); com salvar:false, os ajustes valem de novo numa rodada nova.
+        POST /criacao/escuta {"texto":"Qual grave você prefere?","variavel":"grave","versao1":[{"codigo":"081","indice":2,"valor":2.0,"frase":"Grave como está","motivo":"..."}],"versao2":[{"codigo":"081","indice":2,"valor":5.0,"frase":"Grave mais cheio","motivo":"..."}]}: a escuta "1 ou 2", só no refino (a etapa ajustando numa rodada 2 ou mais, depois de um "Como ficou?" respondido sem salvar; fora dele, 409 "A escuta só vale no refino."; com outra aberta, 409). Cada ajuste é como no /criacao/ajuste, só a regulagem. O celular iguala o volume: o nível médio de cada versão (a cadeia inteira, com o peso de ruído rosa de 20 Hz a 20 kHz, a média das saídas com alto-falante) e o master da mais forte baixa pela diferença (só baixa). Cada versão é conferida inteira na cerca e na regra de "sem calibração" antes de qualquer envio: uma recusa dá 409 com o motivo e nada é escrito. O celular escreve a versão 1 e mostra "1" e "2" (que trocam o som ao vivo, só no que difere) e "Prefiro o 1", "Prefiro o 2" e "Tanto faz". A escolha chega no /eventos como criacao-escuta (variavel, escolha: 1, 2 ou "tanto-faz", rodada); o som fica na versão escolhida ("tanto-faz" volta à 1), com o master de antes da escuta (o igualado só serve para comparar; um master que a própria versão mandou fica), os ajustes dela que mudam o som entram nos ajustes da rodada e a etapa volta a ajustando, na mesma rodada. Se igualar pediria o master abaixo de −80 dB, 409 "Não dá para igualar o volume das duas versões.". Com o link, uma versão que dá valores diferentes aos dois canais do par: 400. A versão 1 sai como IA (no histórico); as trocas do usuário e a escolha, como App. Uma escrita que o aparelho não confirma deixa o aviso "O aparelho ficou com outro valor." e a escuta aberta. O ✕ na escuta cancela a criação, como nas perguntas.
         POST /criacao/cancelar: volta à cópia de antes e fecha, sem salvar (criacao-cancelada, por: porta; voltou diz se o som voltou todo).
         Salvar e dar o nome são só do usuário (criacao-salva, com a memoria). O ✕ do usuário e o Cancelar de uma folha de risco durante a criação também cancelam (por: usuario, folha); o pedido da folha recebe 409 "O usuário cancelou a nova memória.". Se a conexão cai ou a tarefa acaba no meio (DELETE /tarefa, 30 s sem pedidos, o revogar), a criação é interrompida (criacao-interrompida): nada é salvo e, com algum ajuste escrito, o celular fica "aplicado pela metade". Durante a criação, o /ajuste e o /memoria/aplicar comuns recebem 409. Mantenha a tarefa e siga consultando o /eventos até criacao-salva ou criacao-cancelada, mesmo no Salvar, quando só o usuário age: DELETE /tarefa ou 30 s sem pedidos interrompem a criação. Com o Salvar do usuário andando, o /criacao/cancelar recebe 409.
 
+        Proposta de ficha (história 14b): ao salvar um equipamento com o Modelo preenchido que a base de modelos do celular não tem, com a chave Controle pela rede ligada, chega no /eventos o ficha-pedida (idSetup, idEquipamento, modelo, grupo: ativo, amplificador, repasse, receptor ou alto-falante, e categoria). O pedido espera a proposta por 60 s. A proposta não mexe no aparelho: vale também sem o aparelho conectado ou com o Setup em dúvida.
+        POST /ficha/proposta {"idEquipamento":"…","dados":[{"campo":"fs","valor":46,"origem":"oficial","fonte":"https://…","aviso":"Qts não fecha com Qes e Qms"}]}: os campos são os da ficha do grupo (alto-falante: diametro, impedancia, potenciaRms, sensibilidade, faixaMinima, faixaMaxima, re, fs, qes, qms, vas, bl, sd, xmax, le, tMaxBobina, rthBobinaIma, rthImaAr, tauBobina, tauIma, volumeCaixa, fb, areaDuto; ativo: os mesmos sem os térmicos; amplificador: ganho, ganhoPonte, potenciaCanal, tensaoCeifamentoCanal, potenciaPonte, tensaoCeifamentoPonte, tensaoAlimentacao, correnteAlimentacao; repasse e receptor: potenciaRms), com o valor na unidade da ficha e dentro de uma faixa larga, só para pegar a unidade errada (fora dela, 400): {{PropostaFicha.TextoFaixas}}; a origem "oficial" ou "outra-fonte" e a fonte obrigatória (até 120 caracteres); o aviso é opcional (o que não fechou). Um campo inválido dá 400 com o motivo. Sem pedido pendente para o equipamento, depois de 60 s, ou com o modelo ou o grupo do equipamento mudado desde o pedido, 409 "O prazo da proposta acabou.". Salvar o equipamento de novo com o modelo ainda sem ficha na base pede de novo. A proposta vai para uma folha do celular, com cada dado para usar ou recusar: só o toque do usuário salva, na ficha e na base de modelos; a porta nunca escreve a ficha. Sem resposta em 60 s, a ficha fica como está.
         A IA não salva nem renomeia memórias: a porta não tem esse comando. As 3 memórias do aparelho não aparecem: a porta não as carrega nem lê os nomes (isso fica no app da Taramps).
-        Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar; os GET seguem.
+        Com o Setup em dúvida (ou trocando de Setup, ou antes de o app conferir o Setup na conexão), todo POST é recusado com 409 "Setup em dúvida; escolha na tela.", menos o /gerador/parar e o /ficha/proposta; os GET seguem.
         Uma operação que pede o toque espera até 60 s. Só cabe um pedido esperando.
         O toque do usuário na tela nunca é recusado: ele pausa a IA, que retoma depois de 10 s sem toques. Um ajuste que o usuário acabou de mexer é recusado pela porta por 10 s ("o usuário está mexendo nisso.").
         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
@@ -1719,7 +1887,7 @@ public sealed class PortaComandos : IDisposable
         A cerca do limitador: numa saída calibrada e com limite, uma escrita do limitador (071) ou do passa-alta (040, 042) que deixe o limitador OFF, desconhecido ou acima do teto (veja GET /limites, "cerca") é recusada com 409 e a conta ("Limite: JBL L, −6,8 dB, pelo térmico."; num par, o canal culpado entre parênteses), sem nada enviado: no /ajuste, no /criacao/ajuste e no /memoria/aplicar (o lote inteiro é conferido antes da primeira escrita). Para baixar o passa-alta, baixe o limitador antes. O cancelar da criação volta ao som de antes com o limitador de cada saída em min(valor de antes, teto). A cerca não tem chave.
         Níveis de rendimento (Baixo, Médio, Alto, Máximo): o nível se escolhe só no celular. Com a memória em uso num nível, o app põe o master pela conta do pior caso (um tom de 0 dBFS em qualquer frequência pela cadeia da memória e do preset) e o refaz na hora quando a cadeia, a ficha, a calibração ou o preset mudam. Um MASTER (080) pedido acima da conta é recusado com 409 "Nível Alto: o master vai até −8,8 dB.", sem nada enviado; abaixo passa. No Máximo, a cerca usa o teto min(X, C).
         Sem calibração: numa saída com alto-falante passivo cujo módulo não tem o ganho medido (GET /limites, calibrada false), o app não sabe a tensão, e a porta recusa com 409 "Sem calibração: JBL L. O app não sabe a tensão." o ganho, o limitador e o EQ de saída dos canais dela (081, 070 a 073, 090 a 092), e o MASTER, o EQ de entrada, as 15 bandas, o preset de EQ e a rota (080, 030 a 032, 020, 220, 010) se alguma saída do Setup em uso está sem calibração. Sem Setup em uso, esses códigos dão 409 "Sem Setup em uso: o app não sabe a tensão das saídas.". Vale no /ajuste, no /criacao/ajuste e no /memoria/aplicar; o cancelar da criação sempre volta. A calibração é feita pelo usuário no celular.
-        Com firmware diferente do R003, só os GET respondem.
+        Com firmware diferente do R003, só os GET (e o /ficha/proposta, que não mexe no aparelho) respondem.
         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).
         Códigos: 400 corpo ou campo inválido; 401 sem chave ou chave errada; 403 fora da rede local; 404 caminho desconhecido; 409 recusa do app (com o motivo); 413 corpo acima de 64 KB; 431 cabeçalho grande demais; 500 erro inesperado no app.
         """;
@@ -1753,6 +1921,8 @@ public sealed class PortaComandos : IDisposable
         _sessao.Mudou -= AoMudarSessao;
         if (_criacao is not null)
             _criacao.Aconteceu -= AoAcontecerCriacao;
+        if (_ficha is not null)
+            _ficha.Pedida -= AoPedirFicha;
         _servidor.Fechar();
     }
 }

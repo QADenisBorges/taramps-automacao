@@ -93,6 +93,12 @@ public interface INavegacao
     void AbrirChaves();
 
     /// <summary>
+    /// A tela Aparelho, onde fica a chave "Controle pela rede" (o grupo APARELHO das Configurações; história 14b: o
+    /// "+ Nova memória" com a chave desligada leva até ela).
+    /// </summary>
+    void AbrirAparelho();
+
+    /// <summary>
     /// A calibração guiada em tela cheia (história 13g): pela linha "Calibrar saídas" das Configurações (sem saída: a
     /// escolha) ou pelo "Calibrar ›" de uma faixa de sem calibração (com o canal mestre da saída, 0 a 3: a calibração
     /// dela já abre no passo 1).

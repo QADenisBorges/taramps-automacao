@@ -308,4 +308,187 @@ public sealed class MemoriasViewModelTestes : IDisposable
 
         Assert.Empty(_b.Playlists.Playlist(noite));
     }
+
+    // ----------------------------------------------------------------- história 14b: o pedido da nova memória
+
+    /// <summary>A tela Memórias com a criação da memória (sem a porta: o pedido é o evento da criação) e a navegação falsa.</summary>
+    private sealed class ComCriacao : IDisposable
+    {
+        public ComCriacao()
+        {
+            Criacao = new CriacaoMemoria(B.Sessao, B.Estado, B.Escritor, B.Copia, B.Setups!, B.Uso!, B.Log);
+            Criacao.Aconteceu += e =>
+            {
+                lock (Eventos)
+                    Eventos.Add(e.Tipo);
+            };
+            Salvar = B.CriarSalvarViewModel();
+            Vm = new MemoriasViewModel(B.Setups!, B.Copia, B.Sessao, B.Chaves, B.Estado, Salvar, B.Tela, B.Relogio, Criacao, navegacao: Nav);
+        }
+
+        public Bancada B { get; } = new(usoCompartilhado: true, setups: true);
+        public NavegacaoFalsa Nav { get; } = new();
+        public CriacaoMemoria Criacao { get; }
+        public SalvarViewModel Salvar { get; }
+        public MemoriasViewModel Vm { get; }
+        public List<string> Eventos { get; } = [];
+
+        public int Pedidos
+        {
+            get
+            {
+                lock (Eventos)
+                    return Eventos.Count(t => t == CriacaoMemoria.EventoPedida);
+            }
+        }
+
+        public async Task Pronta(bool chave = true)
+        {
+            await B.Conectar();
+            if (chave)
+                Assert.True((await B.Chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
+            await B.Tela.EsvaziarAsync();
+        }
+
+        /// <summary>O relógio anda (os timers da tela disparam) e a fila da tela esvazia.</summary>
+        public async Task Andar(TimeSpan tempo)
+        {
+            B.Relogio.Avancar(tempo);
+            await B.Tela.EsvaziarAsync();
+        }
+
+        public void Dispose()
+        {
+            Vm.Dispose();
+            Salvar.Dispose();
+            Criacao.Dispose();
+            B.ConferirSoAudio();
+            Assert.Empty(B.Tela.Erros);
+        }
+    }
+
+    [Fact]
+    public async Task Nova_memoria_com_a_chave_desligada_mostra_o_texto_leva_a_Aparelho_e_nao_pede_nada()
+    {
+        using var t = new ComCriacao();
+        await t.Pronta(chave: false);
+        Assert.True(t.Vm.PodeNovaMemoria); // a chave desligada não trava: o toque explica
+
+        await t.Vm.NovaMemoria.ExecutarAsync();
+
+        Assert.Equal("Ligue o Controle pela rede em Aparelho.", t.Vm.Mensagem);
+        Assert.Equal(["aparelho"], t.Nav.Pedidos);
+        Assert.Equal(0, t.Pedidos);
+        Assert.False(t.Vm.EsperandoAgente);
+    }
+
+    [Fact]
+    public async Task Nova_memoria_com_resposta_espera_trava_o_2o_toque_e_a_criacao_aberta_em_3_s_acaba_a_espera()
+    {
+        using var t = new ComCriacao();
+        await t.Pronta();
+
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        await t.B.Tela.EsvaziarAsync();
+
+        Assert.Equal(1, t.Pedidos);
+        Assert.True(t.Vm.EsperandoAgente);
+        Assert.False(t.Vm.PodeNovaMemoria);
+        Assert.Equal(MemoriasViewModel.MsgEsperando, t.Vm.MotivoTravaNovaMemoria);
+        Assert.Null(t.Vm.Mensagem);
+
+        // O 2º toque na espera: nada.
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        Assert.Equal(1, t.Pedidos);
+        Assert.Null(t.Vm.Mensagem);
+
+        // A criação abre em 3 s: a espera acaba e a camada da criação entra.
+        await t.Andar(TimeSpan.FromSeconds(3));
+        Assert.True(t.Vm.EsperandoAgente);
+        var abrir = t.Criacao.AbrirAsync();
+        await t.B.Rodar(abrir);
+        Assert.True((await abrir).Ok);
+        await t.B.Tela.EsvaziarAsync();
+
+        Assert.False(t.Vm.EsperandoAgente);
+        Assert.Equal(CriacaoMemoria.MsgJaAberta, t.Vm.MotivoTravaNovaMemoria);
+        await t.Andar(TimeSpan.FromSeconds(15));
+        Assert.Null(t.Vm.Mensagem); // o prazo não vale mais
+        Assert.Empty(t.Nav.Pedidos);
+    }
+
+    [Fact]
+    public async Task Nova_memoria_sem_resposta_em_15_s_mostra_o_texto_e_volta()
+    {
+        using var t = new ComCriacao();
+        await t.Pronta();
+
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        await t.Andar(TimeSpan.FromSeconds(14.9));
+        Assert.True(t.Vm.EsperandoAgente);
+        Assert.Null(t.Vm.Mensagem);
+
+        await t.Andar(TimeSpan.FromSeconds(0.2));
+
+        Assert.False(t.Vm.EsperandoAgente);
+        Assert.Equal("Não deu para começar agora. Confira se o computador está ligado e no mesmo Wi-Fi.", t.Vm.Mensagem);
+        Assert.True(t.Vm.PodeNovaMemoria);
+        Assert.False(t.Criacao.Aberta);
+
+        // Depois do prazo, um toque novo pede de novo.
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        Assert.Equal(2, t.Pedidos);
+        Assert.True(t.Vm.EsperandoAgente);
+    }
+
+    [Fact]
+    public async Task Na_espera_desligar_a_chave_ou_cair_a_conexao_acaba_a_espera_com_o_motivo()
+    {
+        using var t = new ComCriacao();
+        await t.Pronta();
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        Assert.True(t.Vm.EsperandoAgente);
+
+        Assert.True((await t.B.Chaves.DefinirAsync(Chave.ControlePelaRede, false, OrigemComando.Tela)).Ok);
+        await t.B.Tela.EsvaziarAsync();
+
+        Assert.False(t.Vm.EsperandoAgente);
+        Assert.Equal(MemoriasViewModel.MsgLigueControle, t.Vm.Mensagem);
+
+        Assert.True((await t.B.Chaves.DefinirAsync(Chave.ControlePelaRede, true, OrigemComando.Tela)).Ok);
+        await t.Vm.NovaMemoria.ExecutarAsync();
+        Assert.True(t.Vm.EsperandoAgente);
+
+        await t.B.Rodar(t.B.Sessao.DesconectarAsync());
+
+        Assert.False(t.Vm.EsperandoAgente);
+        Assert.Equal(ControleParametroViewModel.MsgSemConexao, t.Vm.Mensagem);
+    }
+
+    [Fact]
+    public async Task A_criacao_que_abre_e_fecha_antes_da_tela_atualizar_acaba_a_espera()
+    {
+        using var t = new ComCriacao();
+        await t.Pronta();
+        await t.Vm.NovaMemoria.ExecutarAsync();
+
+        // Abre e cancela sem a fila da tela andar.
+        async Task Andar(Task tarefa)
+        {
+            for (var i = 0; i < 2000 && !tarefa.IsCompleted; i++)
+            {
+                t.B.Relogio.Avancar(TimeSpan.FromMilliseconds(10));
+                await Task.Delay(1);
+            }
+            await tarefa;
+        }
+        await Andar(t.Criacao.AbrirAsync());
+        await Andar(t.Criacao.CancelarAsync(CriacaoMemoria.PorUsuario));
+        Assert.False(t.Criacao.Aberta);
+        await t.B.Tela.EsvaziarAsync();
+
+        Assert.False(t.Vm.EsperandoAgente);
+        await t.Andar(TimeSpan.FromSeconds(16));
+        Assert.Null(t.Vm.Mensagem); // o prazo não vale mais
+    }
 }

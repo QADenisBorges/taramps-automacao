@@ -402,6 +402,11 @@ public static class MauiProgram
             sp.GetRequiredService<UsoCompartilhado>(),
             sp.GetRequiredService<LogBle>()));
         builder.Services.AddSingleton(sp => new PedidosConfirmacao(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<LogBle>()));
+        // História 14b: a proposta de ficha (o pedido de um modelo fora da base, com o prazo de 60 s, e a folha que só o toque salva).
+        builder.Services.AddSingleton(sp => new PropostaFicha(
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<LogBle>(),
+            sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new PortaComandos(
             sp.GetRequiredService<Sessao>(),
             sp.GetRequiredService<IChaves>(),
@@ -420,7 +425,8 @@ public static class MauiProgram
             sp.GetRequiredService<TimeProvider>(),
             criacao: sp.GetRequiredService<CriacaoMemoria>(),
             analise: sp.GetRequiredService<AnalisePlaylist>(),
-            termico: sp.GetRequiredService<TermicoExtra>()));
+            termico: sp.GetRequiredService<TermicoExtra>(),
+            ficha: sp.GetRequiredService<PropostaFicha>()));
 
         // História 11: os ViewModels que só faltavam ligar e as páginas novas. Singletons, como os da história 10.
         // História 9c: a chave "Controle pela rede" (no grupo APARELHO das Configurações), a folha de risco do
@@ -446,6 +452,11 @@ public static class MauiProgram
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<FolhaRiscoViewModel>(),
             sp.GetRequiredService<PreferenciasApp>()));
+        // História 14b: a folha da proposta de ficha (a XAML é da 14c).
+        builder.Services.AddSingleton(sp => new PropostaFichaViewModel(
+            sp.GetRequiredService<PropostaFicha>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new ReaplicandoViewModel(
             sp.GetRequiredService<GerenteSetups>(),
             sp.GetRequiredService<IDespachante>(),

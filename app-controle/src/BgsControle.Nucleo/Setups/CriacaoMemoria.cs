@@ -1,5 +1,6 @@
 using BgsControle.Nucleo.Escrita;
 using BgsControle.Nucleo.Registro;
+using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
 using BgsControle.Nucleo.Uso;
 
@@ -25,6 +26,12 @@ public enum EtapaCriacao
 
     /// <summary>O Salvar com o nome (só o usuário) ou "Ajustar mais".</summary>
     Salvar,
+
+    /// <summary>
+    /// A escuta "1 ou 2" (história 14b), só no refino: o usuário troca o som entre as duas versões e escolhe; a escolha
+    /// volta aos ajustes da mesma rodada.
+    /// </summary>
+    Escuta,
 }
 
 /// <summary>Uma pergunta da criação, com as respostas mandadas e a do usuário (null = ainda sem resposta).</summary>
@@ -73,10 +80,44 @@ public sealed record ComoFicouCriacao(int Rodada, IReadOnlyList<string> Resposta
 }
 
 /// <summary>
-/// Um evento da criação para a porta (<c>GET /eventos</c>): <c>criacao-pedida</c>, <c>criacao-resposta</c>,
-/// <c>criacao-como-ficou</c>, <c>criacao-salva</c>, <c>criacao-cancelada</c> e <c>criacao-interrompida</c>. Só os
-/// campos do tipo vêm preenchidos.
+/// Um ajuste de uma versão da escuta "1 ou 2" (história 14b), como a porta o manda: o código da regulagem, o índice, o
+/// valor (número, ou o texto da rota), a frase e o motivo, como no <c>/criacao/ajuste</c>.
 /// </summary>
+public sealed record AjusteEscuta(string Codigo, int? Indice, decimal? Numero, string? Texto, string Frase, string Motivo)
+{
+    public Endereco Endereco => new(Codigo, Indice);
+}
+
+/// <summary>A escolha do usuário na escuta: "Prefiro o 1", "Prefiro o 2" ou "Tanto faz" (que volta à 1).</summary>
+public enum EscolhaEscuta
+{
+    Um,
+    Dois,
+    TantoFaz,
+}
+
+/// <summary>
+/// A escuta aberta (história 14b): o texto, a variável, as duas versões como a porta mandou, o master igualado de cada
+/// uma (null: o master não muda) e a versão que toca agora.
+/// </summary>
+/// <param name="Marcada">1 ou 2: a versão que o app escreveu por último.</param>
+/// <param name="Aviso">"O aparelho ficou com outro valor." quando a última troca não conferiu; ou null.</param>
+public sealed record EscutaCriacao(int Rodada, string Texto, string Variavel, IReadOnlyList<AjusteEscuta> Versao1, IReadOnlyList<AjusteEscuta> Versao2,
+    decimal? Master1, decimal? Master2, int Marcada, string? Aviso = null);
+
+/// <summary>A última escolha de uma escuta: a rodada, a variável e a escolha.</summary>
+public sealed record EscolhaFeita(int Rodada, string Variavel, EscolhaEscuta Escolha)
+{
+    /// <summary>"1", "2" ou "tanto-faz" (o nome no <c>/eventos</c> e no <c>GET /criacao</c>).</summary>
+    public string Nome => CriacaoMemoria.NomeEscolha(Escolha);
+}
+
+/// <summary>
+/// Um evento da criação para a porta (<c>GET /eventos</c>): <c>criacao-pedida</c>, <c>criacao-resposta</c>,
+/// <c>criacao-como-ficou</c>, <c>criacao-escuta</c> (história 14b), <c>criacao-salva</c>, <c>criacao-cancelada</c> e
+/// <c>criacao-interrompida</c>. Só os campos do tipo vêm preenchidos.
+/// </summary>
+/// <param name="Escolha">Na escuta: "1", "2" ou "tanto-faz".</param>
 public sealed record EventoCriacao(
     string Tipo,
     int? Numero = null,
@@ -87,7 +128,9 @@ public sealed record EventoCriacao(
     string? Por = null,
     bool? Voltou = null,
     string? Memoria = null,
-    string? Motivo = null);
+    string? Motivo = null,
+    string? Variavel = null,
+    string? Escolha = null);
 
 /// <summary>Como terminou um pedido à criação. <see cref="Invalido"/>: o pedido veio mal formado (a porta dá 400).</summary>
 public sealed record ResultadoCriacao(bool Ok, string? Motivo, string? Mensagem = null, bool Invalido = false)
@@ -121,6 +164,9 @@ public sealed record ResultadoAjusteCriacao(bool Ok, string? Motivo, AjusteCriac
 /// <item><b>Ajustes:</b> só a regulagem (<see cref="Camada.Regulagem"/>), como IA, pelo <see cref="Escritor"/>
 /// (com o link repetindo), pelas mesmas chaves e o só leitura da <see cref="Sessao"/>. Não contam para o
 /// Continuar: a resposta à última pergunta já é o toque.</item>
+/// <item><b>Escuta "1 ou 2"</b> (história 14b), só no refino: duas versões de uma variável, com o volume igualado pelo
+/// master; o usuário troca o som ao vivo e escolhe, e a etapa volta aos ajustes da mesma rodada
+/// (<see cref="AbrirEscutaAsync"/>).</item>
 /// <item><b>Salvar</b> é só do usuário: a memória nova do Setup aberto com a regulagem relida, que vira a em
 /// uso; a marca sai.</item>
 /// <item><b>Cancelar</b> (o ✕, a porta ou o Cancelar de uma folha de risco) volta à cópia, como App, e fecha sem
@@ -153,6 +199,42 @@ public sealed class CriacaoMemoria : IDisposable
 
     /// <summary>O toque no "+ Nova memória" (história 10d): a criação está fechada e o usuário quer uma nova.</summary>
     public const string EventoPedida = "criacao-pedida";
+
+    /// <summary>A escolha da escuta "1 ou 2" (história 14b): a variável e a escolha (1, 2 ou "tanto-faz").</summary>
+    public const string EventoEscuta = "criacao-escuta";
+
+    public const string MsgEscutaSoNoRefino = "A escuta só vale no refino.";
+    public const string MsgEscutaAberta = "Já há uma escuta aberta.";
+    public const string MsgSemEscuta = "Não há escuta aberta.";
+    public const string MsgEscutaSemTexto = "A escuta precisa de texto.";
+    public const string MsgEscutaSemVariavel = "A escuta precisa da variável.";
+    public const string MsgOutroValor = "O aparelho ficou com outro valor.";
+
+    /// <summary>"Mande ao menos um ajuste na versão 1."</summary>
+    public static string MsgVersaoVazia(int versao) => $"Mande ao menos um ajuste na versão {versao}.";
+
+    /// <summary>"O Ganho da saída 3 aparece duas vezes na versão 2."</summary>
+    public static string MsgRepetido(string rotulo, int versao) => $"O {rotulo} aparece duas vezes na versão {versao}.";
+
+    /// <summary>"Não consegui igualar o volume das versões. O app não sabe o valor de Ganho da saída 1."</summary>
+    public static string MsgNaoIguala(string falta) => $"Não consegui igualar o volume das versões. {falta}";
+
+    /// <summary>A igualação pediria o master abaixo de −80 dB (o mínimo do aparelho).</summary>
+    public const string MsgSemIgualar = "Não dá para igualar o volume das duas versões.";
+
+    /// <summary>O toque numa versão que não é a 1 nem a 2.</summary>
+    public const string MsgVersaoInvalida = "A versão é 1 ou 2.";
+
+    /// <summary>"O Ganho da saída 4 aparece duas vezes na versão 2, com o link." (os dois canais do par com valores diferentes).</summary>
+    public static string MsgRepetidoLink(string rotulo, int versao) => $"O {rotulo} aparece duas vezes na versão {versao}, com o link.";
+
+    /// <summary>"1", "2" ou "tanto-faz".</summary>
+    public static string NomeEscolha(EscolhaEscuta escolha) => escolha switch
+    {
+        EscolhaEscuta.Um => "1",
+        EscolhaEscuta.Dois => "2",
+        _ => "tanto-faz",
+    };
 
     public const int MinimoRespostas = 3;
     public const int MaximoRespostas = 4;
@@ -222,6 +304,10 @@ public sealed class CriacaoMemoria : IDisposable
     private List<ComoFicouCriacao> _comoFicou = [];
     private readonly HashSet<Endereco> _incertos = [];
 
+    /// <summary>A escuta aberta (só na etapa <see cref="EtapaCriacao.Escuta"/>), com os alvos de cada versão.</summary>
+    private EstadoEscuta? _escuta;
+    private EscolhaFeita? _ultimaEscolha;
+
     public CriacaoMemoria(
         Sessao sessao,
         EstadoAparelho estado,
@@ -254,6 +340,12 @@ public sealed class CriacaoMemoria : IDisposable
 
     /// <summary>Um evento para a porta (a resposta, o "Como ficou?", salva, cancelada, interrompida).</summary>
     public event Action<EventoCriacao>? Aconteceu;
+
+    /// <summary>
+    /// A criação abriu (história 14b: a espera do "+ Nova memória" acaba aqui, mesmo que ela feche logo depois). Só para o
+    /// app; a porta não recebe. Pode chegar em qualquer thread.
+    /// </summary>
+    public event Action? Abriu;
 
     public EtapaCriacao Etapa
     {
@@ -371,12 +463,32 @@ public sealed class CriacaoMemoria : IDisposable
         }
     }
 
+    /// <summary>A escuta "1 ou 2" aberta (história 14b), ou null.</summary>
+    public EscutaCriacao? Escuta
+    {
+        get
+        {
+            lock (_trava)
+                return _etapa == EtapaCriacao.Escuta ? _escuta?.Publica : null;
+        }
+    }
+
+    /// <summary>A última escolha de uma escuta nesta criação, ou null.</summary>
+    public EscolhaFeita? UltimaEscolha
+    {
+        get
+        {
+            lock (_trava)
+                return _etapa == EtapaCriacao.Fechada ? null : _ultimaEscolha;
+        }
+    }
+
     // ------------------------------------------------------------------ pedir
 
     /// <summary>
     /// O toque no "+ Nova memória" (história 10d): com a criação fechada, emite <see cref="EventoPedida"/> para a
-    /// porta. A tela não abre a criação: quem abre é o cliente pareado (<c>POST /criacao/abrir</c>). A espera, o
-    /// prazo e o aviso da chave desligada são das histórias 14b e 14c.
+    /// porta. A tela não abre a criação: quem abre é o cliente pareado (<c>POST /criacao/abrir</c>). A espera de 15 s
+    /// e o aviso da chave desligada ficam na tela Memórias (história 14b); aqui, cada toque é um pedido.
     /// </summary>
     public ResultadoCriacao Pedir()
     {
@@ -442,8 +554,11 @@ public sealed class CriacaoMemoria : IDisposable
                 _ajustes = [];
                 _comoFicou = [];
                 _incertos.Clear();
+                _escuta = null;
+                _ultimaEscolha = null;
             }
             _log.Evento($"criação da memória aberta no {setup.Nome}");
+            AvisarAbriu();
             Notificar();
             // Caiu ou a tarefa acabou entre a cópia e a etapa: interrompe como no meio.
             if (!SessaoAberta)
@@ -624,6 +739,7 @@ public sealed class CriacaoMemoria : IDisposable
                     {
                         EtapaCriacao.Fechada => MsgFechada,
                         EtapaCriacao.Perguntas => MsgAjusteCedo,
+                        EtapaCriacao.Escuta => MsgEscutaAberta,
                         _ => MsgAjusteSemRodada,
                     });
                 geracao = _geracao;
@@ -707,6 +823,8 @@ public sealed class CriacaoMemoria : IDisposable
         {
             if (_etapa == EtapaCriacao.Fechada)
                 return ResultadoCriacao.Falha(MsgFechada);
+            if (_etapa == EtapaCriacao.Escuta)
+                return ResultadoCriacao.Falha(MsgEscutaAberta);
             if (_etapa != EtapaCriacao.Ajustando)
                 return ResultadoCriacao.Falha(MsgResumoFora);
             var ultimos = UltimosPorEndereco();
@@ -818,6 +936,431 @@ public sealed class CriacaoMemoria : IDisposable
         }
         Notificar();
         return ResultadoCriacao.Feito();
+    }
+
+    // ------------------------------------------------------------------ a escuta "1 ou 2" (história 14b)
+
+    /// <summary>Uma escrita de uma versão: o parâmetro, o índice e o valor como o aparelho o devolve.</summary>
+    private sealed record EscritaVersao(Parametro Parametro, int? Indice, Valor Valor)
+    {
+        public Endereco Endereco => new(Parametro.Codigo, Indice);
+    }
+
+    /// <summary>
+    /// A escuta por dentro: o que a tela e a porta veem, e o alvo inteiro de cada versão (cada endereço que alguma das
+    /// duas mexe, com o valor dela ou o de antes da escuta, e o master igualado) e o valor de antes de cada um.
+    /// </summary>
+    private sealed record EstadoEscuta(EscutaCriacao Publica, IReadOnlyList<EscritaVersao> Alvo1, IReadOnlyList<EscritaVersao> Alvo2,
+        IReadOnlyList<EscritaVersao> Pedidos1, IReadOnlyList<EscritaVersao> Pedidos2, IReadOnlyDictionary<Endereco, Valor> Base);
+
+    private sealed record EscutaMontada(IReadOnlyList<EscritaVersao> Alvo1, IReadOnlyList<EscritaVersao> Alvo2, IReadOnlyDictionary<Endereco, Valor> Base,
+        decimal? Master1, decimal? Master2);
+
+    private static readonly Endereco EnderecoMaster = new(Camadas.CodigoMaster, null);
+
+    /// <summary>
+    /// Abre a escuta "1 ou 2" (história 14b; spec-agente-memoria CAP-4): só no refino (a etapa <see cref="EtapaCriacao.Ajustando"/>
+    /// numa rodada 2 ou mais) e com nenhuma outra aberta. Cada versão é uma lista de ajustes da regulagem, com a frase e o
+    /// motivo. Antes de qualquer envio, o app:
+    /// <list type="bullet">
+    /// <item>monta o alvo de cada versão: cada endereço que alguma das duas mexe, com o valor dela ou o de agora;</item>
+    /// <item>iguala o volume: o nível médio de cada uma com o peso rosa (<see cref="Igualador"/>); a mais forte recebe o
+    /// master baixado pela diferença (só baixa). Abaixo de −80 dB, não iguala (<see cref="MsgSemIgualar"/>);</item>
+    /// <item>confere cada versão inteira na cerca (13a), na regra de "sem calibração" (13b) e, com um master pedido, no
+    /// master do nível em uso (13c). Uma recusa não escreve nada.</item>
+    /// </list>
+    /// Depois, escreve a versão 1 (só o que difere, como a porta, origem IA, com a releitura) e a marca. Uma escrita que não
+    /// confere deixa o aviso <see cref="MsgOutroValor"/> e a escuta aberta.
+    /// </summary>
+    public async Task<ResultadoCriacao> AbrirEscutaAsync(string? texto, string? variavel, IReadOnlyList<AjusteEscuta>? versao1,
+        IReadOnlyList<AjusteEscuta>? versao2)
+    {
+        var limpo = texto?.Trim();
+        if (string.IsNullOrEmpty(limpo))
+            return ResultadoCriacao.Mal(MsgEscutaSemTexto);
+        var nomeVariavel = variavel?.Trim();
+        if (string.IsNullOrEmpty(nomeVariavel))
+            return ResultadoCriacao.Mal(MsgEscutaSemVariavel);
+        if (Preparar(versao1, 1, out var pedidos1) is { } erro1)
+            return ResultadoCriacao.Mal(erro1);
+        if (Preparar(versao2, 2, out var pedidos2) is { } erro2)
+            return ResultadoCriacao.Mal(erro2);
+        if ((RepetidoNoLink(pedidos1, 1) ?? RepetidoNoLink(pedidos2, 2)) is { } repetido)
+            return ResultadoCriacao.Mal(repetido);
+
+        await _vez.WaitAsync();
+        try
+        {
+            long geracao;
+            int rodada;
+            bool anotar;
+            lock (_trava)
+            {
+                if (_etapa == EtapaCriacao.Fechada)
+                    return ResultadoCriacao.Falha(MsgFechada);
+                if (_etapa == EtapaCriacao.Escuta)
+                    return ResultadoCriacao.Falha(MsgEscutaAberta);
+                if (_etapa != EtapaCriacao.Ajustando || _rodada < 2)
+                    return ResultadoCriacao.Falha(MsgEscutaSoNoRefino);
+                geracao = _geracao;
+                rodada = _rodada;
+                anotar = !_escreveu;
+            }
+            var (montada, motivo) = MontarEscuta(pedidos1, pedidos2);
+            if (montada is null)
+            {
+                _log.Evento($"criação: escuta recusada ({motivo})");
+                return ResultadoCriacao.Falha(motivo!);
+            }
+            // A marca diz que algum ajuste pode ter saído antes de sair o primeiro (regra 6).
+            if (anotar && !await _copia.AnotarEtapaAsync(EtapaAjustes))
+                return ResultadoCriacao.Falha(CopiaAntes.MsgNaoGuardou);
+            lock (_trava)
+            {
+                if (_geracao != geracao)
+                    return ResultadoCriacao.Falha(MsgInterrompida);
+                _escreveu = true;
+                var publica = new EscutaCriacao(rodada, limpo, nomeVariavel, versao1!.ToArray(), versao2!.ToArray(), montada.Master1, montada.Master2, 1);
+                _escuta = new EstadoEscuta(publica, montada.Alvo1, montada.Alvo2, pedidos1, pedidos2, montada.Base);
+                _etapa = EtapaCriacao.Escuta;
+            }
+            _log.Evento($"criação: escuta \"{nomeVariavel}\" aberta (rodada {rodada})");
+            Notificar();
+            // A versão 1 sai pelo pedido da porta: origem IA, como os ajustes da criação.
+            var (interrompida, confere) = await EscreverVersaoAsync(1, geracao, OrigemComando.Ia);
+            Notificar();
+            if (interrompida)
+                return ResultadoCriacao.Falha(MsgInterrompida);
+            return ResultadoCriacao.Feito(confere ? null : MsgOutroValor);
+        }
+        finally
+        {
+            _vez.Release();
+        }
+    }
+
+    /// <summary>
+    /// O toque em "1" ou "2": troca o som ao vivo para a versão, só no que difere (como App, dentro da criação), com a
+    /// releitura. Uma escrita que não confere: <see cref="MsgOutroValor"/>, e a escuta fica aberta.
+    /// </summary>
+    public async Task<ResultadoCriacao> OuvirAsync(int versao)
+    {
+        if (versao is not (1 or 2))
+            return ResultadoCriacao.Falha(MsgVersaoInvalida);
+        await _vez.WaitAsync();
+        try
+        {
+            long geracao;
+            lock (_trava)
+            {
+                if (_etapa != EtapaCriacao.Escuta || _escuta is null)
+                    return ResultadoCriacao.Falha(MsgSemEscuta);
+                geracao = _geracao;
+            }
+            var (interrompida, confere) = await EscreverVersaoAsync(versao, geracao, OrigemComando.App);
+            Notificar();
+            if (interrompida)
+                return ResultadoCriacao.Falha(MsgInterrompida);
+            return confere ? ResultadoCriacao.Feito() : ResultadoCriacao.Falha(MsgOutroValor);
+        }
+        finally
+        {
+            _vez.Release();
+        }
+    }
+
+    /// <summary>
+    /// "Prefiro o 1", "Prefiro o 2" ou "Tanto faz" (que volta à 1): o som fica na versão, com o master de antes da escuta (o
+    /// master igualado só servia para comparar; um master que a própria versão pediu fica), conferido pela releitura. Os
+    /// ajustes da versão que mudam o som de antes da escuta entram nos ajustes da rodada, com a frase e o motivo, para o
+    /// resumo; a escolha vai ao <c>/eventos</c> como <see cref="EventoEscuta"/>, e a etapa volta a
+    /// <see cref="EtapaCriacao.Ajustando"/> (mesma rodada). Uma escrita que não confere: <see cref="MsgOutroValor"/>, e a
+    /// escuta fica aberta.
+    /// </summary>
+    public async Task<ResultadoCriacao> EscolherAsync(EscolhaEscuta escolha)
+    {
+        var versao = escolha == EscolhaEscuta.Dois ? 2 : 1;
+        await _vez.WaitAsync();
+        try
+        {
+            long geracao;
+            EstadoEscuta estado;
+            lock (_trava)
+            {
+                if (_etapa != EtapaCriacao.Escuta || _escuta is null)
+                    return ResultadoCriacao.Falha(MsgSemEscuta);
+                geracao = _geracao;
+                estado = _escuta;
+            }
+            var pedidos = versao == 1 ? estado.Pedidos1 : estado.Pedidos2;
+            var alvo = versao == 1 ? estado.Alvo1 : estado.Alvo2;
+            // O master final: o que a versão pediu, ou o de antes da escuta.
+            var masterFinal = pedidos.FirstOrDefault(p => p.Endereco == EnderecoMaster)?.Valor ?? estado.Base[EnderecoMaster];
+            var final = alvo.Select(e => e.Endereco == EnderecoMaster ? e with { Valor = masterFinal } : e).ToArray();
+            var (interrompida, confere) = await EscreverAlvoAsync(final, geracao, OrigemComando.App);
+            if (interrompida || !confere)
+            {
+                lock (_trava)
+                {
+                    if (!interrompida && _geracao == geracao && _escuta is { } aberta)
+                        _escuta = aberta with { Publica = aberta.Publica with { Marcada = versao, Aviso = MsgOutroValor } };
+                }
+                Notificar();
+                return ResultadoCriacao.Falha(interrompida ? MsgInterrompida : MsgOutroValor);
+            }
+
+            EscolhaFeita feita;
+            lock (_trava)
+            {
+                if (_geracao != geracao || _escuta is not { } aberta)
+                    return ResultadoCriacao.Falha(MsgInterrompida);
+                var e = aberta.Publica;
+                var espelho = _estado.Copiar();
+                foreach (var a in versao == 1 ? e.Versao1 : e.Versao2)
+                {
+                    var escrita = final.First(x => x.Endereco == a.Endereco);
+                    var antes = aberta.Base[a.Endereco];
+                    if (CopiaAntes.Iguais(antes, escrita.Valor))
+                        continue; // igual ao de antes da escuta: não mudou o som
+                    _ajustes.Add(new AjusteCriacao(e.Rodada, a.Codigo, a.Indice, a.Frase.Trim(), a.Motivo.Trim(), antes.NoFio,
+                        escrita.Valor.NoFio, espelho.GetValueOrDefault(a.Endereco)?.NoFio, Diferente: false, SemEco: false, Aviso: null));
+                    _incertos.Remove(a.Endereco);
+                }
+                feita = new EscolhaFeita(e.Rodada, e.Variavel, escolha);
+                _ultimaEscolha = feita;
+                _escuta = null;
+                _etapa = EtapaCriacao.Ajustando;
+            }
+            _log.Evento($"criação: escuta \"{feita.Variavel}\", escolha {feita.Nome}");
+            Emitir(new EventoCriacao(EventoEscuta, Rodada: feita.Rodada, Variavel: feita.Variavel, Escolha: feita.Nome));
+            Notificar();
+            return ResultadoCriacao.Feito();
+        }
+        finally
+        {
+            _vez.Release();
+        }
+    }
+
+    /// <summary>Confere uma versão como a porta mandou e a transforma nas escritas; devolve o motivo do 400, ou null.</summary>
+    private static string? Preparar(IReadOnlyList<AjusteEscuta>? versao, int numero, out List<EscritaVersao> escritas)
+    {
+        escritas = [];
+        if (versao is null || versao.Count == 0)
+            return MsgVersaoVazia(numero);
+        var vistos = new HashSet<Endereco>();
+        foreach (var a in versao)
+        {
+            if (a is null)
+                return MsgVersaoVazia(numero);
+            if (!EntraNaCriacao(a.Codigo))
+                return MsgSoRegulagem;
+            var p = Catalogo.ParametroDe(a.Codigo)!;
+            if (p.Escopo == Escopo.Global && a.Indice is not null)
+                return $"O {a.Codigo} é global: sem \"indice\".";
+            if (p.Escopo != Escopo.Global && a.Indice is null)
+                return $"Falta o campo \"indice\" (0 a {p.Indices - 1}).";
+            if (string.IsNullOrWhiteSpace(a.Frase))
+                return "O campo \"frase\" precisa de texto.";
+            if (string.IsNullOrWhiteSpace(a.Motivo))
+                return "O campo \"motivo\" precisa de texto.";
+            if (ValorDe(p, a.Indice, a.Numero, a.Texto) is not { } valor)
+                return $"Valor fora do {p.Codigo} (veja GET /catalogo).";
+            if (!vistos.Add(a.Endereco))
+                return MsgRepetido(Camadas.Rotulo(a.Codigo, a.Indice), numero);
+            escritas.Add(new EscritaVersao(p, a.Indice, valor));
+        }
+        return null;
+    }
+
+    /// <summary>Com o link, um endereço que a versão escreve duas vezes com valores diferentes (o par do link): o motivo do 400, ou null.</summary>
+    private string? RepetidoNoLink(IReadOnlyList<EscritaVersao> pedidos, int numero)
+    {
+        var valores = new Dictionary<Endereco, Valor>();
+        foreach (var (endereco, valor) in ComLink(pedidos))
+        {
+            if (valores.TryGetValue(endereco, out var outro) && !CopiaAntes.Iguais(outro, valor!))
+                return MsgRepetidoLink(Camadas.Rotulo(endereco.Codigo, endereco.Indice), numero);
+            valores[endereco] = valor!;
+        }
+        return null;
+    }
+
+    /// <summary>O valor como o aparelho o devolve, ou null se não codifica.</summary>
+    private static Valor? ValorDe(Parametro p, int? indice, decimal? numero, string? texto)
+    {
+        var quadro = Quadro(() => p.Tipo == TipoValor.Roteamento
+            ? p.CodificarEscrita(indice, texto ?? throw new ArgumentException("Falta o texto."))
+            : p.CodificarEscrita(indice, numero ?? throw new ArgumentException("Falta o número.")));
+        if (quadro is null || Catalogo.EscritaDeAudio(quadro)?.NoFio is not { } noFio)
+            return null;
+        return p.Decodificar(noFio).Valor;
+    }
+
+    /// <summary>Os alvos, o master igualado e as conferências das duas versões; ou o motivo da recusa (409).</summary>
+    private (EscutaMontada? Montada, string? Motivo) MontarEscuta(IReadOnlyList<EscritaVersao> pedidos1, IReadOnlyList<EscritaVersao> pedidos2)
+    {
+        try
+        {
+            var espelho = _estado.Copiar();
+            var uniao = pedidos1.Concat(pedidos2).Select(e => e.Endereco).Where(e => e != EnderecoMaster).Distinct().ToList();
+            var antes = new Dictionary<Endereco, Valor>();
+            foreach (var e in uniao.Append(EnderecoMaster))
+            {
+                if (!espelho.TryGetValue(e, out var v))
+                    return (null, PiorCaso.MsgFalta(e.Codigo, e.Indice));
+                antes[e] = v;
+            }
+            if (antes[EnderecoMaster].Numero is not { } masterAntes)
+                return (null, PiorCaso.MsgFalta(Camadas.CodigoMaster, null));
+
+            List<EscritaVersao> Alvo(IReadOnlyList<EscritaVersao> pedidos) => uniao
+                .Select(e => pedidos.FirstOrDefault(p => p.Endereco == e) ?? new EscritaVersao(Catalogo.ParametroDe(e.Codigo)!, e.Indice, antes[e]))
+                .ToList();
+            var alvo1 = Alvo(pedidos1);
+            var alvo2 = Alvo(pedidos2);
+            var pedido1 = pedidos1.FirstOrDefault(p => p.Endereco == EnderecoMaster);
+            var pedido2 = pedidos2.FirstOrDefault(p => p.Endereco == EnderecoMaster);
+            var master1 = pedido1?.Valor.Numero ?? masterAntes;
+            var master2 = pedido2?.Valor.Numero ?? masterAntes;
+
+            // O volume igualado: o nível médio de cada versão (sem o master), nas saídas com alto-falante.
+            var saidas = Igualador.SaidasComAltoFalante(_setups.SetupEmUso?.Equipamentos, _setups.SaidasEmUso);
+            var (nivel1, falta1) = Igualador.NivelMedio(Leitor(espelho, alvo1), saidas);
+            if (nivel1 is not { } n1)
+                return (null, MsgNaoIguala(falta1 ?? Niveis.MsgFalhou));
+            var (nivel2, falta2) = Igualador.NivelMedio(Leitor(espelho, alvo2), saidas);
+            if (nivel2 is not { } n2)
+                return (null, MsgNaoIguala(falta2 ?? Niveis.MsgFalhou));
+            if (Igualador.Igualar(n1, master1, n2, master2) is not var (igualado1, igualado2))
+                return (null, MsgSemIgualar);
+
+            var comMaster = pedido1 is not null || pedido2 is not null || igualado1 != masterAntes || igualado2 != masterAntes;
+            if (comMaster)
+            {
+                var p = Catalogo.ParametroDe(Camadas.CodigoMaster)!;
+                if (ValorDe(p, null, igualado1, null) is not { } v1 || ValorDe(p, null, igualado2, null) is not { } v2)
+                    return (null, MsgNaoIguala(Niveis.MsgFalhou));
+                alvo1.Add(new EscritaVersao(p, null, v1));
+                alvo2.Add(new EscritaVersao(p, null, v2));
+            }
+
+            // Cada versão inteira, antes de qualquer envio: a regra de "sem calibração", o master do nível e a cerca.
+            foreach (var (pedidos, alvo) in new[] { (pedidos1, alvo1), (pedidos2, alvo2) })
+            {
+                foreach (var p in pedidos)
+                {
+                    if (_escritor.ConferirSemCalibracao(p.Parametro, p.Indice, espelhar: true) is { } sem)
+                        return (null, sem);
+                }
+                if (MasterAcimaDoNivel(pedidos) is { } nivel)
+                    return (null, nivel);
+                if (_escritor.ConferirCerca(ComLink(alvo)) is { } cerca)
+                    return (null, cerca);
+            }
+            return (new EscutaMontada(alvo1, alvo2, antes, comMaster ? igualado1 : null, comMaster ? igualado2 : null), null);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"criação: falha ao montar a escuta ({e.GetType().Name})");
+            return (null, Niveis.MsgFalhou);
+        }
+    }
+
+    /// <summary>Um master pedido numa versão acima da conta do nível em uso (13c): o motivo, ou null.</summary>
+    private string? MasterAcimaDoNivel(IReadOnlyList<EscritaVersao> pedidos)
+    {
+        if (pedidos.FirstOrDefault(p => p.Endereco == EnderecoMaster)?.Valor.Numero is not { } pedido
+            || _setups.NivelEmUso is not { } nivel || nivel == NivelRendimento.Extra)
+            return null;
+        return _setups.ContaEmUso()?.Master is { } conta && pedido > conta ? Niveis.MsgMasterAcima(nivel, conta) : null;
+    }
+
+    /// <summary>As escritas com a cópia do link (o outro canal do par recebe o mesmo valor).</summary>
+    private List<(Endereco Endereco, Valor? Valor)> ComLink(IReadOnlyList<EscritaVersao> alvo)
+    {
+        var lista = new List<(Endereco, Valor?)>();
+        foreach (var e in alvo)
+        {
+            lista.Add((e.Endereco, e.Valor));
+            if (e.Indice is { } i && _escritor.Espelho?.Invoke(e.Parametro, i) is { } outro && outro != i)
+                lista.Add((new Endereco(e.Parametro.Codigo, outro), e.Valor));
+        }
+        return lista;
+    }
+
+    /// <summary>O espelho com o alvo por cima (com o link).</summary>
+    private Func<Endereco, Valor?> Leitor(IReadOnlyDictionary<Endereco, Valor> espelho, IReadOnlyList<EscritaVersao> alvo)
+    {
+        var depois = new Dictionary<Endereco, Valor>(espelho);
+        foreach (var (endereco, valor) in ComLink(alvo))
+            depois[endereco] = valor!;
+        return e => depois.GetValueOrDefault(e);
+    }
+
+    /// <summary>Escreve a versão (<see cref="EscreverAlvoAsync"/>) e marca a versão e o aviso. Chamar com a vez.</summary>
+    private async Task<(bool Interrompida, bool Confere)> EscreverVersaoAsync(int versao, long geracao, OrigemComando origem)
+    {
+        EstadoEscuta estado;
+        lock (_trava)
+        {
+            if (_geracao != geracao || _escuta is null)
+                return (true, false);
+            estado = _escuta;
+        }
+        var (interrompida, confere) = await EscreverAlvoAsync(versao == 1 ? estado.Alvo1 : estado.Alvo2, geracao, origem);
+        if (interrompida)
+            return (true, false);
+        lock (_trava)
+        {
+            if (_geracao != geracao || _escuta is null)
+                return (true, false);
+            _escuta = _escuta with { Publica = _escuta.Publica with { Marcada = versao, Aviso = confere ? null : MsgOutroValor } };
+        }
+        _log.Evento($"criação: escuta na versão {versao}{(confere ? "" : " (o aparelho ficou com outro valor)")}");
+        return (false, confere);
+    }
+
+    /// <summary>
+    /// Escreve o alvo (só o que difere do espelho) dentro da criação, com a origem dada: o master que baixa primeiro, o
+    /// limitador, o resto, o passa-alta e o master que sobe por último. Confere tudo pela releitura. Chamar com a vez.
+    /// </summary>
+    private async Task<(bool Interrompida, bool Confere)> EscreverAlvoAsync(IReadOnlyList<EscritaVersao> alvo, long geracao, OrigemComando origem)
+    {
+        var espelho = _estado.Copiar();
+        var masterAgora = espelho.GetValueOrDefault(EnderecoMaster)?.Numero;
+        int Ordem(EscritaVersao e) => e.Parametro.Codigo switch
+        {
+            Camadas.CodigoMaster when masterAgora is { } m && e.Valor.Numero is { } novo && novo < m => 0,
+            Cerca.CodigoLimitador => 1,
+            Cerca.CodigoPassaAlta or Cerca.CodigoFiltroPassaAlta => 3,
+            Camadas.CodigoMaster => 4,
+            _ => 2,
+        };
+        var falhou = false;
+        foreach (var e in alvo.Where(e => !espelho.TryGetValue(e.Endereco, out var agora) || !CopiaAntes.Iguais(agora, e.Valor)).OrderBy(Ordem))
+        {
+            lock (_trava)
+            {
+                if (_geracao != geracao)
+                    return (true, false);
+            }
+            ResultadoEscrita r;
+            using (Origem.Como(origem))
+                r = await _escritor.EscreverAsync(e.Parametro, e.Indice, e.Valor, espelhar: true, daCopia: true, loteConferido: true);
+            if (!r.Ok || r.Diferente || r.Aviso is not null)
+            {
+                falhou = true;
+                _log.Evento($"criação: escuta, {Camadas.Rotulo(e.Parametro.Codigo, e.Indice)} não conferiu ({r.Motivo ?? r.Aviso ?? "outro valor"})");
+            }
+        }
+        lock (_trava)
+        {
+            if (_geracao != geracao)
+                return (true, false);
+        }
+        var depois = _estado.Copiar();
+        return (false, !falhou && alvo.All(e => depois.TryGetValue(e.Endereco, out var v) && CopiaAntes.Iguais(v, e.Valor)));
     }
 
     // ------------------------------------------------------------------ salvar e cancelar
@@ -1023,6 +1566,18 @@ public sealed class CriacaoMemoria : IDisposable
         catch (Exception e)
         {
             _log.Evento($"falha no evento da criação ({e.GetType().Name})");
+        }
+    }
+
+    private void AvisarAbriu()
+    {
+        try
+        {
+            Abriu?.Invoke();
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha no aviso da criação aberta ({e.GetType().Name})");
         }
     }
 

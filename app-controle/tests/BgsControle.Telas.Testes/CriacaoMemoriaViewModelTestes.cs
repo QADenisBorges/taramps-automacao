@@ -1207,4 +1207,192 @@ public sealed class CriacaoMemoriaViewModelTestes : IDisposable
         Assert.Equal(CriacaoMemoria.PorPorta, EventosDoTipo(CriacaoMemoria.EventoCancelada).Single().Criacao!.Por);
         Assert.Equal(CriacaoMemoria.MsgCancelada, _vm.AvisoFinal);
     }
+
+    // ----------------------------------------------------------------- história 14b: a escuta "1 ou 2"
+
+    /// <summary>Até o refino pelo ViewModel: um ajuste, o resumo, "Avaliar o som" e "Quero mais impacto" (rodada 2).</summary>
+    private async Task<string> NoRefino()
+    {
+        var chave = await Autorizada();
+        await Ajuste(chave);
+        await Resumo(chave);
+        await ComoFicou(chave);
+        await _vm.Avaliar.ExecutarAsync();
+        await _b.Tela.EsvaziarAsync();
+        await _vm.Responder.ExecutarAsync(0);
+        await _b.Tela.EsvaziarAsync();
+        Assert.True(_vm.Ajustando);
+        Assert.Equal(2, _criacao.Rodada);
+        return chave;
+    }
+
+    private static string GanhoJbl(decimal valor, string frase) =>
+        $$"""{"codigo":"081","indice":0,"valor":{{valor.ToString(CultureInfo.InvariantCulture)}},"frase":"{{frase}}","motivo":"Comparar o grave."}""";
+
+    private async Task<string> NaEscuta()
+    {
+        var chave = await NoRefino();
+        await Escutar(chave);
+        return chave;
+    }
+
+    private async Task Escutar(string chave)
+    {
+        var r = await Pedir("POST", "/criacao/escuta",
+            $$"""{"texto":"Qual grave você prefere?","variavel":"grave","versao1":[{{GanhoJbl(2.0m, "Grave como está")}}],"versao2":[{{GanhoJbl(5.0m, "Grave mais cheio")}}]}""",
+            chave);
+        Assert.Equal(200, r.Status);
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(FaseCriacao.Escuta, _vm.Fase);
+    }
+
+    [Fact]
+    public async Task A_escuta_mostra_o_texto_os_botoes_1_e_2_com_o_1_marcado_e_troca_o_som_ao_vivo()
+    {
+        await NaEscuta();
+
+        Assert.Equal(FaseCriacao.Escuta, _vm.Fase);
+        Assert.True(_vm.FaseEscuta);
+        Assert.Equal(EtapaCriacao.Escuta, _vm.Etapa);
+        Assert.Equal("Qual grave você prefere?", _vm.TextoEscuta);
+        Assert.Equal(("1", "2"), (_vm.TextoBotao1, _vm.TextoBotao2));
+        Assert.Equal(("Prefiro o 1", "Prefiro o 2", "Tanto faz"), (_vm.TextoPrefiro1, _vm.TextoPrefiro2, _vm.TextoTantoFaz));
+        Assert.True(_vm.Marcado1);
+        Assert.False(_vm.Marcado2);
+        Assert.Equal("Ouvir a versão 1, tocando agora", _vm.DescricaoBotao1);
+        Assert.Null(_vm.AvisoEscuta);
+        Assert.True(_vm.PodeFechar);
+        Assert.Equal("+2.0", _b.Simulador.Valor("081", 0));
+        SemIa();
+
+        await _b.Rodar(_vm.Ouvir2.ExecutarAsync());
+
+        Assert.True(_vm.Marcado2);
+        Assert.False(_vm.Marcado1);
+        Assert.Equal("+5.0", _b.Simulador.Valor("081", 0));
+        Assert.Equal(_criacao.Escuta!.Master2, _b.Estado.Valor("080")!.Numero);
+
+        await _b.Rodar(_vm.Ouvir1.ExecutarAsync());
+        Assert.True(_vm.Marcado1);
+        Assert.Equal("+2.0", _b.Simulador.Valor("081", 0));
+
+        // Uma escrita que não confere: o aviso, e a escuta fica.
+        _b.Simulador.EcosDiferentes["*081*0*5.0*"] = "#081#0#4.5#";
+        await _b.Rodar(_vm.Ouvir2.ExecutarAsync());
+        Assert.Equal("O aparelho ficou com outro valor.", _vm.AvisoEscuta);
+        Assert.Equal(FaseCriacao.Escuta, _vm.Fase);
+        SemIa();
+    }
+
+    [Fact]
+    public async Task Tanto_faz_volta_a_1_devolve_a_escolha_e_a_rodada_segue_com_o_ajuste_no_palco()
+    {
+        await NaEscuta();
+        await _b.Rodar(_vm.Ouvir2.ExecutarAsync());
+
+        await _b.Rodar(_vm.TantoFaz.ExecutarAsync());
+
+        Assert.Equal("+2.0", _b.Simulador.Valor("081", 0));
+        Assert.True(_vm.Ajustando);
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase); // com a animação, os ajustes da escolha entram no palco
+        Assert.Equal("Grave como está", _vm.AjusteDoPalco!.Frase);
+        Assert.Contains(_vm.AjustesDaRodada, l => l.Frase == "Grave como está");
+        Assert.Null(_vm.TextoEscuta);
+        var e = _porta.Eventos().Single(x => x.Tipo == CriacaoMemoria.EventoEscuta).Criacao!;
+        Assert.Equal(("grave", "tanto-faz"), (e.Variavel, e.Escolha));
+    }
+
+    [Fact]
+    public async Task Prefiro_o_2_fica_na_versao_2()
+    {
+        await NaEscuta();
+
+        await _b.Rodar(_vm.Prefiro2.ExecutarAsync());
+
+        Assert.Equal("+5.0", _b.Simulador.Valor("081", 0));
+        Assert.True(_vm.Ajustando);
+        Assert.Equal("2", _porta.Eventos().Single(x => x.Tipo == CriacaoMemoria.EventoEscuta).Criacao!.Escolha);
+    }
+
+    [Fact]
+    public async Task O_X_na_escuta_abre_a_folha_e_Cancelar_e_voltar_volta_a_copia_de_antes_da_criacao()
+    {
+        var chave = await NoRefino();
+        var copia = _b.Copia.Ultima!;
+        await Escutar(chave);
+        await _b.Rodar(_vm.Ouvir2.ExecutarAsync());
+
+        Assert.True(_vm.Voltar()); // a tecla Voltar, como o ✕
+        Assert.True(_vm.FolhaCancelarAberta);
+        await _b.Rodar(_vm.CancelarEVoltar.ExecutarAsync());
+
+        Assert.Equal(FaseCriacao.Fechada, _vm.Fase);
+        IgualACopia(copia);
+        Assert.Contains(CriacaoMemoria.EventoCancelada, TiposDosEventos());
+        Assert.DoesNotContain(CriacaoMemoria.EventoEscuta, TiposDosEventos());
+    }
+
+    [Fact]
+    public async Task Sem_animacao_a_escolha_da_escuta_volta_ao_Aplicando()
+    {
+        using var vm = await Outro(animacao: false);
+        await NaEscuta();
+        Assert.Equal(FaseCriacao.Escuta, vm.Fase);
+
+        await _b.Rodar(vm.Prefiro1.ExecutarAsync());
+
+        Assert.Equal(FaseCriacao.Aplicando, vm.Fase);
+    }
+
+    [Fact]
+    public async Task Na_troca_os_botoes_da_escuta_ficam_travados()
+    {
+        await NaEscuta();
+        Assert.True(_vm.PodeTocarEscuta);
+        Assert.False(_vm.Escrevendo);
+
+        var troca = _vm.Ouvir2.ExecutarAsync();
+
+        Assert.True(_vm.Escrevendo);
+        Assert.False(_vm.PodeTocarEscuta);
+        await _vm.Prefiro1.ExecutarAsync(); // travado: nada
+        await _b.Rodar(troca);
+        Assert.False(_vm.Escrevendo);
+        Assert.True(_vm.PodeTocarEscuta);
+        Assert.True(_vm.Marcado2);
+        Assert.Equal(EtapaCriacao.Escuta, _criacao.Etapa);
+    }
+
+    [Fact]
+    public async Task Um_toque_que_chega_com_a_escuta_ja_fechada_nao_avisa_nada()
+    {
+        await NaEscuta();
+        var escolha = _criacao.EscolherAsync(EscolhaEscuta.TantoFaz); // a escolha anda e fecha a escuta
+
+        var toque = _vm.Ouvir2.ExecutarAsync(); // o toque chega antes da tela saber, e espera a vez
+        await _b.Rodar(escolha);
+        await _b.Rodar(toque);
+
+        Assert.True((await escolha).Ok);
+        Assert.Null(_vm.Aviso);
+        Assert.True(_vm.Ajustando);
+    }
+
+    [Fact]
+    public async Task A_escuta_guarda_o_que_o_palco_ainda_nao_mostrou_da_rodada()
+    {
+        var chave = await NoRefino();
+        await Ajuste(chave, valor: 3.5m, frase: "Reforçando o grave");
+        await Ajuste(chave, codigo: "081", indice: 1, valor: 6.0m, frase: "Abrindo a direita");
+        Assert.Equal("Reforçando o grave", _vm.AjusteDoPalco!.Frase);
+        await Escutar(chave);
+
+        await _b.Rodar(_vm.TantoFaz.ExecutarAsync());
+
+        Assert.Equal(FaseCriacao.Palco, _vm.Fase);
+        var frases = new List<string> { _vm.AjusteDoPalco!.Frase };
+        while (_vm.PalcoMostrou() && _vm.AjusteDoPalco is { } a)
+            frases.Add(a.Frase);
+        Assert.Equal(["Reforçando o grave", "Abrindo a direita", "Grave como está"], frases);
+    }
 }
