@@ -45,6 +45,7 @@ public sealed partial class SetupsTestes : IDisposable
     private readonly TextoMemoria _guardadoPresets;
     private readonly TextoMemoria _guardadoPlaylists;
     private readonly TextoMemoria _guardadoModelos;
+    private readonly TextoMemoria _guardadoFormato3 = new();
     private readonly CopiaAntes _copia;
     private readonly LinkCanais _link;
     private readonly GerentePresets _presets;
@@ -88,7 +89,7 @@ public sealed partial class SetupsTestes : IDisposable
         _playlists = new GerentePlaylists(_guardadoPlaylists, _log);
         _modelos = new BaseModelos(_guardadoModelos, _log, _relogio);
         _setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link, _presets, _playlists, _chaves,
-            _guardadoSetups, _guardadoMudo, _log, _relogio, _modelos);
+            _guardadoSetups, _guardadoMudo, _log, _relogio, _modelos, _guardadoFormato3);
     }
 
     /// <summary>O app sem nenhum arquivo: a primeira abertura (o app nasce zerado).</summary>
@@ -1447,7 +1448,7 @@ public sealed partial class SetupsTestes : IDisposable
 
     [Theory]
     [InlineData("{ isto não é json")]
-    [InlineData("{\"formato\": 4, \"setups\": [{\"id\":\"x\",\"nome\":\"X\"}]}")]
+    [InlineData("{\"formato\": 5, \"setups\": [{\"id\":\"x\",\"nome\":\"X\"}]}")]
     [InlineData("{\"formato\": 3, \"setups\": [{\"id\":\"\",\"nome\":\"X\"}]}")]
     [InlineData("{\"formato\": \"um\"}")]
     [InlineData("[]")]
@@ -1529,8 +1530,8 @@ public sealed partial class SetupsTestes : IDisposable
 
         var json = GerenteSetups.ParaJson(dados);
 
-        Assert.Equal(3, GerenteSetups.FormatoDe(json));
-        Assert.Equal(3, GerenteSetups.Formato);
+        Assert.Equal(4, GerenteSetups.FormatoDe(json));
+        Assert.Equal(4, GerenteSetups.Formato);
         Assert.Equal("ar-livre", Ambiente(json, "a"));
         Assert.Null(Ambiente(json, "b"));
         Assert.Equal([AmbienteSetup.ArLivre, (AmbienteSetup?)null], GerenteSetups.DeJson(json)!.Setups.Select(s => s.Ambiente));
@@ -1729,6 +1730,85 @@ public sealed partial class SetupsTestes : IDisposable
         Assert.Null(t._setups.Marca);
         Assert.Equal(EstadoConferencia.Confere, t._setups.Estado);
         Assert.Equal(Casa, t._setups.SetupEmUso!.Id);
+    }
+
+    /// <summary>
+    /// História 13c: um <c>setups.json</c> formato 3 escrito à mão (como a 8f e a 13b o gravavam: o Casa 2.1 com o
+    /// ambiente, o Bluetooth medido e o Módulo, a FILME e a ALTA nos botões e nas usadas, a FILME lembrando o Cinema),
+    /// com a playlist da FILME, uma pendente e a marca do mudo: sobe ao 4 sem perder nada, as memórias ficam sem nível,
+    /// e o texto do 3 fica guardado em <c>setups.formato3.json</c> antes de o arquivo ser regravado.
+    /// </summary>
+    [Fact]
+    public async Task Migracao_do_formato_3_ao_4_mantem_Setups_memorias_botoes_recentes_playlists_e_marca_e_guarda_a_copia()
+    {
+        const string formato3 = """
+            {
+              "formato": 3,
+              "ultimoSetup": "herdado-setup-casa-2-1",
+              "setups": [
+                {
+                  "id": "herdado-setup-casa-2-1", "nome": "Casa 2.1", "ambiente": "sala", "quando": "2026-10-29T00:00:00-03:00",
+                  "nivelBluetooth": { "valor": -13.0, "origem": "medido", "fonte": "Calibração guiada em 31/10/2026" },
+                  "equipamentos": [
+                    { "id": "herdado-modulo", "grupo": "amplificador", "categoria": "módulo", "nome": "Módulo", "canais": [ { "n": 1, "fonte": "CH1" } ] }
+                  ],
+                  "recentes": [ "memoria-alta", "teste-memoria-filme" ],
+                  "botoes": [ "teste-memoria-filme", null, "memoria-alta" ]
+                }
+              ],
+              "memorias": [
+                { "id": "teste-memoria-filme", "setup": "herdado-setup-casa-2-1", "nome": "FILME", "quando": "2026-10-18T21:45:00-03:00",
+                  "preset": "teste-preset-cinema",
+                  "regulagem": [ { "codigo": "080", "noFio": "+0.0" }, { "codigo": "081", "indice": 0, "noFio": "+10.0" } ] },
+                { "id": "memoria-alta", "setup": "herdado-setup-casa-2-1", "nome": "ALTA", "quando": "2026-10-20T10:00:00-03:00",
+                  "regulagem": [ { "codigo": "071", "indice": 0, "noFio": "-3.0" } ] }
+              ]
+            }
+            """;
+        const string alta = "memoria-alta";
+        var faixa = new Faixa("f1", "content://filme/1", "Abertura", "Filmes", TimeSpan.FromMinutes(3));
+        var playlists = GerentePlaylists.ParaJson(new DadosPlaylists(
+            new Dictionary<string, IReadOnlyList<Faixa>> { [Filme] = [faixa] },
+            [new PlaylistPendente("MUSICA ORIG", [faixa with { Id = "f2" }])]));
+        var mudo = GerenteSetups.MarcaParaJson(new MarcaMudo(Casa, ["0", "1", "0", "0"], DateTimeOffset.UnixEpoch));
+        using var t = new SetupsTestes(formato3, mudo, playlists, CenarioFilme.PresetsJson, modelosGuardado: CenarioFilme.ModelosJson);
+
+        await t._setups.Carregada;
+        await t._playlists.Carregada;
+
+        var lidos = t._setups.Dados;
+        var casa = Assert.Single(lidos.Setups);
+        Assert.Equal("Casa 2.1", casa.Nome);
+        Assert.Equal(new DadoTecnico(-13.0m, OrigemDado.Medido, "Calibração guiada em 31/10/2026"), casa.NivelBluetooth);
+        Assert.Equal(AmbienteSetup.Sala, casa.Ambiente);
+        Assert.Equal("Módulo", Assert.Single(casa.Equipamentos).Nome);
+        Assert.Equal([Filme, alta], lidos.Memorias.Select(m => m.Id));
+        Assert.Equal([new ValorCopiado("080", null, "+0.0"), new ValorCopiado("081", 0, "+10.0")], lidos.Memorias[0].Regulagem);
+        Assert.Equal([new ValorCopiado("071", 0, "-3.0")], lidos.Memorias[1].Regulagem);
+        Assert.Equal(Cinema, lidos.Memorias[0].IdPreset);
+        Assert.All(lidos.Memorias, m => Assert.Null(m.Nivel));
+        Assert.All(lidos.Memorias, m => Assert.Empty(m.Masters));
+        Assert.Equal([alta, Filme], lidos.UsoDe(Casa).Recentes);
+        Assert.Equal([Filme, null, alta], lidos.UsoDe(Casa).Botoes);
+        Assert.Equal(Casa, lidos.UltimoSetup);
+        Assert.Equal(["0", "1", "0", "0"], t._setups.Marca!.MuteAnterior);
+        Assert.Equal([faixa], t._playlists.Playlist(Filme));
+        Assert.Single(t._playlists.Pendentes);
+        // O texto do 3 fica guardado antes; o arquivo já sai no 4, e o 4 relido é igual.
+        Assert.Equal(formato3, t._guardadoFormato3.Texto);
+        Assert.Equal(GerenteSetups.Formato, GerenteSetups.FormatoDe(t._guardadoSetups.Texto!));
+        Assert.Equal(4, GerenteSetups.Formato);
+        Assert.Equal(GerenteSetups.ParaJson(lidos), GerenteSetups.ParaJson(GerenteSetups.DeJson(t._guardadoSetups.Texto!)!));
+        Assert.Contains(t._log.Linhas, l => l.Contains("setups.formato3.json", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task O_formato_4_nao_guarda_copia_do_formato_3()
+    {
+        using var t = new SetupsTestes();
+        await t._setups.Carregada;
+
+        Assert.Null(t._guardadoFormato3.Texto);
     }
 
     [Fact]

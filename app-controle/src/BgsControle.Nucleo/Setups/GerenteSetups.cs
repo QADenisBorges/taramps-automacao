@@ -34,7 +34,7 @@ public sealed record DadosSetups(
 /// <summary>
 /// Os Setups e as memórias do celular (CAP-4, CAP-16, failure-modes regra 5), no modelo de 29/10/2026:
 /// o Setup é só o físico (os equipamentos e as fichas) e a memória guarda toda a regulagem, com o valor
-/// final. Guarda tudo em <c>setups.json</c> (formato 3; os formatos 1 e 2 são migrados) e a marca do
+/// final. Guarda tudo em <c>setups.json</c> (formato 4; o 3 sobe sem perda, os formatos 1 e 2 são migrados) e a marca do
 /// mudo da dúvida em <c>setup-mudo.json</c>; sem arquivo (ou com ele estragado), começa vazio: nenhum
 /// Setup e nenhuma memória (CAP-6, decisão do Denis de 30/10/2026: o app nasce zerado).
 /// <list type="bullet">
@@ -66,8 +66,14 @@ public sealed record DadosSetups(
 /// </summary>
 public sealed class GerenteSetups
 {
-    /// <summary>O formato do <c>setups.json</c>: o 3 tem o Setup só físico, as fichas com origem e a memória com a regulagem (história 8f).</summary>
-    public const int Formato = 3;
+    /// <summary>
+    /// O formato do <c>setups.json</c>: o 4 acrescenta à memória o nível de rendimento e o master por preset
+    /// (história 13c). O 3 é migrado sem perder nada.
+    /// </summary>
+    public const int Formato = 4;
+
+    /// <summary>O formato da 8f (o Setup só físico, as fichas com origem e a memória com a regulagem). É migrado ao 4 sem perda.</summary>
+    public const int Formato3 = 3;
 
     /// <summary>O formato da 8e (o equilíbrio por canal, a calibração no Setup). É migrado: ficam os Setups e os equipamentos.</summary>
     public const int Formato2 = 2;
@@ -198,6 +204,7 @@ public sealed class GerenteSetups
     private readonly IChaves _chaves;
     private readonly IRepositorioTexto _repositorio;
     private readonly IRepositorioTexto _repositorioMudo;
+    private readonly IRepositorioTexto? _repositorioFormato3;
     private readonly LogBle _log;
     private readonly TimeProvider _relogio;
 
@@ -235,9 +242,11 @@ public sealed class GerenteSetups
         IRepositorioTexto repositorioMudo,
         LogBle log,
         TimeProvider? relogio = null,
-        BaseModelos? modelos = null)
+        BaseModelos? modelos = null,
+        IRepositorioTexto? repositorioFormato3 = null)
     {
         _sessao = sessao;
+        _repositorioFormato3 = repositorioFormato3;
         Modelos = modelos;
         _estado = estado;
         _escritor = escritor;
@@ -262,10 +271,15 @@ public sealed class GerenteSetups
         presets.Mudou += Notificar; // um preset renomeado muda o "Preset: Cinema" das memórias
         _link.Mudou += _ => Notificar(); // as saídas do app dependem do link
         // História 13a: a cerca do limitador, no Setup em uso e nas saídas com o link que vale agora.
-        _escritor.Cerca = escritas => Cerca.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
-        _escritor.CercaNaVolta = escritas => Cerca.NaVolta(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas);
+        // História 13c: o teto da cerca segue o nível da memória em uso (no Máximo, min(X, C)), também na volta à cópia.
+        _escritor.Cerca = escritas => Cerca.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas, NivelEmUso);
+        _escritor.CercaNaVolta = escritas => Cerca.NaVolta(SetupEmUso?.Equipamentos, SaidasEmUso, _estado.Copiar(), escritas, NivelEmUso);
         // História 13b: a porta não mexe no nível de uma saída sem calibração (nem em nada global sem Setup em uso).
         _escritor.SemCalibracao = enderecos => SemCalibracao.Conferir(SetupEmUso?.Equipamentos, SaidasEmUso, enderecos);
+        // História 13c: o master à mão acima da conta do nível em uso é recusado antes de enviar; o aplicar de um preset
+        // leva o master da combinação nova no mesmo lote.
+        _escritor.MasterNivel = RecusaDoMaster;
+        presets.MasterDoPreset = MasterDoPreset;
 
         // Ao reconectar com a marca de uma destas operações: pela metade (Terminar ou Voltar à cópia).
         _copia.Registrar(TipoAplicarMemoria,
@@ -536,10 +550,10 @@ public sealed class GerenteSetups
 
     /// <summary>
     /// O limite físico de cada saída do Setup em uso (história 13a), com o corte e o limitador do espelho
-    /// agora. Sem Setup em uso, nenhum.
+    /// agora; no nível Máximo da memória em uso (13c), o teto é min(X, C). Sem Setup em uso, nenhum.
     /// </summary>
     public IReadOnlyList<LimiteSaida> LimitesEmUso =>
-        SetupEmUso is { } setup ? LimiteFisico.Calcular(setup.Equipamentos, SaidasEmUso, _estado.Valor) : [];
+        SetupEmUso is { } setup ? LimiteFisico.Calcular(setup.Equipamentos, SaidasEmUso, _estado.Valor, Niveis.SemTermico(NivelEmUso)) : [];
 
     /// <summary>Os alto-falantes passivos do Setup em uso que ficam fora da conta dos limites, com o motivo (história 13a).</summary>
     public IReadOnlyList<AltoFalanteFora> ForaDaContaEmUso => LimiteFisico.ForaDaConta(SetupEmUso?.Equipamentos);
@@ -597,6 +611,258 @@ public sealed class GerenteSetups
         decimal? Frequencia(string tipo, string frequencia) => Numero(tipo) is { } t && t != 0 ? Numero(frequencia) : null;
         return new CorteCanal(Frequencia("042", "040"), Frequencia("043", "041"));
     }
+
+    // ------------------------------------------------------------------ níveis de rendimento (história 13c)
+
+    /// <summary>O nível da memória do celular em uso, ou null (sem nível, ou sem memória do celular em uso).</summary>
+    public NivelRendimento? NivelEmUso => MemoriaEmUso?.Nivel;
+
+    /// <summary>
+    /// Por que os níveis não são oferecidos agora, ou null: sem Setup em uso, uma saída sem calibração ("Calibre a
+    /// saída JBL L.") ou o Bluetooth sem medir ("Meça o nível do Bluetooth.").
+    /// </summary>
+    public string? NivelIndisponivel => Niveis.Indisponivel(SetupEmUso, SaidasEmUso);
+
+    /// <summary>
+    /// A conta do nível na cadeia do aparelho agora (o espelho), no Setup em uso e com o link que vale, ou null
+    /// (o nível não é oferecido). A conta pode vir sem master, com o dado que falta.
+    /// </summary>
+    public ContaNivel? Conta(NivelRendimento nivel) => Conta(nivel, _estado.Valor);
+
+    /// <summary>A conta do nível da memória em uso agora, ou null (sem nível, ou o nível não é oferecido).</summary>
+    public ContaNivel? ContaEmUso() => NivelEmUso is { } nivel ? Conta(nivel) : null;
+
+    private ContaNivel? Conta(NivelRendimento nivel, Func<Endereco, Valor?> ler)
+    {
+        var setup = SetupEmUso;
+        var saidas = SaidasEmUso;
+        if (setup is null || Niveis.Indisponivel(setup, saidas) is not null)
+            return null;
+        return PiorCaso.Conta(setup.Equipamentos, saidas, ler, setup.NivelBluetooth!.Valor, nivel);
+    }
+
+    /// <summary>
+    /// A conta do nível de uma memória sobre um alvo (a regulagem dela e as bandas do preset, por cima do espelho),
+    /// no Setup dela, com o link tirado das ligações dele (como o aplicar): o master a pôr no aplicar, ou null.
+    /// </summary>
+    private ContaNivel? ContaDoAlvo(Setup setup, NivelRendimento nivel, IEnumerable<ValorCopiado> alvo)
+    {
+        var saidas = Ligacoes.Saidas(setup.Equipamentos);
+        if (Niveis.Indisponivel(setup, saidas) is not null)
+            return null;
+        return PiorCaso.Conta(setup.Equipamentos, saidas, LeitorCom(alvo), setup.NivelBluetooth!.Valor, nivel);
+    }
+
+    /// <summary>O espelho agora com os valores por cima (o que um lote vai deixar no aparelho).</summary>
+    private Func<Endereco, Valor?> LeitorCom(IEnumerable<ValorCopiado> valores)
+    {
+        var depois = new Dictionary<Endereco, Valor>(_estado.Copiar());
+        foreach (var v in valores)
+        {
+            var endereco = new Endereco(v.Codigo, v.Indice);
+            if (Catalogo.ParametroDe(v.Codigo)?.Decodificar(v.NoFio).Valor is { } valor)
+                depois[endereco] = valor;
+            else
+                depois.Remove(endereco);
+        }
+        return e => depois.GetValueOrDefault(e);
+    }
+
+    // O corte do usuário no master (história 13c): com a memória em uso num nível, o MASTER pedido à mão (a tela ou a
+    // porta) abaixo da conta fica como corte (conta − pedido, só na memória do app), e a conta na hora escreve
+    // conta − corte: a cadeia ainda mexe no master para os dois lados, mas o corte do usuário fica. Aplicar a
+    // memória, escolher o nível ou trocar o preset zeram o corte.
+    private string? _corteMemoria;
+    private decimal _corte;
+
+    /// <summary>O corte do usuário no master da memória em uso (≥ 0 dB); 0 sem corte ou com outra memória em uso.</summary>
+    public decimal CorteDoMaster
+    {
+        get
+        {
+            var id = MemoriaEmUso?.Id;
+            lock (_trava)
+                return id is not null && _corteMemoria == id ? _corte : 0m;
+        }
+    }
+
+    /// <summary>O master que a conta na hora põe: a conta menos o corte do usuário, nunca abaixo de −80 dB.</summary>
+    public decimal MasterComCorte(decimal conta) => Math.Max(conta - CorteDoMaster, PiorCaso.MinimoMaster);
+
+    private void ZerarCorte()
+    {
+        lock (_trava)
+        {
+            _corteMemoria = null;
+            _corte = 0m;
+        }
+    }
+
+    /// <summary>
+    /// A recusa do master à mão (a tela e a porta) com a memória em uso num nível: acima da conta, "Nível Alto: o
+    /// master vai até −8,8 dB."; abaixo, passa e vira o corte do usuário. Com o nível sem conta (a calibração ou o
+    /// Bluetooth perdidos, um dado que falta), só passa até o master de agora; acima, o motivo. Sem nível, passa.
+    /// </summary>
+    private string? RecusaDoMaster(decimal pedido)
+    {
+        if (MemoriaEmUso is not { Nivel: { } nivel } memoria)
+            return null;
+        var conta = Conta(nivel);
+        if (conta?.Master is not { } master)
+        {
+            if (_estado.Valor(Camadas.CodigoMaster)?.Numero is { } agora && pedido <= agora)
+                return null;
+            return NivelIndisponivel ?? conta?.Falta ?? Niveis.MsgFalhou;
+        }
+        if (pedido > master)
+            return Niveis.MsgMasterAcima(nivel, master);
+        lock (_trava)
+        {
+            _corteMemoria = memoria.Id;
+            _corte = master - pedido;
+        }
+        return null;
+    }
+
+    /// <summary>O master da combinação da memória em uso (com nível) e do preset, para o aplicar do preset, ou null.</summary>
+    private decimal? MasterDoPreset(Preset preset) =>
+        NivelEmUso is { } nivel ? Conta(nivel, LeitorCom(preset.Valores))?.Master : null;
+
+    /// <summary>
+    /// Sair do Máximo (história 13c): um limitador acima de min(T, X, C) ficaria acima da cerca. Devolve "Baixe o
+    /// limitador da JBL L para −6,8 dB antes de sair do Máximo.", ou null.
+    /// </summary>
+    private string? LimitadorAcimaForaDoMaximo()
+    {
+        if (SetupEmUso is not { } setup)
+            return null;
+        foreach (var limite in LimiteFisico.Calcular(setup.Equipamentos, SaidasEmUso, _estado.Valor))
+        {
+            foreach (var c in limite.PorCanal)
+            {
+                if (_estado.Valor(Cerca.CodigoLimitador, c.Canal)?.Numero is { } limiar && limiar != Cerca.LimitadorOff && limiar > c.TetoCerca)
+                    return Niveis.MsgSairDoMaximo(Cerca.Onde(limite, c.Canal), c.TetoCerca);
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Escolher o nível da memória (história 13c): grava o nível e, com ele, escreve o master da combinação memória
+    /// + preset em uso (a conta na hora, origem App) e o guarda. "Sem nível" (null) grava, sem mexer no master, e
+    /// limpa os masters guardados. O nível só se escolhe com a memória em uso e com os níveis oferecidos
+    /// (<see cref="NivelIndisponivel"/>). Sair do Máximo com um limitador acima de min(T, X, C) é recusado.
+    /// </summary>
+    public async Task<ResultadoSetup> DefinirNivelAsync(string idMemoria, NivelRendimento? nivel)
+    {
+        await Carregada;
+        if (!await _operacao.WaitAsync(0))
+            return Terminar(ResultadoSetup.Falha(MsgOcupado));
+        try
+        {
+            if (Memoria(idMemoria) is not { } memoria)
+                return Terminar(ResultadoSetup.Falha(MsgMemoriaNaoExiste));
+            if (nivel is { } pedido && !Enum.IsDefined(pedido))
+                return Terminar(ResultadoSetup.Falha(Niveis.MsgFalhou));
+            if (nivel is null && memoria.Nivel is null)
+                return Terminar(ResultadoSetup.Feito(null));
+            if (memoria.Nivel == NivelRendimento.Maximo && nivel != NivelRendimento.Maximo && MemoriaEmUso?.Id == memoria.Id)
+            {
+                string? acima;
+                try
+                {
+                    acima = LimitadorAcimaForaDoMaximo();
+                }
+                catch (Exception e)
+                {
+                    _log.Evento($"memória {memoria.Nome}: falha ao conferir o limitador ({e.GetType().Name})");
+                    acima = Niveis.MsgFalhou;
+                }
+                if (acima is not null)
+                    return Terminar(ResultadoSetup.Falha(acima));
+            }
+            if (nivel is not { } novo)
+            {
+                if (!await GravarAsync(d => ComMemoria(d, memoria.Id, m => m with { Nivel = null, Masters = MemoriaCelular.SemMasters })))
+                    return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+                ZerarCorte();
+                _log.Evento($"memória {memoria.Nome} sem nível");
+                return Terminar(ResultadoSetup.Feito(Niveis.MsgSemNivel(memoria.Nome)));
+            }
+            if (MemoriaEmUso?.Id != memoria.Id)
+                return Terminar(ResultadoSetup.Falha(Niveis.MsgSoEmUso));
+            if (NivelIndisponivel is { } motivo)
+                return Terminar(ResultadoSetup.Falha(motivo));
+            if (!SessaoAberta)
+                return Terminar(ResultadoSetup.Falha(Sessao.MotivoSemConexao));
+            if (!_estado.Pronto || _estado.Lendo)
+                return Terminar(ResultadoSetup.Falha(_estado.Lendo ? Escritor.MsgLendo : Escritor.MsgSemLeitura));
+            if (_copia.MotivoBloqueio() is { } bloqueio)
+                return Terminar(ResultadoSetup.Falha(bloqueio));
+            ContaNivel? conta;
+            try
+            {
+                conta = Conta(novo);
+            }
+            catch (Exception e)
+            {
+                _log.Evento($"memória {memoria.Nome}: falha na conta do nível ({e.GetType().Name})");
+                return Terminar(ResultadoSetup.Falha(Niveis.MsgFalhou));
+            }
+            if (conta?.Master is not { } master)
+                return Terminar(ResultadoSetup.Falha(conta?.Falta ?? Niveis.MsgFalhou));
+
+            // Primeiro guarda (com a memória como ela está no arquivo agora), depois escreve o master.
+            var idPreset = IdPresetEmUso;
+            if (!await GravarAsync(d => ComMemoria(d, memoria.Id, m => ComMaster(m with { Nivel = novo }, idPreset, master))))
+                return Terminar(ResultadoSetup.Falha(MsgNaoGuardou));
+            ZerarCorte();
+            _log.Evento($"memória {memoria.Nome} no nível {Niveis.Nome(novo)}, master {master.ToString("0.0", Fio)} dB");
+            var frase = Niveis.MsgDefinido(novo, memoria.Nome);
+            if (conta.Aviso is { } aviso)
+                frase += $" {aviso}";
+            if (_estado.Valor(Camadas.CodigoMaster)?.Numero != master)
+            {
+                ResultadoEscrita r;
+                using (Origem.Como(OrigemComando.App))
+                    r = await _escritor.EscreverAsync(Catalogo.ParametroDe(Camadas.CodigoMaster)!, null, master);
+                if (!r.Ok)
+                {
+                    var falha = r.Motivo ?? Escritor.MsgSemConfirmacao;
+                    _log.Evento($"memória {memoria.Nome}: o master do nível não foi escrito ({falha})");
+                    return Terminar(new ResultadoSetup(false, falha, $"{frase} {Niveis.MsgMasterNaoEscrito(falha)}"));
+                }
+            }
+            return Terminar(ResultadoSetup.Feito(frase));
+        }
+        finally
+        {
+            _operacao.Release();
+        }
+    }
+
+    /// <summary>
+    /// Guarda o master que o nível pôs na memória (história 13c): no registro por preset (<see cref="MemoriaCelular.Masters"/>,
+    /// "" sem preset) e no MASTER da regulagem, para a conferência ao conectar e o Salvar verem o que está no
+    /// aparelho. Vale na hora, mesmo se não gravar.
+    /// </summary>
+    internal Task GuardarMasterAsync(string idMemoria, string? idPreset, decimal master) =>
+        GravarUsoAsync(d => d with { Memorias = d.Memorias.Select(m => m.Id == idMemoria ? ComMaster(m, idPreset, master) : m).ToArray() });
+
+    /// <summary>A memória com o master do nível guardado para o preset e na regulagem.</summary>
+    private static MemoriaCelular ComMaster(MemoriaCelular memoria, string? idPreset, decimal master)
+    {
+        var masters = new Dictionary<string, decimal>(memoria.Masters) { [idPreset ?? ""] = master };
+        var noFio = Camadas.Db(master);
+        IReadOnlyList<ValorCopiado> regulagem = memoria.Regulagem.Any(v => v.Codigo == Camadas.CodigoMaster)
+            ? memoria.Regulagem.Select(v => v.Codigo == Camadas.CodigoMaster ? v with { NoFio = noFio } : v).ToArray()
+            : [.. memoria.Regulagem, new ValorCopiado(Camadas.CodigoMaster, null, noFio)];
+        return memoria with { Masters = masters, Regulagem = regulagem };
+    }
+
+    /// <summary>Os dados com a memória mudada (a que está nos dados agora).</summary>
+    private static DadosSetups ComMemoria(DadosSetups dados, string idMemoria, Func<MemoriaCelular, MemoriaCelular> mudar) =>
+        dados with { Memorias = dados.Memorias.Select(m => m.Id == idMemoria ? mudar(m) : m).ToArray() };
 
     // ------------------------------------------------------------------ nomes
 
@@ -992,11 +1258,13 @@ public sealed class GerenteSetups
 
             var aplicado = new Aplicado(true, null, Iniciou: false, Restam: 0);
             var sumiu = false;
+            ContaNivel? conta = null;
             if (ativa is not null)
             {
-                (var alvo, sumiu) = Alvo(ativa);
+                ZerarCorte();
+                (var alvo, sumiu, conta) = Alvo(ativa);
                 var op = new OperacaoPendente(TipoAplicarSetup, setup.Id, $"Escolher o Setup {setup.Nome}", setup.Nome);
-                aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
+                aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo, ativa.Nivel);
                 if (!aplicado.Ok)
                     return Terminar(ResultadoSetup.Falha(aplicado.Motivo!));
             }
@@ -1009,6 +1277,8 @@ public sealed class GerenteSetups
             var (falhou, link) = await FecharEscolhaAsync(setup, ativa, aplicado.Iniciou);
             if (falhou is not null)
                 return Terminar(ResultadoSetup.Falha(MsgContinuaMutado(falhou)));
+            if (ativa is not null && conta?.Master is { } master)
+                await GuardarMasterAsync(ativa.Id, sumiu ? null : ativa.IdPreset, master);
             var frase = MsgSetupEscolhido(setup.Nome);
             if (aplicado.Restam > 0)
                 frase += $" {MsgFicaramDiferentes(aplicado.Restam)}";
@@ -1640,8 +1910,9 @@ public sealed class GerenteSetups
             return ResultadoSetup.Falha(refazendo ? MsgNaoExisteTerminar : MsgSetupNaoExiste);
 
         var op = new OperacaoPendente(tipo, memoria.Id, $"Aplicar a memória {memoria.Nome}", memoria.Nome);
-        var (alvo, sumiu) = Alvo(memoria);
-        var aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo);
+        ZerarCorte();
+        var (alvo, sumiu, conta) = Alvo(memoria);
+        var aplicado = await AplicarAlvoAsync(setup, alvo, op, refazendo, memoria.Nivel);
         if (!aplicado.Ok)
             return ResultadoSetup.Falha(aplicado.Motivo!);
 
@@ -1669,10 +1940,15 @@ public sealed class GerenteSetups
             _ultimoPreset = sumiu ? null : memoria.IdPreset;
         }
         await GravarUsoAsync(d => d with { Uso = Com(d.Uso, setup.Id, Usar(d.UsoDe(setup.Id), memoria.Id)) });
+        // História 13c: o master que o nível pôs fica registrado para a combinação com o preset.
+        if (conta?.Master is { } master)
+            await GuardarMasterAsync(memoria.Id, sumiu ? null : memoria.IdPreset, master);
         _log.Evento($"memória {memoria.Nome} aplicada");
         var frase = aplicado.Restam == 0 ? MsgAplicada(memoria.Nome) : MsgAplicadaDiferente(memoria.Nome, aplicado.Restam);
         if (sumiu)
             frase += $" {MsgPresetSumiu}";
+        if (conta?.Aviso is { } aviso)
+            frase += $" {aviso}";
         if (link is not null)
             frase += $" {MsgLinkNaoGuardado(link)}";
         return ResultadoSetup.Feito(frase);
@@ -1975,6 +2251,8 @@ public sealed class GerenteSetups
     /// </summary>
     private async Task AoAplicarPresetAsync(Preset preset)
     {
+        // História 13c: trocar o preset zera o corte do usuário no master (o lote pôs a conta da combinação nova).
+        ZerarCorte();
         string? idMemoria;
         lock (_trava)
         {
@@ -1983,9 +2261,13 @@ public sealed class GerenteSetups
         }
         if (idMemoria is not null && Memoria(idMemoria) is { } memoria && memoria.IdPreset != preset.Id)
         {
+            // História 13c: com o nível, o master que o aplicar pôs no lote fica registrado para a combinação nova.
+            var master = memoria.Nivel is not null ? _estado.Valor(Camadas.CodigoMaster)?.Numero : null;
             await GravarUsoAsync(d => d with
             {
-                Memorias = d.Memorias.Select(m => m.Id == idMemoria ? m with { IdPreset = preset.Id } : m).ToArray(),
+                Memorias = d.Memorias.Select(m => m.Id != idMemoria ? m
+                    : master is { } valor ? ComMaster(m with { IdPreset = preset.Id }, preset.Id, valor)
+                    : m with { IdPreset = preset.Id }).ToArray(),
             });
             _log.Evento($"memória {memoria.Nome} lembra o preset {preset.Nome}");
             return;
@@ -2059,7 +2341,53 @@ public sealed class GerenteSetups
     /// as bandas não entram. <c>Sumiu</c>: ela lembra um preset que não existe mais (o arquivo foi
     /// editado); o alvo vai sem as bandas.
     /// </summary>
-    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu) Alvo(MemoriaCelular memoria)
+    /// <remarks>
+    /// História 13c: com a memória num nível, o MASTER do alvo é o da conta na hora da combinação memória + preset
+    /// (o guardado é só registro); <c>Conta</c> vem com ela, ou null (sem nível, ou o nível não é oferecido).
+    /// </remarks>
+    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu, ContaNivel? Conta) Alvo(MemoriaCelular memoria)
+    {
+        var (alvo, sumiu) = AlvoGuardado(memoria);
+        if (memoria.Nivel is not { } nivel || Setup(memoria.IdSetup) is not { } setup)
+            return (alvo, sumiu, null);
+        ContaNivel? conta;
+        try
+        {
+            conta = ContaDoAlvo(setup, nivel, alvo);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"memória {memoria.Nome}: falha na conta do nível ({e.GetType().Name})");
+            return (SemConta(memoria, alvo), sumiu, null);
+        }
+        if (conta?.Master is not { } master)
+        {
+            _log.Evento($"memória {memoria.Nome}: sem a conta do nível ({conta?.Falta ?? Niveis.Indisponivel(setup, Ligacoes.Saidas(setup.Equipamentos))})");
+            return (SemConta(memoria, alvo), sumiu, null);
+        }
+        var noFio = Camadas.Db(master);
+        IReadOnlyList<ValorCopiado> comMaster = alvo.Any(v => v.Codigo == Camadas.CodigoMaster)
+            ? alvo.Select(v => v.Codigo == Camadas.CodigoMaster ? v with { NoFio = noFio } : v).ToArray()
+            : [.. alvo, new ValorCopiado(Camadas.CodigoMaster, null, noFio)];
+        return (comMaster, sumiu, conta);
+    }
+
+    /// <summary>
+    /// O nível sem conta (a calibração ou o Bluetooth perdidos, um dado que falta): o master guardado não vai sem
+    /// conferir; vai o menor entre ele e o de agora no aparelho.
+    /// </summary>
+    private IReadOnlyList<ValorCopiado> SemConta(MemoriaCelular memoria, IReadOnlyList<ValorCopiado> alvo)
+    {
+        var agora = _estado.Valor(Camadas.CodigoMaster)?.Numero;
+        if (agora is not { } a || alvo.FirstOrDefault(v => v.Codigo == Camadas.CodigoMaster) is not { } guardado
+            || Catalogo.ParametroDe(Camadas.CodigoMaster)?.Decodificar(guardado.NoFio).Valor?.Numero is not { } g || g <= a)
+            return alvo;
+        _log.Evento($"memória {memoria.Nome}: o master fica no de agora ({a.ToString("0.0", Fio)} dB), abaixo do guardado ({g.ToString("0.0", Fio)} dB)");
+        var noFio = Camadas.Db(a);
+        return alvo.Select(v => v.Codigo == Camadas.CodigoMaster ? v with { NoFio = noFio } : v).ToArray();
+    }
+
+    private (IReadOnlyList<ValorCopiado> Alvo, bool Sumiu) AlvoGuardado(MemoriaCelular memoria)
     {
         if (memoria.IdPreset is null)
             return (memoria.Regulagem, false);
@@ -2076,7 +2404,9 @@ public sealed class GerenteSetups
     /// sucesso, a marca da cópia continua (quem chamou conclui, ou deixa pela metade); com
     /// <see cref="Aplicado.Iniciou"/> falso, não havia o que escrever e nenhuma marca começou.
     /// </summary>
-    private async Task<Aplicado> AplicarAlvoAsync(Setup setup, IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo)
+    /// <param name="nivel">O nível da memória aplicada (história 13c): no Máximo, a cerca confere o lote com o teto min(X, C).</param>
+    private async Task<Aplicado> AplicarAlvoAsync(Setup setup, IReadOnlyList<ValorCopiado> alvo, OperacaoPendente op, bool refazendo,
+        NivelRendimento? nivel = null)
     {
         if (!SessaoAberta)
             return Aplicado.Falha(Sessao.MotivoSemConexao);
@@ -2106,7 +2436,7 @@ public sealed class GerenteSetups
         try
         {
             cerca = Cerca.Conferir(setup.Equipamentos, Ligacoes.Saidas(setup.Equipamentos), _estado.Copiar(),
-                escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), (Valor?)e.Valor)));
+                escritas.Select(e => (new Endereco(e.Parametro.Codigo, e.Indice), (Valor?)e.Valor)), nivel);
         }
         catch (Exception e)
         {
@@ -2147,9 +2477,14 @@ public sealed class GerenteSetups
         string? ultimo = null;
         // O lote conferido inteiro não é conferido de novo escrita a escrita: o limitador sai primeiro e o
         // passa-alta por último, para uma falha no meio não deixar o corte novo com o limitador de antes.
+        // História 13c: o MASTER que baixa sai junto com o limitador (o lado seguro), antes do resto da cadeia; o que
+        // sobe, por último.
+        var masterAgora = _estado.Valor(Camadas.CodigoMaster)?.Numero;
         foreach (var e in escritas.OrderBy(e => e.Parametro.Codigo switch
                  {
                      Cerca.CodigoLimitador => 0,
+                     Camadas.CodigoMaster when masterAgora is null || e.Valor.Numero < masterAgora => 0,
+                     Camadas.CodigoMaster => 3,
                      Cerca.CodigoPassaAlta or Cerca.CodigoFiltroPassaAlta => 2,
                      _ => 1,
                  }))
@@ -2261,6 +2596,34 @@ public sealed class GerenteSetups
 
     // ------------------------------------------------------------------ guardado
 
+    /// <summary>
+    /// Grava os dados mudados a partir dos que valem na hora da gravação (com a vez da gravação: uma gravação no meio
+    /// não se perde); só se gravou eles passam a valer.
+    /// </summary>
+    private async Task<bool> GravarAsync(Func<DadosSetups, DadosSetups> mudar)
+    {
+        await _gravacao.WaitAsync();
+        try
+        {
+            DadosSetups novos;
+            lock (_trava)
+                novos = mudar(_dados);
+            if (!await Gravacao.GravarAsync(_repositorio, ParaJson(novos)))
+            {
+                _log.Evento("não consegui guardar os Setups no celular");
+                return false;
+            }
+            lock (_trava)
+                _dados = novos;
+        }
+        finally
+        {
+            _gravacao.Release();
+        }
+        Notificar();
+        return true;
+    }
+
     /// <summary>Grava os dados (com duas tentativas); só se gravou eles passam a valer.</summary>
     private async Task<bool> GravarAsync(DadosSetups novos)
     {
@@ -2324,13 +2687,22 @@ public sealed class GerenteSetups
     {
         DadosSetups? lidos = null;
         var migrou = false;
+        var subiu = false;
+        string? textoFormato3 = null;
         IReadOnlyList<string> memoriasQueSumiram = [];
         if (await Gravacao.LerAsync(_repositorio) is { } json)
         {
             try
             {
                 lidos = DeJson(json);
-                if (lidos is not null && FormatoDe(json) != Formato)
+                var formato = lidos is null ? null : FormatoDe(json);
+                if (formato == Formato3)
+                {
+                    // História 13c: o 3 sobe ao 4 sem perder nada (as memórias ficam sem nível).
+                    subiu = true;
+                    textoFormato3 = json;
+                }
+                else if (lidos is not null && formato != Formato)
                 {
                     migrou = true;
                     memoriasQueSumiram = IdsDasMemorias(json);
@@ -2361,16 +2733,39 @@ public sealed class GerenteSetups
                 _dados = lidos;
             _marca ??= marca;
         }
-        if (migrou)
+        if (subiu)
         {
-            // O formato 3 começa do zero (decisão D2 do Denis, 29/10/2026): ficam os Setups e os
-            // equipamentos; as memórias, os botões e as playlists delas somem. O arquivo já sai no 3.
-            _log.Evento("setups.json migrado ao formato 3: ficaram os Setups e os equipamentos; as memórias do celular saíram");
+            // História 13c: o formato 4 só acrescenta o nível e os masters à memória. Ficam os Setups, as memórias,
+            // os botões, as usadas por último, as playlists e a marca; o arquivo já sai no 4.
+            // Antes de regravar, a cópia do formato 3: um app mais antigo instalado depois não perde tudo sem aviso.
+            if (_repositorioFormato3 is { } copia3 && textoFormato3 is not null)
+            {
+                _log.Evento(await Gravacao.GravarAsync(copia3, textoFormato3)
+                    ? "setups.json formato 3 guardado em setups.formato3.json antes da migração"
+                    : "não consegui guardar a cópia do setups.json formato 3");
+            }
+            _log.Evento("setups.json migrado ao formato 4: tudo ficou; as memórias estão sem nível");
             await _gravacao.WaitAsync();
             try
             {
                 if (!await Gravacao.GravarAsync(_repositorio, ParaJson(Dados)))
-                    _log.Evento("não consegui regravar o setups.json no formato 3");
+                    _log.Evento("não consegui regravar o setups.json no formato 4");
+            }
+            finally
+            {
+                _gravacao.Release();
+            }
+        }
+        if (migrou)
+        {
+            // O formato 3 começa do zero (decisão D2 do Denis, 29/10/2026): ficam os Setups e os
+            // equipamentos; as memórias, os botões e as playlists delas somem. O arquivo já sai no 4.
+            _log.Evento($"setups.json migrado ao formato {Formato}: ficaram os Setups e os equipamentos; as memórias do celular saíram");
+            await _gravacao.WaitAsync();
+            try
+            {
+                if (!await Gravacao.GravarAsync(_repositorio, ParaJson(Dados)))
+                    _log.Evento($"não consegui regravar o setups.json no formato {Formato}");
             }
             finally
             {
@@ -2387,8 +2782,10 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// O JSON do <c>setups.json</c> (formato 3): cada Setup com os equipamentos e as fichas (cada dado
-    /// com a origem) e o uso das memórias; cada memória com a regulagem e o preset lembrado.
+    /// O JSON do <c>setups.json</c> (formato 4): cada Setup com os equipamentos e as fichas (cada dado
+    /// com a origem) e o uso das memórias; cada memória com a regulagem, o preset lembrado e, da 13c, o nível
+    /// (<c>nivel</c>: <c>baixo</c>, <c>medio</c>, <c>alto</c> ou <c>maximo</c>; ausente = sem nível) e os masters por
+    /// preset (<c>masters</c>: {id do preset, ou "" sem preset → dB}).
     /// </summary>
     public static string ParaJson(DadosSetups dados)
     {
@@ -2441,6 +2838,15 @@ public sealed class GerenteSetups
                 if (m.IdPreset is { } preset)
                     w.WriteString("preset", preset);
                 EscreverValores(w, "regulagem", m.Regulagem);
+                if (m.Nivel is { } nivel)
+                    w.WriteString("nivel", Niveis.Chave(nivel));
+                if (m.Masters.Count > 0)
+                {
+                    w.WriteStartObject("masters");
+                    foreach (var (idPreset, master) in m.Masters.OrderBy(x => x.Key, StringComparer.Ordinal))
+                        w.WriteNumber(idPreset, master);
+                    w.WriteEndObject();
+                }
                 w.WriteEndObject();
             }
             w.WriteEndArray();
@@ -2475,12 +2881,14 @@ public sealed class GerenteSetups
     }
 
     /// <summary>
-    /// Lê o <c>setups.json</c>. Fora dos formatos 1, 2 e 3, com outra forma, ou com Setups e nenhum
+    /// Lê o <c>setups.json</c>. Fora dos formatos 1, 2, 3 e 4, com outra forma, ou com Setups e nenhum
     /// válido: null (o gerente volta ao vazio). Uma lista de Setups vazia vale (nenhum Setup). Uma
     /// entrada com id ou nome inválido, repetida, ou uma memória de um Setup que não existe, é
     /// descartada; as outras ficam. Um Setup com o id do antigo Casa 2.1 é um Setup comum.
     /// <list type="bullet">
-    /// <item><b>Formato 3</b> (história 8f): o Setup só físico (os equipamentos e as fichas com origem) e
+    /// <item><b>Formato 4</b> (história 13c): o 3 com o nível e os masters por preset na memória (um nível que não
+    /// vale fica null; um master que não é número sai).</item>
+    /// <item><b>Formato 3</b> (história 8f): lido inteiro, sem perder nada, com as memórias sem nível. O Setup só físico (os equipamentos e as fichas com origem) e
     /// as memórias com a regulagem, e o ambiente opcional (<c>ambiente</c>; um texto que não vale fica
     /// null). Um equipamento ilegível é descartado; os outros ficam, e as ligações para ele se desfazem
     /// (<see cref="Ligacoes.Sanear"/>).</item>
@@ -2495,10 +2903,13 @@ public sealed class GerenteSetups
         using var doc = JsonDocument.Parse(json);
         var raiz = doc.RootElement;
         if (raiz.ValueKind != JsonValueKind.Object
-            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato) || formato is not (Formato or Formato2 or FormatoAntigo)
+            || !raiz.TryGetProperty("formato", out var f) || !f.TryGetInt32(out var formato)
+            || formato is not (Formato or Formato3 or Formato2 or FormatoAntigo)
             || !raiz.TryGetProperty("setups", out var setupsJson) || setupsJson.ValueKind != JsonValueKind.Array)
             return null;
-        var migrando = formato != Formato;
+        // Os formatos 1 e 2 perdem as memórias (a migração da 8f); o 3 sobe ao 4 sem perder nada (13c).
+        var migrando = formato is Formato2 or FormatoAntigo;
+        var atual = formato is Formato or Formato3;
 
         var setups = new List<Setup>();
         var usos = new Dictionary<string, (List<string> Recentes, List<string?> Botoes)>();
@@ -2514,11 +2925,11 @@ public sealed class GerenteSetups
                 Formato2 => LerEquipamentos(item, legado: true),
                 _ => LerEquipamentos(item, legado: false),
             };
-            var ambiente = formato == Formato ? Ambientes.De(Texto(item, "ambiente")) : null;
+            var ambiente = atual ? Ambientes.De(Texto(item, "ambiente")) : null;
             setups.Add(new Setup(id, nome, FichaJson.Quando(item), ambiente)
             {
                 Equipamentos = equipamentos,
-                NivelBluetooth = formato == Formato ? LerNivelBluetooth(item) : null,
+                NivelBluetooth = atual ? LerNivelBluetooth(item) : null,
             });
             usos[id] = migrando ? (new List<string>(), new List<string?>()) : (Ids(item, "recentes").OfType<string>().ToList(), Ids(item, "botoes"));
         }
@@ -2536,7 +2947,10 @@ public sealed class GerenteSetups
                     || memorias.Any(m => m.IdSetup == idSetup && MesmoNome(m.Nome, nome)))
                     continue;
                 var idPreset = Texto(item, "preset") is { Length: > 0 } preset ? preset : null;
-                memorias.Add(new MemoriaCelular(id, idSetup, nome, FichaJson.Quando(item), LerValores(item, "regulagem", Camada.Regulagem), idPreset));
+                var memoria = new MemoriaCelular(id, idSetup, nome, FichaJson.Quando(item), LerValores(item, "regulagem", Camada.Regulagem), idPreset);
+                if (formato == Formato)
+                    memoria = memoria with { Nivel = Niveis.De(Texto(item, "nivel")), Masters = LerMasters(item) };
+                memorias.Add(memoria);
             }
         }
 
@@ -2553,6 +2967,20 @@ public sealed class GerenteSetups
 
         var ultimo = Texto(raiz, "ultimoSetup") is { } u && setups.Any(s => s.Id == u) ? u : null;
         return new DadosSetups(setups, memorias, ultimo, uso);
+    }
+
+    /// <summary>Os masters por preset de uma memória (história 13c): só os números; sem nenhum, o vazio de todas.</summary>
+    private static IReadOnlyDictionary<string, decimal> LerMasters(JsonElement item)
+    {
+        if (!item.TryGetProperty("masters", out var ms) || ms.ValueKind != JsonValueKind.Object)
+            return MemoriaCelular.SemMasters;
+        var masters = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        foreach (var p in ms.EnumerateObject())
+        {
+            if (p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetDecimal(out var v) && v is >= PiorCaso.MinimoMaster and <= 0)
+                masters[p.Name] = v;
+        }
+        return masters.Count == 0 ? MemoriaCelular.SemMasters : masters;
     }
 
     /// <summary>

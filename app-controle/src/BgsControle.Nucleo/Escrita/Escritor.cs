@@ -2,6 +2,7 @@ using BgsControle.Nucleo.Leitura;
 using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Seguranca;
+using BgsControle.Nucleo.Setups;
 using BgsControle.Nucleo.Uso;
 
 namespace BgsControle.Nucleo.Escrita;
@@ -215,6 +216,31 @@ public sealed class Escritor
     private string? SemCalibracaoDoPedido(Parametro parametro, int? indice, bool espelhar, bool loteConferido) =>
         loteConferido || Origem.Atual != OrigemComando.Ia ? null : ConferirSemCalibracao(parametro, indice, espelhar);
 
+    /// <summary>
+    /// O master à mão com um nível em uso (história 13c): para o valor pedido do MASTER (<c>080</c>), o motivo da
+    /// recusa ("Nível Alto: o master vai até −8,8 dB."), ou null. Abaixo da conta passa (baixar é seguro). Vale para
+    /// a tela e a porta; o app (a conta do nível, origem App) e os lotes da cópia passam. Ligada pelo
+    /// <c>GerenteSetups</c>.
+    /// </summary>
+    internal Func<decimal, string?>? MasterNivel { get; set; }
+
+    /// <summary>A recusa do master à mão pedido acima da conta do nível, ou null. Uma falha ao conferir recusa.</summary>
+    internal string? ConferirMaster(Parametro parametro, Valor? esperado, bool daCopia, bool loteConferido)
+    {
+        if (daCopia || loteConferido || parametro.Codigo != Camadas.CodigoMaster || Origem.Atual == OrigemComando.App
+            || MasterNivel is not { } regra || esperado?.Numero is not { } valor)
+            return null;
+        try
+        {
+            return regra(valor);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"falha ao conferir o nível ({e.GetType().Name})");
+            return Rendimento.Niveis.MsgFalhou;
+        }
+    }
+
     /// <summary>O motivo do <see cref="Bloqueio"/> agora, ou null.</summary>
     internal string? MotivoBloqueio()
     {
@@ -307,6 +333,9 @@ public sealed class Escritor
         // A cerca, antes da fila: vale para toda origem, também com daCopia.
         if (CercaDoPedido(parametro, indice, esperado, espelhar, loteConferido) is { } cerca)
             return Recusar(quadro, cerca);
+        // O master à mão acima da conta do nível em uso (história 13c), antes da fila, como a cerca.
+        if (ConferirMaster(parametro, esperado, daCopia, loteConferido) is { } nivel)
+            return Recusar(quadro, nivel);
         // A origem ambiente de quem pediu (tela, IA ou app) vai junto até o envio: a fila roda em
         // outra tarefa, e um pedido mais novo de outra origem pode tomar o lugar deste.
         var pedido = new Pedido(parametro, indice, quadro, esperado, espelhar, daCopia, loteConferido, Origem.Atual);

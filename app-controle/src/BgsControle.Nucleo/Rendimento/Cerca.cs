@@ -17,8 +17,8 @@ public sealed record TetoNaVolta(Endereco Endereco, decimal Teto, string Saida);
 /// com limite com o limitador OFF, desconhecido ou com o limiar acima do teto é recusada antes de qualquer
 /// envio. Ela confere o estado como ficaria depois da escrita (o espelho com a escrita, ou o lote inteiro,
 /// por cima) em toda saída que a escrita toca: as escritas do limitador (<c>071</c>) e do passa-alta
-/// (<c>040</c> e <c>042</c>, que mudam o X). Sem nível em uso, o teto é min(T, X, C) (os níveis são da
-/// 13c), nunca abaixo de −48 dB (o mínimo do limitador). Os lotes que voltam (a volta à cópia e o
+/// (<c>040</c> e <c>042</c>, que mudam o X). O teto segue o nível da memória em uso (história 13c): no Máximo,
+/// min(X, C); sem nível, ou do Baixo ao Alto, min(T, X, C); nunca abaixo de −48 dB (o mínimo do limitador). Os lotes que voltam (a volta à cópia e o
 /// desfazer) não são recusados: o limitador de cada canal cercado volta em min(cópia, teto)
 /// (<see cref="NaVolta"/>). Não tem chave nem exceção. É ligada no <see cref="Escritor"/> pelo
 /// <see cref="GerenteSetups"/>, como o bloqueio da cópia antes.
@@ -67,8 +67,10 @@ public static class Cerca
     /// <param name="saidas">As saídas do app (o link que vale).</param>
     /// <param name="espelho">O estado do aparelho agora.</param>
     /// <param name="escritas">O que vai ser escrito, na ordem (o último valor de um endereço vale).</param>
+    /// <param name="nivel">O nível da memória em uso (ou da que vai ser aplicada): no Máximo, o teto é min(X, C).</param>
     public static string? Conferir(IReadOnlyList<Equipamento>? equipamentos, IReadOnlyList<SaidaApp> saidas,
-        IReadOnlyDictionary<Endereco, Valor> espelho, IEnumerable<(Endereco Endereco, Valor? Valor)> escritas)
+        IReadOnlyDictionary<Endereco, Valor> espelho, IEnumerable<(Endereco Endereco, Valor? Valor)> escritas,
+        NivelRendimento? nivel = null)
     {
         var lista = escritas.Where(e => Toca(e.Endereco.Codigo) && e.Endereco.Indice is not null).ToArray();
         if (lista.Length == 0 || equipamentos is null || equipamentos.Count == 0)
@@ -99,7 +101,7 @@ public static class Cerca
             var saida = saidas[i];
             if (!saida.Canais.Any(canais.Contains))
                 continue;
-            var limite = LimiteFisico.CalcularSaida(equipamentos, saida, nomes[i], Ler);
+            var limite = LimiteFisico.CalcularSaida(equipamentos, saida, nomes[i], Ler, Niveis.SemTermico(nivel));
             foreach (var c in limite.PorCanal)
             {
                 if (desconhecidos.Contains(new Endereco(CodigoLimitador, c.Canal)))
@@ -144,8 +146,10 @@ public static class Cerca
     /// OFF, desconhecido ou acima do teto vai para o teto. O resto da cópia fica igual. Sem equipamentos,
     /// nenhum.
     /// </summary>
+    /// <param name="nivel">O nível da memória em uso: no Máximo, o teto é min(X, C).</param>
     public static IReadOnlyList<TetoNaVolta> NaVolta(IReadOnlyList<Equipamento>? equipamentos, IReadOnlyList<SaidaApp> saidas,
-        IReadOnlyDictionary<Endereco, Valor> espelho, IEnumerable<(Endereco Endereco, Valor? Valor)> escritas)
+        IReadOnlyDictionary<Endereco, Valor> espelho, IEnumerable<(Endereco Endereco, Valor? Valor)> escritas,
+        NivelRendimento? nivel = null)
     {
         if (equipamentos is null || equipamentos.Count == 0)
             return [];
@@ -163,7 +167,7 @@ public static class Cerca
         var nomes = Ligacoes.NomesNaTela(saidas);
         for (var i = 0; i < saidas.Count; i++)
         {
-            var limite = LimiteFisico.CalcularSaida(equipamentos, saidas[i], nomes[i], Ler);
+            var limite = LimiteFisico.CalcularSaida(equipamentos, saidas[i], nomes[i], Ler, Niveis.SemTermico(nivel));
             foreach (var c in limite.PorCanal)
             {
                 var endereco = new Endereco(CodigoLimitador, c.Canal);

@@ -1128,6 +1128,14 @@ public sealed class PortaComandos : IDisposable
             var lembrado = _setups.PresetDe(m);
             w.WriteString("preset", lembrado?.Nome);
             w.WriteString("idPreset", lembrado?.Id);
+            // História 13c: o nível (baixo, medio, alto, maximo ou null) e o master guardado: na memória em uso, para o
+            // preset em uso; nas outras, para o preset que ela lembra.
+            w.WriteString("nivel", m.Nivel is { } nivelMemoria ? Niveis.Chave(nivelMemoria) : null);
+            var emUso = somEmUso.Tipo == TipoSomEmUso.MemoriaCelular && somEmUso.IdMemoria == m.Id;
+            if (m.Masters.TryGetValue((emUso ? _setups.IdPresetEmUso : m.IdPreset) ?? "", out var masterMemoria))
+                w.WriteNumber("master", masterMemoria);
+            else
+                w.WriteNull("master");
             w.WriteEndObject();
         }
         w.WriteEndArray();
@@ -1209,17 +1217,36 @@ public sealed class PortaComandos : IDisposable
     {
         IReadOnlyList<LimiteSaida> limites;
         IReadOnlyList<AltoFalanteFora> fora;
+        NivelRendimento? nivel;
+        ContaNivel? conta;
+        string? avisoNivel;
         try
         {
             limites = _setups.LimitesEmUso;
             fora = _setups.ForaDaContaEmUso;
+            // História 13c: o nível da memória em uso, o master da conta na hora e o aviso (o nível sem conta: o motivo).
+            nivel = _setups.NivelEmUso;
+            conta = _setups.ContaEmUso();
+            avisoNivel = nivel is null ? null
+                : conta is null ? _setups.NivelIndisponivel ?? Niveis.MsgFalhou
+                : conta.Master is null ? conta.Falta ?? Niveis.MsgFalhou
+                : conta.Aviso;
         }
         catch (Exception e)
         {
             _log.Evento($"porta: falha ao calcular os limites ({e.GetType().Name})");
             return Recusa(500, Cerca.MsgFalhou);
         }
-        return new RespostaPorta(200, JsonPorta.Ok(w => EscreverLimites(w, limites, fora)));
+        return new RespostaPorta(200, JsonPorta.Ok(w =>
+        {
+            w.WriteString("nivel", nivel is { } n ? Niveis.Chave(n) : null);
+            if (conta?.Master is { } master)
+                w.WriteNumber("master", master);
+            else
+                w.WriteNull("master");
+            w.WriteString("avisoNivel", avisoNivel);
+            EscreverLimites(w, limites, fora);
+        }));
     }
 
     private static void EscreverLimites(Utf8JsonWriter w, IReadOnlyList<LimiteSaida> limites, IReadOnlyList<AltoFalanteFora> fora)
@@ -1462,11 +1489,11 @@ public sealed class PortaComandos : IDisposable
 
         POST /parear {"codigo":"123456","nome":"Claude no notebook"} -> {"chave":"..."}: o código de 6 dígitos aparece no celular, embaixo da chave Controle pela rede (Configurações, grupo APARELHO). Um cliente por vez.
         GET  /ajuda: este texto.
-        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), duvida, as memórias do celular dele com id, nome, emUso e o preset lembrado, e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
+        GET  /estado: a conexão, o firmware, o só leitura, o Setup (nome em uso ou null, ambiente ("sala", "carro", "ar-livre", "outro" ou null), nivelBluetooth (o nível do tom de 0 dBFS do celular, em dB do limitador: {"valor":-13.0,"origem":"medido","fonte":"..."}, ou null), duvida, as memórias do celular dele com id, nome, emUso, o preset lembrado, nivel (o nível de rendimento: "baixo", "medio", "alto", "maximo" ou null) e master (o master guardado pelo nível para o preset em uso, ou null), e o presetEmUso), a IA e a tarefa, o gerador, o voltímetro, os clips e cada parâmetro lido (codigo, indice, onde, nome, noFio, exibicao).
         GET  /catalogo: os ajustes de áudio graváveis (codigo, escopo, indices, minimo, maximo, casas, unidade, opcoes).
         GET  /eventos?desde=N: os eventos depois do N (pausou, retomou, parada, cada comando da tela enviado e os da criação da memória, criacao-*). Ficam os últimos 200.
         GET  /historico?limite=N: até 200 entradas do histórico, a mais nova primeiro.
-        GET  /limites: o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Uma falha no cálculo: 500.
+        GET  /limites: o nível da memória em uso (nivel: "baixo", "medio", "alto", "maximo" ou null), o master da conta do nível na hora (master, em dB, ou null sem nível ou sem conta) e o aviso dela (avisoNivel: o dado que falta, ou "O nível não chega ao teto: falta ganho na memória. Saída: ...", ou null); e o limite físico de cada saída do Setup em uso (listas vazias sem Setup em uso; no nível Máximo, o teto é min(X, C)), em "saidas": saida (o nome), canais (os índices do /catalogo), altoFalante (o que manda), calibrada (o ganho do módulo medido em todos os alto-falantes), teto (o limite em dB do limitador, ou null sem calibração ou sem limite), tetoV (em volts RMS), manda (termico, excursao ou ceifamento), estimado, semLimite (o motivo, ou null), aviso (o teto abaixo de −48 dB, o mínimo do limitador: a cerca usa −48), cerca (por canal calibrado: canal, teto que a cerca usa, tetoFisico, manda, altoFalante) e cada limite (termico, excursao, ceifamento) com v (volts RMS; null sem o dado; "infinito" quando o duto protege o cone), selo (verificado ou estimado), conta e falta (o dado que falta). Em "foraDaConta", os alto-falantes que nenhum canal alcança (altoFalante, motivo). Uma falha no cálculo: 500.
         POST /ajuste {"codigo":"081","indice":2,"valor":2.0}: um ajuste de áudio. O indice é o do /catalogo (saída 1 = 0; banda 25 Hz = 0); sem indice num global. O roteamento leva "a", "b" ou "a+b".
         POST /memoria/aplicar {"memoria":"FILME"}: aplica uma memória do celular, pelo id ou pelo nome (sem diferença de caixa), só entre as memórias do Setup em uso: a regulagem da memória e o preset que ela lembra. Pede o toque do usuário na folha de risco. Sem Setup em uso, ou memória que não é do Setup em uso: 400.
         POST /gerador/tom {"hz":1000,"db":-30.0}: pede o toque do usuário na folha de risco. O gerador desliga sozinho em 30 s.
@@ -1499,6 +1526,7 @@ public sealed class PortaComandos : IDisposable
         A cada {{AjustesSemToque}} /ajuste seguidos sem um toque do usuário no meio (uma escrita na tela ou uma confirmação na folha), o próximo espera o Continuar na folha de risco do celular; recusado ou sem resposta, só ele é recusado (409).
         Uma chave desligada em Chaves de acesso no celular recusa com 409 na hora, sem abrir a folha; a IA nunca liga uma chave.
         A cerca do limitador: numa saída calibrada e com limite, uma escrita do limitador (071) ou do passa-alta (040, 042) que deixe o limitador OFF, desconhecido ou acima do teto (veja GET /limites, "cerca") é recusada com 409 e a conta ("Limite: JBL L, −6,8 dB, pelo térmico."; num par, o canal culpado entre parênteses), sem nada enviado: no /ajuste, no /criacao/ajuste e no /memoria/aplicar (o lote inteiro é conferido antes da primeira escrita). Para baixar o passa-alta, baixe o limitador antes. O cancelar da criação volta ao som de antes com o limitador de cada saída em min(valor de antes, teto). A cerca não tem chave.
+        Níveis de rendimento (Baixo, Médio, Alto, Máximo): o nível se escolhe só no celular. Com a memória em uso num nível, o app põe o master pela conta do pior caso (um tom de 0 dBFS em qualquer frequência pela cadeia da memória e do preset) e o refaz na hora quando a cadeia, a ficha, a calibração ou o preset mudam. Um MASTER (080) pedido acima da conta é recusado com 409 "Nível Alto: o master vai até −8,8 dB.", sem nada enviado; abaixo passa. No Máximo, a cerca usa o teto min(X, C).
         Sem calibração: numa saída com alto-falante passivo cujo módulo não tem o ganho medido (GET /limites, calibrada false), o app não sabe a tensão, e a porta recusa com 409 "Sem calibração: JBL L. O app não sabe a tensão." o ganho, o limitador e o EQ de saída dos canais dela (081, 070 a 073, 090 a 092), e o MASTER, o EQ de entrada, as 15 bandas, o preset de EQ e a rota (080, 030 a 032, 020, 220, 010) se alguma saída do Setup em uso está sem calibração. Sem Setup em uso, esses códigos dão 409 "Sem Setup em uso: o app não sabe a tensão das saídas.". Vale no /ajuste, no /criacao/ajuste e no /memoria/aplicar; o cancelar da criação sempre volta. A calibração é feita pelo usuário no celular.
         Com firmware diferente do R003, só os GET respondem.
         Sem pedidos por 30 s com a IA ativa, a tarefa termina. Consulte /eventos para saber da pausa e da parada (o usuário desligou a chave Controle pela rede e o acesso foi revogado).

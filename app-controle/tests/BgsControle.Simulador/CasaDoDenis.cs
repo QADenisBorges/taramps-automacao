@@ -184,6 +184,12 @@ public static class CasaDoDenis
     /// <summary>O Casa 2.1: os equipamentos e as fichas, sem memórias e sem ambiente.</summary>
     public static Setup SetupCasa { get; } = new(IdSetupCasa, NomeSetupCasa, QuandoCasa) { Equipamentos = EquipamentosCasa };
 
+    /// <summary>História 13c: o nível do Bluetooth do Casa 2.1 medido na calibração guiada (13b): −13 dB.</summary>
+    public static DadoTecnico NivelBluetoothCasa { get; } = Medido(-13m, "Calibração guiada (13b)");
+
+    /// <summary>História 13c: o Casa 2.1 calibrado e com o nível do Bluetooth medido (−13 dB): os níveis são oferecidos.</summary>
+    public static Setup SetupCasaComBluetooth { get; } = SetupCasa with { NivelBluetooth = NivelBluetoothCasa };
+
     /// <summary>O equipamento do Casa 2.1 pelo id, ou null.</summary>
     public static Equipamento? EquipamentoCasa(string? id) => EquipamentosCasa.FirstOrDefault(e => e.Id == id);
 
@@ -194,7 +200,7 @@ public static class CasaDoDenis
         IdSetupCasa,
         new Dictionary<string, UsoDoSetup> { [IdSetupCasa] = UsoDoSetup.Vazio });
 
-    /// <summary>O <c>setups.json</c> (formato 3) com só o Casa 2.1.</summary>
+    /// <summary>O <c>setups.json</c> (no formato atual) com só o Casa 2.1.</summary>
     public static string SetupsJson => GerenteSetups.ParaJson(Dados);
 
     /// <summary>O <c>modelos.json</c> com os 3 modelos.</summary>

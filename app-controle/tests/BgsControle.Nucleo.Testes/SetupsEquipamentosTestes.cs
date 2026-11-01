@@ -309,7 +309,7 @@ public sealed partial class SetupsTestes
         Assert.Equal(["Caixa", "Módulo", "Sub"], reaberto._setups.Saidas(carro).Select(s => s.Nome));
         var caixa = reaberto._setups.Setup(carro)!.Equipamentos.Single(e => e.Nome == "Caixa");
         Assert.Equal([new Via("woofer", 12m), new Via("driver", null)], caixa.Dados.Vias);
-        Assert.Contains("\"formato\": 3", _guardadoSetups.Texto);
+        Assert.Contains("\"formato\": 4", _guardadoSetups.Texto);
         Assert.Contains("\"origem\": \"oficial\"", _guardadoSetups.Texto);
     }
 

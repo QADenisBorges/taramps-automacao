@@ -41,7 +41,7 @@ public static class CenarioFilme
         },
     };
 
-    /// <summary>O <c>setups.json</c> (formato 3) do cenário.</summary>
+    /// <summary>O <c>setups.json</c> (no formato atual) do cenário.</summary>
     public static string SetupsJson => GerenteSetups.ParaJson(Dados);
 
     /// <summary>O <c>presets.json</c> (formato 3) do cenário: só o Cinema.</summary>

@@ -67,7 +67,8 @@ public sealed record LimiteCaminho(
 /// <param name="TetoDb">O teto físico em dB do limitador (pode ficar abaixo de −48 dB).</param>
 /// <param name="Manda">O limite que manda nesse alto-falante.</param>
 /// <param name="AltoFalante">O alto-falante que manda no canal.</param>
-public sealed record LimiteCanal(int Canal, decimal TetoDb, TipoLimite Manda, string AltoFalante)
+/// <param name="TetoV">O teto em volts RMS desse alto-falante (história 13c: a linha do nível na tela).</param>
+public sealed record LimiteCanal(int Canal, decimal TetoDb, TipoLimite Manda, string AltoFalante, double? TetoV = null)
 {
     /// <summary>
     /// O teto que a cerca usa: o físico dentro da faixa do limitador (−48 a 0 dB). Abaixo de −48, fica em
@@ -180,24 +181,30 @@ public static class LimiteFisico
 
     // ------------------------------------------------------------------ por Setup
 
-    /// <summary>Os limites das saídas, na ordem delas. Sem equipamentos (sem Setup em uso), nenhum.</summary>
+    /// <summary>
+    /// Os limites das saídas, na ordem delas. Sem equipamentos (sem Setup em uso), nenhum. Com
+    /// <paramref name="semTermico"/> (o nível Máximo, história 13c), o teto é min(X, C): o térmico fica na
+    /// conta, mas não manda.
+    /// </summary>
     public static IReadOnlyList<LimiteSaida> Calcular(IReadOnlyList<Equipamento>? equipamentos, IReadOnlyList<SaidaApp> saidas,
-        Func<Endereco, Valor?> ler)
+        Func<Endereco, Valor?> ler, bool semTermico = false)
     {
         if (equipamentos is null || equipamentos.Count == 0)
             return [];
         var nomes = Ligacoes.NomesNaTela(saidas);
-        return saidas.Select((s, i) => CalcularSaida(equipamentos, s, nomes[i], ler)).ToArray();
+        return saidas.Select((s, i) => CalcularSaida(equipamentos, s, nomes[i], ler, semTermico)).ToArray();
     }
 
     /// <summary>
     /// O limite de uma saída: o menor entre os alto-falantes passivos que os canais dela alimentam. O teto
     /// da cerca é por canal (o passa-alta e o ganho são de cada canal), com os alto-falantes calibrados.
     /// </summary>
-    public static LimiteSaida CalcularSaida(IReadOnlyList<Equipamento> equipamentos, SaidaApp saida, string nome, Func<Endereco, Valor?> ler)
+    /// <param name="semTermico">O nível Máximo (história 13c): o teto é min(X, C).</param>
+    public static LimiteSaida CalcularSaida(IReadOnlyList<Equipamento> equipamentos, SaidaApp saida, string nome, Func<Endereco, Valor?> ler,
+        bool semTermico = false)
     {
         var caminhos = saida.Canais
-            .SelectMany(c => Ligacoes.Caminhos(equipamentos, c).Select(x => CalcularCaminho(x, c, PassaAltaDe(ler, c))))
+            .SelectMany(c => Ligacoes.Caminhos(equipamentos, c).Select(x => CalcularCaminho(x, c, PassaAltaDe(ler, c), semTermico)))
             .ToArray();
         if (caminhos.Length == 0)
             return new LimiteSaida(saida, nome, null, null, null, null, null, null, null, false, MsgSemAltoFalante, []);
@@ -221,7 +228,7 @@ public static class LimiteFisico
             .Select(g =>
             {
                 var m = g.OrderBy(c => c.TetoDb).ThenBy(c => c.TetoV).First();
-                return new LimiteCanal(g.Key, m.TetoDb!.Value, m.Manda!.Value, m.Caminho.AltoFalante.Nome);
+                return new LimiteCanal(g.Key, m.TetoDb!.Value, m.Manda!.Value, m.Caminho.AltoFalante.Nome, m.TetoV);
             })
             .ToArray();
 
@@ -248,8 +255,11 @@ public static class LimiteFisico
 
     // ------------------------------------------------------------------ por alto-falante
 
-    /// <summary>T, X e C de um alto-falante pelo caminho de um canal, com o passa-alta desse canal (null = OFF).</summary>
-    public static LimiteCaminho CalcularCaminho(CaminhoAltoFalante caminho, int canal, PassaAlta? passaAlta)
+    /// <summary>
+    /// T, X e C de um alto-falante pelo caminho de um canal, com o passa-alta desse canal (null = OFF). Com
+    /// <paramref name="semTermico"/> (o nível Máximo, história 13c), o teto é o menor de X e C.
+    /// </summary>
+    public static LimiteCaminho CalcularCaminho(CaminhoAltoFalante caminho, int canal, PassaAlta? passaAlta, bool semTermico = false)
     {
         var af = caminho.AltoFalante;
         var t = Termico(af);
@@ -261,7 +271,9 @@ public static class LimiteFisico
 
         TipoLimite? manda = null;
         double? teto = null;
-        foreach (var l in new[] { t, x, c })
+        // No Máximo, o teto é min(X, C); um alto-falante sem X nem C em volts (só o térmico) fica no térmico, e não fora da cerca.
+        var candidatos = semTermico && (x.V is not null || c.V is not null) ? new[] { x, c } : new[] { t, x, c };
+        foreach (var l in candidatos)
         {
             if (l.V is { } v && (teto is null || v < teto))
             {

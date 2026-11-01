@@ -152,6 +152,12 @@ public sealed class GerentePresets
     /// </summary>
     internal Func<Preset, Task>? AoAplicar { get; set; }
 
+    /// <summary>
+    /// O master da combinação da memória do celular em uso com o preset (história 13c), ou null (sem nível, ou sem
+    /// conta). Posto pelo <see cref="GerenteSetups"/>: o aplicar leva o master no mesmo lote das bandas.
+    /// </summary>
+    internal Func<Preset, decimal?>? MasterDoPreset { get; set; }
+
     /// <summary>Uma operação do gerente está andando.</summary>
     public bool Ocupado => Volatile.Read(ref _ocupado) == 1;
 
@@ -491,6 +497,10 @@ public sealed class GerentePresets
                 return Terminar(ResultadoPreset.Falha(motivo));
             }
 
+            // História 13c: com a memória em uso num nível, o master da combinação nova vai no mesmo lote: antes das
+            // bandas quando baixa (o lado seguro), depois quando sobe.
+            escritas = ComMaster(escritas, preset);
+
             var operacao = new OperacaoPendente(TipoAplicar, preset.Id, $"Aplicar o preset {preset.Nome}", preset.Nome);
             var copia = await _copia.IniciarAsync(operacao, manterCopia: refazendo);
             if (!copia.Ok)
@@ -543,6 +553,44 @@ public sealed class GerentePresets
         {
             Desocupar();
         }
+    }
+
+    /// <summary>
+    /// As bandas com o master do nível (<see cref="MasterDoPreset"/>): primeiro se ele baixa (ou o atual não é
+    /// conhecido), por último se sobe; igual ao atual, nada muda. Uma falha na conta deixa as bandas sozinhas (a
+    /// conta na hora do <c>GerenteNiveis</c> acerta o master depois).
+    /// </summary>
+    private List<CopiaAntes.Escrita> ComMaster(List<CopiaAntes.Escrita> escritas, Preset preset)
+    {
+        decimal? master;
+        try
+        {
+            master = MasterDoPreset?.Invoke(preset);
+        }
+        catch (Exception e)
+        {
+            _log.Evento($"preset {preset.Nome}: falha na conta do nível ({e.GetType().Name})");
+            return escritas;
+        }
+        if (master is not { } m || Catalogo.ParametroDe(Camadas.CodigoMaster) is not { } parametro)
+            return escritas;
+        var atual = _estado.Valor(Camadas.CodigoMaster)?.Numero;
+        if (atual == m)
+            return escritas;
+        string quadro;
+        try
+        {
+            quadro = parametro.CodificarEscrita(null, m);
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            return escritas;
+        }
+        if (Catalogo.EscritaDeAudio(quadro) is not { } noFio || parametro.Decodificar(noFio.NoFio).Valor is not { } valor)
+            return escritas;
+        var escrita = new CopiaAntes.Escrita(parametro, null, valor, quadro);
+        _log.Evento($"preset {preset.Nome}: o master do nível vai a {m.ToString("0.0", CultureInfo.InvariantCulture)} dB");
+        return atual is null || m < atual ? [escrita, .. escritas] : [.. escritas, escrita];
     }
 
     /// <summary>Um aplicar que terminou bem: avisa quem ouve (a memória em uso lembra o preset) e devolve o resultado.</summary>

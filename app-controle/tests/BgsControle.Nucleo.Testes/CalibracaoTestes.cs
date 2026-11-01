@@ -787,7 +787,7 @@ public sealed class CalibracaoTestes : IDisposable
     }
 
     [Fact]
-    public async Task O_nivel_do_Bluetooth_vai_e_volta_no_setups_json_com_valor_negativo_e_o_formato_3()
+    public async Task O_nivel_do_Bluetooth_vai_e_volta_no_setups_json_com_valor_negativo_e_o_formato_4()
     {
         await Conectar();
         var nivel = new DadoTecnico(-13.0m, OrigemDado.Medido, "Calibração guiada em 31/10/2026");
@@ -795,7 +795,7 @@ public sealed class CalibracaoTestes : IDisposable
 
         var json = GerenteSetups.ParaJson(_setups.Dados);
 
-        Assert.Contains("\"formato\": 3", json);
+        Assert.Contains("\"formato\": 4", json);
         Assert.Contains("\"nivelBluetooth\"", json);
         Assert.Contains("-13.0", json);
         var lido = GerenteSetups.DeJson(json)!;

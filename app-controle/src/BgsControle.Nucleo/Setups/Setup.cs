@@ -1,4 +1,5 @@
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Rendimento;
 
 namespace BgsControle.Nucleo.Setups;
 
@@ -95,7 +96,23 @@ public sealed record MemoriaCelular(
     string Nome,
     DateTimeOffset Quando,
     IReadOnlyList<ValorCopiado> Regulagem,
-    string? IdPreset = null);
+    string? IdPreset = null)
+{
+    /// <summary>
+    /// O nível de rendimento (história 13c): Baixo, Médio, Alto ou Máximo; null = sem nível, e o master é do
+    /// usuário, como antes.
+    /// </summary>
+    public NivelRendimento? Nivel { get; init; }
+
+    /// <summary>
+    /// O master posto pelo nível em cada combinação com um preset (o id do preset, ou "" sem preset → dB). É só
+    /// registro: vale sempre a conta na hora (história 13c).
+    /// </summary>
+    public IReadOnlyDictionary<string, decimal> Masters { get; init; } = SemMasters;
+
+    /// <summary>Nenhum master guardado (o mesmo para todas as memórias sem master).</summary>
+    public static IReadOnlyDictionary<string, decimal> SemMasters { get; } = new Dictionary<string, decimal>();
+}
 
 /// <summary>O que o app sabe que está tocando.</summary>
 public enum TipoSomEmUso

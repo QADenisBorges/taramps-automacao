@@ -35,6 +35,9 @@ public sealed class RepositorioTextoArquivos(IArquivosApp arquivos, string arqui
     /// <summary>As preferências do próprio app (a chave "Animação ao criar o som"), história 10d.</summary>
     public const string ArquivoPreferencias = "preferencias-app.json";
 
+    /// <summary>A cópia do <c>setups.json</c> formato 3 guardada antes de a migração da história 13c o regravar no 4.</summary>
+    public const string ArquivoSetupsFormato3 = "setups.formato3.json";
+
     public string Arquivo { get; } = arquivo;
 
     public Task<string?> LerAsync() => arquivos.LerTextoAsync(Arquivo);

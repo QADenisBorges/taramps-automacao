@@ -140,7 +140,19 @@ public static class MauiProgram
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetups),
             new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetupMudo),
             sp.GetRequiredService<LogBle>(),
-            modelos: sp.GetRequiredService<BaseModelos>()));
+            modelos: sp.GetRequiredService<BaseModelos>(),
+            // História 13c: a cópia do setups.json formato 3, guardada antes da migração ao 4.
+            repositorioFormato3: new RepositorioTextoArquivos(sp.GetRequiredService<IArquivosApp>(), RepositorioTextoArquivos.ArquivoSetupsFormato3)));
+
+        // História 13c: a conta do nível refeita na hora (o master da memória em uso num nível acompanha a cadeia, a
+        // ficha, a calibração e o preset).
+        builder.Services.AddSingleton(sp => new GerenteNiveis(
+            sp.GetRequiredService<EstadoAparelho>(),
+            sp.GetRequiredService<Escritor>(),
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<GerentePresets>(),
+            sp.GetRequiredService<CopiaAntes>(),
+            sp.GetRequiredService<LogBle>()));
 
         // História 7a: o gerador de sinal, com as regras de falha 1 e 2 (desliga no prazo, no
         // Parar, antes de soltar a conexão, ao sair do app e no fim de cada leitura).
@@ -225,6 +237,12 @@ public static class MauiProgram
             sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<CopiaAntes>(),
             sp.GetRequiredService<IAudioDoCelular>(),
+            sp.GetRequiredService<IDespachante>(),
+            sp.GetRequiredService<TimeProvider>()));
+        // História 13c: a folha "Nível da memória" (o XAML é da 13g).
+        builder.Services.AddSingleton(sp => new NivelViewModel(
+            sp.GetRequiredService<GerenteSetups>(),
+            sp.GetRequiredService<EstadoAparelho>(),
             sp.GetRequiredService<IDespachante>(),
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new MonitoracaoViewModel(
@@ -381,6 +399,8 @@ public static class MauiProgram
         // registrados na CopiaAntes, e as playlists pendentes procuram a memória delas. História 13a: é ele que
         // liga a cerca do limitador no escritor (como a cópia antes liga o bloqueio), antes de qualquer escrita.
         app.Services.GetRequiredService<GerenteSetups>();
+        // História 13c: a conta do nível cedo: ela acompanha o espelho desde a primeira leitura.
+        app.Services.GetRequiredService<GerenteNiveis>();
         // História 9d: a criação da memória cedo: o tipo "criar-memoria" precisa estar registrado na CopiaAntes antes
         // da primeira leitura (uma criação interrompida volta como "aplicado pela metade").
         app.Services.GetRequiredService<CriacaoMemoria>();

@@ -1759,6 +1759,119 @@ public sealed class PortaTestes : IDisposable
         Assert.Equal("-6.8", _simulador.Valor("071", 0));
     }
 
+    // ----------------------------------------------------------------- os níveis (13c)
+
+    [Fact]
+    public async Task Estado_e_limites_trazem_o_nivel_e_o_master_e_o_master_acima_da_conta_recebe_409_sem_envio()
+    {
+        // A FILME no Alto, com o master −9,0 guardado para o Cinema, no Casa 2.1 com o Bluetooth medido.
+        var filme = CenarioFilme.Memoria with
+        {
+            Nivel = NivelRendimento.Alto,
+            Masters = new Dictionary<string, decimal> { [CenarioFilme.IdPreset] = -9.0m },
+        };
+        var (porta, chave, setups) = await PortaComNivel(CasaDoDenis.SetupCasaComBluetooth, filme);
+        using var _ = porta;
+
+        var estado = Json(await Pedir("GET", "/estado", chave: chave, porta: porta));
+        var limites = Json(await Pedir("GET", "/limites", chave: chave, porta: porta));
+
+        var memoria = estado.GetProperty("setup").GetProperty("memorias")[0];
+        Assert.Equal("alto", memoria.GetProperty("nivel").GetString());
+        Assert.Equal(-9.0m, memoria.GetProperty("master").GetDecimal());
+        var conta = setups.ContaEmUso()!.Master!.Value;
+        Assert.Equal("alto", limites.GetProperty("nivel").GetString());
+        Assert.Equal(conta, limites.GetProperty("master").GetDecimal());
+        Assert.Equal(JsonValueKind.Null, limites.GetProperty("avisoNivel").ValueKind); // o teto é alcançado
+
+        var inicio = _simulador.Escritas.Count;
+        var acima = conta + 0.5m;
+        var r = await Rodar(Pedir("POST", "/ajuste",
+            $$"""{"codigo":"080","valor":{{acima.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}}}""", chave, porta: porta));
+
+        Assert.Equal(409, r.Status);
+        Assert.Equal(Niveis.MsgMasterAcima(NivelRendimento.Alto, conta), Motivo(r));
+        Assert.DoesNotContain(_simulador.Escritas.Skip(inicio), e => e.StartsWith("*080*", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Uma porta com o Setup e a FILME dados (um segundo gerente de Setups, que liga a cerca e o master no escritor), o
+    /// aparelho já com a regulagem da FILME, conectada, aberta e pareada.
+    /// </summary>
+    private async Task<(PortaComandos Porta, string Chave, GerenteSetups Setups)> PortaComNivel(Setup setup, MemoriaCelular filme)
+    {
+        foreach (var v in filme.Regulagem)
+            _simulador.Definir(v.Codigo, v.Indice, v.NoFio);
+        var dados = CenarioFilme.Dados with { Setups = [setup], Memorias = [filme] };
+        var setups = new GerenteSetups(_sessao, _estado, _escritor, _leitura, _copia, _link,
+            new GerentePresets(_sessao, _estado, _escritor, _leitura, _copia, new TextoMemoria(CenarioFilme.PresetsJson), _log, _relogio),
+            new GerentePlaylists(new TextoMemoria(), _log), _chaves, new TextoMemoria(GerenteSetups.ParaJson(dados)), new TextoMemoria(), _log, _relogio);
+        var porta = NovaPorta(new Pareamento(new TextoMemoria(), _relogio, _log), setups: setups);
+        await Conectar();
+        await AndarAte(() => setups.Conferido && !setups.Ocupado);
+        await LigarPorta(porta);
+        var chave = Json(await Pedir("POST", "/parear", $$"""{"codigo":"{{porta.Pareamento.Codigo}}","nome":"Claude"}""", porta: porta))
+            .GetProperty("chave").GetString()!;
+        Assert.Equal(CenarioFilme.IdMemoria, setups.MemoriaEmUso?.Id);
+        return (porta, chave, setups);
+    }
+
+    [Fact]
+    public async Task Limites_com_falta_de_ganho_trazem_o_aviso_e_o_master_em_0()
+    {
+        // A FILME no Alto com o Bluetooth bem baixo (−40 dB): mesmo com o master em 0, nenhuma saída chega ao teto.
+        var filme = CenarioFilme.Memoria with { Nivel = NivelRendimento.Alto };
+        var fraco = CasaDoDenis.SetupCasaComBluetooth with { NivelBluetooth = new DadoTecnico(-40m, OrigemDado.Medido, "teste") };
+        var (porta, chave, _) = await PortaComNivel(fraco, filme);
+        using var _p = porta;
+
+        var limites = Json(await Pedir("GET", "/limites", chave: chave, porta: porta));
+
+        Assert.Equal(0m, limites.GetProperty("master").GetDecimal());
+        Assert.StartsWith("O nível não chega ao teto: falta ganho na memória. Saída: ", limites.GetProperty("avisoNivel").GetString());
+    }
+
+    [Fact]
+    public async Task Limites_com_o_nivel_e_sem_calibracao_trazem_o_motivo_e_o_master_null()
+    {
+        var filme = CenarioFilme.Memoria with { Nivel = NivelRendimento.Alto };
+        var semCalibracao = CasaDoDenis.SetupCasaComBluetooth with { Equipamentos = CasaDoDenis.EquipamentosSemCalibracao };
+        var (porta, chave, _) = await PortaComNivel(semCalibracao, filme);
+        using var _p = porta;
+
+        var limites = Json(await Pedir("GET", "/limites", chave: chave, porta: porta));
+
+        Assert.Equal("alto", limites.GetProperty("nivel").GetString());
+        Assert.Equal(JsonValueKind.Null, limites.GetProperty("master").ValueKind);
+        Assert.Equal("Calibre a saída JBL L.", limites.GetProperty("avisoNivel").GetString());
+    }
+
+    [Fact]
+    public async Task Sem_nivel_o_estado_e_os_limites_trazem_nivel_e_master_null()
+    {
+        var chave = await Pronto();
+
+        var estado = Json(await Pedir("GET", "/estado", chave: chave));
+        var limites = Json(await Pedir("GET", "/limites", chave: chave));
+
+        var memoria = estado.GetProperty("setup").GetProperty("memorias")[0];
+        Assert.Equal(JsonValueKind.Null, memoria.GetProperty("nivel").ValueKind);
+        Assert.Equal(JsonValueKind.Null, memoria.GetProperty("master").ValueKind);
+        Assert.Equal(JsonValueKind.Null, limites.GetProperty("nivel").ValueKind);
+        Assert.Equal(JsonValueKind.Null, limites.GetProperty("master").ValueKind);
+    }
+
+    [Fact]
+    public async Task A_ajuda_descreve_os_niveis()
+    {
+        var chave = await Pronto();
+
+        var texto = Json(await Pedir("GET", "/ajuda", chave: chave)).GetProperty("texto").GetString()!;
+
+        Assert.Contains("Níveis de rendimento", texto);
+        Assert.Contains("o master vai até", texto);
+    }
+
     [Fact]
     public async Task A_ajuda_descreve_os_limites_e_a_cerca()
     {
