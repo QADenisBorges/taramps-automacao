@@ -33,6 +33,9 @@ public sealed class ItemNivel(LinhaNivel linha, Comando tocar)
     /// <summary>"Alto · até 16 V nas JBL L e JBL R · qualquer fonte".</summary>
     public string Texto => Linha.Texto;
 
+    /// <summary>O TalkBack da linha: o texto e, apagada, o motivo.</summary>
+    public string Descricao => Linha.Motivo is { } motivo ? $"{Linha.Texto}. {motivo}" : Linha.Texto;
+
     /// <summary>A linha está apagada (opacidade 0,35), com o motivo embaixo.</summary>
     public bool Apagada => !Linha.Pode;
 
@@ -72,6 +75,15 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     /// <summary>"Fechar" (a folha; história 13g).</summary>
     public const string TextoFecharBotao = "Fechar";
+
+    /// <summary>A dica do TalkBack numa linha de nível (história 13g).</summary>
+    public const string DicaLinha = "Toque para escolher este nível.";
+
+    /// <summary>O TalkBack do ⚠ da folha de risco do Máximo (história 13g).</summary>
+    public const string DescricaoRisco = "Aviso de risco";
+
+    /// <summary>A dica do selo "revalidar": o toque leva ao Otimizar na playlist (história 13g).</summary>
+    public const string DicaRevalidar = "Toque para otimizar a configuração na playlist.";
 
     /// <summary>O chip da memória sem nível (história 13g).</summary>
     public const string TextoChipSemNivel = "Sem nível ›";
@@ -126,6 +138,12 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         _analise = analise;
         _log = log;
         _nav = nav;
+        IrParaOtimizar = new Comando(() =>
+        {
+            RiscoAberto = false;
+            FolhaAberta = false;
+            PediuOtimizar?.Invoke();
+        });
         Calibrar = new Comando(() =>
         {
             if (CanalSemCalibracao is not { } canal)
@@ -233,6 +251,21 @@ public sealed class NivelViewModel : TelaBase, IDisposable
 
     /// <summary>"Fechar".</summary>
     public string TextoFechar => TextoFecharBotao;
+
+    /// <summary>"Sem nível" aparece só com um nível escolhido na memória em uso (história 13g).</summary>
+    public bool PodeSemNivel => _setups.MemoriaEmUso is not null && _setups.NivelEmUso is not null;
+
+    /// <summary>O TalkBack do selo "revalidar": "revalidar. A ficha ou a calibração mudou.", ou null.</summary>
+    public string? DescricaoRevalidar => SeloRevalidar is { } selo ? MotivoRevalidar is { } m ? $"{selo}. {m}" : selo : null;
+
+    /// <summary>
+    /// O toque no selo "revalidar" (história 13g; <c>telas-rendimento.md</c>, "Revalidar"): fecha a folha e pede o
+    /// "Otimizar na playlist" (<see cref="PediuOtimizar"/>; a casca leva ao Player).
+    /// </summary>
+    public Comando IrParaOtimizar { get; }
+
+    /// <summary>O selo "revalidar" foi tocado: a casca leva ao Otimizar na playlist, no Player.</summary>
+    public event Action? PediuOtimizar;
 
     /// <summary>A frase do último escolher ("Nível Alto na FILME.", "Calibre a saída JBL L."), ou null.</summary>
     public string? Mensagem
@@ -448,6 +481,8 @@ public sealed class NivelViewModel : TelaBase, IDisposable
         Avisar(nameof(SemNivelEscolhido));
         Avisar(nameof(SeloRevalidar));
         Avisar(nameof(MotivoRevalidar));
+        Avisar(nameof(DescricaoRevalidar));
+        Avisar(nameof(PodeSemNivel));
     }
 
     public void Dispose()

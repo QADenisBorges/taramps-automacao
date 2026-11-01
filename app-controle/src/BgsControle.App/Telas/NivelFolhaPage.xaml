@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha "Nível da memória" como camada global (história 13g): sobe por cima de qualquer tela (Início, Memórias, telas
+    cheias), uma vez só, qualquer que seja o chip "Nível: Alto ›" que a abriu. Dentro, a NivelFolhaView (a escolha do nível
+    e, por cima dela, a folha de risco do Máximo). O fundo é transparente: o véu é o da folha. O Voltar do Android fecha a
+    de risco antes, e depois a do nível.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.NivelFolhaPage"
+             x:DataType="telas:NivelViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="Transparent">
+    <c:NivelFolhaView />
+</ContentPage>

@@ -46,7 +46,8 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         SalvarViewModel salvar,
         INavegacao nav,
         IDespachante despachante,
-        TimeProvider relogio)
+        TimeProvider relogio,
+        BgsControle.Nucleo.Registro.LogBle? log = null)
         : base(despachante, relogio)
     {
         _pedido = canal;
@@ -57,7 +58,7 @@ public sealed class AjusteSaidaViewModel : TelaBase, IDisposable
         _estado = estado;
         _link = link;
         Salvar = salvar;
-        Limite = new LimiteSaidaViewModel(canal, setups, estado, link, nav, despachante, relogio);
+        Limite = new LimiteSaidaViewModel(canal, setups, estado, link, nav, despachante, relogio, log);
         _saida = SaidaAgora();
         _controles = Montar(_saida.Canal);
 

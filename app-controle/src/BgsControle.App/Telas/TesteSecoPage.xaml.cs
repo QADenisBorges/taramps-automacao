@@ -13,13 +13,15 @@ public partial class TesteSecoPage : ContentPage
     private readonly TesteSecoViewModel _vm;
     private EtapaTesteSeco _vista;
 
-    public TesteSecoPage(TesteSecoViewModel vm)
+    public TesteSecoPage(TesteSecoViewModel vm, CascaViewModel? casca = null)
     {
         InitializeComponent();
         _vm = vm;
         _vista = vm.Etapa;
         BindingContext = vm;
         _vm.PropertyChanged += AoMudar;
+        // O aviso rápido da casca, também aqui.
+        Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
     private void AoVoltar(object? sender, EventArgs e) => Sair();

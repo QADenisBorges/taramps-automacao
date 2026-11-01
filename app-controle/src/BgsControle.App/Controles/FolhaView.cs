@@ -40,7 +40,6 @@ public sealed class FolhaView : ContentView
     {
         IsVisible = false;
         var veu = _veu = new BoxView();
-        veu.SetDynamicResource(BoxView.ColorProperty, "veu");
         var toque = new TapGestureRecognizer();
         toque.Tapped += (_, _) =>
         {
@@ -49,22 +48,18 @@ public sealed class FolhaView : ContentView
         };
         veu.GestureRecognizers.Add(toque);
 
-        var pega = _pega = new BoxView { WidthRequest = 40, HeightRequest = 4, CornerRadius = 2, HorizontalOptions = LayoutOptions.Center };
-        pega.SetDynamicResource(BoxView.ColorProperty, "sup-2");
+        var pega = _pega = new BoxView { HeightRequest = 4, CornerRadius = 2, HorizontalOptions = LayoutOptions.Center };
 
         _folha = new Border
         {
             VerticalOptions = LayoutOptions.End,
-            StrokeThickness = 0,
-            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(26, 26, 0, 0) },
-            Padding = new Thickness(16, 10, 16, 24),
             Content = new ScrollView
             {
-                Content = _pilha = new VerticalStackLayout { Spacing = 14, Children = { pega, _miolo } },
+                Content = _pilha = new VerticalStackLayout { Children = { pega, _miolo } },
             },
         };
-        _folha.SetDynamicResource(BackgroundColorProperty, "sup-1");
         Content = new Grid { Children = { veu, _folha } };
+        AplicarVisual(false);
     }
 
     public bool Aberta { get => (bool)GetValue(AbertaProperty); set => SetValue(AbertaProperty, value); }
@@ -76,20 +71,25 @@ public sealed class FolhaView : ContentView
     /// <summary>O visual da folha do BGS Sound (história 13g).</summary>
     public bool Bgs { get => (bool)GetValue(BgsProperty); set => SetValue(BgsProperty, value); }
 
+    /// <summary>
+    /// O visual: o padrão (véu, sup-1, cantos 26, pega 40 × 4) ou o do BGS Sound. Reversível; todas as cores por recurso
+    /// dinâmico (os pincéis do fio e da sombra também vêm do dicionário).
+    /// </summary>
     private void AplicarVisual(bool bgs)
     {
-        if (!bgs)
-            return;
-        _veu.SetDynamicResource(BoxView.ColorProperty, "scrim-sheet");
-        _pega.WidthRequest = 36;
-        _pega.SetDynamicResource(BoxView.ColorProperty, "sheet-grab");
-        _folha.SetDynamicResource(BackgroundColorProperty, "surface-sheet");
-        _folha.Stroke = new SolidColorBrush(Recursos.Cores.De("border-sheet"));
-        _folha.StrokeThickness = 1;
-        _folha.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(22, 22, 0, 0) };
-        _folha.Padding = new Thickness(16, 14, 16, 18);
-        _folha.Shadow = new Shadow { Brush = new SolidColorBrush(Recursos.Cores.De("bg")), Offset = new Point(0, -20), Radius = 40, Opacity = 1 };
-        _pilha.Spacing = 9;
+        _veu.SetDynamicResource(BoxView.ColorProperty, bgs ? "scrim-sheet" : "veu");
+        _pega.WidthRequest = bgs ? 36 : 40;
+        _pega.SetDynamicResource(BoxView.ColorProperty, bgs ? "sheet-grab" : "sup-2");
+        _folha.SetDynamicResource(BackgroundColorProperty, bgs ? "surface-sheet" : "sup-1");
+        _folha.SetDynamicResource(Border.StrokeProperty, bgs ? "pincel-border-sheet" : "pincel-transparente");
+        _folha.StrokeThickness = bgs ? 1 : 0;
+        _folha.StrokeShape = new RoundRectangle { CornerRadius = bgs ? new CornerRadius(22, 22, 0, 0) : new CornerRadius(26, 26, 0, 0) };
+        _folha.Padding = bgs ? new Thickness(16, 14, 16, 18) : new Thickness(16, 10, 16, 24);
+        // A sombra não fica na árvore de elementos (um recurso dinâmico nela não resolve): o pincel vem do dicionário pela chave.
+        _folha.Shadow = bgs && Application.Current?.Resources.TryGetValue("pincel-bg", out var pincel) == true && pincel is Brush b
+            ? new Shadow { Brush = b, Offset = new Point(0, -20), Radius = 40, Opacity = 1 }
+            : null!;
+        _pilha.Spacing = bgs ? 9 : 14;
     }
 
     private async void AoAbrir(bool aberta)

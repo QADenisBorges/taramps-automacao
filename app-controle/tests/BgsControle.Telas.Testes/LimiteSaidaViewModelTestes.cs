@@ -72,6 +72,7 @@ public sealed class LimiteSaidaViewModelTestes
         Assert.Null(vm.TextoNivel);
         Assert.True(vm.PodeAbrirConta);
         Assert.Equal("Toque para ver a conta.", vm.Dica);
+        Assert.Equal("Limite da saída: 17,9 V · −6,8 dB · pelo térmico · verificado", vm.Descricao);
 
         // A conta: os três limites, com o valor, a conta, os dados com a origem e o que manda.
         Assert.Equal("Alto-falante que manda: JBL L", vm.AltoFalante);
@@ -149,6 +150,29 @@ public sealed class LimiteSaidaViewModelTestes
 
         Assert.Equal(["calibracao:CH2"], nav.Pedidos);
         SemIa(vm);
+    }
+
+    /// <summary>História 13g: o Setup em uso sem equipamentos não tem a saída nos limites: o bloco diz o motivo, sem a conta.</summary>
+    [Fact]
+    public async Task Sem_a_saida_nos_limites_o_bloco_mostra_o_motivo_sem_a_conta()
+    {
+        var arquivos = new ArquivosFalso();
+        arquivos.Semear(RepositorioTextoArquivos.ArquivoSetups,
+            GerenteSetups.ParaJson(CenarioFilme.Dados with { Setups = [CasaDoDenis.SetupCasa with { Equipamentos = [] }] }));
+        var b = new Bancada(arquivos, setups: true);
+        using var vm = new LimiteSaidaViewModel(0, b.Setups!, b.Estado, b.Link, new NavegacaoFalsa(), b.Tela, b.Relogio);
+        await b.Conectar();
+        Assert.NotNull(b.Setups!.SetupEmUso);
+        Assert.Empty(b.Setups.LimitesEmUso);
+
+        Assert.True(vm.Visivel);
+        Assert.Null(vm.Linha);
+        Assert.Equal(LimiteFisico.MsgSemAltoFalante, vm.MotivoSemLimite);
+        Assert.Equal($"Limite da saída: {LimiteFisico.MsgSemAltoFalante}", vm.Descricao);
+        Assert.False(vm.PodeAbrirConta);
+        Assert.Null(vm.Dica);
+        await vm.AbrirConta.ExecutarAsync();
+        Assert.False(vm.ContaAberta);
     }
 
     [Fact]

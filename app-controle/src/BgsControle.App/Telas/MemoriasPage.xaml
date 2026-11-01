@@ -7,7 +7,7 @@
     com o motivo. O aviso rápido da casca (a memória criada) aparece aqui também.
     As memórias do processador não aparecem (decisão do Denis, 29/10/2026).
     História 13g ([ASSUMPTION] o lugar, até a Roda e o Salvar): no cartão da memória em uso, o chip "Nível: Alto ›", que
-    abre a folha do nível (com a folha de risco do Máximo).
+    abre a folha do nível (uma camada global, pela navegação).
 -->
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
@@ -139,9 +139,6 @@
 
         <!-- A folha do Salvar (Criar memória com o som do aparelho em uso). -->
         <c:SalvarFolhaView x:Name="FolhaSalvar" />
-
-        <!-- A folha do nível da memória em uso e a de risco do Máximo (história 13g). -->
-        <c:NivelFolhaView BindingContext="{Binding Nivel}" />
 
         <!-- O aviso rápido da casca (2,6 s), ao fechar a criação. -->
         <c:AvisoRapidoView x:Name="AvisoRapido" Anunciar="False" />

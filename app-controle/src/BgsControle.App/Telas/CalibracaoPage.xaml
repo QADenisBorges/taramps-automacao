@@ -50,7 +50,9 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="telas:OpcaoSaidaCalibracao">
                             <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="18,10" MinimumHeightRequest="56"
-                                    BackgroundColor="{StaticResource surface-1}">
+                                    BackgroundColor="{StaticResource surface-1}"
+                                    SemanticProperties.Description="{Binding Descricao}"
+                                    SemanticProperties.Hint="{x:Static telas:CalibracaoViewModel.DicaOpcao}">
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <VerticalStackLayout VerticalOptions="Center" Spacing="2">
                                         <Label Style="{StaticResource tipo-answer}" Text="{Binding Nome}" />
@@ -131,5 +133,8 @@
             <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:CalibracaoViewModel.TextoCancelar}"
                     Command="{Binding Cancelar}" IsVisible="{Binding PodeCancelar}" />
         </VerticalStackLayout>
+
+        <!-- O aviso rápido da casca (2,6 s), também aqui. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Grid.RowSpan="3" Anunciar="False" />
     </Grid>
 </ContentPage>

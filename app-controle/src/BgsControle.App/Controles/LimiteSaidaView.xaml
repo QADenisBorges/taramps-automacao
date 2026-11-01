@@ -22,7 +22,8 @@
         </Border>
 
         <!-- A linha do limite: um toque abre a conta. -->
-        <Border Style="{StaticResource cartao-bgs}" MinimumHeightRequest="56">
+        <Border Style="{StaticResource cartao-bgs}" MinimumHeightRequest="56"
+                SemanticProperties.Description="{Binding Descricao}" SemanticProperties.Hint="{Binding Dica}">
             <VerticalStackLayout Spacing="4" VerticalOptions="Center">
                 <Label Style="{StaticResource tipo-rotulo}" Text="{Binding Rotulo}" />
                 <Label Style="{StaticResource tipo-creation-value}" TextColor="{StaticResource text-primary}" Text="{Binding Linha}"

@@ -74,5 +74,8 @@
             <Button Style="{StaticResource botao-fluxo-secundario}" Text="{x:Static telas:TesteSecoViewModel.TextoFechar}"
                     Clicked="AoVoltar" IsVisible="{Binding Fechado}" />
         </VerticalStackLayout>
+
+        <!-- O aviso rápido da casca (2,6 s), também aqui. -->
+        <c:AvisoRapidoView x:Name="AvisoRapido" Grid.RowSpan="3" Anunciar="False" />
     </Grid>
 </ContentPage>

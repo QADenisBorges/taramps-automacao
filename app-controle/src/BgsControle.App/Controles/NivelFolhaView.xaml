@@ -4,7 +4,8 @@
     no visual do BGS Sound: sobe do pé pelo chip "Nível: Alto ›" do cartão da memória em uso ([ASSUMPTION] o lugar, até a
     Roda e o Salvar). Uma linha por nível com o teto e a fonte ("Alto · até 16 V nas … · qualquer fonte"); a apagada
     (opacidade 0,35) mostra o motivo; o Extra com o selo "estimado"; o nível em uso em ciano; o selo "revalidar" com o
-    motivo; a faixa "Sem calibração" com "Calibrar ›"; "Sem nível" e Fechar. Por cima dela, a folha de risco do Máximo,
+    motivo (um toque leva ao "Otimizar na playlist", no Player); a faixa "Sem calibração" com "Calibrar ›"; "Sem nível" (só
+    com um nível escolhido) e Fechar. Por cima dela, a folha de risco do Máximo,
     no visual da folha de risco do app, com Confirmar e Cancelar. A raiz deixa o toque passar quando as duas estão
     fechadas. Os textos vêm do NivelViewModel.
 -->
@@ -28,7 +29,12 @@
                        IsVisible="{Binding MotivoSemMemoria, Converter={StaticResource TemTexto}}" />
 
                 <!-- O selo "revalidar", com o motivo. -->
-                <HorizontalStackLayout Spacing="8" IsVisible="{Binding SeloRevalidar, Converter={StaticResource TemTexto}}">
+                <HorizontalStackLayout Spacing="8" MinimumHeightRequest="48" IsVisible="{Binding SeloRevalidar, Converter={StaticResource TemTexto}}"
+                                       SemanticProperties.Description="{Binding DescricaoRevalidar}"
+                                       SemanticProperties.Hint="{x:Static telas:NivelViewModel.DicaRevalidar}">
+                    <HorizontalStackLayout.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding IrParaOtimizar}" />
+                    </HorizontalStackLayout.GestureRecognizers>
                     <Border BackgroundColor="{StaticResource brand-10}" Stroke="{StaticResource brand-33}" StrokeThickness="1"
                             StrokeShape="RoundRectangle 11" HeightRequest="22" Padding="10,0" VerticalOptions="Center">
                         <Label Style="{StaticResource tipo-chip}" TextColor="{StaticResource brand}" Text="{Binding SeloRevalidar}"
@@ -51,7 +57,9 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="telas:ItemNivel">
                             <Border StrokeThickness="0" StrokeShape="RoundRectangle 14" Padding="16,10" MinimumHeightRequest="56"
-                                    BackgroundColor="{StaticResource surface-1}">
+                                    BackgroundColor="{StaticResource surface-1}"
+                                    SemanticProperties.Description="{Binding Descricao}"
+                                    SemanticProperties.Hint="{x:Static telas:NivelViewModel.DicaLinha}">
                                 <VerticalStackLayout Spacing="4" VerticalOptions="Center">
                                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                         <Label Style="{StaticResource tipo-answer}" Text="{Binding Texto}" LineBreakMode="WordWrap">
@@ -93,7 +101,7 @@
                 <Label Style="{StaticResource tipo-body-forte}" Text="{Binding Mensagem}"
                        IsVisible="{Binding Mensagem, Converter={StaticResource TemTexto}}" />
                 <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoSemNivelBotao}" Command="{Binding SemNivel}"
-                        IsVisible="{Binding MostrarChip}" />
+                        IsVisible="{Binding PodeSemNivel}" />
                 <Button Style="{StaticResource botao-bgs-secundario}" Text="{Binding TextoFechar}" Command="{Binding Fechar}" />
             </VerticalStackLayout>
         </c:FolhaView>
@@ -105,7 +113,8 @@
                 <Border BackgroundColor="{StaticResource risco-fundo}" Stroke="{StaticResource risco-borda}" StrokeThickness="1"
                         StrokeShape="RoundRectangle 14" Padding="14,10">
                     <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                        <Label Text="⚠" TextColor="{StaticResource parar}" FontSize="18" VerticalTextAlignment="Center" />
+                        <Label Text="⚠" TextColor="{StaticResource parar}" FontSize="18" VerticalTextAlignment="Center"
+                               SemanticProperties.Description="{x:Static telas:NivelViewModel.DescricaoRisco}" />
                         <Label Grid.Column="1" Style="{StaticResource tipo-texto-risco}" Text="{Binding Risco}" />
                     </Grid>
                 </Border>

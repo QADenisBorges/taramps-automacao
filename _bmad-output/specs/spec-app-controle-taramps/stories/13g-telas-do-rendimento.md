@@ -12,7 +12,14 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-taramps-automacao-2026-10-30/EXPERIENCE.md'
 warnings:
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      Nada verifica que a composição do app (DI) entrega o NivelViewModel, o ExtraAoVivoViewModel e o OtimizarViewModel ao Início, ao Player e às Memórias.
+    evidence: |-
+      Os parâmetros são opcionais; um registro errado deixaria os blocos somirem sem erro. Não há bancada do MAUI; a 12d confere no aparelho.
+    location: >-
+      app-controle/src/BgsControle.App/MauiProgram.cs
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -148,6 +155,45 @@ Os caminhos são relativos a `app-controle/`.
 
 ## Review Triage Log
 
+### 2026-11-01 — Review pass
+- verdicts: 34 findings — high 0, medium 7, low 24, false 2, maybe-false 1
+- findings:
+  - `[low]` `[patch]` Verification gap: o toque nas linhas do nível sem teste — teste (a).
+  - `[low]` `[patch]` Verification gap: o `TextoChip` com o nível escolhido sem teste — teste (b).
+  - `[low]` `[patch]` Verification gap: o aviso do volume do Extra na casca sem teste — teste (c).
+  - `[low]` `[patch]` Verification gap: as bandeiras de passo novas sem asserção — teste (d).
+  - `[maybe-false]` `[defer]` Verification gap: a composição do app (DI) entrega os ViewModels novos — não há bancada do MAUI; a 12d confere no aparelho que os blocos aparecem.
+  - `[low]` `[patch]` Intent: o selo "revalidar" sem o toque que leva ao Otimizar — o toque abre o Otimizar.
+  - `[low]` `[patch]` Intent: os [ASSUMPTION] novos não estão em `telas-rendimento.md`, que a 12d lê — seção "Lugares escolhidos na 13g".
+  - `[low]` `[reject]` Intent: o [ASSUMPTION] do limite marca só o lugar — o conteúdo segue a 13a/13c (a conta e o teto), decidido.
+  - `[false]` `[reject]` Intent: a mensagem da cerca é "Limite: …", não "Limite da …" — é a mensagem do núcleo (13a), que esta história não muda.
+  - `[false]` `[reject]` Intent: a faixa em análise ainda aceita o toque — o Player recusa a faixa em análise (13d, testado).
+  - `[low]` `[reject]` Intent: o XAML, a tecla Voltar e a navegação sem teste — o app não tem bancada de UI; a conferência visual é da 12d.
+  - `[low]` `[patch]` Blind: a calibração deixa o usuário na tela errada — fecha a página quando veio do "Calibrar ›".
+  - `[medium]` `[patch]` Blind: o "Calibrar ›" de uma saída abre a calibração de outra — avisa e não troca; confere o Escolher.
+  - `[medium]` `[patch]` Blind: a folha do outro player só na casca — camada global por cima.
+  - `[medium]` `[patch]` Blind: toques sem `SemanticProperties` — descrições e dicas.
+  - `[medium]` `[patch]` Blind: o `LimiteSaidaViewModel` refaz a margem do nível — lê o núcleo.
+  - `[low]` `[patch]` Blind: exceções engolidas sem log — `LogBle`.
+  - `[low]` `[patch]` Blind: o cartão vazio sem o limite — o motivo.
+  - `[low]` `[patch]` Blind: o alto-falante achado pelo nome — o id no registro do núcleo.
+  - `[low]` `[reject]` Blind: as telas cheias não tratam a página que sai — o núcleo segura o estado seguro (o módulo desligado, o prazo do gerador).
+  - `[medium]` `[patch]` Blind: um `NivelViewModel` abre duas folhas — uma folha só.
+  - `[low]` `[patch]` Blind: a vírgula no teclado numérico — aceita o ponto também.
+  - `[low]` `[patch]` Blind: o "Sem nível" sempre visível — só com o nível escolhido.
+  - `[low]` `[patch]` Blind: faltam testes — testes (a) a (f).
+  - `[low]` `[reject]` Blind: a spec com o status trocado e o Auto Run Result do implementador — refeitos no fim desta rodada.
+  - `[low]` `[patch]` Blind: o `Bgs` da `FolhaView` não volta — reversível, com recursos dinâmicos.
+  - `[low]` `[patch]` Blind: as assinaturas da casca frágeis — o valor inicial e o descadastro.
+  - `[low]` `[patch]` Edge: o cartão sem o limite — o mesmo do Blind.
+  - `[medium]` `[patch]` Edge: a calibração de outra saída — o mesmo do Blind.
+  - `[medium]` `[patch]` Edge: a folha do outro player escondida — o mesmo do Blind.
+  - `[low]` `[patch]` Edge: o aviso rápido escondido nas telas cheias — espelhado nelas.
+  - `[low]` `[patch]` Edge: o aviso já na tela ao criar a página — o valor inicial.
+  - `[low]` `[patch]` Edge: o `Bgs` que não volta — o mesmo do Blind.
+  - `[low]` `[patch]` Edge: a página na pilha, mas não no topo — desce até ela.
+  - `[low]` `[reject]` Edge (alegação): os glifos ⚠ ‹ ✕ › no XAML — são ícones, não textos.
+
 ## Design Notes
 
 - **Por que Configurações e o cartão da memória:** a Roda (o redesenho) ainda não existe. Esses lugares são [ASSUMPTION] de `telas-rendimento.md`, para a 12d conferir no aparelho.
@@ -166,23 +212,51 @@ Os caminhos são relativos a `app-controle/`.
 
 Status: done
 
-**O que entrou** (em `app-controle/`):
-- **Telas:**
-  - `LimiteSaidaViewModel.cs` (novo): a linha do teto ("17,9 V · −6,8 dB · pelo térmico · verificado"), a faixa de sem calibração com "Calibrar ›", o motivo sem limite, a linha do nível e a folha "A conta" (T, X e C com o valor, o selo, a conta, os dados com a origem e o que falta; o alto-falante que manda e o ganho do módulo). O `AjusteSaidaViewModel` leva um (`Limite`).
-  - `INavegacao`: `AbrirCalibracao(canal?)` e `AbrirTesteSeco()`; os comandos "Calibrar saídas" (Configurações), "Calibrar ›" (limite e folha do nível) e "Fazer o teste a seco ›" (`OtimizarViewModel`).
-  - `NivelViewModel`: o chip ("Nível: Alto ›" / "Sem nível ›"), a faixa de sem calibração, os itens com o toque e o Fechar. `PlayerViewModel` e `InicioViewModel`: o Extra ao vivo e o Otimizar. `MemoriasViewModel`: o nível no cartão.
-  - Os passos de tela (`NaEscolha`, `NoAviso`, `Andando`…) e as descrições do TalkBack em `CalibracaoViewModel` e `TesteSecoViewModel`.
-  - A recusa da cerca e o aviso do volume do Extra no aviso rápido da casca.
-- **App:**
-  - `CalibracaoPage` e `TesteSecoPage` (novas, tela cheia, um passo por tela, Voltar como pedido);
-  - `NivelFolhaView` (com a folha de risco do Máximo), `ChipNivelView`, `ExtraAoVivoView`, `LimiteSaidaView` e `ContaLimiteView` (novos);
-  - as partes do Rendimento em `AjusteSaidaPage`, `PlayerView`, `InicioView`, `MemoriasPage`, `ConfiguracoesPage` e `CascaPage`;
-  - `App.xaml` (os tokens que faltavam e os estilos BGS com alvo de 48), `FolhaView` (o visual BGS), `NavegacaoMaui` e `MauiProgram`.
-- **Testes:** `LimiteSaidaViewModelTestes` (novo), o "Fazer o teste a seco" no `OtimizarViewModelTestes`, a `NavegacaoFalsa` e o `ArquiteturaTestes` (as telas novas na varredura).
+**O que entrou.** As telas do Rendimento, ligadas aos ViewModels da 13b à 13f, no visual BGS Sound:
+- **O limite da saída** no ajuste da saída: o teto em V e em dB, o que manda e o selo, com a folha "A conta" (os três limites, as origens e o que falta), a faixa "Sem calibração" com "Calibrar ›" e o motivo quando não há limite. Vem do `LimiteSaidaViewModel` (novo), que lê o núcleo, inclusive o teto do nível.
+- **A recusa da cerca** no aviso do controle e no aviso rápido de 2,6 s, espelhado em todas as telas empilhadas.
+- **A calibração guiada** (`CalibracaoPage`), um passo por tela, por Configurações › "Calibrar saídas" e pelos "Calibrar ›". Ela fecha e volta quando veio de um link, e não troca de saída no meio.
+- **O nível da memória:** o chip no Início e nas Memórias, e uma folha só, numa camada global, com as linhas, o Máximo com a folha de risco, o Extra, "Sem nível" e o selo "revalidar" (o toque leva ao Otimizar).
+- **No Player:** o Otimizar (o anel, o resultado e "Fazer o teste a seco ›"), o peso e a marca de cada faixa, e o Extra ao vivo (também no Início).
+- **O teste a seco** (`TesteSecoPage`), um passo por tela.
+- **A folha do outro player** numa camada global por cima de tudo.
+- **Acessibilidade** em todo toque só por gesto. Os [ASSUMPTION] estão marcados no XAML e em `telas-rendimento.md` ("Lugares escolhidos na 13g").
 
-**Verificação.**
-- `dotnet build src/BgsControle.App -f net10.0-android -c Debug`: 0 erros e 0 avisos (XamlC conferindo os bindings).
-- `dotnet test tests/BgsControle.Telas.Testes`: 517 passam. `dotnet test tests/BgsControle.Nucleo.Testes`: 1338 passam.
+**Arquivos** (em `app-controle/`):
+- Telas:
+  - `LimiteSaidaViewModel.cs` (novo);
+  - `NivelViewModel`, `CalibracaoViewModel`, `TesteSecoViewModel`, `OtimizarViewModel`, `PlayerViewModel`, `InicioViewModel`, `MemoriasViewModel`, `AjusteSaidaViewModel`, `ConfiguracoesViewModel` e `CascaViewModel`;
+  - `Abstracoes.cs` (`AbrirCalibracao`, `AbrirTesteSeco` e `MostrarFolhas`).
+- App:
+  - `CalibracaoPage`, `TesteSecoPage`, `NivelFolhaPage` e `OutroPlayerPage` (novas);
+  - os controles `NivelFolhaView`, `ChipNivelView`, `ExtraAoVivoView`, `LimiteSaidaView`, `ContaLimiteView` e `EspelhoAvisoRapido` (novos);
+  - `AjusteSaidaPage`, `PlayerView`, `InicioView`, `MemoriasPage`, `ConfiguracoesPage`, `CascaPage` e `FuncaoPage`;
+  - `FolhaView` (a variante `Bgs`, reversível), `App.xaml` (os tokens), `NavegacaoMaui.cs` e `MauiProgram.cs`.
+- Núcleo, só dados: `Niveis.TetoNivelV` e o `IdAltoFalante` em `LimiteSaida`/`LimiteCanal`.
+- Testes: `LimiteSaidaViewModelTestes` (novo), `NivelViewModelTestes`, `CalibracaoViewModelTestes`, `TesteSecoViewModelTestes`, `ArquiteturaTestes` e `Falsos`.
+- Spec: `_bmad-output/specs/spec-rendimento/telas-rendimento.md` ganhou a seção dos lugares escolhidos.
 
-**Fica para a 12d.** Sem celular no adb: a conferência visual de cada tela (os lugares [ASSUMPTION], os tamanhos e as folhas) no aparelho. Sem revisão de código nesta rodada.
+O implementador fez o commit `32a5607` antes da revisão. As correções da revisão vão num commit à parte.
 
+**Revisão.** 34 achados (7 medium, 24 low, 2 false, 1 maybe-false).
+- **Patches:**
+  - a folha do outro player e a do nível em camadas globais;
+  - o aviso rápido em todas as telas;
+  - a navegação da calibração;
+  - o limite pelo núcleo, com o log, o motivo e o id;
+  - o "Sem nível" e o toque do revalidar;
+  - a acessibilidade;
+  - o ponto e a vírgula no campo dos volts;
+  - a `FolhaView` reversível;
+  - os [ASSUMPTION] em `telas-rendimento.md`;
+  - os testes (a) a (f).
+- **Diferido (1):** a composição do app (DI), que a 12d confere no aparelho.
+- **Rejeitados,** com o motivo no Review Triage Log.
+
+**Revisão de acompanhamento: recomendada.** Foram 5 entradas medium com patch. O risco que ninguém conferiu é a parte visual inteira: as camadas novas, os gestos, o teclado e a pilha de navegação no Android. Nada foi visto num celular, porque não havia aparelho no adb. Isso é da 12d.
+
+**Verificação:**
+- `dotnet test` Núcleo: 1338 de 1338 em três rodadas. Uma quarta rodada, antes delas, teve 1 falha intermitente que não se repetiu e não foi identificada.
+- `dotnet test` Telas: 523 de 523.
+- `dotnet build` do App para `net10.0-android` (Debug): 0 erros e 0 avisos (o XamlC confere os bindings).
+- A matriz tem pelo menos um teste por linha.

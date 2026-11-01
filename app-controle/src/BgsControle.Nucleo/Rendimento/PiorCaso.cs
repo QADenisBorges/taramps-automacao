@@ -57,7 +57,7 @@ public sealed record ContaNivel(NivelRendimento Nivel, decimal? Master, string? 
         QueManda is { } m ? Canais.Where(c => c.Folga - m.Folga < 0.05).Select(c => c.Saida).Distinct().ToArray() : [];
 
     /// <summary>O teto do nível em volts na saída que manda: o teto físico menos a margem, ou null.</summary>
-    public double? TetoNivelV => QueManda?.TetoV is { } v ? v * Math.Pow(10, -(double)Niveis.Margem(Nivel) / 20) : null;
+    public double? TetoNivelV => QueManda?.TetoV is { } v ? Niveis.TetoNivelV(Nivel, v) : null;
 }
 
 /// <summary>

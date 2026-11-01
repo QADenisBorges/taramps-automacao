@@ -19,6 +19,9 @@ public sealed record OpcaoSaidaCalibracao(int Canal, string Nome, string Rotulo,
 
     /// <summary>Dá para calibrar esta saída (a trava geral à parte).</summary>
     public bool Pode => Motivo is null;
+
+    /// <summary>O TalkBack da linha da escolha (história 13g): "JBL L, CH1, Sem calibração" e o motivo.</summary>
+    public string Descricao => Motivo is { } m ? $"{Nome}, {Rotulo}, {Situacao}. {m}" : $"{Nome}, {Rotulo}, {Situacao}";
 }
 
 /// <summary>
@@ -62,6 +65,12 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
 
     /// <summary>A dica do campo dos volts.</summary>
     public const string DicaVolts = "Ex.: 12,4";
+
+    /// <summary>A dica do TalkBack numa saída da escolha.</summary>
+    public const string DicaOpcao = "Toque para calibrar esta saída.";
+
+    /// <summary>"Termine a calibração da JBL L primeiro." (outra saída pedida com uma calibração aberta; história 13g).</summary>
+    public static string MsgTermineAntes(string saida) => $"Termine a calibração da {saida} primeiro.";
 
     /// <summary>De quanto em quanto a contagem regressiva se atualiza.</summary>
     public static readonly TimeSpan PassoContagem = TimeSpan.FromMilliseconds(250);
@@ -358,6 +367,27 @@ public sealed class CalibracaoViewModel : TelaBase, IDisposable
     public bool PodeCancelar => Aberta && Etapa != EtapaCalibracao.Fim;
 
     // ------------------------------------------------------------------ ações
+
+    /// <summary>
+    /// O "Calibrar ›" de uma saída (história 13g): abre a calibração dela no passo 1 e devolve true. Com a calibração dela
+    /// já aberta, true sem mexer. Com a de outra saída aberta, não troca: mostra "Termine a calibração da … primeiro." e
+    /// devolve false. Uma recusa ao abrir fica na <see cref="Mensagem"/>, e devolve false.
+    /// </summary>
+    public bool AbrirPara(int canal)
+    {
+        if (_calibracao.Alvo is { } alvo && Aberta)
+        {
+            if (alvo.Saida.Canais.Contains(canal))
+                return true;
+            Mensagem = MsgTermineAntes(alvo.Nome);
+            return false;
+        }
+        TextoVolts = "";
+        var r = _calibracao.Abrir(canal);
+        Mensagem = r.Ok ? r.Mensagem : r.Mensagem ?? r.Motivo;
+        Atualizar();
+        return r.Ok && Aberta;
+    }
 
     private Task EscolherAsync(int canal)
     {

@@ -16,3 +16,13 @@ Sem rodada de UX (decisão do Denis, 30/10/2026). As telas seguem o `DESIGN.md` 
 | **Extra ao vivo** | Mini player e Roda [ASSUMPTION] | O tempo que falta de Extra. No descanso: "Descansando: <tempo>", com o Bluetooth travado e sem tocar. |
 | **Revalidar** | Roda, na memória | O selo "revalidar" e o motivo. Um toque leva ao "Otimizar na playlist". |
 | **Outro player** | Folha, ao detectar outra fonte no Extra | "Outro app começou a tocar. O som foi mutado." Voltar ao player do app. |
+
+## Lugares escolhidos na 13g [ASSUMPTION]
+
+Sem a Roda, a 13g pôs as telas nestes lugares. A 12d confere no aparelho.
+
+- **Calibração guiada:** entra por Configurações › "Calibrar saídas" (a escolha da saída) e pelos "Calibrar ›" das faixas de sem calibração (no Ajuste da saída e na folha do nível), que já abrem a saída no passo 1.
+- **Nível da memória:** o chip "Nível: Alto ›" (ou "Sem nível ›") fica no cartão da memória em uso do Início e no cartão da memória em uso em Memórias. A folha sobe por cima de tudo, uma só.
+- **Extra ao vivo:** no topo do Player e no cartão da memória em uso do Início.
+- **Revalidar:** o selo "revalidar", com o motivo, fica dentro da folha do nível; um toque leva ao "Otimizar na playlist", no Player.
+- **Aviso rápido (2,6 s):** além da casca, aparece também no Ajuste da saída, nas telas de função, na calibração guiada e no teste a seco.

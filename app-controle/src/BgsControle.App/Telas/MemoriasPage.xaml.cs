@@ -19,23 +19,14 @@ public partial class MemoriasPage : ContentPage
         // Antes da página: a folha do Salvar não herda a tela Memórias nem por um instante.
         FolhaSalvar.BindingContext = salvar;
         BindingContext = vm;
-        casca.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(CascaViewModel.AvisoRapido))
-                AvisoRapido.Texto = casca.AvisoRapido;
-        };
+        Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
     private void AoVoltar(object? sender, EventArgs e) => _ = Navigation.PopAsync();
 
     protected override bool OnBackButtonPressed()
     {
-        // História 13g: a folha de risco do Máximo e a do nível fecham antes.
-        if (_vm.Nivel is { RiscoAberto: true } risco)
-            risco.Cancelar.Execute(null);
-        else if (_vm.Nivel is { FolhaAberta: true } nivel)
-            nivel.Fechar.Execute(null);
-        else if (_salvar.Aberta)
+        if (_salvar.Aberta)
             _salvar.Cancelar.Execute(null);
         else if (_vm.CriarAberto)
             _vm.CancelarCriar.Execute(null);

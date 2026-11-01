@@ -116,6 +116,13 @@ public interface INavegacao
     /// </summary>
     void MostrarCamadas(bool criacao, bool folhaRisco, bool reaplicando, bool alarmeGerador);
 
+    /// <summary>
+    /// As folhas globais do Rendimento (história 13g), por cima de qualquer tela e abaixo da folha de risco do app: a folha
+    /// "Nível da memória" (com a de risco do Máximo) e a folha "Outro app começou a tocar". Mostra as que valem e tira as
+    /// outras.
+    /// </summary>
+    void MostrarFolhas(bool nivel, bool outroPlayer);
+
     /// <summary>‹ numa tela cheia.</summary>
     void Voltar();
 

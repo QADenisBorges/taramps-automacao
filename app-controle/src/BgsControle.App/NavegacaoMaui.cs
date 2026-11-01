@@ -27,7 +27,9 @@ namespace BgsControle.App;
 /// </para>
 /// <para>
 /// História 13g: as telas cheias do Rendimento, a calibração guiada (com a saída, ela já abre no passo 1) e o teste a
-/// seco (abre o passo 1, o aviso).
+/// seco (abre o passo 1, o aviso); e as folhas globais, logo abaixo da folha de risco: a do nível (uma só, qualquer que
+/// seja o chip que a abriu) e a do outro player. Uma tela cheia já na pilha, mas não no topo, volta ao topo (as de cima
+/// saem).
 /// </para>
 /// </summary>
 public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INavegacao
@@ -37,6 +39,7 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private readonly SemaphoreSlim _porCima = new(1, 1);
     private (bool Setup, bool Metade) _pedido;
     private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme) _camadas;
+    private (bool Nivel, bool OutroPlayer) _folhas;
     private (string Nome, Func<Page> Criar)? _esperando;
 
     private static INavigation? Navegacao => Application.Current?.Windows.FirstOrDefault()?.Page?.Navigation;
@@ -86,11 +89,11 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
 
     public void AbrirCalibracao(int? canal) => Empurrar("Calibração", () =>
     {
-        // Com a saída (o "Calibrar ›" de uma faixa), a calibração dela abre no passo 1; uma já aberta segue como está.
-        var tela = servicos.GetRequiredService<CalibracaoViewModel>();
-        if (canal is { } c && !tela.Aberta)
-            tela.Escolher.Execute(c);
-        return servicos.GetRequiredService<CalibracaoPage>();
+        // Com a saída (o "Calibrar ›" de uma faixa), a calibração dela abre no passo 1; a de outra saída aberta não troca (a
+        // tela diz para terminar antes). A página decide e confere o resultado.
+        var pagina = servicos.GetRequiredService<CalibracaoPage>();
+        pagina.Abrir(canal);
+        return pagina;
     });
 
     public void AbrirTesteSeco() => Empurrar("Teste a seco", () =>
@@ -142,6 +145,13 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
         Reconciliar();
     }
 
+    /// <summary>As folhas globais do Rendimento (história 13g): a do nível e a do outro player.</summary>
+    public void MostrarFolhas(bool nivel, bool outroPlayer)
+    {
+        _folhas = (nivel, outroPlayer);
+        Reconciliar();
+    }
+
     /// <summary>Deixa na pilha de modais só as telas que valem agora, na ordem de baixo para cima.</summary>
     private void Reconciliar()
     {
@@ -161,6 +171,10 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
                     queremos.Add(servicos.GetRequiredService<PelaMetadePage>());
                 if (criacao)
                     queremos.Add(servicos.GetRequiredService<CriacaoPage>());
+                if (_folhas.Nivel)
+                    queremos.Add(servicos.GetRequiredService<NivelFolhaPage>());
+                if (_folhas.OutroPlayer)
+                    queremos.Add(servicos.GetRequiredService<OutroPlayerPage>());
                 if (folhaRisco)
                     queremos.Add(servicos.GetRequiredService<FolhaRiscoPage>());
                 if (reaplicando)
@@ -214,7 +228,12 @@ public sealed class NavegacaoMaui(IServiceProvider servicos, LogBle log) : INave
     private static async Task PorNaPilha(INavigation nav, Page pagina)
     {
         if (nav.NavigationStack.Contains(pagina))
-            return; // já aberta
+        {
+            // Já aberta: se outras telas cheias estão por cima dela, elas saem até ela voltar ao topo.
+            while (nav.NavigationStack.Count > 1 && nav.NavigationStack[^1] != pagina)
+                await nav.PopAsync(false);
+            return;
+        }
         await nav.PushAsync(pagina);
     }
 }

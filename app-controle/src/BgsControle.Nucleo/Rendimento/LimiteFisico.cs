@@ -68,7 +68,8 @@ public sealed record LimiteCaminho(
 /// <param name="Manda">O limite que manda nesse alto-falante.</param>
 /// <param name="AltoFalante">O alto-falante que manda no canal.</param>
 /// <param name="TetoV">O teto em volts RMS desse alto-falante (história 13c: a linha do nível na tela).</param>
-public sealed record LimiteCanal(int Canal, decimal TetoDb, TipoLimite Manda, string AltoFalante, double? TetoV = null)
+/// <param name="IdAltoFalante">O id do alto-falante que manda no canal (história 13g: a tela acha a ficha dele), ou null.</param>
+public sealed record LimiteCanal(int Canal, decimal TetoDb, TipoLimite Manda, string AltoFalante, double? TetoV = null, string? IdAltoFalante = null)
 {
     /// <summary>
     /// O teto que a cerca usa: o físico dentro da faixa do limitador (−48 a 0 dB). Abaixo de −48, fica em
@@ -98,6 +99,7 @@ public sealed record AltoFalanteFora(string AltoFalante, string Motivo);
 /// <param name="Calibrada">Todos os alto-falantes com limite têm o ganho do módulo medido.</param>
 /// <param name="SemLimite">O motivo de a saída ficar sem limite, ou null.</param>
 /// <param name="PorCanal">O teto da cerca em cada canal com algum alto-falante calibrado e com limite.</param>
+/// <param name="IdAltoFalante">O id do alto-falante que manda (história 13g: a tela acha a ficha dele), ou null.</param>
 public sealed record LimiteSaida(
     SaidaApp Saida,
     string Nome,
@@ -110,7 +112,8 @@ public sealed record LimiteSaida(
     decimal? TetoDb,
     bool Calibrada,
     string? SemLimite,
-    IReadOnlyList<LimiteCanal> PorCanal)
+    IReadOnlyList<LimiteCanal> PorCanal,
+    string? IdAltoFalante = null)
 {
     public const string MsgAbaixoDoMinimo = "O limitador não chega ao limite físico desta saída.";
 
@@ -217,7 +220,7 @@ public static class LimiteFisico
                 .OfType<string>().Distinct().ToArray();
             var motivo = $"Sem nenhum dos três limites do {primeiro.Caminho.AltoFalante.Nome}." + (faltas.Length > 0 ? " " + string.Join(" ", faltas) : "");
             return new LimiteSaida(saida, nome, primeiro.Caminho.AltoFalante.Nome, primeiro.Termico, primeiro.Excursao, primeiro.Ceifamento,
-                null, null, null, false, motivo, []);
+                null, null, null, false, motivo, [], primeiro.Caminho.AltoFalante.Id);
         }
 
         // A cerca em cada canal: o menor teto em dB entre os alto-falantes calibrados que ele alimenta.
@@ -228,7 +231,7 @@ public static class LimiteFisico
             .Select(g =>
             {
                 var m = g.OrderBy(c => c.TetoDb).ThenBy(c => c.TetoV).First();
-                return new LimiteCanal(g.Key, m.TetoDb!.Value, m.Manda!.Value, m.Caminho.AltoFalante.Nome, m.TetoV);
+                return new LimiteCanal(g.Key, m.TetoDb!.Value, m.Manda!.Value, m.Caminho.AltoFalante.Nome, m.TetoV, m.Caminho.AltoFalante.Id);
             })
             .ToArray();
 
@@ -237,7 +240,7 @@ public static class LimiteFisico
             ? comTeto.OrderBy(c => c.TetoDb).ThenBy(c => c.TetoV).First()
             : comTeto.OrderBy(c => c.TetoV).First();
         return new LimiteSaida(saida, nome, manda.Caminho.AltoFalante.Nome, manda.Termico, manda.Excursao, manda.Ceifamento,
-            manda.Manda, manda.TetoV, calibrada ? manda.TetoDb : null, calibrada, null, porCanal);
+            manda.Manda, manda.TetoV, calibrada ? manda.TetoDb : null, calibrada, null, porCanal, manda.Caminho.AltoFalante.Id);
     }
 
     /// <summary>

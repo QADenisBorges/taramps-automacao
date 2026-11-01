@@ -20,26 +20,11 @@ public partial class CascaPage : ContentPage
         // A dúvida (ou a IA, ou o alarme do gerador) pode ter chegado antes de a casca aparecer.
         _vm.Sincronizar(forcar: true);
         _vm.SincronizarCamadas(forcar: true);
+        _vm.SincronizarFolhas(forcar: true);
     }
 
     protected override bool OnBackButtonPressed()
     {
-        // História 13g: a folha de risco do Máximo, a do nível e a do outro player fecham antes.
-        if (_vm.Inicio.Nivel is { RiscoAberto: true } risco)
-        {
-            risco.Cancelar.Execute(null);
-            return true;
-        }
-        if (_vm.Inicio.Nivel is { FolhaAberta: true } nivel)
-        {
-            nivel.Fechar.Execute(null);
-            return true;
-        }
-        if (_vm.Player is { FolhaOutroPlayer: true } player)
-        {
-            player.VoltarAoPlayer.Execute(null);
-            return true;
-        }
         if (_vm.Memorias.ListaAberta)
         {
             _vm.Memorias.FecharLista.Execute(null);

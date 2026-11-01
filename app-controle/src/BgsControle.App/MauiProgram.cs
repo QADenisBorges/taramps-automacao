@@ -462,6 +462,9 @@ public static class MauiProgram
         // História 13g: as telas cheias do Rendimento (a calibração guiada e o teste a seco).
         builder.Services.AddSingleton<CalibracaoPage>();
         builder.Services.AddSingleton<TesteSecoPage>();
+        // As folhas globais (camadas da navegação): a do nível e a do outro player.
+        builder.Services.AddSingleton<NivelFolhaPage>();
+        builder.Services.AddSingleton<OutroPlayerPage>();
 
         var app = builder.Build();
         // Uma falha num comando da tela não derruba o app, mas deixa a linha no registro do BLE.

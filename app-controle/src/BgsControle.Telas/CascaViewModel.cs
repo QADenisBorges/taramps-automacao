@@ -50,6 +50,7 @@ public sealed class CascaViewModel : TelaBase, IDisposable
     private (bool Criacao, bool FolhaRisco, bool Reaplicando, bool Alarme)? _camadas;
     private string? _avisoRapido;
     private ITimer? _prazoAviso;
+    private (bool Nivel, bool OutroPlayer)? _folhas;
 
     public CascaViewModel(
         Sessao sessao,
@@ -106,8 +107,53 @@ public sealed class CascaViewModel : TelaBase, IDisposable
         // História 13g: a recusa da cerca e o aviso do volume do Extra também vão ao aviso rápido.
         _fabrica.RecusouNaCerca += AoAvisar;
         if (Player is not null)
+        {
             Player.AvisoRapido += AoAvisar;
+            Player.PropertyChanged += AoMudarFolhas;
+        }
+        if (Inicio.Nivel is { } nivel)
+        {
+            nivel.PropertyChanged += AoMudarFolhas;
+            nivel.PediuOtimizar += IrAoOtimizar;
+        }
     }
+
+    // ------------------------------------------------------------------ as folhas globais (história 13g)
+
+    /// <summary>A folha do nível (ou a de risco do Máximo) está por cima de tudo.</summary>
+    public bool FolhaNivelPorCima => _folhas?.Nivel == true;
+
+    /// <summary>A folha "Outro app começou a tocar" está por cima de tudo.</summary>
+    public bool FolhaOutroPlayerPorCima => _folhas?.OutroPlayer == true;
+
+    /// <summary>
+    /// Confere as folhas globais do Rendimento e pede à navegação quando mudam (ou sempre, com <paramref name="forcar"/>):
+    /// a do nível (uma só, qualquer que seja o chip que a abriu) e a do outro player.
+    /// </summary>
+    public void SincronizarFolhas(bool forcar = false)
+    {
+        var agora = (Inicio.Nivel is { } n && (n.FolhaAberta || n.RiscoAberto), Player?.FolhaOutroPlayer == true);
+        if (_folhas == agora && !forcar)
+            return;
+        _folhas = agora;
+        _nav.MostrarFolhas(agora.Item1, agora.Item2);
+        Avisar(nameof(FolhaNivelPorCima));
+        Avisar(nameof(FolhaOutroPlayerPorCima));
+    }
+
+    private void AoMudarFolhas(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(NivelViewModel.FolhaAberta) or nameof(NivelViewModel.RiscoAberto)
+            or nameof(PlayerViewModel.FolhaOutroPlayer))
+            SincronizarFolhas();
+    }
+
+    /// <summary>O selo "revalidar" foi tocado: fecha as telas cheias e vai ao Player, onde fica o Otimizar na playlist.</summary>
+    private void IrAoOtimizar() => NaTela(() =>
+    {
+        _nav.VoltarAoInicio();
+        Ir(Aba.Player);
+    });
 
     private void AoAvisar(string texto) => NaTela(() => MostrarAviso(texto));
 
@@ -331,7 +377,15 @@ public sealed class CascaViewModel : TelaBase, IDisposable
             Criacao.PropertyChanged -= AoMudarCriacao;
         _fabrica.RecusouNaCerca -= AoAvisar;
         if (Player is not null)
+        {
             Player.AvisoRapido -= AoAvisar;
+            Player.PropertyChanged -= AoMudarFolhas;
+        }
+        if (Inicio.Nivel is { } nivel)
+        {
+            nivel.PropertyChanged -= AoMudarFolhas;
+            nivel.PediuOtimizar -= IrAoOtimizar;
+        }
         _prazoAviso?.Dispose();
     }
 }

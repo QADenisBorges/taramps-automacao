@@ -121,6 +121,9 @@ public static class Niveis
         _ => 1m,
     };
 
+    /// <summary>O teto do nível em volts: o teto físico <paramref name="tetoFisicoV"/> menos a margem do nível.</summary>
+    public static double TetoNivelV(NivelRendimento nivel, double tetoFisicoV) => tetoFisicoV * Math.Pow(10, -(double)Margem(nivel) / 20);
+
     /// <summary>O Máximo e o Extra: o teto é min(X, C) (o térmico fica de fora), na conta e na cerca.</summary>
     public static bool SemTermico(NivelRendimento? nivel) => nivel is NivelRendimento.Maximo or NivelRendimento.Extra;
 

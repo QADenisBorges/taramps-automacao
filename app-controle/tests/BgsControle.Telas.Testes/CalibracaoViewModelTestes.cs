@@ -106,12 +106,28 @@ public sealed class CalibracaoViewModelTestes : IDisposable
             Assert.False(PalavraIa.IsMatch(o.Nome + o.Situacao + o.Motivo), o.Nome);
     }
 
+    /// <summary>História 13g: só a marca do passo de agora está ligada (nenhuma nos campos dos volts).</summary>
+    private void SoNo(string? passo)
+    {
+        var marcas = new (string Nome, bool Valor)[]
+        {
+            (nameof(_vm.NaEscolha), _vm.NaEscolha), (nameof(_vm.NoDesligar), _vm.NoDesligar), (nameof(_vm.NoMultimetro), _vm.NoMultimetro),
+            (nameof(_vm.NoTom), _vm.NoTom), (nameof(_vm.NoBluetooth), _vm.NoBluetooth), (nameof(_vm.NoFim), _vm.NoFim),
+        };
+        Assert.Equal(passo is null ? [] : [passo], marcas.Where(m => m.Valor).Select(m => m.Nome));
+        // A frase igual à instrução não se repete na tela.
+        if (_vm.Mensagem is not null && _vm.Mensagem == _vm.Instrucao)
+            Assert.Null(_vm.MensagemNaTela);
+    }
+
     /// <summary>Do passo 1 até o campo dos volts do tom.</summary>
     private async Task AteDigitarTom(int canal, string passo1)
     {
+        SoNo(nameof(_vm.NaEscolha));
         await _vm.Escolher.ExecutarAsync(canal);
         await _b.Tela.EsvaziarAsync();
         Assert.Equal(EtapaCalibracao.Desligar, _vm.Etapa);
+        SoNo(nameof(_vm.NoDesligar));
         Assert.Equal("Desligue os alto-falantes do módulo.", _vm.Instrucao);
         Assert.Equal(passo1, _vm.Passo);
         Assert.True(_vm.PodeCancelar);
@@ -120,10 +136,12 @@ public sealed class CalibracaoViewModelTestes : IDisposable
         await _vm.JaDesliguei.ExecutarAsync();
         await _b.Tela.EsvaziarAsync();
         Assert.Equal(EtapaCalibracao.Multimetro, _vm.Etapa);
+        SoNo(nameof(_vm.NoMultimetro));
         SemIa();
 
         await _b.Rodar(_vm.Seguir.ExecutarAsync());
         Assert.Equal(EtapaCalibracao.Tom, _vm.Etapa);
+        SoNo(nameof(_vm.NoTom));
         Assert.True(_vm.Tocando);
         Assert.InRange(_vm.Contagem!.Value, 25, 30);
         Assert.EndsWith(" s", _vm.TextoContagem);
@@ -134,6 +152,7 @@ public sealed class CalibracaoViewModelTestes : IDisposable
         await _b.Tela.EsvaziarAsync();
         Assert.Equal(EtapaCalibracao.DigitarTom, _vm.Etapa);
         Assert.True(_vm.PedeVolts);
+        SoNo(null);
     }
 
     private async Task Confirmar(string volts)
@@ -164,6 +183,7 @@ public sealed class CalibracaoViewModelTestes : IDisposable
         Assert.Equal(EtapaCalibracao.Bluetooth, _vm.Etapa);
         Assert.Equal("Passo 5 de 6", _vm.Passo);
         Assert.Equal(Calibracao.MsgPedeBluetooth, _vm.Instrucao);
+        SoNo(nameof(_vm.NoBluetooth));
         Assert.Null(_vm.AvisoSaidaDoSom);
         Assert.Equal(OrigemDado.Medido, Modulo.Dados.Ganho!.Origem);
         Assert.Equal(EstadoGerador.Desligado, _b.Gerador.Estado);
@@ -180,6 +200,8 @@ public sealed class CalibracaoViewModelTestes : IDisposable
         await Confirmar("8,73");
         Assert.Equal(EtapaCalibracao.Fim, _vm.Etapa);
         Assert.Equal("Ganho ×19,5 e Bluetooth −12,7 dB gravados.", _vm.Instrucao);
+        SoNo(nameof(_vm.NoFim));
+        Assert.Null(_vm.MensagemNaTela); // no fim, a frase é a própria instrução
         Assert.Equal("Religue os alto-falantes.", _vm.Detalhe);
         Assert.False(_vm.PodeCancelar);
         Assert.False(_tom.Tocando);
@@ -226,6 +248,45 @@ public sealed class CalibracaoViewModelTestes : IDisposable
         Assert.Null(_vm.AvisoBluetoothMedido);
         await _b.Rodar(_vm.Cancelar.ExecutarAsync());
         Assert.Equal(EtapaCalibracao.Fechada, _vm.Etapa);
+    }
+
+    /// <summary>História 13g: o teclado pode não ter a vírgula; o ponto vale igual.</summary>
+    [Fact]
+    public async Task O_campo_aceita_o_ponto_como_a_virgula()
+    {
+        Assert.Equal(12.4m, FormatoValor.Ler("12.4"));
+        Assert.Equal(FormatoValor.Ler("12,4"), FormatoValor.Ler("12.4"));
+        await Pronto();
+        await AteDigitarTom(0, "Passo 1 de 6");
+
+        await Confirmar("11.0");
+
+        Assert.Null(_vm.ErroVolts);
+        Assert.Equal(EtapaCalibracao.Bluetooth, _vm.Etapa);
+        Assert.Equal("19,5", Calibracao.Ganho(Modulo.Dados.Ganho!.Valor));
+        await _b.Rodar(_vm.Cancelar.ExecutarAsync());
+    }
+
+    /// <summary>
+    /// História 13g: o "Calibrar ›" de outra saída com uma calibração aberta não troca: a tela diz para terminar antes; o da
+    /// mesma saída segue; sem calibração aberta, abre no passo 1.
+    /// </summary>
+    [Fact]
+    public async Task Calibrar_outra_saida_com_uma_aberta_pede_para_terminar_antes()
+    {
+        await Pronto();
+        Assert.True(_vm.AbrirPara(0));
+        await _b.Tela.EsvaziarAsync();
+        Assert.Equal(EtapaCalibracao.Desligar, _vm.Etapa);
+        Assert.Equal("Calibrar JBL L", _vm.Titulo);
+
+        Assert.False(_vm.AbrirPara(2));
+        Assert.Equal("Termine a calibração da JBL L primeiro.", _vm.Mensagem);
+        Assert.Equal("Calibrar JBL L", _vm.Titulo);
+        Assert.True(_vm.AbrirPara(0));
+
+        await _b.Rodar(_vm.Cancelar.ExecutarAsync());
+        Assert.False(_vm.Aberta);
     }
 
     [Fact]

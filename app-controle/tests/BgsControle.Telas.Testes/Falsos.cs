@@ -163,6 +163,11 @@ internal sealed class NavegacaoFalsa : INavegacao
         Pedidos.Add($"por-cima:{escolhaSetup}:{pelaMetade}");
     }
 
+    /// <summary>O último pedido das folhas globais do Rendimento (história 13g): (nível, outro player). Fora de <see cref="Pedidos"/>.</summary>
+    public (bool Nivel, bool OutroPlayer)? Folhas { get; private set; }
+
+    public void MostrarFolhas(bool nivel, bool outroPlayer) => Folhas = (nivel, outroPlayer);
+
     public void Voltar() => Pedidos.Add("voltar");
     public void VoltarAoInicio() => Pedidos.Add("inicio");
 }

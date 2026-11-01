@@ -11,12 +11,35 @@ public partial class CalibracaoPage : ContentPage
 {
     private readonly CalibracaoViewModel _vm;
 
-    public CalibracaoPage(CalibracaoViewModel vm)
+    private bool _voltarAoFechar;
+    private bool _abertaVista;
+
+    public CalibracaoPage(CalibracaoViewModel vm, CascaViewModel? casca = null)
     {
         InitializeComponent();
         _vm = vm;
+        _abertaVista = vm.Aberta;
         BindingContext = vm;
         _vm.PropertyChanged += AoMudar;
+        // O aviso rápido da casca, também aqui.
+        Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
+    }
+
+    /// <summary>
+    /// A navegação abre a tela (história 13g). Sem saída (Configurações › "Calibrar saídas"): a escolha, ou a calibração já
+    /// aberta. Com a saída (o "Calibrar ›"): a calibração dela no passo 1 (<see cref="CalibracaoViewModel.AbrirPara"/>, que
+    /// não troca uma calibração de outra saída aberta); quando ela fecha (Concluir ou Cancelar), a tela sai sozinha.
+    /// </summary>
+    public void Abrir(int? canal)
+    {
+        if (canal is { } c)
+            _voltarAoFechar = _vm.AbrirPara(c);
+    }
+
+    private void Sair()
+    {
+        if (Navigation.NavigationStack.LastOrDefault() == this)
+            _ = Navigation.PopAsync();
     }
 
     private void AoEscolher(object? sender, TappedEventArgs e)
@@ -25,11 +48,22 @@ public partial class CalibracaoPage : ContentPage
             _vm.Escolher.Execute(opcao.Canal);
     }
 
-    private void AoVoltar(object? sender, EventArgs e) => _ = Navigation.PopAsync();
+    private void AoVoltar(object? sender, EventArgs e) => Sair();
 
-    // O campo dos volts apareceu: o teclado abre; sumiu: fecha.
+    // O campo dos volts apareceu: o teclado abre; sumiu: fecha. A calibração aberta pelo "Calibrar ›" fechou: a tela sai.
     private void AoMudar(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(CalibracaoViewModel.Aberta))
+        {
+            var antes = _abertaVista;
+            _abertaVista = _vm.Aberta;
+            if (antes && !_abertaVista && _voltarAoFechar)
+            {
+                _voltarAoFechar = false;
+                Sair();
+            }
+            return;
+        }
         if (e.PropertyName != nameof(CalibracaoViewModel.PedeVolts))
             return;
         if (_vm.PedeVolts)

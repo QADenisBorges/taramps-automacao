@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+    A folha "Outro app começou a tocar. O som foi mutado." como camada global (história 13g; telas-rendimento.md, "Outro
+    player"; DESIGN, sheet): sobe por cima de qualquer tela quando o fiscal do Extra acha outra fonte, com "Voltar ao player
+    do app". Tocar no véu ou o Voltar do Android fazem o mesmo. Os textos vêm do PlayerViewModel.
+-->
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:telas="clr-namespace:BgsControle.Telas;assembly=BgsControle.Telas"
+             xmlns:c="clr-namespace:BgsControle.App.Controles"
+             x:Class="BgsControle.App.Telas.OutroPlayerPage"
+             x:DataType="telas:PlayerViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="Transparent">
+    <c:FolhaView Bgs="True" Aberta="{Binding FolhaOutroPlayer}" Fechar="{Binding VoltarAoPlayer}">
+        <VerticalStackLayout Spacing="9">
+            <Label Style="{StaticResource tipo-sheet-title}" Text="{Binding TextoOutroPlayer}" SemanticProperties.HeadingLevel="Level1" />
+            <Button Style="{StaticResource botao-bgs}" Text="{Binding TextoVoltar}" Command="{Binding VoltarAoPlayer}" />
+        </VerticalStackLayout>
+    </c:FolhaView>
+</ContentPage>

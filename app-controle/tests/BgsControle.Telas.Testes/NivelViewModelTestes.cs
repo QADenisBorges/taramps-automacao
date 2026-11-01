@@ -208,6 +208,66 @@ public sealed class NivelViewModelTestes : IDisposable
         Assert.Equal("Alto · até 16 V nas JBL L e JBL R · qualquer fonte", t.Linha(NivelRendimento.Alto).Texto);
     }
 
+    /// <summary>História 13g: o toque de cada linha da tela escolhe o nível dela; o Máximo abre a folha de risco; o Extra vai ao EscolherExtra.</summary>
+    [Fact]
+    public async Task O_toque_de_cada_linha_escolhe_o_nivel_dela()
+    {
+        await Pronto();
+        Assert.Equal(_vm.Linhas.Count, _vm.Itens.Count);
+        ItemNivel Item(string nome) => _vm.Itens.Single(i => i.Linha.Nome == nome);
+
+        await _b.Rodar(Item("Alto").Tocar.ExecutarAsync());
+        Assert.Equal(NivelRendimento.Alto, _b.Setups!.NivelEmUso);
+        Assert.Equal("Nível Alto na PLANA.", _vm.Mensagem);
+        Assert.True(Item("Alto").Escolhida);
+
+        await _b.Rodar(Item("Máximo").Tocar.ExecutarAsync());
+        Assert.True(_vm.RiscoAberto);
+        Assert.Equal(NivelRendimento.Alto, _b.Setups.NivelEmUso);
+        await _vm.Cancelar.ExecutarAsync();
+
+        // O Extra está apagado: o toque passa pelo EscolherExtra, que mostra o motivo da linha.
+        var extra = Item("Extra");
+        Assert.True(extra.Apagada);
+        Assert.Same(_vm.EscolherExtra, extra.Tocar);
+        await _b.Rodar(extra.Tocar.ExecutarAsync());
+        Assert.Equal(extra.Motivo, _vm.Mensagem);
+        Assert.Equal(NivelRendimento.Alto, _b.Setups.NivelEmUso);
+    }
+
+    /// <summary>História 13g: o chip segue o nível da memória em uso, com o aviso de mudança; "Sem nível" só com um nível.</summary>
+    [Fact]
+    public async Task O_chip_mostra_o_nivel_da_memoria_em_uso_e_avisa_quando_muda()
+    {
+        await Pronto();
+        Assert.True(_vm.MostrarChip);
+        Assert.Equal("Sem nível ›", _vm.TextoChip);
+        Assert.False(_vm.PodeSemNivel);
+        var avisos = new List<string?>();
+        _vm.PropertyChanged += (_, e) => avisos.Add(e.PropertyName);
+
+        await _b.Rodar(_vm.Escolher.ExecutarAsync(NivelRendimento.Alto));
+
+        Assert.Equal("Nível: Alto ›", _vm.TextoChip);
+        Assert.Contains(nameof(NivelViewModel.TextoChip), avisos);
+        Assert.True(_vm.PodeSemNivel);
+        Assert.Contains(nameof(NivelViewModel.PodeSemNivel), avisos);
+    }
+
+    /// <summary>História 13g: o toque no selo "revalidar" fecha a folha e pede o Otimizar na playlist.</summary>
+    [Fact]
+    public async Task O_toque_no_selo_revalidar_fecha_a_folha_e_pede_o_Otimizar()
+    {
+        await Pronto();
+        var pedidos = 0;
+        _vm.PediuOtimizar += () => pedidos++;
+
+        await _vm.IrParaOtimizar.ExecutarAsync();
+
+        Assert.False(_vm.FolhaAberta);
+        Assert.Equal(1, pedidos);
+    }
+
     [Fact]
     public async Task Nenhum_texto_da_folha_contem_IA()
     {

@@ -15,14 +15,7 @@ public partial class AjusteSaidaPage : ContentPage
         InitializeComponent();
         _vm = vm;
         BindingContext = vm;
-        if (casca is not null)
-        {
-            casca.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(CascaViewModel.AvisoRapido))
-                    AvisoRapido.Texto = casca.AvisoRapido;
-            };
-        }
+        Controles.EspelhoAvisoRapido.Ligar(this, AvisoRapido, casca);
     }
 
     protected override bool OnBackButtonPressed()

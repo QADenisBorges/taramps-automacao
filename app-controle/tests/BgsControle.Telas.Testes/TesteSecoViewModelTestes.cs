@@ -248,6 +248,19 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         }
     }
 
+    /// <summary>História 13g: só a marca do passo de agora está ligada; a frase igual à instrução não se repete.</summary>
+    private void SoNo(string passo)
+    {
+        var marcas = new (string Nome, bool Valor)[]
+        {
+            (nameof(_vm.Fechado), _vm.Fechado), (nameof(_vm.NoAviso), _vm.NoAviso), (nameof(_vm.Andando), _vm.Andando),
+            (nameof(_vm.NoResultado), _vm.NoResultado),
+        };
+        Assert.Equal([passo], marcas.Where(m => m.Valor).Select(m => m.Nome));
+        if (_vm.Mensagem is not null && _vm.Mensagem == _vm.Instrucao)
+            Assert.Null(_vm.MensagemNaTela);
+    }
+
     // ----------------------------------------------------------------- os passos
 
     [Fact]
@@ -272,11 +285,13 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         await Pronto();
         var candidato = _analise.TetoEmUso().Master!.Value;
         Assert.Null(_vm.MotivoTrava);
+        SoNo(nameof(_vm.Fechado));
 
         await _vm.Abrir.ExecutarAsync();
         await _b.Tela.EsvaziarAsync();
         Assert.True(_vm.Aberto);
         Assert.Equal(EtapaTesteSeco.Aviso, _vm.Etapa);
+        SoNo(nameof(_vm.NoAviso));
         Assert.Equal("O módulo vai ser desligado.", _vm.Instrucao);
         Assert.NotNull(_vm.Detalhe);
         Assert.True(_vm.PodeConfirmar);
@@ -289,6 +304,7 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         var confirmar = _vm.Confirmar.ExecutarAsync();
         await AndarAte(() => _reprodutor.Segurando);
         Assert.Equal(EtapaTesteSeco.Tocando, _vm.Etapa);
+        SoNo(nameof(_vm.Andando));
         Assert.Equal("Faixa 2 de 3: menos 6, trecho 1", _vm.TextoTrecho);
         Assert.Equal("Faixa 2 de 3: menos 6, trecho 1", _vm.Instrucao);
         Assert.Equal("Trecho 2 de 3", _vm.TextoDoProgresso);
@@ -304,8 +320,12 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         await AndarAte(() => confirmar.IsCompleted);
         await confirmar;
         Assert.Equal(EtapaTesteSeco.Resultado, _vm.Etapa);
+        SoNo(nameof(_vm.NoResultado));
+        Assert.False(_vm.TemClips);
         Assert.True(_vm.Validado);
         Assert.Equal($"Teto validado: {LimiteFisico.Db(candidato)} dB.", _vm.Instrucao);
+        Assert.Equal(_vm.Instrucao, _vm.Mensagem);
+        Assert.Null(_vm.MensagemNaTela);
         Assert.Equal(1.0, _vm.Progresso, 6);
         Assert.Empty(_vm.LinhasClips);
         Assert.Null(_vm.Detalhe);
@@ -370,6 +390,10 @@ public sealed class TesteSecoViewModelTestes : IDisposable
     [Fact]
     public async Task O_Player_mostra_a_marca_do_clip_a_folha_do_outro_player_e_o_aviso_do_volume_uma_vez()
     {
+        // História 13g: a casca com este Player (o aviso do volume no aviso rápido; a folha do outro player como camada).
+        using var telas = new Telas11(_b);
+        using var casca = new CascaViewModel(_b.Sessao, telas.Conexao, telas.Setup, telas.Memorias, telas.Inicio, telas.Mesa, telas.Audio,
+            telas.Salvar, _b.Fabrica, telas.Nav, _b.Tela, _b.Relogio, _playerVm);
         await Pronto();
         await _vm.Abrir.ExecutarAsync();
         var confirmar = _vm.Confirmar.ExecutarAsync();
@@ -392,15 +416,22 @@ public sealed class TesteSecoViewModelTestes : IDisposable
         _volume.Mudar(5);
         await AndarAte(() => _playerVm.Mensagem == FiscalExtra.MsgVolume && _volume.Volume == 15);
         Assert.Null(_fiscal.Aviso);
+        // História 13g: o aviso do volume chega ao aviso rápido da casca e some depois de 2,6 s.
+        Assert.Equal(FiscalExtra.MsgVolume, casca.AvisoRapido);
+        await _b.Andar(TimeSpan.FromSeconds(2.7), passoMs: 100);
+        Assert.Null(casca.AvisoRapido);
 
         // Outro app começa a tocar: a folha; o Voltar ao player a fecha.
         _outro.Disparar();
         await AndarAte(() => _playerVm.FolhaOutroPlayer && _player.Estado == EstadoPlayer.Pausado);
+        Assert.True(casca.FolhaOutroPlayerPorCima);
+        Assert.Equal((false, true), telas.Nav.Folhas);
         Assert.Equal("Outro app começou a tocar. O som foi mutado.", _playerVm.TextoOutroPlayer);
         Assert.Equal("Voltar ao player do app", _playerVm.TextoVoltar);
         await _playerVm.VoltarAoPlayer.ExecutarAsync();
         await _b.Tela.EsvaziarAsync();
         Assert.False(_playerVm.FolhaOutroPlayer);
+        Assert.Equal((false, false), telas.Nav.Folhas);
         SemIa(_playerVm);
     }
 }

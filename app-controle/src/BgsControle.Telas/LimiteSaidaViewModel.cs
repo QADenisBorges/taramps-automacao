@@ -1,6 +1,7 @@
 using System.Globalization;
 using BgsControle.Nucleo;
 using BgsControle.Nucleo.Escrita;
+using BgsControle.Nucleo.Registro;
 using BgsControle.Nucleo.Rendimento;
 using BgsControle.Nucleo.Setups;
 
@@ -57,6 +58,9 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
     public const string TextoSemPassaAlta = "desligado";
     public const string MsgFalhou = "Não consegui calcular o limite desta saída.";
 
+    /// <summary>"Limite da saída: 17,9 V · …" (o TalkBack da linha que abre a conta).</summary>
+    public static string DescricaoDe(string? linha) => linha is null ? "Limite da saída" : $"Limite da saída: {linha}";
+
     /// <summary>"Térmico", "Curso do cone" ou "Ceifamento do módulo".</summary>
     public static string NomeTitulo(TipoLimite tipo)
     {
@@ -95,6 +99,7 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
     private readonly EstadoAparelho _estado;
     private readonly LinkCanais _link;
     private readonly INavegacao _nav;
+    private readonly LogBle? _log;
     private readonly int _pedido;
     private Retrato _retrato = Retrato.Vazio;
     private bool _contaAberta;
@@ -127,9 +132,10 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
 
     /// <param name="canal">O canal pedido (0 a 3): o limite é o da saída que tem ele.</param>
     public LimiteSaidaViewModel(int canal, GerenteSetups setups, EstadoAparelho estado, LinkCanais link, INavegacao nav,
-        IDespachante despachante, TimeProvider relogio)
+        IDespachante despachante, TimeProvider relogio, LogBle? log = null)
         : base(despachante, relogio)
     {
+        _log = log;
         _pedido = canal;
         _setups = setups;
         _estado = estado;
@@ -171,6 +177,9 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
 
     /// <summary>"Toque para ver a conta." quando a conta se abre.</summary>
     public string? Dica => PodeAbrirConta ? DicaConta : null;
+
+    /// <summary>O TalkBack da linha: "Limite da saída: 17,9 V · −6,8 dB · pelo térmico · verificado" (ou o motivo).</summary>
+    public string Descricao => DescricaoDe(Linha ?? MotivoSemLimite);
 
     // ------------------------------------------------------------------ sem calibração
 
@@ -236,14 +245,15 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
                 return Retrato.Vazio;
             var limite = _setups.LimitesEmUso.FirstOrDefault(l => l.Saida.Canais.Contains(_pedido));
             var faixa = SemCalibracao.Sem(setup.Equipamentos, saida) ? SemCalibracao.MsgAviso : null;
+            // Sem a saída nos limites (o Setup sem equipamentos): o motivo, sem a conta.
             if (limite is null)
-                return Retrato.Vazio with { Visivel = true, Canal = saida.Mestre, FaixaCalibracao = faixa };
+                return Retrato.Vazio with { Visivel = true, Canal = saida.Mestre, FaixaCalibracao = faixa, MotivoSemLimite = LimiteFisico.MsgSemAltoFalante };
 
             string? linha = limite is { TetoV: { } v, Manda: { } manda } ? TextoLinha(v, limite.TetoDb, manda, limite.Estimado) : null;
             var af = AltoFalanteQueManda(setup.Equipamentos, limite);
             var modulo = af?.Ligado is { } l ? setup.Equipamentos.FirstOrDefault(e => e.Id == l.IdModulo) : null;
             var ponte = af?.Ligado?.Bridge is not null;
-            var canalDoLimite = limite.PorCanal.FirstOrDefault(c => c.AltoFalante == limite.AltoFalante)?.Canal ?? saida.Mestre;
+            var canalDoLimite = limite.PorCanal.FirstOrDefault(c => c.IdAltoFalante == limite.IdAltoFalante)?.Canal ?? saida.Mestre;
             var passaAlta = LimiteFisico.PassaAltaDe(_estado.Valor, canalDoLimite);
 
             var limites = new List<LinhaContaLimite>();
@@ -258,9 +268,10 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
             return new Retrato(true, saida.Mestre, linha, limite.SemLimite, limite.Aviso, faixa, Nivel(limite),
                 limite.AltoFalante is { } nome ? TextoAltoFalante(nome) : null, ganho, limites);
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            // Sem a conta, a tela diz que não conseguiu (a cerca segue no núcleo, que recusa por conta própria).
+            // Sem a conta, a tela diz que não conseguiu, sem a conta para abrir (a cerca segue no núcleo, que recusa por conta própria).
+            _log?.Evento($"limite da saída: falha ao calcular (CH{_pedido + 1}, {e.GetType().Name})");
             return Retrato.Vazio with { Visivel = true, Canal = _pedido, MotivoSemLimite = MsgFalhou };
         }
     }
@@ -275,22 +286,20 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
         {
             conta = _setups.ContaEmUso();
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            _log?.Evento($"limite da saída: falha na conta do nível (CH{_pedido + 1}, {e.GetType().Name})");
             return null;
         }
         var canal = conta?.Canais.Where(c => limite.Saida.Canais.Contains(c.Canal) && c.TetoV is not null).MinBy(c => c.TetoV);
         if (canal?.TetoV is not { } teto)
             return null;
-        return TextoNivelAte(nivel, teto * Math.Pow(10, -(double)Niveis.Margem(nivel) / 20));
+        return TextoNivelAte(nivel, Niveis.TetoNivelV(nivel, teto));
     }
 
-    /// <summary>O alto-falante passivo que manda na saída (pelo nome, entre os que os canais dela alimentam), ou null.</summary>
+    /// <summary>O alto-falante passivo que manda na saída (pelo id que o núcleo dá), ou null.</summary>
     private static Equipamento? AltoFalanteQueManda(IReadOnlyList<Equipamento> equipamentos, LimiteSaida limite) =>
-        limite.AltoFalante is not { } nome
-            ? null
-            : Ligacoes.Alimentados(equipamentos, limite.Saida.Canais.ToArray())
-                .FirstOrDefault(e => e.Grupo == GrupoEquipamento.AltoFalante && e.Nome == nome);
+        limite.IdAltoFalante is not { } id ? null : equipamentos.FirstOrDefault(e => e.Id == id && e.Grupo == GrupoEquipamento.AltoFalante);
 
     private static LinhaContaLimite LinhaDe(Limite l, TipoLimite? manda, IReadOnlyList<string> dados)
     {
@@ -355,7 +364,7 @@ public sealed class LimiteSaidaViewModel : TelaBase, IDisposable
         foreach (var nome in new[]
                  {
                      nameof(Visivel), nameof(Linha), nameof(MotivoSemLimite), nameof(Aviso), nameof(TextoNivel), nameof(Dica),
-                     nameof(FaixaCalibracao), nameof(PodeAbrirConta), nameof(AltoFalante), nameof(Ganho), nameof(Limites),
+                     nameof(FaixaCalibracao), nameof(PodeAbrirConta), nameof(AltoFalante), nameof(Ganho), nameof(Limites), nameof(Descricao),
                  })
             Avisar(nome);
     }

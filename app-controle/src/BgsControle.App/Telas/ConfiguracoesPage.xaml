@@ -79,7 +79,8 @@
                             </Grid>
                             <BoxView HeightRequest="1" Color="{StaticResource sup-3}" />
                             <!-- História 13g: a calibração guiada ([ASSUMPTION] "Ajustes › Medir › Calibrar" até a Roda existir). -->
-                            <Grid Style="{StaticResource linha}" ColumnDefinitions="*,Auto">
+                            <Grid Style="{StaticResource linha}" ColumnDefinitions="*,Auto"
+                                  SemanticProperties.Description="{Binding TituloCalibrar}" SemanticProperties.Hint="{Binding DescricaoCalibrar}">
                                 <VerticalStackLayout VerticalOptions="Center">
                                     <Label Style="{StaticResource tipo-linha-titulo}" Text="{Binding TituloCalibrar}" />
                                     <Label Style="{StaticResource tipo-detalhe}" Text="{Binding DescricaoCalibrar}" />

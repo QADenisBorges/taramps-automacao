@@ -89,6 +89,10 @@
             <Color x:Key="white-07">#12FFFFFF</Color>
             <Color x:Key="brand-10">#1A3FD0FF</Color>
             <Color x:Key="brand-33">#543FD0FF</Color>
+            <!-- Os pincéis da folha BGS (o fio e a sombra), para os recursos dinâmicos da FolhaView. -->
+            <SolidColorBrush x:Key="pincel-border-sheet" Color="{StaticResource border-sheet}" />
+            <SolidColorBrush x:Key="pincel-bg" Color="{StaticResource bg}" />
+            <SolidColorBrush x:Key="pincel-transparente" Color="Transparent" />
 
             <!-- ============================================================ alvos de toque (DESIGN, spacing) -->
             <x:Double x:Key="alvo-min">44</x:Double>
