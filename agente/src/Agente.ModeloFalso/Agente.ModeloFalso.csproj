@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    O modelo falso: um processo que roda um roteiro gravado (testes/roteiros/*.json) chamando a mesma
+    ferramenta "porta" que o Claude Code usa. O lançador dele é um ILancadorAgente como o do Claude.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Agente.ModeloFalso</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agente.Servico\Agente.Servico.csproj" />
+    <!-- A ferramenta "porta" vai junto, na mesma pasta: o roteiro a chama como processo. -->
+    <ProjectReference Include="..\Porta.Cli\Porta.Cli.csproj" />
+  </ItemGroup>
+
+</Project>

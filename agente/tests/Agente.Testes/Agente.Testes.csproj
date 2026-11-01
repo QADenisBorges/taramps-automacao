@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Os testes de ponta a ponta da história 14a: a PortaComandos do núcleo do app sobre o ProcessadorSimulado,
+    numa porta livre de localhost, com a ferramenta, o serviço e o modelo falso de verdade (processos).
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Agente.Porta\Agente.Porta.csproj" />
+    <ProjectReference Include="..\..\src\Porta.Cli\Porta.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Agente.Servico\Agente.Servico.csproj" />
+    <ProjectReference Include="..\..\src\Agente.ModeloFalso\Agente.ModeloFalso.csproj" />
+    <ProjectReference Include="..\..\src\Servico\Servico.csproj" />
+    <ProjectReference Include="..\..\..\app-controle\src\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
+    <ProjectReference Include="..\..\..\app-controle\tests\BgsControle.Simulador\BgsControle.Simulador.csproj" />
+  </ItemGroup>
+
+</Project>

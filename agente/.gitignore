@@ -1,0 +1,9 @@
+# O pareamento (endereço e chave), o estado e o log do serviço: só no notebook, nunca no git.
+.local/
+
+# Saídas do build.
+bin/
+obj/
+.vs/
+*.user
+TestResults/

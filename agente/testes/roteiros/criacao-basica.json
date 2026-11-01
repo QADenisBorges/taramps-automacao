@@ -1,0 +1,38 @@
+{
+  "descricao": "Criação básica: abre, faz 2 perguntas (a 2ª como última), manda 2 ajustes com frase e motivo, o resumo e o \"Como ficou?\", e espera o usuário. Só dados genéricos.",
+  "passos": [
+    { "id": "abrir", "pedir": { "metodo": "POST", "alvo": "/criacao/abrir" } },
+    { "id": "pergunta-1", "pedir": { "metodo": "POST", "alvo": "/criacao/pergunta", "corpo": {
+        "texto": "Qual é o objetivo deste som?",
+        "respostas": ["Fiel ao que foi gravado", "O máximo que o sistema aguenta", "Um meio-termo"],
+        "ultima": false } } },
+    { "id": "resposta-1", "esperar": { "tipos": ["criacao-resposta"], "prazoS": 600 },
+      "se": [ { "campo": "texto", "igual": "O máximo que o sistema aguenta", "ir": "pergunta-2-nivel" } ] },
+    { "id": "pergunta-2", "pedir": { "metodo": "POST", "alvo": "/criacao/pergunta", "corpo": {
+        "texto": "Onde fica quem ouve?",
+        "respostas": ["No ponto ideal", "Espalhados pelo ambiente", "Longe das caixas"],
+        "ultima": true } },
+      "ir": "resposta-2" },
+    { "id": "pergunta-2-nivel", "pedir": { "metodo": "POST", "alvo": "/criacao/pergunta", "corpo": {
+        "texto": "Por quanto tempo seguido o som fica alto?",
+        "respostas": ["Poucos minutos", "Uma hora", "Horas seguidas"],
+        "ultima": true } } },
+    { "id": "resposta-2", "esperar": { "tipos": ["criacao-resposta"], "prazoS": 600 } },
+    { "id": "ajuste-1", "pedir": { "metodo": "POST", "alvo": "/criacao/ajuste", "corpo": {
+        "codigo": "081", "indice": 2, "valor": 2.0,
+        "frase": "Mais corpo no grave",
+        "motivo": "Exemplo do roteiro: o ganho da saída 3 sobe 2 dB." } } },
+    { "id": "ajuste-2", "pedir": { "metodo": "POST", "alvo": "/criacao/ajuste", "corpo": {
+        "codigo": "081", "indice": 0, "valor": -1.0,
+        "frase": "Um pouco menos na saída 1",
+        "motivo": "Exemplo do roteiro: o ganho da saída 1 desce para -1 dB." } } },
+    { "id": "resumo", "pedir": { "metodo": "POST", "alvo": "/criacao/resumo" } },
+    { "id": "como-ficou", "pedir": { "metodo": "POST", "alvo": "/criacao/como-ficou", "corpo": {
+        "respostas": ["Quero mais grave", "Está alto demais"] } } },
+    { "id": "resposta-como-ficou", "esperar": { "tipos": ["criacao-como-ficou"], "prazoS": 600 },
+      "se": [ { "campo": "salvar", "igual": "true", "ir": "esperar-salvar" } ] },
+    { "id": "cancelar", "pedir": { "metodo": "POST", "alvo": "/criacao/cancelar" }, "ir": "fim" },
+    { "id": "esperar-salvar", "esperar": { "tipos": ["criacao-salva", "criacao-cancelada", "criacao-interrompida"], "prazoS": 600 } },
+    { "id": "fim", "fim": true }
+  ]
+}

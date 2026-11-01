@@ -1,0 +1,7 @@
+{
+  "descricao": "Um Agente que trava: abre a criação e espera um evento que nunca chega (o prazo do serviço o encerra). Só dados genéricos.",
+  "passos": [
+    { "id": "abrir", "pedir": { "metodo": "POST", "alvo": "/criacao/abrir" }, "seFalhar": "parado" },
+    { "id": "parado", "esperar": { "tipos": ["evento-que-nunca-chega"], "prazoS": 3600 } }
+  ]
+}

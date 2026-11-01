@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- O serviço que acorda o Agente: o ciclo do /eventos, os gatilhos, um por vez, o prazo, o fim, a queda e o log. -->
+  <PropertyGroup>
+    <RootNamespace>Agente.Servico</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agente.Porta\Agente.Porta.csproj" />
+  </ItemGroup>
+
+</Project>

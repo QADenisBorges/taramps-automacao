@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    O Agente da memória roda no notebook (história 14a). Fora de app-controle/: não herda o JDK nem o
+    Android SDK do app. .NET 10, nullable e avisos como erro.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- A consulta de vulnerabilidades depende das fontes NuGet da máquina: uma fonte fora do ar não quebra o build. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

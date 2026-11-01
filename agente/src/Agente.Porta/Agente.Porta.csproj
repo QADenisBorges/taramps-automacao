@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A ferramenta da porta como biblioteca: o formato JSON, o cliente HTTP e o pareamento em .local/. -->
+  <PropertyGroup>
+    <RootNamespace>Agente.Porta</RootNamespace>
+  </PropertyGroup>
+
+</Project>

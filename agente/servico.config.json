@@ -1,0 +1,22 @@
+{
+  // O serviço do Agente (história 14a). Sem endereço nem chave: o pareamento fica na pasta local, fora do repositório
+  // (%LOCALAPPDATA%\BgsAgente, ou --local, ou AGENTE_LOCAL). A "pastaPorta" é relativa à pasta local.
+  "intervaloS": 1,
+  "esperaQuedaS": 5,
+  "prazoAgenteMin": 30,
+  "gatilhos": {
+    "criacao-pedida": "criar-memoria",
+    "ficha-pedida": "ficha-tecnica"
+  },
+  "lancador": {
+    // "claude": o Claude Code em modo não interativo, com o texto de tarefas/<tarefa>.md no {prompt}.
+    // "modelo-falso": os roteiros gravados abaixo, sem modelo nenhum.
+    "tipo": "claude",
+    "comando": "claude",
+    "argumentos": ["-p", "{prompt}", "--output-format", "json", "--allowedTools", "Bash(porta:*)"],
+    "pastaPorta": "bin",
+    "roteiros": {
+      "criar-memoria": "testes/roteiros/criacao-basica.json"
+    }
+  }
+}

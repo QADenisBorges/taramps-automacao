@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- O executável "porta": JSON na entrada (a opção json ou o stdin), JSON numa linha na saída. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>porta</AssemblyName>
+    <RootNamespace>Porta.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agente.Porta\Agente.Porta.csproj" />
+  </ItemGroup>
+
+</Project>

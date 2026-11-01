@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- O executável "servico": roda no notebook e acorda um Agente por vez. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>servico</AssemblyName>
+    <RootNamespace>Servico</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Agente.Servico\Agente.Servico.csproj" />
+    <ProjectReference Include="..\Agente.ModeloFalso\Agente.ModeloFalso.csproj" />
+  </ItemGroup>
+
+</Project>
