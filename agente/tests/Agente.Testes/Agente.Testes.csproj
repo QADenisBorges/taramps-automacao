@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Agente.Servico\Agente.Servico.csproj" />
     <ProjectReference Include="..\..\src\Agente.ModeloFalso\Agente.ModeloFalso.csproj" />
     <ProjectReference Include="..\..\src\Servico\Servico.csproj" />
+    <ProjectReference Include="..\..\avaliacao\Agente.Avaliacao\Agente.Avaliacao.csproj" />
     <ProjectReference Include="..\..\..\app-controle\src\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
     <ProjectReference Include="..\..\..\app-controle\tests\BgsControle.Simulador\BgsControle.Simulador.csproj" />
   </ItemGroup>

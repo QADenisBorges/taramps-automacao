@@ -1,0 +1,99 @@
+{
+  "id": "carro-fiel",
+  "descricao": "Carro com quem dirige sozinho: som fiel, grave na medida (um pouco acima do padrão) e agudo suave.",
+  "setup": {
+    "nome": "Carro de teste",
+    "ambiente": "carro",
+    "modulo": {
+      "nome": "Módulo do carro",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 100,
+      "ceifamentoCanal": 20,
+      "ganho": 15
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Porta 1",
+        "categoria": "médio-grave",
+        "modelo": "Médio-grave genérico 6\"",
+        "potenciaRms": 60,
+        "impedancia": 4
+      },
+      {
+        "canal": 1,
+        "nome": "Porta 2",
+        "categoria": "médio-grave",
+        "modelo": "Médio-grave genérico 6\"",
+        "potenciaRms": 60,
+        "impedancia": 4
+      },
+      {
+        "canal": 2,
+        "nome": "Sub",
+        "categoria": "subwoofer",
+        "modelo": "Sub genérico 10\"",
+        "potenciaRms": 250,
+        "impedancia": 4
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "som fiel e equilibrado",
+    "onde": "só quem dirige",
+    "grave": "grave na medida",
+    "agudo": "agudo suave"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "081",
+        "indice": 2,
+        "valor": 5.0
+      },
+      {
+        "codigo": "091",
+        "indice": 0,
+        "valor": -3.0
+      },
+      {
+        "codigo": "091",
+        "indice": 1,
+        "valor": -3.0
+      },
+      {
+        "codigo": "040",
+        "indice": 0,
+        "valor": 80
+      },
+      {
+        "codigo": "040",
+        "indice": 1,
+        "valor": 80
+      },
+      {
+        "codigo": "041",
+        "indice": 2,
+        "valor": 80
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a"
+      },
+      {
+        "canal": 1,
+        "rota": "b"
+      },
+      {
+        "canal": 2,
+        "rota": "a+b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "falta grave no sub",
+    "gosto": "quero mais grave"
+  }
+}

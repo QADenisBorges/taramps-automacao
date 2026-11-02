@@ -1,0 +1,61 @@
+{
+  "id": "quintal-conversa",
+  "descricao": "Quintal com gente espalhada conversando: som limpo, voz à frente, agudo neutro.",
+  "setup": {
+    "nome": "Quintal de teste",
+    "ambiente": "ar-livre",
+    "modulo": {
+      "nome": "Módulo do quintal",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 100,
+      "ceifamentoCanal": 20,
+      "ganho": 12
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Caixa da varanda",
+        "categoria": "caixa full-range",
+        "modelo": "Caixa full-range genérica",
+        "potenciaRms": 100,
+        "impedancia": 8
+      },
+      {
+        "canal": 1,
+        "nome": "Caixa do jardim",
+        "categoria": "caixa full-range",
+        "modelo": "Caixa full-range genérica",
+        "potenciaRms": 100,
+        "impedancia": 8
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "som limpo para conversa",
+    "onde": "pessoas espalhadas pelo quintal",
+    "voz": "voz mais à frente",
+    "agudo": "agudo neutro"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "030",
+        "valor": 5.0
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a+b"
+      },
+      {
+        "canal": 1,
+        "rota": "a+b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "a voz some no meio da música",
+    "gosto": "quero a voz mais à frente"
+  }
+}

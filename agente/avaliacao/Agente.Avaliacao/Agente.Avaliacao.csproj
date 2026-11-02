@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    O avaliador do Agente (história 14f, spec-agente-memoria CAP-8): os 8 ouvintes simulados com gosto escondido, as
+    métricas, o relatório, o hash das camadas e os comandos "real" e "conferir". Sobe o núcleo do app e a porta sobre o
+    ProcessadorSimulado, como os testes do Agente.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>avaliacao</AssemblyName>
+    <RootNamespace>Agente.Avaliacao</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Agente.Porta\Agente.Porta.csproj" />
+    <ProjectReference Include="..\..\src\Agente.Servico\Agente.Servico.csproj" />
+    <ProjectReference Include="..\..\..\app-controle\src\BgsControle.Nucleo\BgsControle.Nucleo.csproj" />
+    <ProjectReference Include="..\..\..\app-controle\tests\BgsControle.Simulador\BgsControle.Simulador.csproj" />
+  </ItemGroup>
+
+</Project>

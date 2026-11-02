@@ -1,0 +1,111 @@
+{
+  "id": "duas-vias-ativo",
+  "descricao": "Sistema de 2 vias ativo (woofer e tweeter em canais separados), uma pessoa no ponto ideal, agudo suave.",
+  "setup": {
+    "nome": "Estúdio de teste",
+    "ambiente": "outro",
+    "modulo": {
+      "nome": "Módulo do estúdio",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 60,
+      "ceifamentoCanal": 18,
+      "ganho": 10
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Woofer 1",
+        "categoria": "woofer",
+        "modelo": "Woofer genérico 6\"",
+        "potenciaRms": 100,
+        "impedancia": 8
+      },
+      {
+        "canal": 1,
+        "nome": "Tweeter 1",
+        "categoria": "tweeter",
+        "modelo": "Tweeter genérico 1\"",
+        "potenciaRms": 30,
+        "impedancia": 8
+      },
+      {
+        "canal": 2,
+        "nome": "Woofer 2",
+        "categoria": "woofer",
+        "modelo": "Woofer genérico 6\"",
+        "potenciaRms": 100,
+        "impedancia": 8
+      },
+      {
+        "canal": 3,
+        "nome": "Tweeter 2",
+        "categoria": "tweeter",
+        "modelo": "Tweeter genérico 1\"",
+        "potenciaRms": 30,
+        "impedancia": 8
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "ouvir com fidelidade",
+    "onde": "uma pessoa no ponto ideal da mesa",
+    "corte": "o fabricante indica 2500 Hz",
+    "agudo": "agudo suave"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "081",
+        "indice": 1,
+        "valor": -4.0
+      },
+      {
+        "codigo": "081",
+        "indice": 3,
+        "valor": -4.0
+      },
+      {
+        "codigo": "041",
+        "indice": 0,
+        "valor": 2500
+      },
+      {
+        "codigo": "041",
+        "indice": 2,
+        "valor": 2500
+      },
+      {
+        "codigo": "040",
+        "indice": 1,
+        "valor": 2500
+      },
+      {
+        "codigo": "040",
+        "indice": 3,
+        "valor": 2500
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a"
+      },
+      {
+        "canal": 1,
+        "rota": "a"
+      },
+      {
+        "canal": 2,
+        "rota": "b"
+      },
+      {
+        "canal": 3,
+        "rota": "b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "o agudo cansa",
+    "gosto": "quero o agudo mais suave"
+  }
+}

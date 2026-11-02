@@ -1,0 +1,78 @@
+{
+  "id": "carro-grave",
+  "descricao": "O mesmo carro, outro gosto: grave forte para curtir, com quem dirige sozinho.",
+  "setup": {
+    "nome": "Carro de teste",
+    "ambiente": "carro",
+    "modulo": {
+      "nome": "Módulo do carro",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 100,
+      "ceifamentoCanal": 20,
+      "ganho": 15
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Porta 1",
+        "categoria": "médio-grave",
+        "modelo": "Médio-grave genérico 6\"",
+        "potenciaRms": 60,
+        "impedancia": 4
+      },
+      {
+        "canal": 1,
+        "nome": "Porta 2",
+        "categoria": "médio-grave",
+        "modelo": "Médio-grave genérico 6\"",
+        "potenciaRms": 60,
+        "impedancia": 4
+      },
+      {
+        "canal": 2,
+        "nome": "Sub",
+        "categoria": "subwoofer",
+        "modelo": "Sub genérico 10\"",
+        "potenciaRms": 250,
+        "impedancia": 4
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "grave forte para curtir",
+    "onde": "só quem dirige",
+    "grave": "grave forte"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "081",
+        "indice": 2,
+        "valor": 8.0
+      },
+      {
+        "codigo": "041",
+        "indice": 2,
+        "valor": 80
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a"
+      },
+      {
+        "canal": 1,
+        "rota": "b"
+      },
+      {
+        "canal": 2,
+        "rota": "a+b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "o grave ainda está fraco",
+    "gosto": "quero mais grave"
+  }
+}

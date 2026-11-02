@@ -1,0 +1,78 @@
+{
+  "id": "sala-festa",
+  "descricao": "A mesma sala 2.1, outro gosto: festa com o pessoal espalhado, grave forte mas sem exagero.",
+  "setup": {
+    "nome": "Sala de teste",
+    "ambiente": "sala",
+    "modulo": {
+      "nome": "Módulo da sala",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 100,
+      "ceifamentoCanal": 20,
+      "ganho": 12
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Caixa 1",
+        "categoria": "caixa de estante",
+        "modelo": "Caixa de estante genérica",
+        "potenciaRms": 80,
+        "impedancia": 8
+      },
+      {
+        "canal": 1,
+        "nome": "Caixa 2",
+        "categoria": "caixa de estante",
+        "modelo": "Caixa de estante genérica",
+        "potenciaRms": 80,
+        "impedancia": 8
+      },
+      {
+        "canal": 2,
+        "nome": "Sub",
+        "categoria": "subwoofer",
+        "modelo": "Sub genérico 8\"",
+        "potenciaRms": 200,
+        "impedancia": 4
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "festa com o pessoal",
+    "onde": "várias pessoas espalhadas pela sala",
+    "grave": "grave forte"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "081",
+        "indice": 2,
+        "valor": 3.5
+      },
+      {
+        "codigo": "041",
+        "indice": 2,
+        "valor": 80
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a+b"
+      },
+      {
+        "canal": 1,
+        "rota": "a+b"
+      },
+      {
+        "canal": 2,
+        "rota": "a+b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "o grave está embolando",
+    "gosto": "quero menos grave"
+  }
+}

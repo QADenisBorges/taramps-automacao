@@ -1,0 +1,99 @@
+{
+  "id": "spl-maximo",
+  "descricao": "SPL: o máximo que o kit aguenta, posição das caixas indiferente e as entradas somadas em todas as saídas. Os alvos do limitador (−6,1 dB nos subs e −9,1 dB nos médios) são o teto da cerca que o app calcula para este Setup (o limitador no teto); uma mudança na conta da cerca obriga a atualizá-los.",
+  "setup": {
+    "nome": "SPL de teste",
+    "ambiente": "carro",
+    "modulo": {
+      "nome": "Módulo de SPL",
+      "modelo": "Módulo genérico 4 canais",
+      "potenciaCanal": 200,
+      "ceifamentoCanal": 28,
+      "ganho": 20
+    },
+    "caixas": [
+      {
+        "canal": 0,
+        "nome": "Sub 1",
+        "categoria": "subwoofer",
+        "modelo": "Sub genérico 12\"",
+        "potenciaRms": 500,
+        "impedancia": 2
+      },
+      {
+        "canal": 1,
+        "nome": "Sub 2",
+        "categoria": "subwoofer",
+        "modelo": "Sub genérico 12\"",
+        "potenciaRms": 500,
+        "impedancia": 2
+      },
+      {
+        "canal": 2,
+        "nome": "Médio 1",
+        "categoria": "médio",
+        "modelo": "Médio genérico 8\"",
+        "potenciaRms": 100,
+        "impedancia": 4
+      },
+      {
+        "canal": 3,
+        "nome": "Médio 2",
+        "categoria": "médio",
+        "modelo": "Médio genérico 8\"",
+        "potenciaRms": 100,
+        "impedancia": 4
+      }
+    ]
+  },
+  "fatos": {
+    "objetivo": "o máximo que o kit aguenta",
+    "onde": "posição indiferente, tanto faz"
+  },
+  "gosto": {
+    "alvos": [
+      {
+        "codigo": "071",
+        "indice": 0,
+        "valor": -6.1
+      },
+      {
+        "codigo": "071",
+        "indice": 1,
+        "valor": -6.1
+      },
+      {
+        "codigo": "071",
+        "indice": 2,
+        "valor": -9.1
+      },
+      {
+        "codigo": "071",
+        "indice": 3,
+        "valor": -9.1
+      }
+    ],
+    "rota": [
+      {
+        "canal": 0,
+        "rota": "a+b"
+      },
+      {
+        "canal": 1,
+        "rota": "a+b"
+      },
+      {
+        "canal": 2,
+        "rota": "a+b"
+      },
+      {
+        "canal": 3,
+        "rota": "a+b"
+      }
+    ]
+  },
+  "refino": {
+    "queixa": "ainda dá para tocar mais alto",
+    "gosto": "quero o máximo de pressão"
+  }
+}

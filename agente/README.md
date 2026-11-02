@@ -9,7 +9,8 @@ Esta pasta tem três peças, em .NET 10 (solução `BgsAgente.slnx`, fora de `ap
 - **`aprendizado`** (`src/Aprendizado.Cli`, história 14e): a ferramenta do aprendizado, só na pasta local (veja
   "O aprendizado").
 
-E as **instruções em camadas** do Agente (história 14d), versionadas aqui (veja "As instruções em camadas").
+E as **instruções em camadas** do Agente (história 14d), versionadas aqui (veja "As instruções em camadas"), e o
+**avaliador** (`avaliacao/Agente.Avaliacao`, história 14f), que prova o Agente com ouvintes simulados (veja "A avaliação").
 
 Nada do sistema de quem usa fica aqui. O endereço, a chave, o estado, os logs e a pasta de trabalho do Agente ficam
 na **pasta local**, fora do repositório: `%LOCALAPPDATA%\BgsAgente` (no Linux e no macOS, a pasta de dados locais do
@@ -229,6 +230,98 @@ vira hífens e um resumo dela no nome do arquivo):
 A skill objetivo lê o perfil depois da resposta que diz a situação e o usa como ponto de partida, com dúvida: a memória
 manda. A receita diz as variáveis antes do resumo.
 
+## A avaliação
+
+O Agente é provado por **ouvintes simulados** com gosto escondido (spec-agente-memoria CAP-8, história 14f). O avaliador
+(`avaliacao/Agente.Avaliacao`) sobe, para cada perfil, o núcleo do app e a porta sobre o `ProcessadorSimulado`, numa pasta
+local temporária; pareia; toca em "+ Nova memória"; lança o Agente com a tarefa `criar-memoria` e o evento; e deixa o
+ouvinte simulado fazer o lado do usuário. Ele roda o lançador que recebe: os testes usam Agentes falsos em código; o
+comando `real`, o `LancadorClaude`.
+
+### Os perfis
+
+Os 8 perfis ficam em `avaliacao/perfis/*.json`, só com dados genéricos (nenhum dado de um sistema real). Cada um traz:
+
+- o **Setup** (`setup`): o módulo (a potência e o ceifamento por canal, e o ganho, que entra como medido: as saídas ficam
+  calibradas e a cerca vale), as caixas (o canal do processador, de 0 a 3, o nome, a categoria, a potência RMS e a
+  impedância) e o ambiente (`sala`, `carro`, `ar-livre` ou `outro`);
+- os **fatos** (`fatos`) que o ouvinte sabe dizer em palavras (`{"objetivo":"o máximo que o kit aguenta","onde":"..."}`);
+- o **gosto escondido** (`gosto`): os alvos `{codigo, indice, valor}` e a rota esperada por saída com caixa (`a`, `b` ou
+  `a+b`);
+- as **frases de refino** (`refino`): uma queixa e um gosto.
+
+Eles cobrem um carro (dois gostos no mesmo Setup), uma caixa bob ao ar livre, uma sala 2.1 (dois gostos no mesmo Setup), um
+sistema de 2 vias ativo, um quintal com conversa e o caso da SPL: o máximo do kit, a posição indiferente e as entradas
+somadas em todas as saídas. Todo perfil parte do mesmo som: o de fábrica do simulador (neutro, rota a/b/a/b) com o
+limitador em −30 dB, guardado como a memória `PARTIDA`, ativa.
+
+### O ouvinte simulado
+
+Código, sem modelo, direto na `CriacaoMemoria` do núcleo:
+
+- **Pergunta:** toca na resposta que mais tem palavras em comum com os fatos (sem acento, sem maiúsculas, palavras de 3
+  letras ou mais, fora as ligações como "que", "com" e "para"). Sem nenhuma em comum, usa o "Outro…" com o fato mais perto
+  do texto da pergunta.
+- **"1 ou 2":** escolhe a versão de menor distância aos alvos; em distâncias iguais, "Tanto faz".
+- **"Como ficou?":** salva quando todo alvo está a até 1,5 dB (um alvo fora de dB, igual). Senão, responde a opção mais
+  perto da frase de refino (a queixa, depois o gosto), ou o "Outro…" com ela. Depois de 3 refinos, salva assim mesmo.
+- **O nome** da memória é `AVAL <id do perfil>`.
+
+### As métricas
+
+Por perfil:
+
+- **Perguntas:** quantas o Agente fez (contando as refeitas pelo ‹).
+- **Distância:** a maior diferença entre o valor final relido e o alvo, entre os alvos em dB (080, 081, 030, 091, 071).
+  Um alvo em Hz, cm ou graus conta como acerto só se for igual.
+- **Violações:** cada recusa da cerca (o 409 "Limite: …" no `/criacao/ajuste`, no `/criacao/escuta` ou no `/ajuste`); cada
+  ajuste de tom (030 a 032, 090 a 092) seguido, na mesma rodada, de um de rota (010), ganho (080, 081), corte (040 a 043),
+  atraso (050) ou fase (060); e cada limitador final fora da cerca.
+- **Rota:** a final de cada saída com caixa igual à esperada.
+- **Passa** com distância ≤ 1,5 dB, até 8 perguntas, nenhuma violação e a rota certa. O conjunto passa se todos passam.
+
+O relatório (`relatorio.json` e `relatorio.txt`) traz, por perfil, as perguntas (o texto e a resposta), a distância, as
+violações, a rota, o passou e o motivo; no topo, o passou geral, a data, o tipo (`falso` ou `real`) e o hash das camadas
+(o SHA-256 dos arquivos `.md` de `instrucoes/`, `skills/`, `conhecimento/` e `tarefas/`, os que o serviço copia, pelos
+caminhos e pelo conteúdo, em ordem; CRLF conta como LF).
+
+### A avaliação real e o custo
+
+```
+dotnet run --project agente/avaliacao/Agente.Avaliacao -- real
+dotnet run --project agente/avaliacao/Agente.Avaliacao -- real --confirmo-custo
+```
+
+- Sem `--confirmo-custo`, mostra o custo estimado (US$ 1,50 por perfil, US$ 12,00 os 8) e sai com o código 3, sem lançar
+  nada.
+- Com a confirmação, roda o Claude de verdade (o `lancador` do `servico.config.json`, com a `porta` da sua pasta local,
+  `pastaPorta`), um perfil por vez, e grava o relatório em `avaliacao/relatorios/<data>/`, versionado. Sai com 0 se o
+  conjunto passou, 1 se não.
+
+### A trava: `conferir`
+
+```
+dotnet run --project agente/avaliacao/Agente.Avaliacao -- conferir
+```
+
+Decide pelo relatório real mais recente com o hash das camadas de agora: sai com 0 se ele passou. Senão, sai com 1 e o
+motivo ("A última avaliação real com estas camadas não passou.", "As camadas mudaram desde a última avaliação real que
+passou." ou "Nenhuma avaliação real passou ainda."). Um relatório ilegível fica de fora.
+
+**Antes de levar uma mudança de `instrucoes/`, `skills/`, `conhecimento/` ou `tarefas/` ao `main`, rode o `conferir`.** Se
+ele der 1, rode a avaliação real e versione o relatório junto com a mudança. Instalar um gancho do git que rode o
+`conferir` sozinho é decisão de quem mantém o repositório; nada aqui o instala.
+
+### Os Agentes falsos
+
+Em `tests/Agente.Testes/AgentesFalsos.cs`, como `ILancadorAgente` em código, falando só pela porta:
+
+- **o bom** lê o `/estado` e o `/limites`, pergunta o que depende do Setup, do ambiente e do objetivo, escolhe a rota pelo
+  objetivo e por onde estão os ouvintes, aplica na ordem da física, dentro da cerca, e refina pela escuta "1 ou 2",
+  cortando a dúvida pela metade: passa nos 8;
+- **o genérico** faz as mesmas perguntas e a mesma receita para todos, sem escuta: o conjunto falha;
+- **o das entradas separadas** é o bom com a rota sempre separada: falha no perfil da SPL pela rota.
+
 ## Testes
 
 ```
@@ -237,4 +330,5 @@ dotnet test tests/Agente.Testes
 
 Os testes sobem a `PortaComandos` do núcleo do app sobre o `ProcessadorSimulado`, numa porta livre de localhost. O
 serviço roda no próprio processo dos testes; a ferramenta `porta` e o modelo falso rodam como processos de verdade.
-Cada teste usa uma pasta local temporária (o aprendizado também). Nenhum teste chama o modelo de verdade.
+Cada teste usa uma pasta local temporária (o aprendizado também). Nenhum teste chama o modelo de verdade: os testes da
+avaliação (`AvaliacaoTestes`) rodam os Agentes falsos nos 8 perfis.

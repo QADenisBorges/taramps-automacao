@@ -7,6 +7,9 @@
     <Project Path="src/Servico/Servico.csproj" />
     <Project Path="src/Agente.ModeloFalso/Agente.ModeloFalso.csproj" />
   </Folder>
+  <Folder Name="/avaliacao/">
+    <Project Path="avaliacao/Agente.Avaliacao/Agente.Avaliacao.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Agente.Testes/Agente.Testes.csproj" />
   </Folder>
