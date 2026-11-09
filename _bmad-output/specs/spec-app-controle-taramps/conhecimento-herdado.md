@@ -35,7 +35,7 @@ Fichas (entram também na base de modelos), com a origem de cada dado:
 | JBL 4TRMS80 | 80 W RMS, 4 Ω, Re 3,4 Ω, Fs 98 Hz, Qes 0,81, Qms 3,19, Vas 2,06 L, Sd 64 cm², Bl 4,1, Xmax 1,75 mm, 87 dB; passa-alta mínimo de 100 Hz a 24 dB/oit | oficial (ficha impressa); o Bl não fecha com o Qes (`_bmad-output/regulagem/memoria-spl.md` §12.2) |
 | JBL 4TRMS80 no Casa 2.1 | Re 3,6 Ω; caixa selada de ~3,5 L | medido (18/10); o volume é estimado por foto e régua |
 | Protech Light 8" | 450 W RMS, 4 Ω, Re 3,7 Ω, Fs 46 Hz, Qms 3,90, Qes 0,61, Qts 0,52, Vas 10 L, Bl 13, Xmax 8 mm, Le 1,63 mH, Sd 240 cm², 84 dB | oficial (site do fabricante, lido em 27/10; `memoria-spl.md` §13.1) |
-| Protech Light 8" no Casa 2.1 | Re 3,7 Ω; caixa dutada de ~28 L, Fb 51 Hz, duto de 38,5 cm² | medido (17 e 20/10); o volume é estimado |
+| Protech Light 8" no Casa 2.1 | Re 3,7 Ω (etiqueta 4 Ω, bobina simples); caixa dutada de ~27 L, **Fb 34,5 Hz**, duto de 39,6 cm² (preto 11 cm + PVC 75 mm 22 cm). Até 08/11/2026: Fb 51 Hz, duto de 38,5 cm², ~28 L | medido (Re em 17/10 e 07/11; Fb nova em 09/11, ver `_bmad-output/regulagem/duto-novo-2026-11.md`); o volume é estimado |
 | SD800.4 EVO | 132 W por canal em 4 Ω a 12,6 V (ceifa ~23 V); 400 W em ponte em 4 Ω (ceifa ~40 V); ponte em 2 Ω proibida | oficial (manual) |
 | SD800.4 EVO no Casa 2.1 | ganho ×19,5 por canal e ×40,5 em ponte; fonte 13,89 V sem carga; BOB 60A (40 A contínuos) | medido (17 e 18/10); a BOB é oficial |
 

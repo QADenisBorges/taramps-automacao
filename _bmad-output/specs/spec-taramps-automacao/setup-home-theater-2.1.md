@@ -23,7 +23,7 @@ Alimentação: fusível de 40 A no + do módulo (10 mm²); fusível do processad
 | | Na BS-369 | Fc ≈ 124 Hz, selada (soma 12 dB/oit acústicos) | Cálculo do projeto Som |
 | | Excursão com BW2 em 120 Hz | Xmax com ~12 W perto de 122 Hz | `calc_som.py excursao`, 09/10 |
 | Protech Light 8" | Potência / Xmax / Fs | 450 W RMS / 8 mm / 46 Hz | Lojas (sem ficha do fabricante) |
-| | Caixa | Com duto (foto de 11/10); **Fb desconhecida** | Projeto Som |
+| | Caixa | Com duto; **Fb medida: 34,5 Hz** (09/11/2026, duto alongado com PVC 75 mm; antes ~51 Hz). Ver `_bmad-output/regulagem/duto-novo-2026-11.md` | Projeto Som + varredura de 09/11 |
 | SD800.4 EVO | Ponte 4 Ω | 400 W RMS a 12,6 V (tabela de ganho: 40 V) | Manual |
 | PRO 2.4BT + AUDIO | Saída máxima / nível por saída | 2,1 V RMS / −45 a **+15 dB** | Manual |
 

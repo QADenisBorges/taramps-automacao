@@ -20,19 +20,41 @@ do PVC lixada em meia-lua. Mês que vem: manta butílica 3 mm e, opcional, joelh
 Atenção na varredura: o HPF dos canais 3/4 em 45 Hz BT24 (ajuste antigo) mascara a Fb. Para medir,
 HPF em 10 Hz e ganho do gerador até −20 dB; depois voltar o HPF.
 
-## 2. Proteção recalculada (Fb 34,5; modelo de Small, Xmax 8 mm)
+## 2. Proteção recalculada (Fb 34,5; ficha da Protech de 27/10; Xmax 8 mm)
+
+Conta em `calculo_excursao_sub_duto_novo.py` (mesmo modelo de `calculo_excursao_sub.py`: Small, Ql 7,
+caixa de ~27 L, duto de 39,6 cm², tom senoidal na pior frequência, sem ganho da sala). Substitui a
+primeira estimativa deste arquivo, feita no projeto Som sem a ficha (Qts e Vas estimados).
 
 Calibração do limitador do sub (medida em 18/10): −6 dB → 40,6 V · −9 dB → 28,6 V · −12 dB → 20 V
 nos bornes do sub (V ≈ 40,6 × 10^((L+6)/20)).
 
-| HPF do sub (LR24) | Tensão em que o cone chega ao Xmax |
-|---|---|
-| 30 Hz | 34–42 V |
-| 25 Hz | 26–33 V |
-| 22 Hz | 21–28 V |
+| Subsônico do sub (LR24) | Cone chega ao Xmax com | Limiar máximo do limitador | Ar no duto nessa tensão |
+|---|---|---|---|
+| 35 Hz | 36,6 V | −7,0 dB | ~25 m/s |
+| 30 Hz | 33,9 V | −7,5 dB | ~31 m/s |
+| 28 Hz (= 0,8 × Fb) | 33,1 V | −8,0 dB | ~33 m/s |
+| 25 Hz | 28,8 V | −9,0 dB | ~33 m/s |
+| 22 Hz | 23,9 V | −10,5 dB | ~30 m/s |
 
-O ar no duto passa de ~40 m/s a 400 W em qualquer duto que caiba (7 cm é pequeno para 400 W num 8");
-na prática não sopra até ~100 W em grave contínuo.
+- Com 25 V (−10 dB) e subsônico de 25 Hz o cone fica em 87 % do Xmax.
+- **O teto de 40 V (−6 dB) não serve mais em nenhum subsônico**: com 30 Hz dá 118 % do Xmax. Para
+  música, limiar de no máximo −8 dB (~32 V).
+- O ar no duto passa de 25 m/s perto do teto: em grave contínuo e volume alto o duto pode soprar
+  e comprimir. Bocas arredondadas ajudam (a ponta do PVC foi lixada).
+
+### Guardião (não alterado: decisão do Denis)
+
+`estado/guardiao.json`, saídas 3 e 4, ainda traz `f_min_hz: 35` ("enquanto a Fb do duto for
+desconhecida") e `teto_limiter_db: -8.0`. Com a Fb medida em 34,5 Hz:
+- pela trava 2 de `damage-thresholds.md` (0,8 × Fb), o mínimo seria **28 Hz**, 24 dB/oit;
+- a CINEMA gravada em 09/11 usa **25 Hz LR24**, abaixo do mínimo atual e também de 0,8 × Fb. Ela se
+  apoia na conta de excursão acima (limitador em −10 dB), não na regra do 0,8 × Fb;
+- o teto de −8 dB continua coerente com 28 Hz ou mais.
+
+Opções: (a) `f_min_hz` 28 e CINEMA em 28 Hz; (b) `f_min_hz` 25 com o teto amarrado a −10 dB quando
+o subsônico estiver abaixo de 28 Hz. Até o Denis escolher, o guardião segue em 35 Hz e vai apontar
+a CINEMA nova como fora da trava.
 
 ## 3. Memória 3 CINEMA (configurada no app em 09/11)
 
@@ -46,7 +68,7 @@ na prática não sopra até ~100 W em grave contínuo.
 | EQ de saída sub 45 Hz | 0 | 0 (não voltar o +3) |
 | Fase / atraso do sub | 180° / 80 cm | refazer: sub mudou para debaixo da mesa, ponta esquerda |
 
-Memória de música: HPF do sub 30 Hz LR24, limitador −6 dB (~40 V).
+Memória de música: HPF do sub 30 Hz LR24, limitador de no máximo **−8 dB (~32 V)** (não −6 dB).
 
 ## 4. Presets de EQ gráfico novos (sobre a CINEMA)
 
@@ -58,8 +80,8 @@ Memória de música: HPF do sub 30 Hz LR24, limitador −6 dB (~40 V).
 
 - A regra "25 e 40 Hz sempre em 0" valia para Fb 51 Hz. Com Fb 34,5 e HPF 25 LR24 + limitador
   ~25 V, 25 e 40 Hz podem subir até +2.
-- **Tremor** pede, no sub: HPF **22 Hz LR24** e limitador **−11,5 dB (~21 V)** (+1,9 dB em 25 Hz e
-  +1,2 dB em 30 Hz contra HPF 25).
+- **Tremor** pede, no sub: HPF **22 Hz LR24** e limitador **−11,5 dB (~21 V)** (88 % do Xmax; +1,9 dB
+  em 25 Hz e +1,2 dB em 30 Hz contra HPF 25).
 - Enquanto o diagnóstico abaixo não fecha: 25 e 40 Hz em +1 e volume 50–60%.
 
 ## 5. Escuta de 09/11 e pendências
