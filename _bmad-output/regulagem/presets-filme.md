@@ -1,5 +1,7 @@
 # Presets de filme por gênero (EQ de 15 bandas)
 
+> **Atualização 09/11/2026:** duto novo, **Fb medida ≈ 34,5 Hz** (antes 51). As regras e contas baseadas em Fb 51 Hz estão superadas; ver `duto-novo-2026-11.md` (CINEMA com HPF 25 LR24 e limitador −10 dB; presets Ação Profunda e Tremor).
+
 **Status (27/10 20h33):** a memória 3 passou a se chamar **CINEMA** (decisão do Denis), salva com
 as bandas Cinema e os limitadores novos (L −12, R −15, sub −15). Ação v3 aprovado de ouvido; Drama,
 Suspense e Terror guardados aqui sem escuta; Comédia fora da lista do Denis por enquanto. Os

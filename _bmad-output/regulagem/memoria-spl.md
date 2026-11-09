@@ -1,5 +1,7 @@
 # Contexto de regulagem: memória SPL
 
+> **Atualização 09/11/2026:** duto novo, **Fb medida ≈ 34,5 Hz** (antes 51). As regras e contas baseadas em Fb 51 Hz estão superadas; ver `duto-novo-2026-11.md` (CINEMA com HPF 25 LR24 e limitador −10 dB; presets Ação Profunda e Tremor).
+
 **Status:** recalculado do zero em 2026-10-20 a partir das medidas de 17 e 18/10 (seção 12) · JBLs em 17,9 V com LR4 em 200 Hz, confirmado por conta independente · sub em **28,6 V** (450 W confirmados em 27/10: o limite passa a ser o curso do cone e o duto, não o calor; ver seção 13) · fonte: Bluetooth serve · **Fb do duto medida: 51 Hz** → subsônico BW 24 dB em 40 Hz · módulo e sub confirmados pelo Denis (20/10)
 
 **Fontes de verdade externas:** repositório `QADenisBorges/sound` — `componentes/alto-falantes.md`, `componentes/subwoofers.md`, `componentes/amplificadores.md`, `projetos/home-theater-2.1/montagem-2.1.md` e `.claude/skills/consultor-som/scripts/calc_som.py excursao`.
